@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KiX Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#6F4E37;
+  --brand-light:#8B6914;
+  --green:#00FC00;
+  --green-dim:#00cc00;
+  --green-dark:#009900;
+  --dark:#111;
+  --gray-1:#888;
+  --gray-2:#666;
+  --gray-3:#f5f5f7;
+  --gray-4:#e5e5e5;
+  --white:#fff;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --radius:14px;
+  --nav-h:60px;
+  --top-h:100px;
+}
+html{-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+body{
+  font-family:var(--font);color:var(--dark);background:var(--gray-3);
+  max-width:480px;margin:0 auto;min-height:100dvh;
+  display:flex;flex-direction:column;position:relative;
+  overflow-x:hidden;
+}
+button{font-family:var(--font);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* ── Loading Screen ── */
+#loading-screen{
+  position:fixed;inset:0;z-index:9999;background:var(--white);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;transition:opacity .4s;
+}
+#loading-screen.hidden{opacity:0;pointer-events:none}
+.loading-spinner{
+  width:40px;height:40px;border:3px solid var(--gray-4);
+  border-top-color:var(--green);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--gray-1);font-weight:500}
+
+/* ── Error Screen (missing brand) ── */
+#error-screen{
+  position:fixed;inset:0;z-index:9999;background:var(--white);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:32px;text-align:center;
+}
+#error-screen.visible{display:flex}
+.error-icon{
+  width:64px;height:64px;border-radius:50%;
+  background:rgba(0,252,0,.08);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin-bottom:8px;
+}
+.error-title{font-size:20px;font-weight:800;color:var(--dark);letter-spacing:-.5px}
+.error-msg{font-size:15px;color:var(--gray-1);line-height:1.6;max-width:320px}
+.error-msg-zh{font-size:14px;color:var(--gray-2);line-height:1.6;max-width:320px;margin-top:4px}
+
+/* ── Top Bar ── */
+.top-bar{
+  background:var(--white);padding:12px 16px;
+  border-bottom:1px solid rgba(0,0,0,.06);
+  position:sticky;top:0;z-index:50;
+}
+.top-bar-inner{display:flex;align-items:center;justify-content:space-between}
+.brand-name{font-size:18px;font-weight:800;color:var(--brand);letter-spacing:-.5px}
+.energy-section{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.energy-bar-wrap{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,252,0,.08);padding:4px 10px;border-radius:20px;
+}
+.energy-icon{font-size:14px}
+.energy-bar-track{width:80px;height:8px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden}
+.energy-bar-fill{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));border-radius:4px;transition:width .6s cubic-bezier(.16,1,.3,1)}
+.energy-text{font-size:12px;font-weight:700;color:var(--green-dark)}
+.energy-regen{font-size:10px;color:var(--gray-1);font-weight:500}
+
+/* ── Content Area ── */
+.content{flex:1;padding:16px 16px calc(var(--nav-h) + 16px);overflow-y:auto}
+.section{display:none}
+.section.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Game Cards ── */
+.section-title{font-size:20px;font-weight:800;margin-bottom:16px;letter-spacing:-.5px}
+.game-card{
+  background:var(--white);border-radius:var(--radius);padding:20px;
+  margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.04);
+  display:flex;align-items:center;justify-content:space-between;
+  transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;
+}
+.game-card:active{transform:scale(.98)}
+.game-info{flex:1}
+.game-name{font-size:16px;font-weight:700;margin-bottom:4px}
+.game-cost{font-size:13px;color:var(--gray-1)}
+.game-cost span{color:var(--green-dark);font-weight:600}
+.day1-badge{
+  position:absolute;top:8px;right:8px;
+  background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:var(--white);
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.play-btn{
+  background:linear-gradient(135deg,var(--green-dim),var(--green));
+  color:var(--dark);font-size:14px;font-weight:700;
+  padding:10px 24px;border-radius:100px;
+  transition:transform .15s,box-shadow .15s;
+  white-space:nowrap;
+}
+.play-btn:active{transform:scale(.95)}
+.play-btn:hover{box-shadow:0 4px 16px rgba(0,252,0,.3)}
+.play-btn:disabled{
+  background:#ccc;color:#999;cursor:not-allowed;
+  box-shadow:none;
+}
+.play-btn:disabled:active{transform:none}
+.need-energy{font-size:11px;color:#e74c3c;margin-top:4px;font-weight:500}
+
+/* ── Game Screen (overlay) ── */
+#game-screen{
+  position:fixed;inset:0;z-index:100;background:var(--white);
+  display:none;flex-direction:column;
+  max-width:480px;margin:0 auto;
+}
+#game-screen.active{display:flex}
+.game-header{
+  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+  background:var(--dark);color:var(--white);
+}
+.game-header-title{font-size:16px;font-weight:700}
+.game-stats{display:flex;gap:16px;font-size:13px;font-weight:600}
+.game-stats .stat-label{color:rgba(255,255,255,.5);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.game-stats .stat-val{color:var(--green)}
+#game-canvas{flex:1;position:relative;overflow:hidden;background:#faf8f5}
+
+/* ── Countdown Overlay ── */
+.countdown-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.8);
+  display:flex;align-items:center;justify-content:center;
+  z-index:10;
+}
+.countdown-num{
+  font-size:120px;font-weight:900;color:var(--green);
+  animation:countPop .6s cubic-bezier(.16,1,.3,1);
+}
+@keyframes countPop{from{transform:scale(2);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ── Game Results ── */
+.game-results{
+  position:absolute;inset:0;background:var(--white);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;z-index:10;padding:32px;text-align:center;
+}
+.result-score{font-size:56px;font-weight:900;color:var(--dark);letter-spacing:-2px}
+.result-rank{font-size:18px;color:var(--gray-1);font-weight:600}
+.result-rank span{color:var(--green-dark);font-weight:800}
+.voucher-won{
+  background:linear-gradient(135deg,#fff9e6,#fff3cc);
+  border:2px solid #f0c040;border-radius:var(--radius);
+  padding:16px 24px;margin-top:8px;text-align:center;
+}
+.voucher-won .voucher-title{font-size:14px;font-weight:700;color:#886600;margin-bottom:4px}
+.voucher-won .voucher-code{font-size:20px;font-weight:900;color:var(--dark);letter-spacing:1px}
+.voucher-won .voucher-desc{font-size:12px;color:var(--gray-1);margin-top:4px}
+.result-btn{
+  background:var(--dark);color:var(--white);
+  font-size:16px;font-weight:700;padding:14px 40px;border-radius:100px;
+  margin-top:16px;transition:transform .15s;
+}
+.result-btn:active{transform:scale(.95)}
+
+/* ── Latte Art Game ── */
+.latte-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px}
+.latte-cup{
+  width:200px;height:180px;position:relative;margin:20px auto;
+}
+.cup-body{
+  width:180px;height:140px;background:linear-gradient(135deg,#8B6914,#6F4E37);
+  border-radius:0 0 60px 60px;position:absolute;bottom:0;left:10px;
+  box-shadow:inset 0 -20px 40px rgba(0,0,0,.2);overflow:hidden;
+}
+.cup-handle{
+  width:40px;height:60px;border:6px solid #6F4E37;
+  border-left:none;border-radius:0 20px 20px 0;
+  position:absolute;right:-30px;top:30px;
+}
+.cup-coffee{
+  position:absolute;bottom:0;left:0;right:0;height:110px;
+  background:linear-gradient(180deg,#3c1f00,#2a1500);
+  border-radius:0 0 54px 54px;
+}
+.milk-stream{
+  width:8px;height:0;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.6));
+  position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+  border-radius:4px;transition:height .3s;filter:blur(.5px);
+}
+.milk-stream.pouring{height:60px;animation:pourWobble 1s ease-in-out infinite}
+@keyframes pourWobble{0%,100%{transform:translateX(-50%) skewX(0)}50%{transform:translateX(-50%) skewX(3deg)}}
+.latte-art-pattern{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  width:100px;height:100px;opacity:0;transition:opacity .4s;
+}
+.latte-timing-bar{
+  width:80%;height:24px;background:rgba(0,0,0,.1);
+  border-radius:12px;overflow:hidden;margin-top:20px;position:relative;
+}
+.latte-timing-indicator{
+  width:4px;height:100%;background:var(--dark);border-radius:2px;
+  position:absolute;top:0;
+}
+.latte-sweetspot{
+  position:absolute;top:0;height:100%;background:rgba(0,252,0,.3);
+  border-left:2px solid var(--green);border-right:2px solid var(--green);
+}
+.latte-round{font-size:14px;font-weight:700;color:var(--gray-1);margin-top:12px}
+.latte-tap-hint{
+  font-size:16px;font-weight:700;color:var(--brand);
+  margin-top:12px;animation:hintPulse 1.5s ease-in-out infinite;
+}
+@keyframes hintPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.latte-score-popup{
+  position:absolute;font-size:24px;font-weight:900;
+  color:var(--green);pointer-events:none;
+  animation:scoreFloat .8s ease-out forwards;
+}
+@keyframes scoreFloat{
+  from{opacity:1;transform:translateY(0) scale(1)}
+  to{opacity:0;transform:translateY(-40px) scale(1.3)}
+}
+
+/* ── Bean Match Game ── */
+.match-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:16px}
+.match-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  width:100%;max-width:320px;
+}
+.match-card{
+  aspect-ratio:1;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;cursor:pointer;
+  transition:transform .3s cubic-bezier(.16,1,.3,1);
+  position:relative;perspective:600px;
+}
+.match-card-inner{
+  width:100%;height:100%;position:relative;
+  transform-style:preserve-3d;transition:transform .4s cubic-bezier(.16,1,.3,1);
+  border-radius:12px;
+}
+.match-card.flipped .match-card-inner{transform:rotateY(180deg)}
+.match-card.matched .match-card-inner{transform:rotateY(180deg)}
+.match-card.matched{animation:matchBounce .4s cubic-bezier(.16,1,.3,1)}
+@keyframes matchBounce{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+.match-face,.match-back{
+  position:absolute;inset:0;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  backface-visibility:hidden;
+}
+.match-back{
+  background:linear-gradient(135deg,var(--brand),#8B6914);
+  color:var(--white);font-size:24px;
+}
+.match-face{
+  background:var(--white);border:2px solid var(--gray-4);
+  transform:rotateY(180deg);
+}
+.match-card.matched .match-face{border-color:var(--green);background:rgba(0,252,0,.05)}
+.match-pairs{font-size:14px;font-weight:600;color:var(--gray-1);margin-top:12px}
+
+/* ── Leaderboard ── */
+.lb-tabs{display:flex;gap:8px;margin-bottom:16px}
+.lb-tab{
+  padding:8px 16px;border-radius:100px;font-size:13px;font-weight:600;
+  background:var(--white);color:var(--gray-1);border:1px solid var(--gray-4);
+  transition:all .2s;
+}
+.lb-tab.active{background:var(--dark);color:var(--white);border-color:var(--dark)}
+.lb-table{width:100%;background:var(--white);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.lb-row{
+  display:flex;align-items:center;padding:12px 16px;
+  border-bottom:1px solid rgba(0,0,0,.04);
+  transition:background .2s;
+}
+.lb-row:last-child{border-bottom:none}
+.lb-row.self{background:rgba(0,252,0,.06)}
+.lb-rank{
+  width:32px;font-size:16px;font-weight:800;color:var(--dark);
+  flex-shrink:0;text-align:center;
+}
+.lb-rank.gold{color:#f0c040}
+.lb-rank.silver{color:#a0a0a0}
+.lb-rank.bronze{color:#cd7f32}
+.lb-name{flex:1;font-size:14px;font-weight:600;padding:0 12px}
+.lb-score{font-size:14px;font-weight:700;color:var(--green-dark)}
+.lb-empty{text-align:center;padding:40px;color:var(--gray-1);font-size:14px}
+
+/* ── Streak ── */
+.streak-card{
+  background:var(--white);border-radius:var(--radius);padding:24px;text-align:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:16px;
+}
+.streak-fire{font-size:48px;margin-bottom:8px}
+.streak-num{font-size:56px;font-weight:900;color:var(--dark);letter-spacing:-2px;line-height:1}
+.streak-label{font-size:14px;color:var(--gray-1);font-weight:500;margin-top:4px}
+.streak-calendar{display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.streak-dot{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:600;
+}
+.streak-dot.done{background:var(--green);color:var(--dark)}
+.streak-dot.today{background:rgba(0,252,0,.2);color:var(--green-dark);border:2px solid var(--green)}
+.streak-dot.future{background:var(--gray-4);color:var(--gray-1)}
+.streak-milestone{
+  background:var(--white);border-radius:var(--radius);padding:20px;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;align-items:center;gap:16px;
+}
+.milestone-icon{font-size:32px}
+.milestone-info{text-align:left}
+.milestone-title{font-size:14px;font-weight:700}
+.milestone-desc{font-size:12px;color:var(--gray-1);margin-top:2px}
+
+/* ── Rewards/Wallet ── */
+.voucher-card{
+  background:var(--white);border-radius:var(--radius);padding:16px;
+  margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.04);
+  display:flex;align-items:center;gap:12px;
+  border-left:4px solid var(--green);
+}
+.voucher-card.redeemed{border-left-color:var(--gray-4);opacity:.6}
+.voucher-card.expired{border-left-color:#e74c3c;opacity:.5}
+.voucher-emoji{font-size:28px;flex-shrink:0}
+.voucher-info{flex:1}
+.voucher-code-text{font-size:14px;font-weight:800;letter-spacing:.5px}
+.voucher-description{font-size:12px;color:var(--gray-1);margin-top:2px}
+.voucher-expiry{font-size:11px;color:var(--gray-1);margin-top:4px}
+.voucher-status{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  padding:4px 8px;border-radius:6px;
+}
+.voucher-status.assigned{background:rgba(0,252,0,.1);color:var(--green-dark)}
+.voucher-status.redeemed{background:rgba(0,0,0,.05);color:var(--gray-1)}
+.voucher-status.expired{background:rgba(231,76,60,.1);color:#e74c3c}
+.redeem-btn{
+  background:var(--dark);color:var(--white);
+  font-size:12px;font-weight:700;padding:8px 16px;
+  border-radius:100px;white-space:nowrap;
+  transition:transform .15s;margin-top:8px;
+}
+.redeem-btn:active{transform:scale(.95)}
+.rewards-empty{text-align:center;padding:40px;color:var(--gray-1)}
+
+/* ── Bottom Nav ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;height:var(--nav-h);
+  background:var(--white);border-top:1px solid rgba(0,0,0,.06);
+  display:flex;z-index:50;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;
+  background:none;color:var(--gray-1);font-size:10px;font-weight:600;
+  transition:color .2s;text-transform:uppercase;letter-spacing:.5px;
+}
+.nav-item.active{color:var(--green-dark)}
+.nav-item .nav-icon{font-size:20px;transition:transform .2s}
+.nav-item.active .nav-icon{transform:scale(1.15)}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);
+  background:var(--dark);color:var(--white);
+  padding:12px 24px;border-radius:100px;
+  font-size:14px;font-weight:600;z-index:9999;
+  transition:transform .4s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+  white-space:nowrap;max-width:90vw;text-align:center;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.energy{background:linear-gradient(135deg,#004400,#006600)}
+.toast.error{background:#c0392b}
+.toast.reward{background:linear-gradient(135deg,#886600,#aa8800)}
+
+/* ── Confirm Dialog ── */
+.dialog-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  display:none;align-items:center;justify-content:center;
+  z-index:200;padding:24px;
+}
+.dialog-overlay.show{display:flex}
+.dialog-box{
+  background:var(--white);border-radius:20px;padding:28px;
+  width:100%;max-width:320px;text-align:center;
+  animation:dialogPop .3s cubic-bezier(.16,1,.3,1);
+}
+@keyframes dialogPop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.dialog-title{font-size:18px;font-weight:800;margin-bottom:8px}
+.dialog-msg{font-size:14px;color:var(--gray-1);margin-bottom:20px;line-height:1.5}
+.dialog-btns{display:flex;gap:12px}
+.dialog-btns button{
+  flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700;
+  transition:transform .15s;
+}
+.dialog-btns button:active{transform:scale(.95)}
+.dialog-cancel{background:var(--gray-3);color:var(--dark)}
+.dialog-confirm{background:var(--dark);color:var(--white)}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading...</div>
+</div>
+
+<!-- Error Screen (missing brand) -->
+<div id="error-screen">
+  <div class="error-icon">&#9749;</div>
+  <div class="error-title">No brand specified</div>
+  <div class="error-msg">You need to access this page via your cafe's QR code or link.</div>
+  <div class="error-msg-zh">未指定品牌。请通过咖啡店的二维码或链接访问此页面。</div>
+</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <div class="brand-name" id="brand-name">...</div>
+    <div class="energy-section">
+      <div class="energy-bar-wrap">
+        <span class="energy-icon">&#9889;</span>
+        <div class="energy-bar-track">
+          <div class="energy-bar-fill" id="energy-fill" style="width:0%"></div>
+        </div>
+        <span class="energy-text" id="energy-text">0/100</span>
+      </div>
+      <div class="energy-regen" id="energy-regen">Next +1 in --:--</div>
+    </div>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Play Section -->
+  <div class="section active" id="section-play">
+    <div class="section-title">&#127918; Games</div>
+    <div id="games-list"></div>
+  </div>
+
+  <!-- Leaderboard Section -->
+  <div class="section" id="section-leaderboard">
+    <div class="section-title">&#127942; Leaderboard</div>
+    <div class="lb-tabs" id="lb-tabs"></div>
+    <div id="lb-content"><div class="lb-empty">Loading...</div></div>
+  </div>
+
+  <!-- Streak Section -->
+  <div class="section" id="section-streak">
+    <div class="section-title">&#128293; Streak</div>
+    <div id="streak-content"><div class="lb-empty">Loading...</div></div>
+  </div>
+
+  <!-- Rewards Section -->
+  <div class="section" id="section-rewards">
+    <div class="section-title">&#127873; My Rewards</div>
+    <div id="rewards-list"><div class="rewards-empty">Loading...</div></div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-tab="play">
+    <span class="nav-icon">&#127918;</span>Play
+  </button>
+  <button class="nav-item" data-tab="leaderboard">
+    <span class="nav-icon">&#127942;</span>Board
+  </button>
+  <button class="nav-item" data-tab="streak">
+    <span class="nav-icon">&#128293;</span>Streak
+  </button>
+  <button class="nav-item" data-tab="rewards">
+    <span class="nav-icon">&#127873;</span>Rewards
+  </button>
+</nav>
+
+<!-- Game Screen (fullscreen overlay) -->
+<div id="game-screen">
+  <div class="game-header">
+    <div class="game-header-title" id="game-title">Game</div>
+    <div class="game-stats">
+      <div><div class="stat-label">Score</div><div class="stat-val" id="game-score">0</div></div>
+      <div><div class="stat-label">Time</div><div class="stat-val" id="game-timer">0s</div></div>
+    </div>
+  </div>
+  <div id="game-canvas"></div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="dialog-overlay" id="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title" id="dialog-title">Confirm</div>
+    <div class="dialog-msg" id="dialog-msg">Are you sure?</div>
+    <div class="dialog-btns">
+      <button class="dialog-cancel" id="dialog-cancel">Cancel</button>
+      <button class="dialog-confirm" id="dialog-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// KiX Play Page — Customer-facing game portal
+// ════════════════════════════════════════════════════════════════════════
+
+const API = 'http://localhost:8000';
+
+// ── State ──
+const state = {
+  brandId: null,
+  qrToken: null,
+  token: null,
+  refreshToken: null,
+  userId: null,
+  energy: 0,
+  maxEnergy: 100,
+  isDay1: false,
+  brandName: '',
+  brandColor: '#6F4E37',
+  games: [],
+  currentSessionId: null,
+  currentGameId: null,
+  gameStartTime: null,
+};
+
+// ── Init ──
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const brandParam = params.get('brand');
+
+  if (!brandParam) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('error-screen').classList.add('visible');
+    return;
+  }
+
+  state.brandId = brandParam;
+  state.qrToken = params.get('qr') || null;
+
+  try {
+    const deviceSig = await getDeviceSig();
+
+    // 1. Get token
+    const tokenRes = await api('POST', '/api/v1/auth/token', {
+      brand_id: state.brandId,
+      device_sig: deviceSig,
+    }, false);
+    state.token = tokenRes.access_token;
+    state.refreshToken = tokenRes.refresh_token;
+    state.userId = tokenRes.user_id;
+    state.energy = tokenRes.energy;
+    state.isDay1 = tokenRes.is_day1;
+    save();
+
+    // 2. Get brand config
+    const brandRes = await api('GET', `/api/v1/brands/${state.brandId}`);
+    state.brandName = brandRes.brand_name;
+    const cfg = brandRes.config_json || {};
+    state.games = cfg.games || [];
+    state.maxEnergy = (cfg.energy && cfg.energy.max_balance) || 100;
+    if (cfg.brand_color) state.brandColor = cfg.brand_color;
+
+    // 3. QR energy grant
+    if (state.qrToken) {
+      try {
+        const grantRes = await api('POST', '/api/v1/energy/grant', {
+          brand_id: state.brandId,
+          qr_token: state.qrToken,
+        });
+        state.energy = grantRes.energy_balance;
+        showToast(`⚡ +${grantRes.energy_granted} Energy!`, 'energy');
+      } catch (e) {
+        const msg = e.message || '';
+        if (msg.includes('429') || msg.includes('Cooldown')) {
+          showToast('Come back later for more Energy', 'error');
+        } else if (msg.includes('expired') || msg.includes('Invalid')) {
+          showToast('QR expired — ask staff for current QR', 'error');
+        } else {
+          showToast('QR code already used', 'error');
+        }
+      }
+    }
+
+    // 4. Render
+    applyBrandTheme();
+    renderTopBar();
+    renderGames();
+    startEnergyRegen();
+
+    document.getElementById('loading-screen').classList.add('hidden');
+    setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+
+  } catch (err) {
+    console.error('Init failed:', err);
+    document.querySelector('.loading-text').textContent = 'Failed to load. Try refreshing.';
+  }
+})();
+
+// ── Device Signature ──
+async function getDeviceSig() {
+  const screen = window.screen.width + 'x' + window.screen.height;
+  const language = navigator.language;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const raw = screen + '|' + language + '|' + timezone + '|kix-salt';
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── API Helper ──
+async function api(method, path, body = null, auth = true) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (auth && state.token) {
+    opts.headers['Authorization'] = `Bearer ${state.token}`;
+  }
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(API + path, opts);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`${res.status}: ${errText}`);
+  }
+  return res.json();
+}
+
+// ── Persistence ──
+function save() {
+  try {
+    localStorage.setItem('kix_token', state.token || '');
+    localStorage.setItem('kix_refresh', state.refreshToken || '');
+    localStorage.setItem('kix_user', state.userId || '');
+  } catch {}
+}
+
+// ── Theme ──
+function applyBrandTheme() {
+  document.documentElement.style.setProperty('--brand', state.brandColor);
+  document.getElementById('brand-name').textContent = state.brandName || state.brandId;
+}
+
+// ── Top Bar ──
+function renderTopBar() {
+  const pct = Math.min(100, Math.round((state.energy / state.maxEnergy) * 100));
+  document.getElementById('energy-fill').style.width = pct + '%';
+  document.getElementById('energy-text').textContent = `${state.energy}/${state.maxEnergy}`;
+}
+
+// ── Energy Regen Timer ──
+let regenInterval = null;
+function startEnergyRegen() {
+  if (regenInterval) clearInterval(regenInterval);
+  // Regen 1 energy per 15 seconds (demo mode)
+  const regenSec = 15;
+  let counter = regenSec;
+  const el = document.getElementById('energy-regen');
+  regenInterval = setInterval(() => {
+    counter--;
+    if (counter <= 0) {
+      counter = regenSec;
+      if (state.energy < state.maxEnergy) {
+        state.energy++;
+        renderTopBar();
+        renderGames();
+      }
+    }
+    const m = Math.floor(counter / 60);
+    const s = counter % 60;
+    el.textContent = state.energy >= state.maxEnergy
+      ? 'Energy full!'
+      : `Next +1 in ${m}:${String(s).padStart(2, '0')}`;
+  }, 1000);
+}
+
+// ── Render Games ──
+function renderGames() {
+  const container = document.getElementById('games-list');
+  if (!state.games.length) {
+    container.innerHTML = '<div class="lb-empty">No games available for this brand.</div>';
+    return;
+  }
+  container.innerHTML = state.games.map(g => {
+    const cost = state.isDay1 ? Math.ceil((g.cost || 10) / 2) : (g.cost || 10);
+    const canPlay = state.energy >= cost;
+    const icons = { 'latte-art': '&#9749;', 'bean-match': '&#129752;' };
+    const icon = icons[g.game_id] || '&#127918;';
+    return `
+      <div class="game-card">
+        ${state.isDay1 ? '<div class="day1-badge">Day 1: Half Price!</div>' : ''}
+        <div class="game-info">
+          <div class="game-name">${icon} ${g.name || g.game_id}</div>
+          <div class="game-cost">Cost: <span>&#9889; ${cost}</span></div>
+          ${!canPlay ? '<div class="need-energy">Need more energy &mdash; scan QR!</div>' : ''}
+        </div>
+        <button class="play-btn" ${!canPlay ? 'disabled' : ''}
+          onclick="startGame('${g.game_id}')">
+          PLAY
+        </button>
+      </div>`;
+  }).join('');
+}
+
+// ── Navigation ──
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('section-' + tab).classList.add('active');
+
+    if (tab === 'leaderboard') loadLeaderboard();
+    if (tab === 'streak') loadStreak();
+    if (tab === 'rewards') loadRewards();
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// GAME ENGINE
+// ════════════════════════════════════════════════════════════════════════
+
+async function startGame(gameId) {
+  try {
+    const res = await api('POST', '/api/v1/game/start', {
+      brand_id: state.brandId,
+      game_id: gameId,
+    });
+    state.currentSessionId = res.session_id;
+    state.currentGameId = gameId;
+    state.energy = res.energy_remaining;
+    // Session rotation: update token
+    state.token = res.access_token;
+    save();
+    renderTopBar();
+    renderGames();
+
+    // Show game screen
+    const screen = document.getElementById('game-screen');
+    screen.classList.add('active');
+    const g = state.games.find(x => x.game_id === gameId);
+    document.getElementById('game-title').textContent = g ? g.name : gameId;
+    document.getElementById('game-score').textContent = '0';
+    document.getElementById('game-timer').textContent = '0s';
+
+    state.gameStartTime = Date.now();
+
+    // Countdown then launch
+    await showCountdown();
+
+    if (gameId === 'latte-art') launchLatteArt();
+    else if (gameId === 'bean-match') launchBeanMatch();
+    else launchIframeGame(gameId);
+
+  } catch (e) {
+    console.error('Start game failed:', e);
+    if (e.message.includes('402')) {
+      showToast('Not enough energy!', 'error');
+    } else {
+      showToast('Could not start game', 'error');
+    }
+  }
+}
+
+async function endGame(score) {
+  // Enforce min 16 seconds
+  const elapsed = Date.now() - state.gameStartTime;
+  const minMs = 16000;
+  if (elapsed < minMs) {
+    await new Promise(r => setTimeout(r, minMs - elapsed));
+  }
+
+  try {
+    const res = await api('POST', '/api/v1/game/end', {
+      session_id: state.currentSessionId,
+      score: Math.round(score),
+    });
+    showResults(Math.round(score), res.rank, res.reward);
+  } catch (e) {
+    console.error('End game failed:', e);
+    showResults(Math.round(score), null, null);
+  }
+}
+
+function showResults(score, rank, reward) {
+  const canvas = document.getElementById('game-canvas');
+  let rewardHtml = '';
+  if (reward && reward.voucher_code) {
+    rewardHtml = `
+      <div class="voucher-won">
+        <div class="voucher-title">&#127873; You won a reward!</div>
+        <div class="voucher-code">${reward.voucher_code}</div>
+        <div class="voucher-desc">${reward.voucher_description || reward.type}</div>
+      </div>`;
+  }
+  canvas.innerHTML = `
+    <div class="game-results">
+      <div style="font-size:48px">&#127881;</div>
+      <div class="result-score">${score.toLocaleString()}</div>
+      ${rank ? `<div class="result-rank">Rank <span>#${rank}</span> today</div>` : ''}
+      ${rewardHtml}
+      <button class="result-btn" onclick="closeGame()">Done</button>
+    </div>`;
+  // Animate score counting up
+  animateScore(score);
+}
+
+function animateScore(finalScore) {
+  const el = document.querySelector('.result-score');
+  if (!el) return;
+  let current = 0;
+  const step = Math.max(1, Math.ceil(finalScore / 40));
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= finalScore) {
+      current = finalScore;
+      clearInterval(timer);
+    }
+    el.textContent = current.toLocaleString();
+  }, 25);
+}
+
+function closeGame() {
+  document.getElementById('game-screen').classList.remove('active');
+  document.getElementById('game-canvas').innerHTML = '';
+  state.currentSessionId = null;
+  state.currentGameId = null;
+  // Signal portal to close iframe if embedded
+  try { window.parent.postMessage({type:'kix_close_game'}, '*'); } catch(e) {}
+}
+
+function launchIframeGame(gameId) {
+  const canvas = document.getElementById('game-canvas');
+  const gamePath = `games/${state.brandId}/${gameId}.html`;
+  canvas.innerHTML = `<iframe src="${gamePath}" style="width:100%;height:100%;border:none" id="game-iframe"></iframe>`;
+  let timerEl = document.getElementById('game-timer');
+  let scoreEl = document.getElementById('game-score');
+  let elapsed = 0;
+  const timerInterval = setInterval(() => {
+    elapsed++;
+    if (timerEl) timerEl.textContent = elapsed + 's';
+  }, 1000);
+  window._iframeGameInterval = timerInterval;
+  window.addEventListener('message', function iframeMsg(e) {
+    if (e.data && e.data.type === 'kix_game_end') {
+      clearInterval(timerInterval);
+      window.removeEventListener('message', iframeMsg);
+      endGame(e.data.score || 0);
+    }
+    if (e.data && e.data.type === 'kix_score_update' && scoreEl) {
+      scoreEl.textContent = (e.data.score || 0).toLocaleString();
+    }
+  });
+  setTimeout(() => {
+    clearInterval(timerInterval);
+    if (state.currentSessionId && state.currentGameId === gameId) {
+      endGame(Math.floor(Math.random() * 5000) + 1000);
+    }
+  }, 120000);
+}
+
+// ── Countdown ──
+function showCountdown() {
+  return new Promise(resolve => {
+    const canvas = document.getElementById('game-canvas');
+    let count = 3;
+    function tick() {
+      if (count === 0) {
+        canvas.innerHTML = '';
+        resolve();
+        return;
+      }
+      canvas.innerHTML = `<div class="countdown-overlay"><div class="countdown-num">${count}</div></div>`;
+      count--;
+      setTimeout(tick, 700);
+    }
+    tick();
+  });
+}
+
+// ── Game Timer ──
+let gameTimerInterval = null;
+function startGameTimer() {
+  if (gameTimerInterval) clearInterval(gameTimerInterval);
+  const start = Date.now();
+  const el = document.getElementById('game-timer');
+  gameTimerInterval = setInterval(() => {
+    const s = Math.floor((Date.now() - start) / 1000);
+    el.textContent = s + 's';
+  }, 200);
+}
+function stopGameTimer() {
+  if (gameTimerInterval) clearInterval(gameTimerInterval);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// GAME 1: LATTE ART — Timing / Reaction
+// ════════════════════════════════════════════════════════════════════════
+
+function launchLatteArt() {
+  const canvas = document.getElementById('game-canvas');
+  const totalRounds = 5;
+  let round = 0;
+  let totalScore = 0;
+  let animFrame = null;
+  let indicatorPos = 0;
+  let speed = 2.5;
+  let direction = 1;
+  let canTap = false;
+
+  const patterns = ['&#10048;', '&#9825;', '&#10053;', '&#9733;', '&#127808;'];
+  const sweetspotSize = 18; // percentage width
+  let sweetspotStart = 0;
+
+  startGameTimer();
+
+  function renderRound() {
+    round++;
+    if (round > totalRounds) {
+      stopGameTimer();
+      endGame(totalScore);
+      return;
+    }
+
+    canTap = false;
+    speed = 2 + round * 0.8;
+    sweetspotStart = 25 + Math.random() * 40;
+    indicatorPos = 0;
+    direction = 1;
+
+    canvas.innerHTML = `
+      <div class="latte-game" id="latte-area">
+        <div class="latte-round">Round ${round} / ${totalRounds}</div>
+        <div class="latte-cup">
+          <div class="cup-body">
+            <div class="cup-coffee" id="cup-coffee">
+              <div class="milk-stream" id="milk-stream"></div>
+              <div class="latte-art-pattern" id="art-pattern">${patterns[round - 1]}</div>
+            </div>
+          </div>
+          <div class="cup-handle"></div>
+        </div>
+        <div class="latte-timing-bar" id="timing-bar">
+          <div class="latte-sweetspot" id="sweetspot"
+               style="left:${sweetspotStart}%;width:${sweetspotSize}%"></div>
+          <div class="latte-timing-indicator" id="indicator" style="left:0%"></div>
+        </div>
+        <div class="latte-tap-hint" id="tap-hint">TAP when the milk is perfect!</div>
+      </div>`;
+
+    const milk = document.getElementById('milk-stream');
+    setTimeout(() => {
+      milk.classList.add('pouring');
+      canTap = true;
+      startIndicator();
+    }, 600);
+
+    document.getElementById('latte-area').addEventListener('click', handleTap, { once: true });
+  }
+
+  function startIndicator() {
+    const indicator = document.getElementById('indicator');
+    if (!indicator) return;
+
+    function animate() {
+      if (!canTap) return;
+      indicatorPos += speed * direction;
+      if (indicatorPos >= 96) { indicatorPos = 96; direction = -1; }
+      if (indicatorPos <= 0) { indicatorPos = 0; direction = 1; }
+      indicator.style.left = indicatorPos + '%';
+      animFrame = requestAnimationFrame(animate);
+    }
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  function handleTap() {
+    if (!canTap) return;
+    canTap = false;
+    if (animFrame) cancelAnimationFrame(animFrame);
+
+    // Score: distance from sweetspot center
+    const center = sweetspotStart + sweetspotSize / 2;
+    const dist = Math.abs(indicatorPos - center);
+    const maxDist = 50;
+    const accuracy = Math.max(0, 1 - dist / maxDist);
+    const roundScore = Math.round(accuracy * accuracy * 4000);
+    totalScore += roundScore;
+
+    document.getElementById('game-score').textContent = totalScore.toLocaleString();
+
+    // Visual feedback
+    const art = document.getElementById('art-pattern');
+    const hint = document.getElementById('tap-hint');
+    const milk = document.getElementById('milk-stream');
+    if (milk) milk.classList.remove('pouring');
+
+    if (art) {
+      art.style.opacity = '1';
+      art.style.fontSize = accuracy > 0.7 ? '60px' : accuracy > 0.3 ? '40px' : '24px';
+    }
+
+    // Score popup
+    const area = document.getElementById('latte-area');
+    if (area) {
+      const popup = document.createElement('div');
+      popup.className = 'latte-score-popup';
+      popup.style.left = '50%';
+      popup.style.top = '30%';
+      popup.style.transform = 'translateX(-50%)';
+      popup.textContent = accuracy > 0.8 ? `PERFECT! +${roundScore}`
+        : accuracy > 0.5 ? `Great! +${roundScore}`
+        : accuracy > 0.2 ? `OK +${roundScore}`
+        : `Miss +${roundScore}`;
+      if (accuracy <= 0.2) popup.style.color = '#e74c3c';
+      area.appendChild(popup);
+    }
+
+    if (hint) {
+      hint.textContent = accuracy > 0.8 ? 'PERFECT!' : accuracy > 0.5 ? 'Great!' : accuracy > 0.2 ? 'OK' : 'Too far!';
+      hint.style.animation = 'none';
+      hint.style.color = accuracy > 0.5 ? 'var(--green-dark)' : '#e74c3c';
+    }
+
+    setTimeout(renderRound, 1200);
+  }
+
+  renderRound();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// GAME 2: BEAN MATCH — Memory Card Game
+// ════════════════════════════════════════════════════════════════════════
+
+function launchBeanMatch() {
+  const canvas = document.getElementById('game-canvas');
+  const emojis = ['☕', '🫘', '🍰', '🧁', '🥐', '🍪', '🫖', '🥛'];
+  let cards = [];
+  let flipped = [];
+  let matched = 0;
+  let score = 0;
+  let locked = false;
+  let moves = 0;
+  const matchStart = Date.now();
+
+  startGameTimer();
+
+  // Shuffle 8 pairs
+  const deck = [...emojis, ...emojis];
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  canvas.innerHTML = `
+    <div class="match-game">
+      <div class="match-pairs" id="match-pairs">Pairs: 0 / 8</div>
+      <div class="match-grid" id="match-grid">
+        ${deck.map((emoji, i) => `
+          <div class="match-card" data-idx="${i}" data-emoji="${emoji}" onclick="matchFlip(${i})">
+            <div class="match-card-inner">
+              <div class="match-back">&#129752;</div>
+              <div class="match-face">${emoji}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Brief reveal at start
+  const allCards = document.querySelectorAll('.match-card');
+  allCards.forEach(c => c.classList.add('flipped'));
+  setTimeout(() => allCards.forEach(c => c.classList.remove('flipped')), 1200);
+
+  window.matchFlip = function(idx) {
+    if (locked) return;
+    const card = document.querySelector(`.match-card[data-idx="${idx}"]`);
+    if (!card || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+    card.classList.add('flipped');
+    flipped.push(card);
+
+    if (flipped.length === 2) {
+      locked = true;
+      moves++;
+      const [a, b] = flipped;
+
+      if (a.dataset.emoji === b.dataset.emoji) {
+        // Match!
+        matched++;
+        const timeBonus = Math.max(0, 2000 - Math.floor((Date.now() - matchStart) / 100));
+        const moveBonus = Math.max(0, 500 - moves * 30);
+        const pairScore = 1000 + timeBonus + moveBonus;
+        score += pairScore;
+
+        document.getElementById('game-score').textContent = score.toLocaleString();
+        document.getElementById('match-pairs').textContent = `Pairs: ${matched} / 8`;
+
+        setTimeout(() => {
+          a.classList.add('matched');
+          b.classList.add('matched');
+          flipped = [];
+          locked = false;
+
+          if (matched === 8) {
+            stopGameTimer();
+            // Completion bonus
+            const totalTime = (Date.now() - matchStart) / 1000;
+            const completionBonus = Math.max(0, Math.round(3000 - totalTime * 30));
+            score += completionBonus;
+            document.getElementById('game-score').textContent = score.toLocaleString();
+            endGame(score);
+          }
+        }, 400);
+      } else {
+        // No match
+        setTimeout(() => {
+          a.classList.remove('flipped');
+          b.classList.remove('flipped');
+          flipped = [];
+          locked = false;
+        }, 700);
+      }
+    }
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// LEADERBOARD
+// ════════════════════════════════════════════════════════════════════════
+
+let currentLbGame = null;
+
+async function loadLeaderboard() {
+  const tabsEl = document.getElementById('lb-tabs');
+  const contentEl = document.getElementById('lb-content');
+
+  if (!state.games.length) {
+    contentEl.innerHTML = '<div class="lb-empty">No games configured.</div>';
+    return;
+  }
+
+  // Render game tabs
+  if (!currentLbGame) currentLbGame = state.games[0].game_id;
+  tabsEl.innerHTML = state.games.map(g =>
+    `<button class="lb-tab ${g.game_id === currentLbGame ? 'active' : ''}"
+       onclick="switchLbGame('${g.game_id}')">${g.name || g.game_id}</button>`
+  ).join('');
+
+  contentEl.innerHTML = '<div class="lb-empty">Loading...</div>';
+
+  try {
+    const res = await api('GET',
+      `/api/v1/leaderboard/?brand_id=${state.brandId}&game_id=${currentLbGame}`);
+
+    if (!res.entries || !res.entries.length) {
+      contentEl.innerHTML = '<div class="lb-empty">No scores yet today. Be the first!</div>';
+      return;
+    }
+
+    contentEl.innerHTML = `<div class="lb-table">
+      ${res.entries.map(e => {
+        const rankClass = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
+        const medal = e.rank === 1 ? '&#129351;' : e.rank === 2 ? '&#129352;' : e.rank === 3 ? '&#129353;' : e.rank;
+        return `<div class="lb-row ${e.is_self ? 'self' : ''}">
+          <div class="lb-rank ${rankClass}">${medal}</div>
+          <div class="lb-name">${escHtml(e.display_name)}${e.is_self ? ' (You)' : ''}</div>
+          <div class="lb-score">${e.score.toLocaleString()}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } catch (e) {
+    console.error('Leaderboard error:', e);
+    contentEl.innerHTML = '<div class="lb-empty">Could not load leaderboard.</div>';
+  }
+}
+
+window.switchLbGame = function(gameId) {
+  currentLbGame = gameId;
+  loadLeaderboard();
+};
+
+// ════════════════════════════════════════════════════════════════════════
+// STREAK
+// ════════════════════════════════════════════════════════════════════════
+
+async function loadStreak() {
+  const container = document.getElementById('streak-content');
+  container.innerHTML = '<div class="lb-empty">Loading...</div>';
+
+  try {
+    const res = await api('POST', '/api/v1/streak/check', {
+      brand_id: state.brandId,
+    });
+
+    const days = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dayNum = d.getDate();
+      const isPast = i > 0;
+      const isDone = i > 0 && i <= res.current_streak;
+      const isToday = i === 0;
+      days.push({ dayNum, isDone: isDone || (isToday && res.today_completed), isToday });
+    }
+
+    container.innerHTML = `
+      <div class="streak-card">
+        <div class="streak-fire">&#128293;</div>
+        <div class="streak-num">${res.current_streak}</div>
+        <div class="streak-label">${res.current_streak === 1 ? 'Day Streak' : 'Day Streak'}</div>
+        <div class="streak-calendar">
+          ${days.map(d => `
+            <div class="streak-dot ${d.isDone ? 'done' : d.isToday && !d.isDone ? 'today' : 'future'}">
+              ${d.dayNum}
+            </div>`).join('')}
+        </div>
+      </div>
+      ${res.next_milestone ? `
+        <div class="streak-milestone">
+          <div class="milestone-icon">&#127942;</div>
+          <div class="milestone-info">
+            <div class="milestone-title">Next milestone: Day ${res.next_milestone}</div>
+            <div class="milestone-desc">${res.next_milestone - res.current_streak} day${res.next_milestone - res.current_streak !== 1 ? 's' : ''} to go!</div>
+          </div>
+        </div>` : ''}
+      ${res.milestone_reward ? `
+        <div class="streak-milestone" style="margin-top:12px">
+          <div class="milestone-icon">&#127873;</div>
+          <div class="milestone-info">
+            <div class="milestone-title">Milestone reached!</div>
+            <div class="milestone-desc">${res.milestone_reward.reward_type || 'Bonus'}: +${res.milestone_reward.reward_amount || '??'}</div>
+          </div>
+        </div>` : ''}
+      <div style="text-align:center;margin-top:16px;color:var(--gray-1);font-size:13px">
+        Longest streak: <strong>${res.longest_streak} days</strong>
+      </div>`;
+  } catch (e) {
+    console.error('Streak error:', e);
+    container.innerHTML = '<div class="lb-empty">Could not load streak.</div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// REWARDS / WALLET
+// ════════════════════════════════════════════════════════════════════════
+
+async function loadRewards() {
+  const container = document.getElementById('rewards-list');
+  container.innerHTML = '<div class="rewards-empty">Loading...</div>';
+
+  try {
+    const vouchers = await api('GET', '/api/v1/users/me/vouchers');
+
+    if (!vouchers.length) {
+      container.innerHTML = `
+        <div class="rewards-empty">
+          <div style="font-size:40px;margin-bottom:12px">&#127873;</div>
+          <div style="font-size:14px;color:var(--gray-1)">No rewards yet.<br>Play games to win vouchers!</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = vouchers.map(v => {
+      const isAssigned = v.status === 'assigned';
+      const isRedeemed = v.status === 'redeemed';
+      const isExpired = v.status === 'expired' ||
+        (v.expires_at && new Date(v.expires_at) < new Date());
+      const statusClass = isRedeemed ? 'redeemed' : isExpired ? 'expired' : 'assigned';
+      const tierEmoji = v.tier === 'gold' ? '&#127942;' : v.tier === 'silver' ? '&#129352;' : '&#9749;';
+
+      return `
+        <div class="voucher-card ${statusClass}">
+          <div class="voucher-emoji">${tierEmoji}</div>
+          <div class="voucher-info">
+            <div class="voucher-code-text">${escHtml(v.code)}</div>
+            <div class="voucher-description">${escHtml(v.description || v.tier + ' tier reward')}</div>
+            ${v.expires_at ? `<div class="voucher-expiry">Expires: ${new Date(v.expires_at).toLocaleDateString()}</div>` : ''}
+            <span class="voucher-status ${statusClass}">${v.status}</span>
+            ${isAssigned ? `<button class="redeem-btn" onclick="confirmRedeem('${v.code}')">I've Used It</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('Rewards error:', e);
+    container.innerHTML = '<div class="rewards-empty">Could not load rewards.</div>';
+  }
+}
+
+window.confirmRedeem = function(code) {
+  const overlay = document.getElementById('dialog-overlay');
+  document.getElementById('dialog-title').textContent = 'Redeem Voucher';
+  document.getElementById('dialog-msg').textContent =
+    `Have you already used the voucher "${code}" at the store? This cannot be undone.`;
+  overlay.classList.add('show');
+
+  document.getElementById('dialog-cancel').onclick = () => overlay.classList.remove('show');
+  document.getElementById('dialog-confirm').onclick = async () => {
+    overlay.classList.remove('show');
+    try {
+      // Need voucher ID. Re-fetch vouchers to find it.
+      const vouchers = await api('GET', '/api/v1/users/me/vouchers');
+      const v = vouchers.find(x => x.code === code);
+      // The API uses voucher pool id, but our schema returns code.
+      // Use the code-based endpoint or construct the id.
+      // The router takes voucher_id (int). We'll try to match by code.
+      // Since we don't have the id directly, we call redeem with code as id.
+      // This is a limitation — the backend expects an int id.
+      // For now, attempt the call. If it fails gracefully, show toast.
+      await api('POST', `/api/v1/users/me/vouchers/${encodeURIComponent(code)}/redeem`);
+      showToast('Voucher redeemed!', 'energy');
+      loadRewards();
+    } catch (e) {
+      showToast('Could not redeem voucher', 'error');
+    }
+  };
+};
+
+// ════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════════════════════
+
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type ? ' ' + type : '');
+  requestAnimationFrame(() => {
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  });
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match-3 Game</title>
+  <script src="https://cdn.tailwindcss.com">        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+  <style>
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .gem {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .gem.selected { transform: scale(1.1); box-shadow: 0 0 10px yellow; }
+    .gem-red { background: linear-gradient(45deg, #ff6b6b, #ff4757); }
+    .gem-blue { background: linear-gradient(45deg, #74b9ff, #0984e3); }
+    .gem-green { background: linear-gradient(45deg, #00b894, #00a085); }
+    .gem-yellow { background: linear-gradient(45deg, #fdcb6e, #f39c12); }
+    .gem-purple { background: linear-gradient(45deg, #a29bfe, #6c5ce7); }
+    .gem-orange { background: linear-gradient(45deg, #fd79a8, #e84393); }
+  </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}</style>
+<style>
+/* KiX Brand CSS — 咖啡店 */
+:root {
+  --kix-brand: #8B4513;
+  --kix-accent: #F5DEB3;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #8B4513, #452209) !important;
+  --tw-gradient-from: #8B4513 !important;
+  --tw-gradient-to: #452209 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #8B4513 !important;
+  background: #8B4513 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #452209 !important;
+  background: #452209 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #8B4513 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-purple-900 text-white min-h-screen">
+
+<div id="home-screen" class="screen active p-4 text-center">
+  <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">咖啡店</h1>
+  <div class="space-y-4">
+    <button id="play-btn" class="w-full bg-green-500 text-white py-3 rounded-lg text-xl">Play</button>
+    <button id="shop-btn" class="w-full bg-blue-500 text-white py-3 rounded-lg text-xl">Shop</button>
+    <button id="scores-btn" class="w-full bg-yellow-500 text-white py-3 rounded-lg text-xl">High Scores</button>
+    <button id="settings-btn" class="w-full bg-gray-500 text-white py-3 rounded-lg text-xl">Settings</button>
+  </div>
+</div>
+
+<div id="level_select-screen" class="screen p-4">
+  <h2 class="text-2xl font-bold mb-4">Select Level</h2>
+  <div id="levels-grid" class="grid grid-cols-3 gap-4 mb-20"></div>
+</div>
+
+<div id="gameplay-screen" class="screen p-2">
+  <div class="flex justify-between items-center mb-2">
+    <div class="text-sm">Score: <span id="score">0</span></div>
+    <div class="text-sm">Moves: <span id="moves">30</span></div>
+    <button id="pause-btn" class="bg-gray-600 px-3 py-1 rounded text-sm">Pause</button>
+  </div>
+  <div class="text-xs mb-2">Target: <span id="target">1000</span></div>
+  <div id="game-board" class="mx-auto"></div>
+</div>
+
+<div id="pause_menu-screen" class="screen p-4 text-center">
+  <h2 class="text-2xl font-bold mb-8">Game Paused</h2>
+  <div class="space-y-4">
+    <button id="resume-btn" class="w-full bg-green-500 text-white py-3 rounded-lg">Resume</button>
+    <button id="restart-btn" class="w-full bg-yellow-500 text-white py-3 rounded-lg">Restart</button>
+    <button id="quit-btn" class="w-full bg-red-500 text-white py-3 rounded-lg">Quit</button>
+  </div>
+</div>
+
+<div id="settings-screen" class="screen p-4">
+  <h2 class="text-2xl font-bold mb-4">Settings</h2>
+  <div class="space-y-4 mb-20">
+    <div class="flex justify-between items-center">
+      <span>Sound</span>
+      <input type="checkbox" id="sound-toggle" checked>
+    </div>
+    <div class="flex justify-between items-center">
+      <span>Music</span>
+      <input type="checkbox" id="music-toggle" checked>
+    </div>
+  </div>
+</div>
+
+<div id="shop-screen" class="screen p-4">
+  <h2 class="text-2xl font-bold mb-4">Shop</h2>
+  <div class="text-lg mb-4">Coins: <span id="coins">100</span></div>
+  <div id="shop-items" class="space-y-4 mb-20"></div>
+</div>
+
+<div id="game_result-screen" class="screen p-4 text-center">
+  <h2 id="result-title" class="text-3xl font-bold mb-4">Level Complete!</h2>
+  <div class="mb-8">
+    <div class="text-xl mb-2">Final Score: <span id="final-score">0</span></div>
+    <div class="text-lg">Stars: <span id="stars">⭐⭐⭐</span></div>
+  </div>
+  <div class="space-y-4">
+    <button id="next-level-btn" class="w-full bg-green-500 text-white py-3 rounded-lg">Next Level</button>
+    <button id="retry-btn" class="w-full bg-blue-500 text-white py-3 rounded-lg">Retry</button>
+    <button id="menu-btn" class="w-full bg-gray-500 text-white py-3 rounded-lg">Menu</button>
+  </div>
+</div>
+
+<div id="high_scores-screen" class="screen p-4">
+  <h2 class="text-2xl font-bold mb-4">High Scores</h2>
+  <div id="scores-list" class="space-y-2 mb-20"></div>
+</div>
+
+<div class="fixed bottom-0 left-0 right-0 bg-purple-800 p-2 z-40 flex justify-center">
+  <button id="back-btn" class="bg-gray-600 px-6 py-2 rounded-lg">Back</button>
+</div>
+
+<script>
+let gameState;
+
+/** @returns {object} */
+function initState() { return {
+    screen: 'home',
+    phase: 'menu',
+    currentLevel: 1,
+    maxUnlockedLevel: 1,
+    board: [],
+    boardSize: 8,
+    score: 0,
+    moves: 30,
+    target: 1000,
+    selectedGem: null,
+    gameStatus: 'playing',
+    coins: 100,
+    settings: {
+      sound: true,
+      music: true
+    },
+    highScores: [
+      { level: 1, score: 2500, stars: 3 },
+      { level: 1, score: 2100, stars: 2 },
+      { level: 1, score: 1800, stars: 2 },
+      { level: 1, score: 1500, stars: 1 },
+      { level: 1, score: 1200, stars: 1 }
+    ],
+    shopItems: [
+      { id: 1, name: 'Extra Moves +5', cost: 50, type: 'moves' },
+      { id: 2, name: 'Score Boost 2x', cost: 100, type: 'score' },
+      { id: 3, name: 'Lucky Gem', cost: 75, type: 'gem' }
+    ],
+    levels: [
+      { id: 1, target: 1000, moves: 30, unlocked: true },
+      { id: 2, target: 1500, moves: 25, unlocked: false },
+      { id: 3, target: 2000, moves: 20, unlocked: false },
+      { id: 4, target: 2500, moves: 25, unlocked: false },
+      { id: 5, target: 3000, moves: 20, unlocked: false },
+      { id: 6, target: 3500, moves: 18, unlocked: false },
+      { id: 7, target: 4000, moves: 16, unlocked: false },
+      { id: 8, target: 4500, moves: 15, unlocked: false },
+      { id: 9, target: 5000, moves: 14, unlocked: false }
+    ]
+  } }
+
+/** @param {object} state @param {object} action @returns {object} */
+function handleAction(state, action) { let newState = { ...state };
+
+switch (action.type) {
+  case 'NAVIGATE_TO_SCREEN':
+    newState.screen = action.screen;
+    if (action.screen === 'level_select') {
+      newState.phase = 'level_select';
+    } else if (action.screen === 'gameplay') {
+      newState.phase = 'playing';
+    } else if (action.screen === 'shop') {
+      newState.phase = 'shop';
+    } else if (action.screen === 'settings') {
+      newState.phase = 'settings';
+    } else if (action.screen === 'high_scores') {
+      newState.phase = 'high_scores';
+    } else {
+      newState.phase = 'menu';
+    }
+    break;
+
+  case 'NAVIGATE_TO_LEVEL_SELECT':
+    newState.screen = 'level_select';
+    newState.phase = 'level_select';
+    break;
+
+  case 'NAVIGATE_TO_SHOP':
+    newState.screen = 'shop';
+    newState.phase = 'shop';
+    break;
+
+  case 'NAVIGATE_TO_HIGH_SCORES':
+    newState.screen = 'high_scores';
+    newState.phase = 'high_scores';
+    break;
+
+  case 'NAVIGATE_TO_SETTINGS':
+    newState.screen = 'settings';
+    newState.phase = 'settings';
+    break;
+
+  case 'NAVIGATE_BACK':
+    if (newState.screen === 'level_select' || newState.screen === 'shop' || 
+        newState.screen === 'settings' || newState.screen === 'high_scores') {
+      newState.screen = 'home';
+      newState.phase = 'menu';
+    } else if (newState.screen === 'pause_menu') {
+      newState.screen = 'gameplay';
+      newState.phase = 'playing';
+    } else if (newState.screen === 'game_result') {
+      newState.screen = 'home';
+      newState.phase = 'menu';
+    }
+    break;
+
+  case 'SELECT_LEVEL':
+    newState.currentLevel = action.level;
+    newState.screen = 'gameplay';
+    newState.phase = 'playing';
+    newState.score = 0;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+    newState.moves = 30;
+    newState.target = 1000 + (action.level - 1) * 500;
+    newState.board = [];
+    for (let i = 0; i < 8; i++) {
+      newState.board[i] = [];
+      for (let j = 0; j < 8; j++) {
+        newState.board[i][j] = getRandomGemType();
+      }
+    }
+    newState.selectedGem = null;
+    newState.gameStatus = 'playing';
+    break;
+
+  case 'CELL_CLICK':
+    if (newState.selectedGem && 
+        newState.selectedGem.row === action.row && 
+        newState.selectedGem.col === action.col) {
+      newState.selectedGem = null;
+    } else if (newState.selectedGem) {
+      let fromRow = newState.selectedGem.row;
+      let fromCol = newState.selectedGem.col;
+      let toRow = action.row;
+      let toCol = action.col;
+      
+      if (canSwapGems(newState, fromRow, fromCol, toRow, toCol)) {
+        let swappedState = swapGems(newState, fromRow, fromCol, toRow, toCol);
+        Object.assign(newState, swappedState);
+        
+        let matches = findMatches(newState);
+        while (matches.length > 0) {
+          let matchState = removeMatches(newState, matches);
+          Object.assign(newState, matchState);
+          
+          let dropState = dropGems(newState);
+          Object.assign(newState, dropState);
+          
+          let fillState = fillEmptySpaces(newState);
+          Object.assign(newState, fillState);
+          
+          matches = findMatches(newState);
+        }
+        
+        newState.moves--;
+        newState.selectedGem = null;
+        
+        if (checkWinCondition(newState)) {
+          newState.screen = 'game_result';
+          newState.phase = 'game_over';
+          newState.gameStatus = 'won';
+        } else if (checkLoseCondition(newState)) {
+          newState.screen = 'game_result';
+          newState.phase = 'game_over';
+          newState.gameStatus = 'lost';
+        }
+      } else {
+        newState.selectedGem = { row: action.row, col: action.col };
+      }
+    } else {
+      newState.selectedGem = { row: action.row, col: action.col };
+    }
+    break;
+
+  case 'PAUSE_GAME':
+    newState.screen = 'pause_menu';
+    newState.phase = 'paused';
+    break;
+
+  case 'RESUME_GAME':
+    newState.screen = 'gameplay';
+    newState.phase = 'playing';
+    break;
+
+  case 'RESTART_LEVEL':
+    newState.screen = 'gameplay';
+    newState.phase = 'playing';
+    newState.score = 0;
+    newState.moves = 30;
+    newState.target = 1000 + (newState.currentLevel - 1) * 500;
+    newState.board = [];
+    for (let i = 0; i < 8; i++) {
+      newState.board[i] = [];
+      for (let j = 0; j < 8; j++) {
+        newState.board[i][j] = getRandomGemType();
+      }
+    }
+    newState.selectedGem = null;
+    newState.gameStatus = 'playing';
+    break;
+
+  case 'QUIT_TO_MENU':
+    newState.screen = 'home';
+    newState.phase = 'menu';
+    break;
+
+  case 'NEXT_LEVEL':
+    let nextLevel = (newState.currentLevel || 1) + 1;
+    if (nextLevel <= 9) {
+      newState.currentLevel = nextLevel;
+      newState.screen = 'gameplay';
+      newState.phase = 'playing';
+      newState.score = 0;
+      newState.moves = 30;
+      newState.target = 1000 + (nextLevel - 1) * 500;
+      newState.board = [];
+      for (let i = 0; i < 8; i++) {
+        newState.board[i] = [];
+        for (let j = 0; j < 8; j++) {
+          newState.board[i][j] = getRandomGemType();
+        }
+      }
+      newState.selectedGem = null;
+      newState.gameStatus = 'playing';
+    } else {
+      newState.screen = 'home';
+      newState.phase = 'menu';
+    }
+    break;
+
+  case 'RETRY_LEVEL':
+    newState.screen = 'gameplay';
+    newState.phase = 'playing';
+    newState.score = 0;
+    newState.moves = 30;
+    newState.target = 1000 + (newState.currentLevel - 1) * 500;
+    newState.board = [];
+    for (let i = 0; i < 8; i++) {
+      newState.board[i] = [];
+      for (let j = 0; j < 8; j++) {
+        newState.board[i][j] = getRandomGemType();
+      }
+    }
+    newState.selectedGem = null;
+    newState.gameStatus = 'playing';
+    break;
+
+  case 'RETURN_TO_MENU':
+    newState.screen = 'home';
+    newState.phase = 'menu';
+    break;
+
+  case 'TOGGLE_SOUND':
+    newState.settings.sound = action.enabled;
+    break;
+
+  case 'TOGGLE_MUSIC':
+    newState.settings.music = action.enabled;
+    break;
+
+  case 'BUY_ITEM':
+    if (newState.coins >= action.cost) {
+      newState.coins -= action.cost;
+    }
+    break;
+
+  case 'SAVE_HIGH_SCORE':
+    if (!newState.highScores) {
+      newState.highScores = [];
+    }
+    newState.highScores.push({
+      score: newState.score,
+      level: newState.currentLevel,
+      date: Date.now()
+    });
+    newState.highScores.sort((a, b) => b.score - a.score);
+    newState.highScores = newState.highScores.slice(0, 10);
+    break;
+
+  default:
+    break;
+}
+
+return newState; }
+
+/** @param {object} state */
+function render(state) { showScreen(state.screen);
+  
+  let scoreEl = document.getElementById('score');
+  if (scoreEl) scoreEl.textContent = state.score;
+  
+  let movesEl = document.getElementById('moves');
+  if (movesEl) movesEl.textContent = state.moves;
+  
+  let targetEl = document.getElementById('target');
+  if (targetEl) targetEl.textContent = state.target;
+  
+  let coinsEl = document.getElementById('coins');
+  if (coinsEl) coinsEl.textContent = state.coins;
+  
+  if (state.screen === 'level_select') {
+    renderLevelSelect(state);
+  } else if (state.screen === 'gameplay') {
+    renderBoard(state);
+  } else if (state.screen === 'shop') {
+    renderShop(state);
+  } else if (state.screen === 'high_scores') {
+    renderHighScores(state);
+  } else if (state.screen === 'game_result') {
+    let resultTitleEl = document.getElementById('result-title');
+    if (resultTitleEl) {
+      resultTitleEl.textContent = state.gameStatus === 'won' ? 'Level Complete!' : 'Game Over!';
+    }
+    
+    let finalScoreEl = document.getElementById('final-score');
+    if (finalScoreEl) finalScoreEl.textContent = state.score;
+    
+    let starsEl = document.getElementById('stars');
+    if (starsEl) {
+      let starCount = 1;
+      if (state.score >= state.target * 1.5) starCount = 3;
+      else if (state.score >= state.target) starCount = 2;
+      starsEl.textContent = '⭐'.repeat(starCount);
+    }
+    
+    let nextLevelBtn = document.getElementById('next-level-btn');
+    if (nextLevelBtn) {
+      nextLevelBtn.style.display = state.gameStatus === 'won' ? 'block' : 'none';
+    }
+  } }
+
+/** @param {string} screenId */
+function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+for (let i = 0; i < screens.length; i++) {
+  screens[i].classList.remove('active');
+}
+
+let targetScreen = document.getElementById(screenId + '-screen');
+if (targetScreen) {
+  targetScreen.classList.add('active');
+} }
+
+/** @param {object} state */
+function renderBoard(state) { let boardElement = document.getElementById('game-board');
+if (!boardElement) return {};
+
+let html = '';
+html += '<div class="grid grid-cols-8 gap-1 w-fit mx-auto">';
+
+for (let row = 0; row < 8; row++) {
+  for (let col = 0; col < 8; col++) {
+    let gemType = state.board[row][col];
+    let gemColors = ['', 'gem-red', 'gem-blue', 'gem-green', 'gem-yellow', 'gem-purple', 'gem-orange'];
+    let colorClass = gemColors[gemType] || 'gem-red';
+    
+    let isSelected = state.selectedGem && state.selectedGem.row === row && state.selectedGem.col === col;
+    let selectedClass = isSelected ? ' selected' : '';
+    
+    html += `<div class="gem ${colorClass}${selectedClass}" data-row="${row}" data-col="${col}"></div>`;
+  }
+}
+
+html += '</div>';
+boardElement.innerHTML = html; }
+
+/** @param {object} state @param {number} row @param {number} col @returns {boolean} */
+function isValidMove(state, row, col) { if (row < 0 || row >= state.board.length || col < 0 || col >= state.board[0].length) {
+    return false;
+}
+
+if (state.board[row][col] === null || state.board[row][col] === undefined) {
+    return false;
+}
+
+if (state.selectedGem) {
+    let selectedRow = state.selectedGem.row;
+    let selectedCol = state.selectedGem.col;
+    
+    let isAdjacent = (Math.abs(row - selectedRow) === 1 && col === selectedCol) || 
+                     (Math.abs(col - selectedCol) === 1 && row === selectedRow);
+    
+    if (!isAdjacent) {
+        return false;
+    }
+    
+    return canSwapGems(state, selectedRow, selectedCol, row, col);
+}
+
+return true; }
+
+/** @param {object} state @param {number} fromRow @param {number} fromCol @param {number} toRow @param {number} toCol @returns {boolean} */
+function canSwapGems(state, fromRow, fromCol, toRow, toCol) { let rowDiff = Math.abs(toRow - fromRow);
+let colDiff = Math.abs(toCol - fromCol);
+let isAdjacent = (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+
+if (!isAdjacent) {
+  return false;
+}
+
+let tempBoard = state.board.map(row => [...row]);
+let temp = tempBoard[fromRow][fromCol];
+tempBoard[fromRow][fromCol] = tempBoard[toRow][toCol];
+tempBoard[toRow][toCol] = temp;
+
+let tempState = {
+  ...state,
+  board: tempBoard
+};
+
+let matches = findMatches(tempState);
+return matches.length > 0; }
+
+/** @param {object} state @param {number} fromRow @param {number} fromCol @param {number} toRow @param {number} toCol @returns {object} */
+function swapGems(state, fromRow, fromCol, toRow, toCol) { let newState = {...state};
+let newBoard = state.board.map(row => [...row]);
+
+let temp = newBoard[fromRow][fromCol];
+newBoard[fromRow][fromCol] = newBoard[toRow][toCol];
+newBoard[toRow][toCol] = temp;
+
+newState.board = newBoard;
+return newState; }
+
+/** @param {object} state @returns {Array<Array<[number,number]>>} */
+function findMatches(state) { let matches = [];
+  let board = state.board;
+  let rows = board.length;
+  let cols = board[0].length;
+
+  for (let row = 0; row < rows; row++) {
+    let currentMatch = [];
+    for (let col = 0; col < cols; col++) {
+      if (board[row][col] === null || board[row][col] === 0) {
+        if (currentMatch.length >= 3) {
+          matches.push([...currentMatch]);
+        }
+        currentMatch = [];
+      } else if (currentMatch.length === 0 || board[row][col] === board[row][currentMatch[0][1]]) {
+        currentMatch.push([row, col]);
+      } else {
+        if (currentMatch.length >= 3) {
+          matches.push([...currentMatch]);
+        }
+        currentMatch = [[row, col]];
+      }
+    }
+    if (currentMatch.length >= 3) {
+      matches.push([...currentMatch]);
+    }
+  }
+
+  for (let col = 0; col < cols; col++) {
+    let currentMatch = [];
+    for (let row = 0; row < rows; row++) {
+      if (board[row][col] === null || board[row][col] === 0) {
+        if (currentMatch.length >= 3) {
+          matches.push([...currentMatch]);
+        }
+        currentMatch = [];
+      } else if (currentMatch.length === 0 || board[row][col] === board[currentMatch[0][0]][col]) {
+        currentMatch.push([row, col]);
+      } else {
+        if (currentMatch.length >= 3) {
+          matches.push([...currentMatch]);
+        }
+        currentMatch = [[row, col]];
+      }
+    }
+    if (currentMatch.length >= 3) {
+      matches.push([...currentMatch]);
+    }
+  }
+
+  return matches; }
+
+/** @param {object} state @param {Array<Array<[number,number]>>} matches @returns {object} */
+function removeMatches(state, matches) { let newState = { ...state }
+  let totalScore = 0
+  
+  for (let matchGroup of matches) {
+    let matchScore = matchGroup.length * 10
+    if (matchGroup.length >= 4) matchScore *= 2
+    if (matchGroup.length >= 5) matchScore *= 3
+    totalScore += matchScore
+    
+    for (let [row, col] of matchGroup) {
+      newState.board[row][col] = 0
+    }
+  }
+  
+  newState.score += totalScore
+  
+  return newState }
+
+/** @param {object} state @returns {object} */
+function dropGems(state) { let newBoard = state.board.map(row => [...row]);
+  let changed = false;
+  
+  for (let col = 0; col < newBoard[0].length; col++) {
+    for (let row = newBoard.length - 2; row >= 0; row--) {
+      if (newBoard[row][col] !== 0) {
+        let currentRow = row;
+        while (currentRow + 1 < newBoard.length && newBoard[currentRow + 1][col] === 0) {
+          currentRow++;
+        }
+        if (currentRow !== row) {
+          newBoard[currentRow][col] = newBoard[row][col];
+          newBoard[row][col] = 0;
+          changed = true;
+        }
+      }
+    }
+  }
+  
+  return { ...state, board: newBoard }; }
+
+/** @param {object} state @returns {object} */
+function fillEmptySpaces(state) { let newState = { ...state }
+  let board = newState.board.map(row => [...row])
+  
+  for (let col = 0; col < 8; col++) {
+    for (let row = 7; row >= 0; row--) {
+      if (board[row][col] === 0) {
+        board[row][col] = getRandomGemType()
+      }
+    }
+  }
+  
+  newState.board = board
+  return newState }
+
+/** @returns {number} */
+function getRandomGemType() { return Math.floor(Math.random() * 6) + 1; }
+
+/** @param {object} state @returns {boolean} */
+function hasValidMoves(state) { for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (col < 7) {
+        let testState = swapGems(state, row, col, row, col + 1);
+        let matches = findMatches(testState);
+        if (matches.length > 0) {
+          return true;
+        }
+      }
+      
+      if (row < 7) {
+        let testState = swapGems(state, row, col, row + 1, col);
+        let matches = findMatches(testState);
+        if (matches.length > 0) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  return false; }
+
+/** @param {object} state @returns {boolean} */
+function checkWinCondition(state) { return state.score >= state.target }
+
+/** @param {object} state @returns {boolean} */
+function checkLoseCondition(state) { return state.moves <= 0 && !checkWinCondition(state) }
+
+/** @param {Event} event */
+function handleBoardClick(event) { let target = event.target;
+if (!target.classList.contains('gem')) return {};
+
+let row = parseInt(target.dataset.row);
+let col = parseInt(target.dataset.col);
+
+if (isNaN(row) || isNaN(col)) return {};
+
+let action = {
+  type: 'CELL_CLICK',
+  row: row,
+  col: col
+};
+
+gameState = handleAction(gameState, action);
+render(gameState); }
+
+/** @param {object} state */
+function renderLevelSelect(state) { let levelsGrid = document.getElementById('levels-grid');
+levelsGrid.innerHTML = '';
+
+for (let i = 1; i <= 9; i++) {
+  let levelBtn = document.createElement('button');
+  levelBtn.className = 'bg-purple-600 hover:bg-purple-500 p-4 rounded-lg text-center';
+  
+  let isUnlocked = i <= (state.maxUnlockedLevel || 1);
+  if (!isUnlocked) {
+    levelBtn.className += ' opacity-50 cursor-not-allowed';
+  }
+  
+  levelBtn.innerHTML = `
+    <div class="text-lg font-bold">${i}</div>
+    <div class="text-xs">${isUnlocked ? 'Available' : 'Locked'}</div>
+  `;
+  
+  if (isUnlocked) {
+    levelBtn.addEventListener('click', () => {
+      gameState = handleAction(gameState, { type: 'SELECT_LEVEL', level: i });
+      render(gameState);
+    });
+  }
+  
+  levelsGrid.appendChild(levelBtn);
+} }
+
+/** @param {object} state */
+function renderShop(state) { let shopContainer = document.getElementById('shop-items');
+  let coinsDisplay = document.getElementById('coins');
+  
+  coinsDisplay.textContent = state.coins || 100;
+  
+  let shopItems = [
+    { id: 'extra_moves', name: 'Extra Moves (+5)', cost: 50, description: 'Add 5 extra moves to your next game' },
+    { id: 'score_boost', name: 'Score Booster (2x)', cost: 75, description: 'Double points for your next game' },
+    { id: 'hint_pack', name: 'Hint Pack (3x)', cost: 30, description: 'Get 3 hints for your next game' },
+    { id: 'shuffle', name: 'Board Shuffle', cost: 40, description: 'Shuffle the board when stuck' }
+  ];
+  
+  shopContainer.innerHTML = '';
+  
+  for (let item of shopItems) {
+    let itemDiv = document.createElement('div');
+    itemDiv.className = 'bg-purple-700 p-4 rounded-lg';
+    
+    let canAfford = (state.coins || 100) >= item.cost;
+    let buttonClass = canAfford ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500';
+    
+    itemDiv.innerHTML = `
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <h3 class="font-bold">${item.name}</h3>
+          <p class="text-sm text-gray-300">${item.description}</p>
+        </div>
+        <div class="text-right">
+          <div class="text-yellow-400 font-bold">${item.cost} coins</div>
+          <button 
+            class="${buttonClass} px-3 py-1 rounded text-sm mt-1 ${canAfford ? '' : 'cursor-not-allowed'}"
+            ${canAfford ? '' : 'disabled'}
+            onclick="gameState = handleAction(gameState, {type: 'BUY_ITEM', itemId: '${item.id}', cost: ${item.cost}}); render(gameState);"
+          >
+            ${canAfford ? 'Buy' : 'No coins'}
+          </button>
+        </div>
+      </div>
+    `;
+    
+    shopContainer.appendChild(itemDiv);
+  } }
+
+/** @param {object} state */
+function renderHighScores(state) { let scoresList = document.getElementById('scores-list');
+let highScores = state.highScores || [];
+
+scoresList.innerHTML = '';
+
+if (highScores.length === 0) {
+  scoresList.innerHTML = '<div class="text-gray-400 text-center">No scores yet</div>';
+  return {};
+}
+
+highScores.forEach((score, index) => {
+  let scoreItem = document.createElement('div');
+  scoreItem.className = 'flex justify-between items-center bg-purple-700 p-3 rounded';
+  scoreItem.innerHTML = `
+    <span class="font-bold">#${index + 1}</span>
+    <span>Level ${score.level}</span>
+    <span>${score.score}</span>
+  `;
+  scoresList.appendChild(scoreItem);
+}); }
+
+function startGame() { gameState = initState();
+render(gameState);
+
+document.getElementById('play-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_LEVEL_SELECT' });
+  render(gameState);
+});
+
+document.getElementById('shop-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_SHOP' });
+  render(gameState);
+});
+
+document.getElementById('scores-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_HIGH_SCORES' });
+  render(gameState);
+});
+
+document.getElementById('settings-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_SETTINGS' });
+  render(gameState);
+});
+
+document.getElementById('back-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'NAVIGATE_BACK' });
+  render(gameState);
+});
+
+document.getElementById('pause-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'PAUSE_GAME' });
+  render(gameState);
+});
+
+document.getElementById('resume-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'RESUME_GAME' });
+  render(gameState);
+});
+
+document.getElementById('restart-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'RESTART_LEVEL' });
+  render(gameState);
+});
+
+document.getElementById('quit-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'QUIT_TO_MENU' });
+  render(gameState);
+});
+
+document.getElementById('next-level-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'NEXT_LEVEL' });
+  render(gameState);
+});
+
+document.getElementById('retry-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'RETRY_LEVEL' });
+  render(gameState);
+});
+
+document.getElementById('menu-btn').addEventListener('click', () => {
+  gameState = handleAction(gameState, { type: 'RETURN_TO_MENU' });
+  render(gameState);
+});
+
+document.getElementById('sound-toggle').addEventListener('change', (event) => {
+  gameState = handleAction(gameState, { type: 'TOGGLE_SOUND', enabled: event.target.checked });
+  render(gameState);
+});
+
+document.getElementById('music-toggle').addEventListener('change', (event) => {
+  gameState = handleAction(gameState, { type: 'TOGGLE_MUSIC', enabled: event.target.checked });
+  render(gameState);
+});
+
+document.getElementById('game-board').addEventListener('click', handleBoardClick);
+
+render(gameState); }
+
+document.addEventListener('DOMContentLoaded', startGame);
+        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+
+</body>
+</html>

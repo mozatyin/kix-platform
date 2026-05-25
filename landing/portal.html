@@ -1,0 +1,2594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KiX Brand Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ──────────────────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#00FC00;
+  --green-dim:#00cc00;
+  --green-bg:rgba(0,252,0,.08);
+  --green-border:rgba(0,252,0,.15);
+  --dark:#0a0a0a;
+  --card:#111;
+  --card-hover:#161616;
+  --border:#1e1e1e;
+  --border-light:#2a2a2a;
+  --text:#fff;
+  --text-dim:rgba(255,255,255,.6);
+  --text-muted:rgba(255,255,255,.35);
+  --danger:#ff4444;
+  --danger-bg:rgba(255,68,68,.1);
+  --warning:#ffaa00;
+  --warning-bg:rgba(255,170,0,.1);
+  --blue:#4488ff;
+  --blue-bg:rgba(68,136,255,.1);
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --radius:16px;
+  --radius-sm:10px;
+  --radius-xs:6px;
+  --bottom-nav-h:72px;
+  --header-h:60px;
+  --transition:all .2s cubic-bezier(.4,0,.2,1);
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{
+  font-family:var(--font);background:var(--dark);color:var(--text);
+  line-height:1.5;overflow-x:hidden;min-height:100vh;
+}
+a{text-decoration:none;color:inherit}
+input,select,textarea,button{font-family:var(--font);font-size:14px}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#555}
+
+/* ── Page structure ─────────────────────────────────────────────────── */
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+
+/* ── Login Page ─────────────────────────────────────────────────────── */
+#login-page{
+  min-height:100vh;padding:24px;
+  background:var(--dark);
+  position:relative;overflow:hidden;
+}
+#login-page.active{display:flex;align-items:center;justify-content:center;}
+#login-page::before{
+  content:'';position:absolute;
+  width:500px;height:500px;
+  background:radial-gradient(circle,rgba(0,252,0,.06) 0%,transparent 70%);
+  top:-150px;right:-150px;pointer-events:none;
+}
+.login-card{
+  width:100%;max-width:400px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:40px 32px;
+  position:relative;z-index:1;
+}
+.login-logo{
+  text-align:center;margin-bottom:32px;
+}
+.login-logo h1{
+  font-size:36px;font-weight:800;letter-spacing:-1px;
+}
+.login-logo h1 span{color:var(--green)}
+.login-logo p{
+  color:var(--text-dim);font-size:14px;margin-top:4px;
+}
+.form-group{margin-bottom:20px}
+.form-group label{
+  display:block;font-size:13px;font-weight:500;
+  color:var(--text-dim);margin-bottom:6px;
+}
+.form-input{
+  width:100%;padding:12px 16px;
+  background:var(--dark);border:1px solid var(--border-light);
+  border-radius:var(--radius-sm);color:var(--text);
+  font-size:15px;outline:none;
+  transition:border-color .2s;
+}
+.form-input:focus{border-color:var(--green)}
+.form-input::placeholder{color:var(--text-muted)}
+.btn-primary{
+  width:100%;padding:14px 24px;
+  background:var(--green);color:var(--dark);
+  border:none;border-radius:100px;
+  font-size:15px;font-weight:700;cursor:pointer;
+  transition:var(--transition);
+}
+.btn-primary:hover{transform:scale(1.02);box-shadow:0 0 24px rgba(0,252,0,.25)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.login-toggle{
+  margin-top:20px;text-align:center;font-size:13px;color:var(--text-dim);
+}
+.login-toggle a{
+  color:var(--green);font-weight:600;cursor:pointer;
+  transition:opacity .2s;
+}
+.login-toggle a:hover{opacity:.8}
+.login-form-section{transition:opacity .25s ease,max-height .3s ease;overflow:hidden}
+.login-form-section.hidden{opacity:0;max-height:0;pointer-events:none;margin:0;padding:0}
+.login-form-section.visible{opacity:1;max-height:600px}
+.share-url-box{
+  padding:14px 18px;margin:12px 0;
+  background:var(--dark);border:2px solid var(--green-border);
+  border-radius:var(--radius-sm);
+  font-family:monospace;font-size:14px;
+  color:var(--green);word-break:break-all;
+  cursor:pointer;transition:var(--transition);
+  text-align:center;
+}
+.share-url-box:hover{border-color:var(--green);background:var(--green-bg)}
+.login-error{
+  margin-top:12px;padding:10px 14px;
+  background:var(--danger-bg);border:1px solid rgba(255,68,68,.2);
+  border-radius:var(--radius-xs);color:var(--danger);
+  font-size:13px;display:none;
+}
+
+/* ── App Shell ──────────────────────────────────────────────────────── */
+#app-shell{display:none}
+#app-shell.active{display:block}
+.app-header{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  height:var(--header-h);
+  background:rgba(10,10,10,.92);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;
+}
+.app-header .logo{font-size:22px;font-weight:800;letter-spacing:-1px}
+.app-header .logo span{color:var(--green)}
+.app-header .brand-label{
+  font-size:12px;color:var(--text-muted);margin-left:8px;
+  font-weight:400;
+}
+.btn-logout{
+  padding:8px 16px;
+  background:rgba(255,255,255,.06);border:1px solid var(--border-light);
+  border-radius:100px;color:var(--text-dim);
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:var(--transition);
+}
+.btn-logout:hover{background:rgba(255,255,255,.1);color:var(--text)}
+
+/* ── Content Area ───────────────────────────────────────────────────── */
+.app-content{
+  padding-top:calc(var(--header-h) + 16px);
+  padding-bottom:calc(var(--bottom-nav-h) + 24px);
+  padding-left:16px;padding-right:16px;
+  max-width:800px;margin:0 auto;
+}
+.view{display:none}
+.view.active{display:block}
+
+/* ── Page Title ─────────────────────────────────────────────────────── */
+.page-title{
+  font-size:24px;font-weight:700;margin-bottom:4px;
+  letter-spacing:-.5px;
+}
+.page-subtitle{
+  font-size:13px;color:var(--text-dim);margin-bottom:20px;
+}
+
+/* ── Stat Cards ─────────────────────────────────────────────────────── */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:12px;margin-bottom:24px;
+}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px 16px;
+  transition:var(--transition);
+}
+.stat-card:hover{border-color:var(--border-light)}
+.stat-label{
+  font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;
+}
+.stat-value{
+  font-size:28px;font-weight:800;letter-spacing:-1px;
+  color:var(--text);line-height:1;
+}
+.stat-sub{
+  font-size:11px;color:var(--text-dim);margin-top:6px;
+}
+.stat-card.accent{border-color:var(--green-border);background:linear-gradient(135deg,rgba(0,252,0,.03),transparent)}
+.stat-card.accent .stat-value{color:var(--green)}
+
+/* ── Quick Actions ──────────────────────────────────────────────────── */
+.quick-actions{
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:12px;margin-bottom:24px;
+}
+.action-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:16px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);
+  color:var(--text);font-size:14px;font-weight:600;
+  cursor:pointer;transition:var(--transition);
+}
+.action-btn:hover{border-color:var(--green-border);background:var(--card-hover)}
+.action-btn svg{width:20px;height:20px;stroke:var(--green);fill:none;stroke-width:2}
+
+/* ── Bottom Navigation ──────────────────────────────────────────────── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  height:var(--bottom-nav-h);
+  background:rgba(10,10,10,.95);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 12px;cursor:pointer;
+  color:var(--text-muted);transition:var(--transition);
+  min-width:56px;
+}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.nav-item span{font-size:10px;font-weight:600}
+.nav-item.active{color:var(--green)}
+
+/* ── Cards / Sections ───────────────────────────────────────────────── */
+.section{margin-bottom:24px}
+.section-title{
+  font-size:16px;font-weight:700;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;
+  margin-bottom:12px;transition:var(--transition);
+}
+.card:hover{border-color:var(--border-light)}
+
+/* ── Badges ─────────────────────────────────────────────────────────── */
+.badge{
+  display:inline-block;padding:3px 10px;
+  border-radius:100px;font-size:11px;font-weight:600;
+}
+.badge-available{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-assigned{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(68,136,255,.2)}
+.badge-redeemed{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(255,170,0,.2)}
+.badge-active{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-inactive{background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid var(--border)}
+.badge-bronze{background:rgba(205,127,50,.12);color:#cd7f32;border:1px solid rgba(205,127,50,.25)}
+.badge-silver{background:rgba(192,192,192,.12);color:#c0c0c0;border:1px solid rgba(192,192,192,.25)}
+.badge-gold{background:rgba(255,215,0,.12);color:#ffd700;border:1px solid rgba(255,215,0,.25)}
+
+/* ── List Items ─────────────────────────────────────────────────────── */
+.list-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-sm);margin-bottom:8px;
+  transition:var(--transition);
+}
+.list-item:hover{border-color:var(--border-light)}
+.list-item-info{flex:1;min-width:0}
+.list-item-title{font-size:14px;font-weight:600}
+.list-item-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+.list-item-actions{display:flex;gap:8px;margin-left:12px;flex-shrink:0}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn{
+  padding:8px 18px;border:none;border-radius:100px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  transition:var(--transition);display:inline-flex;
+  align-items:center;gap:6px;
+}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-green{background:var(--green);color:var(--dark)}
+.btn-green:hover{box-shadow:0 0 16px rgba(0,252,0,.2)}
+.btn-outline{
+  background:transparent;color:var(--text-dim);
+  border:1px solid var(--border-light);
+}
+.btn-outline:hover{color:var(--text);border-color:var(--text-muted)}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(255,68,68,.2)}
+
+/* ── Upload Zone ────────────────────────────────────────────────────── */
+.upload-zone{
+  border:2px dashed var(--border-light);
+  border-radius:var(--radius);padding:40px 20px;
+  text-align:center;cursor:pointer;
+  transition:var(--transition);
+  position:relative;
+}
+.upload-zone:hover,.upload-zone.dragover{
+  border-color:var(--green);background:var(--green-bg);
+}
+.upload-zone svg{width:40px;height:40px;stroke:var(--text-muted);fill:none;stroke-width:1.5;margin-bottom:12px}
+.upload-zone p{color:var(--text-dim);font-size:14px}
+.upload-zone small{color:var(--text-muted);font-size:12px}
+.upload-zone input[type="file"]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;
+}
+
+/* ── Upload Form Fields ─────────────────────────────────────────────── */
+.form-row{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:12px;margin-bottom:16px;
+}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
+.form-select{
+  width:100%;padding:10px 14px;
+  background:var(--dark);border:1px solid var(--border-light);
+  border-radius:var(--radius-xs);color:var(--text);
+  font-size:14px;outline:none;
+  transition:border-color .2s;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+  padding-right:32px;
+}
+.form-select:focus{border-color:var(--green)}
+.form-input-sm{
+  width:100%;padding:10px 14px;
+  background:var(--dark);border:1px solid var(--border-light);
+  border-radius:var(--radius-xs);color:var(--text);
+  font-size:14px;outline:none;
+  transition:border-color .2s;
+}
+.form-input-sm:focus{border-color:var(--green)}
+.form-input-sm::placeholder{color:var(--text-muted)}
+
+/* ── Upload Result ──────────────────────────────────────────────────── */
+.upload-result{
+  padding:16px;border-radius:var(--radius-sm);
+  margin-top:16px;display:none;
+}
+.upload-result.show{display:block}
+.upload-result.success{background:var(--green-bg);border:1px solid var(--green-border)}
+.upload-result.error{background:var(--danger-bg);border:1px solid rgba(255,68,68,.2)}
+.upload-result h4{font-size:14px;font-weight:700;margin-bottom:8px}
+.upload-result p{font-size:13px;color:var(--text-dim)}
+
+/* ── QR Display ─────────────────────────────────────────────────────── */
+.qr-display{
+  text-align:center;padding:32px 20px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);
+}
+.qr-url-box{
+  padding:16px 20px;margin:16px auto;max-width:100%;
+  background:var(--dark);border:2px solid var(--green-border);
+  border-radius:var(--radius-sm);
+  font-family:monospace;font-size:13px;
+  color:var(--green);word-break:break-all;
+  cursor:pointer;transition:var(--transition);
+  position:relative;
+}
+.qr-url-box:hover{border-color:var(--green)}
+.qr-url-box::after{
+  content:'Click to copy / \70B9\51FB\590D\5236';
+  display:block;font-family:var(--font);
+  font-size:11px;color:var(--text-muted);margin-top:8px;
+}
+.qr-timer{
+  font-size:14px;color:var(--text-dim);margin-top:12px;
+}
+.qr-timer strong{color:var(--green);font-variant-numeric:tabular-nums}
+
+/* ── QR Fullscreen Overlay ──────────────────────────────────────────── */
+.qr-fullscreen{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:var(--dark);
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 24px;
+}
+.qr-fullscreen.active{display:flex}
+.qr-fullscreen .fs-brand{
+  font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:8px;
+}
+.qr-fullscreen .fs-brand span{color:var(--green)}
+.qr-fullscreen .fs-cta{
+  font-size:20px;font-weight:600;color:var(--green);
+  margin-bottom:32px;
+}
+.qr-fullscreen .fs-qr-container{
+  width:min(80vw,400px);height:min(80vw,400px);
+  background:#fff;border-radius:24px;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;margin-bottom:24px;
+  box-shadow:0 0 80px rgba(0,252,0,.15);
+}
+.qr-fullscreen .fs-qr-container canvas{width:100%!important;height:100%!important}
+.qr-fullscreen .fs-url{
+  font-family:monospace;font-size:clamp(14px,3vw,20px);
+  color:var(--text-dim);margin-bottom:24px;
+  word-break:break-all;text-align:center;
+  max-width:90vw;
+}
+.qr-fullscreen .fs-timer{
+  font-size:48px;font-weight:800;color:var(--green);
+  font-variant-numeric:tabular-nums;margin-bottom:8px;
+}
+.qr-fullscreen .fs-timer-label{
+  font-size:14px;color:var(--text-dim);margin-bottom:32px;
+}
+.qr-fullscreen .fs-close{
+  position:absolute;top:20px;right:20px;
+  padding:10px 20px;background:rgba(255,255,255,.08);
+  border:1px solid var(--border-light);border-radius:100px;
+  color:var(--text-dim);font-size:13px;font-weight:600;
+  cursor:pointer;transition:var(--transition);
+}
+.qr-fullscreen .fs-close:hover{background:rgba(255,255,255,.15);color:var(--text)}
+
+/* ── Settings Config Display ────────────────────────────────────────── */
+.config-section{margin-bottom:16px}
+.config-section h4{
+  font-size:13px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--green);margin-bottom:8px;
+  padding-bottom:4px;border-bottom:1px solid var(--border);
+}
+.config-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);
+}
+.config-key{font-size:13px;color:var(--text-dim)}
+.config-val{font-size:13px;font-weight:600;color:var(--text)}
+
+/* ── Empty State ────────────────────────────────────────────────────── */
+.empty-state{
+  text-align:center;padding:48px 20px;color:var(--text-muted);
+}
+.empty-state svg{width:48px;height:48px;stroke:var(--text-muted);fill:none;stroke-width:1.2;margin-bottom:16px}
+.empty-state p{font-size:14px}
+
+/* ── Loading Spinner ────────────────────────────────────────────────── */
+.spinner{
+  width:24px;height:24px;border:3px solid var(--border-light);
+  border-top-color:var(--green);border-radius:50%;
+  animation:spin .6s linear infinite;display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-center{display:flex;justify-content:center;padding:48px}
+
+/* ── Toast ──────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;top:20px;right:20px;z-index:10000;
+  padding:14px 20px;border-radius:var(--radius-sm);
+  font-size:13px;font-weight:600;
+  transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  max-width:360px;
+}
+.toast.show{transform:translateX(0)}
+.toast.success{background:var(--green);color:var(--dark)}
+.toast.error{background:var(--danger);color:#fff}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:16px 12px}
+  .stat-value{font-size:24px}
+  .quick-actions{gap:8px}
+  .app-content{padding-left:12px;padding-right:12px}
+  .login-card{padding:32px 24px}
+  .form-row{grid-template-columns:1fr}
+}
+@media(min-width:768px){
+  .stats-grid{grid-template-columns:repeat(4,1fr)}
+}
+textarea.form-input{
+  min-height:60px;resize:vertical;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- LOGIN PAGE                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="login-page" class="page active">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>Ki<span>X</span></h1>
+      <p>Brand Portal / 品牌管理后台</p>
+    </div>
+    <!-- Login Form -->
+    <div id="login-section" class="login-form-section visible">
+      <form id="login-form">
+        <div class="form-group">
+          <label>Email / 邮箱</label>
+          <input type="email" id="login-email" class="form-input" placeholder="admin@kix.app" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label>Password / 密码</label>
+          <input type="password" id="login-password" class="form-input" placeholder="Enter password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" id="login-btn" class="btn-primary">Login / 登录</button>
+        <div id="login-error" class="login-error"></div>
+        <div class="login-toggle">
+          Don't have an account? <a onclick="toggleAuthMode('register')">Register</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-section" class="login-form-section hidden">
+      <form id="register-form">
+        <div class="form-group">
+          <label>Email / 邮箱</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="you@company.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label>Password / 密码</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="form-group">
+          <label>Brand / Cafe Name / 品牌名称</label>
+          <input type="text" id="reg-brand-name" class="form-input" placeholder="e.g. Bean Brothers" required>
+        </div>
+        <div class="form-group">
+          <label>Brand Color / 品牌主色 (optional)</label>
+          <input type="color" id="reg-brand-color" class="form-input" value="#1a73e8" style="height:44px;padding:4px">
+        </div>
+        <button type="submit" id="register-btn" class="btn-primary">Register / 注册</button>
+        <div id="register-error" class="login-error"></div>
+        <div class="login-toggle">
+          Already have an account? <a onclick="toggleAuthMode('login')">Login</a>
+        </div>
+      </form>
+    </div>
+    <div style="text-align:center;margin-top:20px">
+      <a href="index.html" style="color:var(--text-dim);font-size:12px;text-decoration:none">← 返回 KiX 首页</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- APP SHELL                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="app-shell">
+  <!-- Header -->
+  <div class="app-header">
+    <div style="display:flex;align-items:center">
+      <div class="logo">Ki<span>X</span></div>
+      <span class="brand-label" id="header-brand-name"></span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Logout / 登出</button>
+  </div>
+
+  <!-- Content -->
+  <div class="app-content">
+    <!-- ─── Dashboard ─────────────────────────────────────────── -->
+    <div id="view-dashboard" class="view">
+      <h2 class="page-title">Dashboard / 仪表盘</h2>
+      <p class="page-subtitle" id="dash-welcome">Welcome back</p>
+
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card accent">
+          <div class="stat-label">Players / 玩家</div>
+          <div class="stat-value" id="stat-players">--</div>
+          <div class="stat-sub">Total registered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Vouchers / 优惠券</div>
+          <div class="stat-value" id="stat-vouchers">--</div>
+          <div class="stat-sub" id="stat-vouchers-sub">Available</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Energy Today / 今日能量</div>
+          <div class="stat-value" id="stat-energy">--</div>
+          <div class="stat-sub">Grants today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Locations / 门店</div>
+          <div class="stat-value" id="stat-locations">--</div>
+          <div class="stat-sub">Active</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:var(--green-border);background:linear-gradient(135deg,rgba(0,252,0,.04),transparent);margin-bottom:24px">
+        <div class="section-title" style="margin-bottom:8px">Customer Play Link / 顾客游戏链接</div>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Share this link with your customers or display it as QR code</p>
+        <div class="share-url-box" id="share-play-url" onclick="copyPlayUrl()"></div>
+        <button class="btn btn-green" onclick="copyPlayUrl()" style="margin-top:4px">Copy Link / 复制链接</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Quick Actions / 快捷操作</div>
+        <div class="quick-actions">
+          <button class="action-btn" onclick="navigate('vouchers')">
+            <svg viewBox="0 0 24 24"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z"/><path d="M9 5v14M15 5v14"/></svg>
+            Upload Vouchers / 上传优惠券
+          </button>
+          <button class="action-btn" onclick="navigate('qr')">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 18h3v3h-3z"/></svg>
+            Generate QR / 生成二维码
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Games ─────────────────────────────────────────────── -->
+    <div id="view-games" class="view">
+      <h2 class="page-title">Game Store / 游戏市场</h2>
+      <p class="page-subtitle">描述您的业务，系统从1012款游戏库中智能推荐</p>
+
+      <!-- My Games Section -->
+      <div class="section" id="my-games-section" style="display:none">
+        <div class="section-title">我的游戏 / My Games</div>
+        <div id="my-games-list" class="card" style="padding:16px">
+          <div style="color:var(--text-dim);font-size:13px">加载中...</div>
+        </div>
+      </div>
+
+      <!-- Step 1: Business Description -->
+      <div id="game-step-1">
+        <div class="section">
+          <div class="section-title">描述您的业务</div>
+          <div class="card">
+            <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">
+              告诉我们您的业务类型、客户群体和品牌调性，我们会为您推荐最合适的游戏
+            </p>
+            <div class="form-group">
+              <label>业务描述 / Business Description</label>
+              <textarea id="business-description" class="form-input" rows="3" placeholder="例如：我是一家精品咖啡馆，卖手冲咖啡和法式甜点，客户主要是25-35岁白领" style="resize:vertical"></textarea>
+            </div>
+            <button class="btn btn-green" onclick="recommendGames()" id="recommend-btn">智能推荐 / Smart Recommend</button>
+            <div id="recommend-loading" style="display:none;margin-top:12px">
+              <div style="display:flex;align-items:center;gap:10px;color:var(--text-dim);font-size:13px">
+                <div class="spinner"></div>
+                <span>正在分析您的业务并从1012款游戏中匹配...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Recommendations -->
+      <div id="game-step-2" style="display:none">
+        <div class="section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="section-title" style="margin-bottom:0">为您推荐的游戏</div>
+            <button class="btn btn-sm btn-outline" onclick="backToStep1()">← 重新描述</button>
+          </div>
+          <p id="recommend-summary" style="color:var(--text-dim);font-size:13px;margin-bottom:16px"></p>
+          <div id="game-recommendations"></div>
+        </div>
+      </div>
+
+      <!-- Step 3: Building -->
+      <div id="game-step-3" style="display:none">
+        <div class="section">
+          <div class="card" style="text-align:center;padding:40px 20px">
+            <div style="font-size:20px;font-weight:700;margin-bottom:16px">正在为您生成品牌定制游戏...</div>
+            <div id="build-progress">
+              <p style="color:var(--text-dim);font-size:14px;margin-bottom:8px">游戏: <strong id="building-game-name" style="color:var(--green)"></strong></p>
+              <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px">品牌植入方案生成中，请稍候...</p>
+              <div style="width:100%;max-width:400px;height:6px;background:var(--border-light);border-radius:3px;margin:0 auto;overflow:hidden">
+                <div id="build-progress-bar" style="width:0%;height:100%;background:var(--green);border-radius:3px;transition:width .5s ease"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Result -->
+      <div id="game-step-4" style="display:none">
+        <div class="section">
+          <div class="card" style="text-align:center;padding:40px 20px;border-color:var(--green-border);background:linear-gradient(135deg,rgba(0,252,0,.04),transparent)">
+            <div style="font-size:36px;margin-bottom:12px">&#10003;</div>
+            <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:var(--green)">品牌游戏生成完成</div>
+            <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">游戏已添加到您的品牌页面，顾客可以立即开始游玩</p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+              <button class="btn btn-green" id="play-now-btn" onclick="playGeneratedGame()">▶ 立即玩 / Play Now</button>
+              <button class="btn btn-outline" onclick="backToStep1()">继续添加游戏</button>
+              <button class="btn btn-outline" onclick="location.reload()" style="background:var(--dark)">返回首页</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Route B: Create from scratch -->
+    <!-- Game iFrame Player (inside Portal) -->
+      <div id="game-player-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--dark)">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px;background:rgba(0,0,0,.5)">
+          <span style="color:var(--green);font-weight:700;font-size:14px" id="game-player-title">Game</span>
+          <button onclick="closeGamePlayer()" style="background:#ff3b30;color:white;border:none;padding:6px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer">✕ 关闭</button>
+        </div>
+        <iframe id="game-player-iframe" src="" style="width:100%;height:calc(100% - 40px);border:none"></iframe>
+      </div>
+
+      <div id="route-b-section" style="display:none">
+      <div class="section">
+        <div class="section-title">从零创造 / Custom Game</div>
+        <div class="card">
+          <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">
+            描述您想要的游戏。系统会进行完整研究并生成。预计 <strong>15-30 分钟</strong>。
+          </p>
+          <div class="form-group">
+            <label>游戏描述 / Game Description</label>
+            <textarea id="route-b-description" class="form-input" rows="4" placeholder="描述您想要的游戏玩法、风格、目标..."></textarea>
+          </div>
+          <button class="btn btn-green" id="route-b-submit-btn" onclick="submitCustomOrder()">提交 / Submit</button>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="document.getElementById('route-b-section').style.display='none';document.getElementById('game-step-2').style.display='block'">← 返回推荐列表</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Vouchers ──────────────────────────────────────────── -->
+    <div id="view-vouchers" class="view">
+      <h2 class="page-title">Vouchers / 优惠券管理</h2>
+      <p class="page-subtitle">Upload and manage voucher codes / 上传和管理优惠券码</p>
+
+      <div class="section">
+        <div class="section-title">Upload CSV / 上传CSV文件</div>
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Tier / 等级</label>
+              <select id="voucher-tier" class="form-select">
+                <option value="bronze">Bronze / 铜级</option>
+                <option value="silver">Silver / 银级</option>
+                <option value="gold">Gold / 金级</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Valid Days / 有效天数</label>
+              <input type="number" id="voucher-valid-days" class="form-input-sm" value="30" min="1" max="365">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description / 描述</label>
+            <input type="text" id="voucher-desc" class="form-input-sm" placeholder="e.g. Free Americano / 免费美式咖啡">
+          </div>
+          <div class="upload-zone" id="upload-zone">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <p>Drop CSV file here or tap to select</p>
+            <p><small>拖放CSV文件到这里或点击选择</small></p>
+            <input type="file" id="voucher-file" accept=".csv,.txt,text/csv">
+          </div>
+          <div id="upload-result" class="upload-result"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Voucher Pool / 优惠券池</div>
+        <div id="voucher-list">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── QR Codes ──────────────────────────────────────────── -->
+    <div id="view-qr" class="view">
+      <h2 class="page-title">QR Codes / 二维码管理</h2>
+      <p class="page-subtitle">Generate and display QR codes for locations / 为门店生成和展示二维码</p>
+
+      <div id="qr-locations-list">
+        <div class="loading-center"><div class="spinner"></div></div>
+      </div>
+
+      <div id="qr-display-section" style="display:none" class="section">
+        <div class="section-title">Active QR Code / 当前二维码</div>
+        <div class="qr-display">
+          <div id="qr-canvas-wrapper" style="margin:0 auto 16px;width:200px;height:200px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center">
+            <canvas id="qr-canvas"></canvas>
+          </div>
+          <div class="qr-url-box" id="qr-url-box" onclick="copyQrUrl()"></div>
+          <div class="qr-timer">
+            Next rotation / 下次轮换: <strong id="qr-countdown">--:--</strong>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-green" onclick="openFullscreen()">
+              Full Screen Display / 全屏展示
+            </button>
+            <button class="btn btn-outline" onclick="regenerateQR()">
+              Force Rotate / 强制轮换
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Locations ─────────────────────────────────────────── -->
+    <div id="view-locations" class="view">
+      <h2 class="page-title">Locations / 门店管理</h2>
+      <p class="page-subtitle">Manage cafe locations / 管理咖啡门店</p>
+
+      <div class="section">
+        <div class="section-title">
+          All Locations / 所有门店
+          <button class="btn btn-sm btn-outline" onclick="toggleAddLocation()" style="margin-left:auto">+ Add / 添加</button>
+        </div>
+
+        <div id="add-location-form" class="card" style="display:none">
+          <div class="form-group">
+            <label>Location ID / 门店ID</label>
+            <input type="text" id="loc-id" class="form-input-sm" placeholder="e.g. main-street">
+          </div>
+          <div class="form-group">
+            <label>Name / 名称</label>
+            <input type="text" id="loc-name" class="form-input-sm" placeholder="e.g. Bean Brothers Main St">
+          </div>
+          <div class="form-group">
+            <label>Address / 地址</label>
+            <input type="text" id="loc-address" class="form-input-sm" placeholder="e.g. 123 Main Street, Singapore">
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Latitude / 纬度</label>
+              <input type="number" id="loc-lat" class="form-input-sm" placeholder="1.3521" step="any">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Longitude / 经度</label>
+              <input type="number" id="loc-lng" class="form-input-sm" placeholder="103.8198" step="any">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-green" onclick="addLocation()">Save / 保存</button>
+            <button class="btn btn-outline" onclick="toggleAddLocation()">Cancel / 取消</button>
+          </div>
+        </div>
+
+        <div id="locations-list">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Settings ──────────────────────────────────────────── -->
+    <div id="view-settings" class="view">
+      <h2 class="page-title">Settings / 设置</h2>
+      <p class="page-subtitle">Brand configuration (read-only) / 品牌配置（只读）</p>
+
+      <div id="settings-content">
+        <div class="loading-center"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-item" data-view="games" onclick="navigate('games')">
+      <svg viewBox="0 0 24 24"><path d="M6 12h4m-2-2v4m7-1h.01M18 12h.01M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Games</span>
+    </div>
+    <div class="nav-item" data-view="vouchers" onclick="navigate('vouchers')">
+      <svg viewBox="0 0 24 24"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 5v14M15 5v14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Vouchers</span>
+    </div>
+    <div class="nav-item" data-view="qr" onclick="navigate('qr')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="14" y="14" width="3" height="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="18" y="18" width="3" height="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>QR Codes</span>
+    </div>
+    <div class="nav-item" data-view="locations" onclick="navigate('locations')">
+      <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Locations</span>
+    </div>
+    <div class="nav-item" data-view="settings" onclick="navigate('settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Settings</span>
+    </div>
+  </div>
+</div>
+
+<!-- QR Fullscreen Overlay -->
+<div class="qr-fullscreen" id="qr-fullscreen">
+  <button class="fs-close" onclick="closeFullscreen()">ESC / Close / 关闭</button>
+  <div class="fs-brand">Ki<span>X</span> <span id="fs-brand-name" style="color:#fff;font-weight:400;font-size:24px"></span></div>
+  <div class="fs-cta">Scan to Play & Win! / 扫码玩游戏赢奖品!</div>
+  <div class="fs-qr-container">
+    <canvas id="fs-qr-canvas"></canvas>
+  </div>
+  <div class="fs-url" id="fs-qr-url"></div>
+  <div class="fs-timer" id="fs-countdown">--:--</div>
+  <div class="fs-timer-label">Next QR rotation / 下次二维码轮换</div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// QR Code Generator (minimal inline implementation)
+// Based on qr.js — MIT License
+// ═══════════════════════════════════════════════════════════════════════
+const QRCode=(function(){
+  // Mode constants
+  const MODE_8BIT=4;
+  // Error correction level
+  const EC_L=1;
+  // Alignment pattern positions for versions 1-40
+  const ALIGN_POS=[
+    [],
+    [6,18],[6,22],[6,26],[6,30],[6,34],
+    [6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],
+    [6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],
+    [6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],
+    [6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],
+    [6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],
+    [6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],
+    [6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],
+    [6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],
+    [6,26,54,82,110,138,166],[6,30,58,86,114,142,170]
+  ];
+
+  // Number of data codewords for EC level L, versions 1-40
+  const DATA_CODEWORDS_L=[
+    19,34,55,80,108,136,156,194,232,274,
+    324,370,428,461,523,589,647,721,795,861,
+    932,1006,1094,1174,1263,1370,1468,1531,1631,1735,
+    1843,1955,2071,2191,2306,2434,2566,2702,2812,2956
+  ];
+
+  // ECC codewords per block for level L
+  const ECC_PER_BLOCK_L=[
+    7,10,15,20,26,18,20,24,30,18,
+    20,24,26,30,22,24,28,30,28,28,
+    28,28,30,30,26,28,30,30,30,30,
+    30,30,30,30,30,30,30,30,30,30
+  ];
+
+  const BLOCKS_L=[
+    [1],[1],[1],[1],[1],[2],[2],[2],[2],[2,2],
+    [2,2],[2,2],[4],[3,1],[2,4],[4,1],[2,4],[4,2],[4,2],[3,5],
+    [4,4],[2,7],[4,5],[6,2],[8],[10],[8,4],[3,10],[7,7],[5,10],
+    [13,3],[17],[17,1],[13,6],[12,7],[6,14],[17,4],[4,18],[20,4],[19,6]
+  ];
+
+  function getVersion(dataLen){
+    for(let v=1;v<=40;v++){
+      let cap=DATA_CODEWORDS_L[v-1];
+      // 8-bit mode: 4 mode + charcount bits + 4 terminator (max)
+      let ccBits=v<10?8:(v<27?16:16);
+      let available=cap*8-4-ccBits;
+      if(dataLen*8<=available)return v;
+    }
+    return 40;
+  }
+
+  function getSize(v){return 17+v*4}
+
+  // Generate GF(256) tables
+  const GF_EXP=new Uint8Array(512);
+  const GF_LOG=new Uint8Array(256);
+  (function(){
+    let x=1;
+    for(let i=0;i<255;i++){
+      GF_EXP[i]=x;
+      GF_LOG[x]=i;
+      x<<=1;
+      if(x&256)x^=285;
+    }
+    for(let i=255;i<512;i++)GF_EXP[i]=GF_EXP[i-255];
+  })();
+
+  function gfMul(a,b){
+    if(a===0||b===0)return 0;
+    return GF_EXP[GF_LOG[a]+GF_LOG[b]];
+  }
+
+  function polyMul(p,q){
+    let r=new Uint8Array(p.length+q.length-1);
+    for(let i=0;i<p.length;i++){
+      for(let j=0;j<q.length;j++){
+        r[i+j]^=gfMul(p[i],q[j]);
+      }
+    }
+    return r;
+  }
+
+  function polyRem(dividend,divisor){
+    let result=new Uint8Array(dividend);
+    for(let i=0;i<dividend.length-divisor.length+1;i++){
+      if(result[i]===0)continue;
+      let coef=result[i];
+      for(let j=0;j<divisor.length;j++){
+        result[i+j]^=gfMul(divisor[j],coef);
+      }
+    }
+    return result.slice(dividend.length-divisor.length+1);
+  }
+
+  function getGeneratorPoly(n){
+    let g=new Uint8Array([1]);
+    for(let i=0;i<n;i++){
+      g=polyMul(g,new Uint8Array([1,GF_EXP[i]]));
+    }
+    return g;
+  }
+
+  function generateECC(data,eccLen){
+    let gen=getGeneratorPoly(eccLen);
+    let padded=new Uint8Array(data.length+eccLen);
+    padded.set(data);
+    return polyRem(padded,gen);
+  }
+
+  function encodeData(text,version){
+    let bits=[];
+    function push(val,len){for(let i=len-1;i>=0;i--)bits.push((val>>i)&1);}
+
+    let ccBits=version<10?8:16;
+    push(MODE_8BIT,4);
+    let bytes=new TextEncoder().encode(text);
+    push(bytes.length,ccBits);
+    for(let b of bytes)push(b,8);
+
+    // Terminator
+    let totalBits=DATA_CODEWORDS_L[version-1]*8;
+    let termLen=Math.min(4,totalBits-bits.length);
+    push(0,termLen);
+
+    // Pad to byte boundary
+    while(bits.length%8!==0)bits.push(0);
+
+    // Pad codewords
+    let padBytes=[236,17];
+    let pi=0;
+    while(bits.length<totalBits){
+      push(padBytes[pi%2],8);
+      pi++;
+    }
+
+    // Convert to bytes
+    let codewords=new Uint8Array(bits.length/8);
+    for(let i=0;i<codewords.length;i++){
+      let b=0;
+      for(let j=0;j<8;j++)b=(b<<1)|bits[i*8+j];
+      codewords[i]=b;
+    }
+    return codewords;
+  }
+
+  function interleaveBlocks(data,version){
+    let eccPerBlock=ECC_PER_BLOCK_L[version-1];
+    let blockSpec=BLOCKS_L[version-1];
+    let totalData=DATA_CODEWORDS_L[version-1];
+
+    let group1Blocks=blockSpec[0];
+    let group2Blocks=blockSpec.length>1?blockSpec[1]:0;
+    let totalBlocks=group1Blocks+group2Blocks;
+    let group1DataPer=Math.floor(totalData/totalBlocks);
+    let group2DataPer=group2Blocks>0?group1DataPer+1:0;
+
+    let dataBlocks=[];
+    let eccBlocks=[];
+    let offset=0;
+
+    for(let i=0;i<group1Blocks;i++){
+      let block=data.slice(offset,offset+group1DataPer);
+      dataBlocks.push(block);
+      eccBlocks.push(generateECC(block,eccPerBlock));
+      offset+=group1DataPer;
+    }
+    for(let i=0;i<group2Blocks;i++){
+      let block=data.slice(offset,offset+group2DataPer);
+      dataBlocks.push(block);
+      eccBlocks.push(generateECC(block,eccPerBlock));
+      offset+=group2DataPer;
+    }
+
+    // Interleave data
+    let result=[];
+    let maxDataLen=Math.max(group1DataPer,group2DataPer||0);
+    for(let i=0;i<maxDataLen;i++){
+      for(let b=0;b<totalBlocks;b++){
+        if(i<dataBlocks[b].length)result.push(dataBlocks[b][i]);
+      }
+    }
+    // Interleave ECC
+    for(let i=0;i<eccPerBlock;i++){
+      for(let b=0;b<totalBlocks;b++){
+        result.push(eccBlocks[b][i]);
+      }
+    }
+    return result;
+  }
+
+  function createMatrix(size){
+    let m=[];
+    for(let i=0;i<size;i++){
+      m[i]=new Uint8Array(size);
+    }
+    // Also track which cells are reserved
+    let reserved=[];
+    for(let i=0;i<size;i++){
+      reserved[i]=new Uint8Array(size);
+    }
+    return{m,reserved,size};
+  }
+
+  function placeFinderPattern(matrix,row,col){
+    let{m,reserved,size}=matrix;
+    for(let r=-1;r<=7;r++){
+      for(let c=-1;c<=7;c++){
+        let rr=row+r,cc=col+c;
+        if(rr<0||rr>=size||cc<0||cc>=size)continue;
+        if(r>=0&&r<=6&&c>=0&&c<=6){
+          if(r===0||r===6||c===0||c===6||(r>=2&&r<=4&&c>=2&&c<=4)){
+            m[rr][cc]=1;
+          }else{
+            m[rr][cc]=0;
+          }
+        }else{
+          m[rr][cc]=0;
+        }
+        reserved[rr][cc]=1;
+      }
+    }
+  }
+
+  function placeAlignmentPatterns(matrix,version){
+    if(version<2)return;
+    let{m,reserved,size}=matrix;
+    let pos=ALIGN_POS[version-1];
+    for(let i=0;i<pos.length;i++){
+      for(let j=0;j<pos.length;j++){
+        let r=pos[i],c=pos[j];
+        // Skip if overlaps with finder patterns
+        if(reserved[r][c])continue;
+        for(let dr=-2;dr<=2;dr++){
+          for(let dc=-2;dc<=2;dc++){
+            let rr=r+dr,cc=c+dc;
+            if(Math.abs(dr)===2||Math.abs(dc)===2||
+               (dr===0&&dc===0)){
+              m[rr][cc]=1;
+            }else{
+              m[rr][cc]=0;
+            }
+            reserved[rr][cc]=1;
+          }
+        }
+      }
+    }
+  }
+
+  function placeTimingPatterns(matrix){
+    let{m,reserved,size}=matrix;
+    for(let i=8;i<size-8;i++){
+      if(!reserved[6][i]){m[6][i]=(i%2===0)?1:0;reserved[6][i]=1;}
+      if(!reserved[i][6]){m[i][6]=(i%2===0)?1:0;reserved[i][6]=1;}
+    }
+  }
+
+  function reserveFormatInfo(matrix){
+    let{m,reserved,size}=matrix;
+    // Around top-left finder
+    for(let i=0;i<=8;i++){
+      if(!reserved[8][i])reserved[8][i]=1;
+      if(!reserved[i][8])reserved[i][8]=1;
+    }
+    // Around top-right finder
+    for(let i=0;i<=7;i++){
+      if(!reserved[8][size-1-i])reserved[8][size-1-i]=1;
+    }
+    // Around bottom-left finder
+    for(let i=0;i<=7;i++){
+      if(!reserved[size-1-i][8])reserved[size-1-i][8]=1;
+    }
+    // Dark module
+    m[size-8][8]=1;
+    reserved[size-8][8]=1;
+  }
+
+  function reserveVersionInfo(matrix,version){
+    if(version<7)return;
+    let{reserved,size}=matrix;
+    for(let i=0;i<6;i++){
+      for(let j=0;j<3;j++){
+        reserved[i][size-11+j]=1;
+        reserved[size-11+j][i]=1;
+      }
+    }
+  }
+
+  function placeDataBits(matrix,dataBits){
+    let{m,reserved,size}=matrix;
+    let bitIdx=0;
+    let col=size-1;
+    let goingUp=true;
+
+    while(col>0){
+      if(col===6)col--; // Skip timing pattern column
+      for(let i=0;i<size;i++){
+        let row=goingUp?size-1-i:i;
+        for(let dc=0;dc<=1;dc++){
+          let c=col-dc;
+          if(c<0||reserved[row][c])continue;
+          if(bitIdx<dataBits.length){
+            m[row][c]=dataBits[bitIdx]?1:0;
+          }else{
+            m[row][c]=0;
+          }
+          bitIdx++;
+        }
+      }
+      col-=2;
+      goingUp=!goingUp;
+    }
+  }
+
+  // Format info for EC level L (01) with mask patterns 0-7
+  const FORMAT_INFO=[
+    0x77C4,0x72F3,0x7DAA,0x789D,0x662F,0x6318,0x6C41,0x6976,
+  ];
+
+  function applyMask(matrix,maskNum){
+    let{m,reserved,size}=matrix;
+    let fn;
+    switch(maskNum){
+      case 0:fn=(r,c)=>(r+c)%2===0;break;
+      case 1:fn=(r,c)=>r%2===0;break;
+      case 2:fn=(r,c)=>c%3===0;break;
+      case 3:fn=(r,c)=>(r+c)%3===0;break;
+      case 4:fn=(r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0;break;
+      case 5:fn=(r,c)=>((r*c)%2+(r*c)%3)===0;break;
+      case 6:fn=(r,c)=>((r*c)%2+(r*c)%3)%2===0;break;
+      case 7:fn=(r,c)=>((r+c)%2+(r*c)%3)%2===0;break;
+    }
+    for(let r=0;r<size;r++){
+      for(let c=0;c<size;c++){
+        if(!reserved[r][c]&&fn(r,c)){
+          m[r][c]^=1;
+        }
+      }
+    }
+  }
+
+  function writeFormatInfo(matrix,maskNum){
+    let{m,size}=matrix;
+    let info=FORMAT_INFO[maskNum];
+    // Horizontal strip
+    let bits=[];
+    for(let i=14;i>=0;i--)bits.push((info>>i)&1);
+    // Around top-left: row 8, cols 0-7 (skip 6), then col 8 rows 7-0
+    let hPos=[0,1,2,3,4,5,7,8];
+    for(let i=0;i<8;i++)m[8][hPos[i]]=bits[i];
+    let vPos=[8,7,5,4,3,2,1,0]; // Note: skip row 6 (timing)
+    for(let i=0;i<7;i++)m[vPos[i]][8]=bits[8+i];
+
+    // Around top-right: row 8, cols (size-8) to (size-1)
+    for(let i=0;i<8;i++)m[8][size-8+i]=bits[7+i>=15?14:7+i]; // wrong, redo
+    // Actually: format info bits 7-14 go in row 8, cols size-8 to size-1
+    // And bits 0-6 go in rows size-1 to size-7, col 8
+    for(let i=0;i<8;i++)m[8][size-8+i]=bits[14-i]; // reverse
+    // No wait. Let me do this properly.
+    // The standard format info placement:
+    // Bits 0-7 go: (8,0),(8,1),(8,2),(8,3),(8,4),(8,5),(8,7),(8,8)
+    //              and (size-1,8),(size-2,8),(size-3,8),(size-4,8),(size-5,8),(size-6,8),(size-7,8)
+    // Bits 8-14:   (7,8),(5,8),(4,8),(3,8),(2,8),(1,8),(0,8)
+    //              and (8,size-8),(8,size-7),...,(8,size-1)
+
+    // Redo properly:
+    let format=info;
+    // Top-left horizontal (row 8)
+    for(let i=0;i<6;i++)m[8][i]=(format>>(14-i))&1;
+    m[8][7]=(format>>8)&1;
+    m[8][8]=(format>>7)&1;
+    // Top-left vertical (col 8)
+    m[7][8]=(format>>6)&1;
+    m[5][8]=(format>>5)&1;
+    for(let i=0;i<4;i++)m[4-i][8]=(format>>(4-i))&1;
+    m[0][8]=(format>>0)&1;
+    m[1][8]=(format>>1)&1;
+    m[2][8]=(format>>2)&1;
+    m[3][8]=(format>>3)&1;
+    m[4][8]=(format>>4)&1;
+
+    // Bottom-left vertical (col 8, rows size-7 to size-1)
+    for(let i=0;i<7;i++){
+      m[size-7+i][8]=(format>>(14-i))&1;
+    }
+    // Top-right horizontal (row 8, cols size-8 to size-1)
+    for(let i=0;i<8;i++){
+      m[8][size-8+i]=(format>>(7-i))&1;
+    }
+  }
+
+  function penalty(matrix){
+    let{m,size}=matrix;
+    let score=0;
+    // Rule 1: runs of same color (simplified)
+    for(let r=0;r<size;r++){
+      let run=1;
+      for(let c=1;c<size;c++){
+        if(m[r][c]===m[r][c-1])run++;
+        else{if(run>=5)score+=run-2;run=1;}
+      }
+      if(run>=5)score+=run-2;
+    }
+    for(let c=0;c<size;c++){
+      let run=1;
+      for(let r=1;r<size;r++){
+        if(m[r][c]===m[r-1][c])run++;
+        else{if(run>=5)score+=run-2;run=1;}
+      }
+      if(run>=5)score+=run-2;
+    }
+    return score;
+  }
+
+  function generate(text){
+    let bytes=new TextEncoder().encode(text);
+    let version=getVersion(bytes.length);
+    let size=getSize(version);
+
+    let data=encodeData(text,version);
+    let dataBits=interleaveBlocks(data,version);
+
+    // Convert to bit array
+    let bits=[];
+    for(let b of dataBits){
+      for(let i=7;i>=0;i--)bits.push((b>>i)&1);
+    }
+    // Add remainder bits
+    let remainderBits=[0,7,7,7,7,7,0,0,0,0,0,0,0,3,3,3,3,3,3,3,4,4,4,4,4,4,4,3,3,3,3,3,3,3,0,0,0,0,0,0][version-1]||0;
+    for(let i=0;i<remainderBits;i++)bits.push(0);
+
+    // Try all mask patterns, pick best (lowest penalty)
+    let bestMask=0;
+    let bestPenalty=Infinity;
+    let bestMatrix=null;
+
+    for(let mask=0;mask<8;mask++){
+      let matrix=createMatrix(size);
+      placeFinderPattern(matrix,0,0);
+      placeFinderPattern(matrix,0,size-7);
+      placeFinderPattern(matrix,size-7,0);
+      placeAlignmentPatterns(matrix,version);
+      placeTimingPatterns(matrix);
+      reserveFormatInfo(matrix);
+      reserveVersionInfo(matrix,version);
+      placeDataBits(matrix,bits);
+      applyMask(matrix,mask);
+      writeFormatInfo(matrix,mask);
+
+      let p=penalty(matrix);
+      if(p<bestPenalty){
+        bestPenalty=p;
+        bestMask=mask;
+        bestMatrix=matrix;
+      }
+    }
+
+    return bestMatrix;
+  }
+
+  function renderCanvas(canvas,text,cellSize,quietZone){
+    cellSize=cellSize||6;
+    quietZone=quietZone||4;
+    let matrix=generate(text);
+    let{m,size}=matrix;
+    let totalSize=size+quietZone*2;
+    canvas.width=totalSize*cellSize;
+    canvas.height=totalSize*cellSize;
+    let ctx=canvas.getContext('2d');
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#000000';
+    for(let r=0;r<size;r++){
+      for(let c=0;c<size;c++){
+        if(m[r][c]){
+          ctx.fillRect((c+quietZone)*cellSize,(r+quietZone)*cellSize,cellSize,cellSize);
+        }
+      }
+    }
+  }
+
+  return{generate,renderCanvas};
+})();
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════════════
+const API_BASE='http://localhost:8000';
+let state={
+  token:localStorage.getItem('kix_portal_token')||null,
+  refreshToken:localStorage.getItem('kix_portal_refresh')||null,
+  brandId:localStorage.getItem('kix_brand_id')||null,
+  brandName:'',
+  brandConfig:null,
+  currentView:'dashboard',
+  currentQR:null,
+  qrLocationId:null,
+  qrCountdownInterval:null,
+  fsCountdownInterval:null,
+  qrAutoRefreshTimeout:null,
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast '+type;
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+async function apiFetch(path,opts={}){
+  const headers=opts.headers||{};
+  if(state.token&&!opts.noAuth){
+    headers['Authorization']='Bearer '+state.token;
+  }
+  if(opts.json){
+    headers['Content-Type']='application/json';
+    opts.body=JSON.stringify(opts.json);
+  }
+  delete opts.json;
+  delete opts.noAuth;
+  const res=await fetch(API_BASE+path,{...opts,headers});
+  if(res.status===401){
+    doLogout();
+    throw new Error('Session expired');
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════════
+document.getElementById('login-form').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const btn=document.getElementById('login-btn');
+  const err=document.getElementById('login-error');
+  err.style.display='none';
+  btn.disabled=true;
+  btn.textContent='Logging in...';
+
+  try{
+    const res=await fetch(API_BASE+'/api/v1/portal/auth/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:document.getElementById('login-email').value.trim(),
+        password:document.getElementById('login-password').value,
+      })
+    });
+
+    if(!res.ok){
+      const data=await res.json().catch(()=>({}));
+      throw new Error(data.detail||'Login failed');
+    }
+
+    const data=await res.json();
+    state.token=data.access_token;
+    state.refreshToken=data.refresh_token;
+    localStorage.setItem('kix_portal_token',data.access_token);
+    localStorage.setItem('kix_portal_refresh',data.refresh_token);
+
+    // Decode JWT to extract brand_id (add padding for base64url)
+    try{
+      var payloadB64 = data.access_token.split('.')[1];
+      while (payloadB64.length % 4) payloadB64 += '=';
+      var payload = JSON.parse(atob(payloadB64));
+      state.brandId = payload.brand_id || '';
+    }catch(e){
+      console.error('JWT decode failed:', e);
+      state.brandId = '';
+    }
+    localStorage.setItem('kix_brand_id',state.brandId);
+
+    showApp();
+  }catch(e){
+    err.textContent=e.message;
+    err.style.display='block';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Login / 登录';
+  }
+});
+
+function toggleAuthMode(mode){
+  const loginSection=document.getElementById('login-section');
+  const registerSection=document.getElementById('register-section');
+  if(mode==='register'){
+    loginSection.classList.remove('visible');
+    loginSection.classList.add('hidden');
+    registerSection.classList.remove('hidden');
+    registerSection.classList.add('visible');
+  }else{
+    registerSection.classList.remove('visible');
+    registerSection.classList.add('hidden');
+    loginSection.classList.remove('hidden');
+    loginSection.classList.add('visible');
+  }
+}
+
+document.getElementById('register-form').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const btn=document.getElementById('register-btn');
+  const err=document.getElementById('register-error');
+  err.style.display='none';
+  btn.disabled=true;
+  btn.textContent='Registering...';
+
+  try{
+    const res=await fetch(API_BASE+'/api/v1/portal/auth/register',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:document.getElementById('reg-email').value.trim(),
+        password:document.getElementById('reg-password').value,
+        brand_name:document.getElementById('reg-brand-name').value.trim(),
+        brand_color:document.getElementById('reg-brand-color').value.trim(),
+      })
+    });
+
+    if(!res.ok){
+      const data=await res.json().catch(()=>({}));
+      throw new Error(data.detail||'Registration failed');
+    }
+
+    const data=await res.json();
+    state.token=data.access_token;
+    state.refreshToken=data.refresh_token;
+    state.brandId=data.brand_id;
+    state.brandName=data.brand_name||'';
+    localStorage.setItem('kix_portal_token',data.access_token);
+    localStorage.setItem('kix_portal_refresh',data.refresh_token);
+    localStorage.setItem('kix_brand_id',data.brand_id);
+
+    showToast('Registration successful / 注册成功');
+    showApp();
+  }catch(e){
+    err.textContent=e.message;
+    err.style.display='block';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Register / 注册';
+  }
+});
+
+function doLogout(){
+  state.token=null;
+  state.refreshToken=null;
+  state.brandId=null;
+  localStorage.removeItem('kix_portal_token');
+  localStorage.removeItem('kix_portal_refresh');
+  localStorage.removeItem('kix_brand_id');
+  // Redirect back to landing page
+  window.location.href = 'index.html';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+function navigate(view){
+  // Clear old intervals
+  if(state.qrCountdownInterval){clearInterval(state.qrCountdownInterval);state.qrCountdownInterval=null;}
+
+  state.currentView=view;
+  location.hash='#'+view;
+
+  // Update views
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const target=document.getElementById('view-'+view);
+  if(target)target.classList.add('active');
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.toggle('active',n.dataset.view===view);
+  });
+
+  // Load data
+  switch(view){
+    case'dashboard':loadDashboard();break;
+    case'games':initGameView();break;
+    case'vouchers':loadVouchers();break;
+    case'qr':loadQRLocations();break;
+    case'locations':loadLocations();break;
+    case'settings':loadSettings();break;
+  }
+}
+
+function showApp(){
+  document.getElementById('login-page').classList.remove('active');
+  document.getElementById('app-shell').className='active';
+
+  const hash=location.hash.replace('#','');
+  const validViews=['dashboard','games','vouchers','qr','locations','settings'];
+  navigate(validViews.includes(hash)?hash:'dashboard');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════
+async function loadDashboard(){
+  try{
+    // Load brand config (no auth needed)
+    const res=await apiFetch('/api/v1/brands/'+state.brandId,{noAuth:true});
+    if(res.ok){
+      const data=await res.json();
+      state.brandConfig=data;
+      state.brandName=data.brand_name;
+      document.getElementById('header-brand-name').textContent=data.brand_name;
+      document.getElementById('dash-welcome').textContent=
+        'Welcome back! / 欢迎回来! — '+data.brand_name;
+
+      // Players from leaderboard config
+      const lb=data.config_json.leaderboard||{};
+      document.getElementById('stat-players').textContent=
+        (lb.total_players||0).toLocaleString();
+    }
+  }catch(e){
+    console.error('Dashboard brand load error:',e);
+  }
+
+  try{
+    // Load locations count
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/locations',{noAuth:true});
+    if(res.ok){
+      const locs=await res.json();
+      const active=locs.filter(l=>l.status==='active');
+      document.getElementById('stat-locations').textContent=active.length;
+    }
+  }catch(e){
+    document.getElementById('stat-locations').textContent='--';
+  }
+
+  // Update play link
+  const playUrlEl=document.getElementById('share-play-url');
+  if(playUrlEl){
+    playUrlEl.textContent=location.origin+'/landing/play.html?brand='+(state.brandId||'');
+  }
+
+  // Voucher stats from API
+  try{
+    const vRes=await apiFetch('/api/v1/brands/'+state.brandId+'/vouchers');
+    if(vRes.ok){
+      const vData=await vRes.json();
+      const summary=vData.summary||{available:0,assigned:0,redeemed:0};
+      document.getElementById('stat-vouchers').textContent=summary.available;
+      document.getElementById('stat-vouchers-sub').textContent=
+        summary.available+' available / '+summary.assigned+' assigned';
+    }else{
+      document.getElementById('stat-vouchers').textContent='--';
+      document.getElementById('stat-vouchers-sub').textContent='Available';
+    }
+  }catch(e){
+    document.getElementById('stat-vouchers').textContent='--';
+    document.getElementById('stat-vouchers-sub').textContent='Available';
+  }
+
+  document.getElementById('stat-energy').textContent='--';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// VOUCHERS
+// ═══════════════════════════════════════════════════════════════════════
+// Upload zone interactions
+const uploadZone=document.getElementById('upload-zone');
+const fileInput=document.getElementById('voucher-file');
+
+uploadZone.addEventListener('dragover',(e)=>{
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave',()=>{
+  uploadZone.classList.remove('dragover');
+});
+uploadZone.addEventListener('drop',(e)=>{
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if(e.dataTransfer.files.length){
+    fileInput.files=e.dataTransfer.files;
+    handleVoucherUpload(e.dataTransfer.files[0]);
+  }
+});
+fileInput.addEventListener('change',(e)=>{
+  if(e.target.files.length)handleVoucherUpload(e.target.files[0]);
+});
+
+async function handleVoucherUpload(file){
+  const tier=document.getElementById('voucher-tier').value;
+  const desc=document.getElementById('voucher-desc').value;
+  const validDays=document.getElementById('voucher-valid-days').value;
+  const resultDiv=document.getElementById('upload-result');
+
+  resultDiv.className='upload-result show';
+  resultDiv.innerHTML='<div class="loading-center"><div class="spinner"></div></div>';
+
+  try{
+    const formData=new FormData();
+    formData.append('file',file);
+    const url='/api/v1/brands/'+state.brandId+'/vouchers/upload?tier='+
+      encodeURIComponent(tier)+'&description='+encodeURIComponent(desc)+
+      '&valid_days='+encodeURIComponent(validDays);
+
+    const res=await apiFetch(url,{method:'POST',body:formData});
+    const data=await res.json();
+
+    if(res.ok){
+      resultDiv.className='upload-result show success';
+      resultDiv.innerHTML=`
+        <h4>Upload Complete / 上传完成</h4>
+        <p><strong>${data.imported}</strong> imported / 导入 &nbsp;|&nbsp;
+           <strong>${data.skipped_duplicates}</strong> skipped / 跳过 &nbsp;|&nbsp;
+           <strong>${data.errors?.length||0}</strong> errors / 错误</p>
+      `;
+      showToast('Vouchers uploaded successfully / 优惠券上传成功');
+    }else{
+      throw new Error(data.detail||'Upload failed');
+    }
+  }catch(e){
+    resultDiv.className='upload-result show error';
+    resultDiv.innerHTML=`<h4>Error / 错误</h4><p>${e.message}</p>`;
+    showToast(e.message,'error');
+  }
+
+  fileInput.value='';
+}
+
+async function loadVouchers(){
+  const list=document.getElementById('voucher-list');
+  list.innerHTML='<div class="loading-center"><div class="spinner"></div></div>';
+
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/vouchers');
+    if(!res.ok)throw new Error('Failed to load vouchers');
+    const data=await res.json();
+    const vouchers=data.vouchers||[];
+    const summary=data.summary||{available:0,assigned:0,redeemed:0};
+
+    if(vouchers.length===0){
+      list.innerHTML=`
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 5v14M15 5v14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p>Upload a CSV file above to add vouchers<br>上传CSV文件来添加优惠券</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Summary cards
+    let html=`
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card accent">
+          <div class="stat-label">Available / 可用</div>
+          <div class="stat-value">${summary.available}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Assigned / 已分配</div>
+          <div class="stat-value">${summary.assigned}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Redeemed / 已兑换</div>
+          <div class="stat-value">${summary.redeemed}</div>
+        </div>
+      </div>
+    `;
+
+    // Voucher list
+    html+=vouchers.map(v=>{
+      const badgeClass=v.status==='available'?'badge-available':
+        v.status==='assigned'?'badge-assigned':
+        v.status==='redeemed'?'badge-redeemed':'badge-inactive';
+      const tierBadge=v.tier?`<span class="badge badge-${v.tier}">${esc(v.tier)}</span> `:'';
+      return`
+        <div class="list-item">
+          <div class="list-item-info">
+            <div class="list-item-title" style="font-family:monospace;font-size:13px">${esc(v.code)}</div>
+            <div class="list-item-sub">${tierBadge}${esc(v.description||'')}</div>
+          </div>
+          <div class="list-item-actions">
+            <span class="badge ${badgeClass}">${esc(v.status)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    list.innerHTML=html;
+  }catch(e){
+    list.innerHTML=`<div class="card" style="color:var(--danger)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// QR CODES
+// ═══════════════════════════════════════════════════════════════════════
+async function loadQRLocations(){
+  const container=document.getElementById('qr-locations-list');
+  container.innerHTML='<div class="loading-center"><div class="spinner"></div></div>';
+
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/locations',{noAuth:true});
+    if(!res.ok)throw new Error('Failed to load locations');
+    const locations=await res.json();
+    const active=locations.filter(l=>l.status==='active');
+
+    if(active.length===0){
+      container.innerHTML=`
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p>No locations found. Add one first.<br>未找到门店，请先添加。</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML='<div class="section"><div class="section-title">Select Location / 选择门店</div>'+
+      active.map(loc=>`
+        <div class="list-item">
+          <div class="list-item-info">
+            <div class="list-item-title">${esc(loc.location_name)}</div>
+            <div class="list-item-sub">${esc(loc.address||loc.location_id)}</div>
+          </div>
+          <div class="list-item-actions">
+            <button class="btn btn-sm btn-green" onclick="generateQR('${esc(loc.location_id)}','${esc(loc.location_name)}')">
+              Generate QR / 生成二维码
+            </button>
+          </div>
+        </div>
+      `).join('')+'</div>';
+  }catch(e){
+    container.innerHTML=`<div class="card" style="color:var(--danger)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function generateQR(locationId,locationName){
+  const displaySection=document.getElementById('qr-display-section');
+  displaySection.style.display='block';
+  displaySection.scrollIntoView({behavior:'smooth'});
+  state.qrLocationId=locationId;
+
+  // Show loading
+  document.getElementById('qr-url-box').textContent='Generating...';
+  document.getElementById('qr-countdown').textContent='--:--';
+
+  try{
+    const res=await apiFetch('/internal/qr/generate',{
+      method:'POST',
+      json:{
+        brand_id:state.brandId,
+        location_id:locationId,
+        duration_minutes:15
+      },
+      noAuth:true
+    });
+
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err.detail||'QR generation failed');
+    }
+
+    const data=await res.json();
+    state.currentQR=data;
+
+    // Render QR code
+    const qrUrl=data.qr_url;
+    document.getElementById('qr-url-box').textContent=qrUrl;
+
+    try{
+      QRCode.renderCanvas(document.getElementById('qr-canvas'),qrUrl,5,4);
+    }catch(e){
+      console.warn('QR render failed:',e);
+    }
+
+    // Start countdown
+    startCountdown(data.next_rotation_at);
+
+    // Schedule auto-refresh at 14 minutes (before 15-min expiry)
+    if(state.qrAutoRefreshTimeout)clearTimeout(state.qrAutoRefreshTimeout);
+    state.qrAutoRefreshTimeout=setTimeout(()=>{
+      regenerateQR();
+    },14*60*1000);
+
+    showToast('QR generated for '+locationName+' / 二维码已生成');
+  }catch(e){
+    document.getElementById('qr-url-box').textContent='Error: '+e.message;
+    showToast(e.message,'error');
+  }
+}
+
+async function regenerateQR(){
+  if(!state.qrLocationId)return;
+  try{
+    const res=await apiFetch('/internal/qr/force-rotate',{
+      method:'POST',
+      json:{
+        brand_id:state.brandId,
+        location_id:state.qrLocationId
+      },
+      noAuth:true
+    });
+    if(!res.ok)throw new Error('Rotation failed');
+    const data=await res.json();
+    state.currentQR=data;
+
+    document.getElementById('qr-url-box').textContent=data.qr_url;
+    try{
+      QRCode.renderCanvas(document.getElementById('qr-canvas'),data.qr_url,5,4);
+    }catch(e){}
+
+    startCountdown(data.next_rotation_at);
+
+    // Update fullscreen if open
+    if(document.getElementById('qr-fullscreen').classList.contains('active')){
+      updateFullscreenQR(data);
+    }
+
+    // Re-schedule auto-refresh
+    if(state.qrAutoRefreshTimeout)clearTimeout(state.qrAutoRefreshTimeout);
+    state.qrAutoRefreshTimeout=setTimeout(()=>{
+      regenerateQR();
+    },14*60*1000);
+
+    showToast('QR rotated / 二维码已轮换');
+  }catch(e){
+    showToast(e.message,'error');
+  }
+}
+
+function startCountdown(nextRotationISO){
+  if(state.qrCountdownInterval)clearInterval(state.qrCountdownInterval);
+
+  const target=new Date(nextRotationISO).getTime();
+
+  function update(){
+    const now=Date.now();
+    const diff=Math.max(0,target-now);
+    const mins=Math.floor(diff/60000);
+    const secs=Math.floor((diff%60000)/1000);
+    const str=String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0');
+    document.getElementById('qr-countdown').textContent=str;
+
+    // Update fullscreen countdown too
+    const fsEl=document.getElementById('fs-countdown');
+    if(fsEl)fsEl.textContent=str;
+
+    if(diff<=0){
+      clearInterval(state.qrCountdownInterval);
+      state.qrCountdownInterval=null;
+    }
+  }
+
+  update();
+  state.qrCountdownInterval=setInterval(update,1000);
+}
+
+function copyQrUrl(){
+  const url=document.getElementById('qr-url-box').textContent;
+  if(!url||url.startsWith('Generating')||url.startsWith('Error'))return;
+  navigator.clipboard.writeText(url).then(()=>{
+    showToast('URL copied / 链接已复制');
+  }).catch(()=>{});
+}
+
+// ─── QR Fullscreen ───────────────────────────────────────────────
+function openFullscreen(){
+  if(!state.currentQR)return;
+  const overlay=document.getElementById('qr-fullscreen');
+  overlay.classList.add('active');
+
+  document.getElementById('fs-brand-name').textContent=state.brandName||state.brandId;
+  updateFullscreenQR(state.currentQR);
+
+  // Request browser fullscreen
+  try{document.documentElement.requestFullscreen();}catch(e){}
+}
+
+function updateFullscreenQR(data){
+  document.getElementById('fs-qr-url').textContent=data.qr_url;
+  try{
+    QRCode.renderCanvas(document.getElementById('fs-qr-canvas'),data.qr_url,8,4);
+  }catch(e){}
+}
+
+function closeFullscreen(){
+  document.getElementById('qr-fullscreen').classList.remove('active');
+  try{document.exitFullscreen();}catch(e){}
+}
+
+// ESC key to close fullscreen
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='Escape'){
+    closeFullscreen();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// LOCATIONS
+// ═══════════════════════════════════════════════════════════════════════
+async function loadLocations(){
+  const container=document.getElementById('locations-list');
+  container.innerHTML='<div class="loading-center"><div class="spinner"></div></div>';
+
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/locations',{noAuth:true});
+    if(!res.ok)throw new Error('Failed to load locations');
+    const locations=await res.json();
+
+    if(locations.length===0){
+      container.innerHTML=`
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p>No locations yet. Click "Add" to create one.<br>暂无门店，点击"添加"创建。</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML=locations.map(loc=>`
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-title">${esc(loc.location_name)}</div>
+          <div class="list-item-sub">${esc(loc.address||'No address')} &middot; ${esc(loc.location_id)}</div>
+        </div>
+        <div class="list-item-actions">
+          <span class="badge badge-${loc.status==='active'?'active':'inactive'}">${loc.status}</span>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    container.innerHTML=`<div class="card" style="color:var(--danger)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function toggleAddLocation(){
+  const form=document.getElementById('add-location-form');
+  form.style.display=form.style.display==='none'?'block':'none';
+}
+
+async function addLocation(){
+  const locId=document.getElementById('loc-id').value.trim();
+  const locName=document.getElementById('loc-name').value.trim();
+  const locAddr=document.getElementById('loc-address').value.trim();
+  const locLat=parseFloat(document.getElementById('loc-lat').value)||null;
+  const locLng=parseFloat(document.getElementById('loc-lng').value)||null;
+
+  if(!locId||!locName){
+    showToast('Location ID and Name are required / ID和名称为必填','error');
+    return;
+  }
+
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/locations',{
+      method:'POST',
+      json:{
+        location_id:locId,
+        brand_id:state.brandId,
+        location_name:locName,
+        address:locAddr||null,
+        latitude:locLat,
+        longitude:locLng,
+      },
+      noAuth:true
+    });
+
+    if(!res.ok){
+      const data=await res.json().catch(()=>({}));
+      throw new Error(data.detail||'Failed to add location');
+    }
+
+    showToast('Location added / 门店已添加');
+    toggleAddLocation();
+    // Clear form
+    document.getElementById('loc-id').value='';
+    document.getElementById('loc-name').value='';
+    document.getElementById('loc-address').value='';
+    document.getElementById('loc-lat').value='';
+    document.getElementById('loc-lng').value='';
+    loadLocations();
+  }catch(e){
+    showToast(e.message,'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════════
+async function loadSettings(){
+  const container=document.getElementById('settings-content');
+  container.innerHTML='<div class="loading-center"><div class="spinner"></div></div>';
+
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId,{noAuth:true});
+    if(!res.ok)throw new Error('Failed to load config');
+    const data=await res.json();
+
+    let html=`
+      <div class="card">
+        <div class="config-section">
+          <h4>Brand Info / 品牌信息</h4>
+          <div class="config-row"><span class="config-key">Brand ID / 品牌ID</span><span class="config-val">${esc(data.brand_id)}</span></div>
+          <div class="config-row"><span class="config-key">Brand Name / 品牌名称</span><span class="config-val">${esc(data.brand_name)}</span></div>
+          <div class="config-row"><span class="config-key">Slug</span><span class="config-val">${esc(data.brand_slug)}</span></div>
+          <div class="config-row"><span class="config-key">Status / 状态</span><span class="config-val"><span class="badge badge-${data.status==='active'?'active':'inactive'}">${data.status}</span></span></div>
+          <div class="config-row"><span class="config-key">Created / 创建时间</span><span class="config-val">${new Date(data.created_at).toLocaleDateString()}</span></div>
+        </div>
+      </div>
+    `;
+
+    const config=data.config_json||{};
+
+    // Energy settings
+    if(config.energy){
+      const e=config.energy;
+      html+=`
+        <div class="card">
+          <div class="config-section">
+            <h4>Energy Settings / 能量设置</h4>
+            ${configRow('QR Grant / 二维码授予', e.qr_grant)}
+            ${configRow('Day 1 Bonus / 首日奖励', e.day1_bonus)}
+            ${configRow('Day 1 Window / 首日窗口', e.day1_window)}
+            ${configRow('Cooldown / 冷却时间', e.cooldown)}
+            ${configRow('Max Balance / 最大余额', e.max_balance)}
+          </div>
+        </div>
+      `;
+    }
+
+    // Games
+    if(config.games){
+      const g=config.games;
+      const gameList=Array.isArray(g)?g:(g.available||[]);
+      html+=`
+        <div class="card">
+          <div class="config-section">
+            <h4>Games / 游戏列表</h4>
+            ${Array.isArray(gameList)?gameList.map(game=>{
+              if(typeof game==='string'){
+                return`<div class="config-row"><span class="config-key">${esc(game)}</span><span class="config-val"><span class="badge badge-active">active</span></span></div>`;
+              }
+              return`<div class="config-row"><span class="config-key">${esc(game.game_id||game.id||'')}</span><span class="config-val">${esc(game.name||'')} — cost: ${game.energy_cost||'?'}</span></div>`;
+            }).join(''):'<p style="color:var(--text-muted)">No games configured</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // Leaderboard
+    if(config.leaderboard){
+      const lb=config.leaderboard;
+      html+=`
+        <div class="card">
+          <div class="config-section">
+            <h4>Leaderboard / 排行榜</h4>
+            ${configRow('Season Duration / 赛季时长', lb.season_duration)}
+            ${configRow('Top N Display / 显示前N名', lb.top_n)}
+            ${configRow('Nearby Range / 附近范围', lb.nearby_range)}
+          </div>
+        </div>
+      `;
+    }
+
+    // Reward rules
+    if(config.rewards||config.reward){
+      const r=config.rewards||config.reward;
+      html+=`
+        <div class="card">
+          <div class="config-section">
+            <h4>Reward Rules / 奖励规则</h4>
+            ${Object.entries(r).map(([k,v])=>configRow(k,typeof v==='object'?JSON.stringify(v):v)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML=html;
+  }catch(e){
+    container.innerHTML=`<div class="card" style="color:var(--danger)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function configRow(label,value){
+  if(value===undefined||value===null)return'';
+  return`<div class="config-row"><span class="config-key">${esc(String(label))}</span><span class="config-val">${esc(String(value))}</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SHARE PLAY LINK
+// ═══════════════════════════════════════════════════════════════════════
+function copyPlayUrl(){
+  const url=location.origin+'/landing/play.html?brand='+(state.brandId||'');
+  navigator.clipboard.writeText(url).then(()=>{
+    showToast('Link copied! / 链接已复制');
+  }).catch(()=>{
+    // Fallback for older browsers
+    const ta=document.createElement('textarea');
+    ta.value=url;ta.style.position='fixed';ta.style.left='-9999px';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');showToast('Link copied! / 链接已复制');}catch(e){}
+    document.body.removeChild(ta);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GAME STORE — Smart Recommend Flow
+// ═══════════════════════════════════════════════════════════════════════
+let _buildProgressInterval = null;
+
+function initGameView() {
+  // Reset to step 1 on tab entry
+  document.getElementById('game-step-1').style.display = 'block';
+  document.getElementById('game-step-2').style.display = 'none';
+  document.getElementById('game-step-3').style.display = 'none';
+  document.getElementById('game-step-4').style.display = 'none';
+  document.getElementById('route-b-section').style.display = 'none';
+  loadMyGames();
+}
+
+async function loadMyGames() {
+  var section = document.getElementById('my-games-section');
+  var list = document.getElementById('my-games-list');
+
+  var games = [];
+  // Source 1: Completed orders from Redis
+  try {
+    var res = await apiFetch('/api/v1/game-catalog/orders/' + state.brandId);
+    if (res.ok) {
+      var data = await res.json();
+      (data.orders || []).forEach(function(o) {
+        if (o.status === 'completed' && o.game_file) {
+          games.push({name: o.game_name || o.game_slug, slug: o.game_slug, file: o.game_file});
+        }
+      });
+    }
+  } catch(e) {}
+
+  // Source 2: Brand config games
+  try {
+    if (state.brandConfig && state.brandConfig.config_json && state.brandConfig.config_json.games) {
+      state.brandConfig.config_json.games.forEach(function(g) {
+        var slug = g.game_id || g.slug;
+        var already = games.some(function(x) { return x.slug === slug; });
+        if (!already) games.push({name: g.name || slug, slug: slug, file: ''});
+      });
+    }
+  } catch(e) {}
+
+  if (!games.length) { section.style.display = 'none'; return; }
+
+  section.style.display = 'block';
+  list.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:12px">' +
+    games.map(function(g) {
+      var playBtn = g.file
+        ? '<button onclick="openGamePlayer()" style="margin-top:8px;padding:4px 16px;background:var(--green);color:var(--dark);border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer">▶ 立即玩</button>'
+        : '<span style="display:inline-block;margin-top:8px;padding:4px 12px;background:var(--border);color:var(--text-muted);border-radius:4px;font-size:11px">待生成</span>';
+      return '<div style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:180px">' +
+        '<div style="font-weight:700;font-size:14px;color:var(--green)">' + esc(g.name) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin:4px 0">' + esc(g.slug || '') + '</div>' +
+        playBtn +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+
+async function recommendGames() {
+  const desc = document.getElementById('business-description').value.trim();
+  if (!desc) { showToast('请描述您的业务 / Please describe your business', 'error'); return; }
+
+  const btn = document.getElementById('recommend-btn');
+  const loading = document.getElementById('recommend-loading');
+  btn.disabled = true;
+  loading.style.display = 'block';
+
+  try {
+    const res = await apiFetch('/api/v1/game-catalog/recommend', {
+      method: 'POST',
+      json: { business_description: desc, top_n: 10 }
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || '推荐失败 / Recommendation failed');
+    }
+
+    const data = await res.json();
+    renderRecommendations(data);
+
+    document.getElementById('game-step-1').style.display = 'none';
+    document.getElementById('game-step-2').style.display = 'block';
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderRecommendations(data) {
+  const games = Array.isArray(data) ? data : (data.recommendations || data.games || []);
+  const summary = data.summary || '';
+
+  const summaryEl = document.getElementById('recommend-summary');
+  summaryEl.textContent = summary || ('为您匹配了 ' + games.length + ' 款游戏');
+
+  const container = document.getElementById('game-recommendations');
+  if (!games.length) {
+    container.innerHTML = '<div class="empty-state"><p>未找到匹配的游戏，请尝试更详细的描述</p></div>';
+    return;
+  }
+
+  const dimLabels = { theme: '主题', model: '玩法', scenario: '场景', integration: '植入', accessibility: '易用' };
+
+  container.innerHTML = games.map(g => {
+    const dims = g.dimensions || {};
+    const dimBars = ['theme', 'model', 'scenario', 'integration', 'accessibility'].map(d => {
+      const val = (dims[d] || 0);
+      const pct = (val * 100).toFixed(0);
+      return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:3px">' +
+        '<span style="width:36px;color:var(--text-muted)">' + (dimLabels[d] || d) + '</span>' +
+        '<div style="flex:1;height:6px;background:var(--border-light);border-radius:3px;overflow:hidden">' +
+          '<div style="width:' + pct + '%;height:100%;background:var(--green);border-radius:3px"></div>' +
+        '</div>' +
+        '<span style="width:30px;text-align:right;color:var(--text-dim)">' + pct + '%</span>' +
+      '</div>';
+    }).join('');
+
+    const diffColors = { easy: 'var(--green)', medium: 'var(--warning)', hard: 'var(--danger)' };
+    const diffLabels = { easy: '易换皮', medium: '中等', hard: '困难' };
+    const diffColor = diffColors[g.reskin_difficulty] || 'var(--text-muted)';
+    const diffLabel = diffLabels[g.reskin_difficulty] || (g.reskin_difficulty || '--');
+
+    const score = g.score || 0;
+    const scorePct = (score * 100).toFixed(0);
+
+    const brandInteg = g.brand_integration
+      ? '<div style="font-size:12px;color:var(--text-dim);margin-top:8px;padding:8px 10px;background:var(--dark);border-radius:var(--radius-xs)">' +
+        '<span style="color:var(--text-muted)">品牌植入:</span> ' +
+        (Array.isArray(g.brand_integration) ? g.brand_integration.join(' &middot; ') : esc(String(g.brand_integration))) +
+        '</div>'
+      : '';
+
+    const safeName = esc(g.name || '').replace(/'/g, "\\'");
+    const safeSlug = esc(g.slug || '');
+
+    return '<div class="card" style="margin-bottom:12px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+        '<div>' +
+          '<div style="font-size:16px;font-weight:700">' + esc(g.name) + '</div>' +
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' + esc(g.slug) + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">' +
+          '<span style="background:' + diffColor + ';color:var(--dark);padding:2px 10px;border-radius:100px;font-size:11px;font-weight:600">' + diffLabel + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+        '<span style="font-size:13px;color:var(--text-dim)">匹配度</span>' +
+        '<div style="flex:1;height:8px;background:var(--border-light);border-radius:4px;overflow:hidden">' +
+          '<div style="width:' + scorePct + '%;height:100%;background:var(--green);border-radius:4px"></div>' +
+        '</div>' +
+        '<span style="font-size:14px;font-weight:700;color:var(--green)">' + scorePct + '%</span>' +
+      '</div>' +
+      (g.reason ? '<p style="margin:8px 0;font-size:13px;color:var(--text-dim)">' + esc(g.reason) + '</p>' : '') +
+      '<div style="margin:10px 0">' + dimBars + '</div>' +
+      brandInteg +
+      '<button class="btn btn-green" style="margin-top:12px" onclick="selectGame(\'' + safeSlug + '\',\'' + safeName + '\')">' +
+        '选择这个 / Select' +
+      '</button>' +
+    '</div>';
+  }).join('');
+
+  // Route B: "从零创造" entry at bottom of recommendations
+  container.innerHTML += '<div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+    '<p style="color:var(--text-dim);font-size:13px;margin-bottom:10px">没有合适的？</p>' +
+    '<button class="btn btn-outline" onclick="showCreateFromScratch()" style="border-color:var(--warning);color:var(--warning)">从零创造 / Create From Scratch</button>' +
+  '</div>';
+}
+
+async function selectGame(slug, name) {
+  const desc = document.getElementById('business-description').value.trim();
+
+  document.getElementById('game-step-2').style.display = 'none';
+  document.getElementById('game-step-3').style.display = 'block';
+  document.getElementById('building-game-name').textContent = name;
+
+  const progressBar = document.getElementById('build-progress-bar');
+  progressBar.style.width = '0%';
+  if (_buildProgressInterval) clearInterval(_buildProgressInterval);
+
+  try {
+    // Step 1: Enqueue order (returns immediately)
+    const res = await apiFetch('/api/v1/game-catalog/build-for-business', {
+      method: 'POST',
+      json: { business_description: desc, game_slug: slug }
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || '排队失败 / Enqueue failed');
+    }
+
+    const orderData = await res.json();
+    const orderId = orderData.order_id;
+
+    // Step 2: Poll until complete
+    let pollCount = 0;
+    const maxPolls = 240; // ~20 min at 5s intervals
+    _buildProgressInterval = setInterval(async () => {
+      pollCount++;
+      const pct = Math.min(90, pollCount * 2);
+      progressBar.style.width = pct + '%';
+
+      try {
+        const pollRes = await apiFetch('/api/v1/game-catalog/orders/' + state.brandId + '/' + orderId);
+        if (!pollRes.ok) return;
+        const statusData = await pollRes.json();
+
+        if (statusData.status === 'completed') {
+          clearInterval(_buildProgressInterval);
+          _buildProgressInterval = null;
+          progressBar.style.width = '100%';
+          await new Promise(r => setTimeout(r, 500));
+
+          // Store game info for "立即玩" link
+          window._lastGameSlug = statusData.game_slug || slug;
+          window._lastGameFile = statusData.game_file || '';
+
+          document.getElementById('game-step-3').style.display = 'none';
+          document.getElementById('game-step-4').style.display = 'block';
+          loadMyGames();
+          showToast(name + ' 品牌定制版已生成!');
+        } else if (statusData.status === 'failed') {
+          clearInterval(_buildProgressInterval);
+          _buildProgressInterval = null;
+          throw new Error(statusData.error || '生成失败');
+        } else if (statusData.status === 'building' || statusData.status === 'spec_ready') {
+          // Update progress text if available
+          if (statusData.game_name) {
+            document.getElementById('building-game-name').textContent = statusData.game_name;
+          }
+        }
+      } catch (pollErr) {
+        // Silently retry on poll errors
+      }
+
+      if (pollCount >= maxPolls) {
+        clearInterval(_buildProgressInterval);
+        _buildProgressInterval = null;
+        throw new Error('生成超时，请稍后查看订单状态');
+      }
+    }, 5000);
+
+  } catch (e) {
+    clearInterval(_buildProgressInterval);
+    _buildProgressInterval = null;
+    showToast(e.message, 'error');
+    document.getElementById('game-step-3').style.display = 'none';
+    document.getElementById('game-step-2').style.display = 'block';
+  }
+}
+
+function backToStep1() {
+  document.getElementById('game-step-2').style.display = 'none';
+  document.getElementById('game-step-4').style.display = 'none';
+  document.getElementById('game-step-1').style.display = 'block';
+}
+
+function playGeneratedGame() {
+  openGamePlayer();
+}
+
+// Game Player (iframe inside Portal)
+function openGamePlayer() {
+  var overlay = document.getElementById('game-player-overlay');
+  var iframe = document.getElementById('game-player-iframe');
+  document.getElementById('game-player-title').textContent = state.brandName || 'Game';
+  iframe.src = '/landing/play.html?brand=' + encodeURIComponent(state.brandId);
+  overlay.style.display = 'block';
+  // Listen for game end / close events from play.html
+  window.addEventListener('message', function onKixMsg(e) {
+    if (e.data && (e.data.type === 'kix_close_game' || e.data.type === 'kix_game_end')) {
+      setTimeout(closeGamePlayer, 1500);
+    }
+  });
+}
+
+function closeGamePlayer() {
+  var overlay = document.getElementById('game-player-overlay');
+  var iframe = document.getElementById('game-player-iframe');
+  iframe.src = '';
+  overlay.style.display = 'none';
+  // Refresh my games list
+  loadMyGames();
+}
+
+// Route B: show "从零创造" in recommendations
+function showCreateFromScratch() {
+  document.getElementById('game-step-2').style.display = 'none';
+  document.getElementById('route-b-section').style.display = 'block';
+}
+
+async function submitCustomOrder() {
+  var desc = document.getElementById('route-b-description').value.trim();
+  if (!desc) { showToast('请描述您想要的游戏', 'error'); return; }
+
+  var btn = document.getElementById('route-b-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '排队中...';
+
+  try {
+    var res = await apiFetch('/api/v1/game-catalog/order', {
+      method: 'POST',
+      json: { brand_id: state.brandId, description: desc }
+    });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || '下单失败');
+    var data = await res.json();
+    showToast('订单已提交 (#' + data.order_id + ')，预计15-30分钟完成');
+    document.getElementById('route-b-section').style.display = 'none';
+    document.getElementById('game-step-1').style.display = 'block';
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '提交 / Submit';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════
+function esc(s){
+  if(!s)return'';
+  const d=document.createElement('div');
+  d.textContent=String(s);
+  return d.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+(function init(){
+  // On init, if we have a token but no brandId, decode JWT to recover it
+  if(state.token&&!state.brandId){
+    try{
+      var autoB64 = state.token.split('.')[1];
+      while (autoB64.length % 4) autoB64 += '=';
+      var autoPayload = JSON.parse(atob(autoB64));
+      state.brandId=autoPayload.brand_id || '';
+      localStorage.setItem('kix_brand_id',state.brandId);
+    }catch(e){
+      state.brandId='';
+    }
+  }
+  if(!state.brandId)state.brandId='';
+
+  if(state.token){
+    showApp();
+  }else{
+    const hash=location.hash.replace('#','');
+    if(hash&&hash!=='login'){
+      // Not logged in, redirect to login
+      location.hash='#login';
+    }
+  }
+
+  // Handle browser back/forward
+  window.addEventListener('hashchange',()=>{
+    const hash=location.hash.replace('#','');
+    if(hash==='login'){
+      doLogout();
+      return;
+    }
+    if(!state.token){
+      location.hash='#login';
+      return;
+    }
+    const validViews=['dashboard','games','vouchers','qr','locations','settings'];
+    if(validViews.includes(hash)&&hash!==state.currentView){
+      navigate(hash);
+    }
+  });
+})();
+</script>
+</body>
+</html>

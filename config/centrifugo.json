@@ -1,0 +1,16 @@
+{
+  "token_hmac_secret_key": "${JWT_SECRET}",
+  "api_key": "${CENTRIFUGO_API_KEY}",
+  "admin": false,
+  "namespaces": [
+    {
+      "name": "leaderboard",
+      "presence": false,
+      "join_leave": false,
+      "history_size": 10,
+      "history_ttl": "300s"
+    }
+  ],
+  "allowed_origins": ["https://play.kix.app"],
+  "engine": "memory"
+}

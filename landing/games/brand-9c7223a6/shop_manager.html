@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店铺经营 - Shop Manager</title>
+    <script src="https://cdn.tailwindcss.com">        function getPieceEmoji(pieceType) { const emojis = ['⭐','💎','🔮','🌟','✨','💫']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+    <style>
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .product-item {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .product-item.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .customer {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .customer:hover {
+            transform: scale(1.1);
+        }
+        .shop-counter {
+            background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+            border-radius: 12px;
+            min-height: 80px;
+        }
+        .patience-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .patience-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}</style>
+<style>
+/* KiX Brand CSS — 鸡饭店 */
+:root {
+  --kix-brand: #FFA500;
+  --kix-accent: #8B4513;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #FFA500, #7f5200) !important;
+  --tw-gradient-from: #FFA500 !important;
+  --tw-gradient-to: #7f5200 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #FFA500 !important;
+  background: #FFA500 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #7f5200 !important;
+  background: #7f5200 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #FFA500 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen active">
+        <div class="flex flex-col items-center justify-center min-h-screen p-4">
+            <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">鸡饭店</h1>
+            <div class="space-y-4 w-full max-w-xs">
+                <button id="start-game-btn" class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg text-lg font-semibold">开始游戏</button>
+                <button id="achievements-btn" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg text-lg font-semibold">成就</button>
+                <button id="leaderboard-btn" class="w-full bg-green-600 text-white py-3 px-6 rounded-lg text-lg font-semibold">排行榜</button>
+                <button id="settings-btn" class="w-full bg-gray-600 text-white py-3 px-6 rounded-lg text-lg font-semibold">设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen (renamed from shop_floor) -->
+    <div id="game-screen" class="screen">
+        <div class="flex flex-col h-screen">
+            <!-- Status Bar -->
+            <div class="bg-white p-4 shadow-sm flex justify-between items-center">
+                <div class="flex space-x-4">
+                    <span id="money-display" class="text-green-600 font-bold">¥0</span>
+                    <span id="day-display" class="text-blue-600 font-bold">第1天</span>
+                    <span id="phase-display" class="text-purple-600 font-bold">营业中</span>
+                </div>
+                <button id="pause-btn" class="text-gray-600 text-xl">⏸</button>
+            </div>
+            
+            <!-- Shop Floor -->
+            <div class="flex-1 p-4">
+                <div id="shop-floor-content" class="h-full">
+                    <!-- Dynamic content populated by render() -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Upgrades Screen -->
+    <div id="shop-upgrades-screen" class="screen">
+        <div class="p-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">店铺升级</h2>
+                <button id="back-to-shop-btn" class="text-blue-600">返回</button>
+            </div>
+            <div id="upgrades-list" class="space-y-4">
+                <!-- Dynamic upgrade options -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Report Screen -->
+    <div id="daily-report-screen" class="screen">
+        <div class="p-4">
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-center">每日报告</h2>
+                <div id="daily-stats" class="space-y-3">
+                    <!-- Daily statistics -->
+                </div>
+                <button id="next-day-btn" class="w-full bg-purple-600 text-white py-3 rounded-lg mt-6">下一天</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Result Screen -->
+    <div id="game-result-screen" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg p-8 shadow-lg text-center">
+                <h2 id="result-title" class="text-3xl font-bold mb-4">游戏结束</h2>
+                <div id="final-stats" class="space-y-2 mb-6">
+                    <!-- Final game statistics -->
+                </div>
+                <div class="space-y-3">
+                    <button id="restart-btn" class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg">重新开始</button>
+                    <button id="home-btn" class="w-full bg-gray-600 text-white py-3 px-6 rounded-lg">返回主页</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Screen -->
+    <div id="achievements-screen" class="screen">
+        <div class="p-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">成就</h2>
+                <button id="achievements-back-btn" class="text-blue-600">返回</button>
+            </div>
+            <div id="achievements-list" class="space-y-3">
+                <!-- Achievement items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="screen">
+        <div class="p-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">设置</h2>
+                <button id="settings-back-btn" class="text-blue-600">返回</button>
+            </div>
+            <div id="settings-options" class="space-y-4">
+                <!-- Settings options -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="p-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">排行榜</h2>
+                <button id="leaderboard-back-btn" class="text-blue-600">返回</button>
+            </div>
+            <div id="leaderboard-list" class="space-y-3">
+                <!-- Leaderboard entries -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Pause Menu Screen -->
+    <div id="pause-menu-screen" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-black bg-opacity-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-xs">
+                <h2 class="text-2xl font-bold mb-6 text-center">暂停</h2>
+                <div class="space-y-3">
+                    <button id="resume-btn" class="w-full bg-green-600 text-white py-3 px-6 rounded-lg">继续游戏</button>
+                    <button id="upgrades-btn" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg">店铺升级</button>
+                    <button id="quit-btn" class="w-full bg-red-600 text-white py-3 px-6 rounded-lg">退出游戏</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div id="action-buttons" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
+        <div class="flex justify-center space-x-4">
+            <!-- Dynamic action buttons populated by render() -->
+        </div>
+    </div>
+
+    <script>
+        let gameState = {};
+        let gameLoop = null;
+        let gameTurnCounter = 0;
+        let maxGameTurns = 50;
+
+        /**
+         * @returns {object} Initial game state
+         */
+        function initState() { 
+            return {
+                screen: 'home',
+                phase: 'setup',
+                money: 100,
+                day: 1,
+                maxDays: 10,
+                reputation: 50,
+                customers: [],
+                products: [
+                    { id: 'coffee', name: '咖啡', price: 15, cost: 5, stock: 10, prepTime: 2 },
+                    { id: 'sandwich', name: '三明治', price: 25, cost: 8, stock: 8, prepTime: 3 },
+                    { id: 'cake', name: '蛋糕', price: 35, cost: 12, stock: 5, prepTime: 4 }
+                ],
+                upgrades: {
+                    faster_service: { name: '快速服务', price: 200, owned: false, effect: 'service_speed' },
+                    better_coffee: { name: '优质咖啡', price: 300, owned: false, effect: 'coffee_price' },
+                    larger_storage: { name: '扩大储存', price: 400, owned: false, effect: 'max_stock' }
+                },
+                achievements: {
+                    first_day: { name: '第一天', description: '完成第一天营业', unlocked: false },
+                    big_earner: { name: '赚钱高手', description: '单日收入超过500元', unlocked: false },
+                    customer_favorite: { name: '顾客最爱', description: '声誉达到80', unlocked: false }
+                },
+                dailyStats: {
+                    revenue: 0,
+                    customersServed: 0,
+                    productsSold: 0,
+                    expenses: 50
+                },
+                gameSettings: {
+                    sound: true,
+                    difficulty: 'normal'
+                },
+                selectedProduct: null,
+                selectedCustomer: null,
+                isPaused: false,
+                gameEnded: false,
+                finalScore: 0,
+                customerIdCounter: 0,
+                timeOfDay: 0,
+                totalEarnings: 0,
+                totalCustomersServed: 0
+            }; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @param {object} action Action object with type and other properties
+         * @returns {object} New game state
+         */
+        function handleAction(state, action) { 
+            switch (action.type) {
+                case 'NAVIGATE_TO_SCREEN':
+                    return { ...state, screen: action.screen };
+                    
+                case 'START_GAME':
+                    let newGameState = initState();
+                    newGameState.screen = 'game';
+                    newGameState.phase = 'serving';
+                    gameTurnCounter = 0;
+                    return generateCustomers(newGameState);
+                    
+                case 'SHOW_ACHIEVEMENTS':
+                    return { ...state, screen: 'achievements' };
+                    
+                case 'SHOW_LEADERBOARD':
+                    return { ...state, screen: 'leaderboard' };
+                    
+                case 'SHOW_SETTINGS':
+                    return { ...state, screen: 'settings' };
+                    
+                case 'PAUSE_GAME':
+                    return { ...state, screen: 'pause-menu', isPaused: true };
+                    
+                case 'RESUME_GAME':
+                    return { ...state, screen: 'game', isPaused: false };
+                    
+                case 'SHOW_UPGRADES':
+                    return { ...state, screen: 'shop-upgrades' };
+                    
+                case 'BACK_TO_SHOP':
+                    return { ...state, screen: 'game' };
+                    
+                case 'SELECT_CUSTOMER':
+                    return { ...state, selectedCustomer: action.customerId };
+                    
+                case 'SELECT_PRODUCT':
+                    return { ...state, selectedProduct: action.productId };
+                    
+                case 'SERVE_CUSTOMER':
+                    return serveCustomer(state, action.customerId, action.productId);
+                    
+                case 'SERVE_SELECTED':
+                    if (state.selectedCustomer && state.selectedProduct) {
+                        let updatedState = serveCustomer(state, state.selectedCustomer, state.selectedProduct);
+                        updatedState.selectedCustomer = null;
+                        updatedState.selectedProduct = null;
+                        return updatedState;
+                    }
+                    return state;
+                    
+                case 'PURCHASE_UPGRADE':
+                    return purchaseUpgrade(state, action.upgradeId);
+                    
+                case 'ADVANCE_DAY':
+                case 'NEXT_DAY':
+                    let nextDayState = advanceDay(state);
+                    nextDayState.screen = 'game';
+                    nextDayState.phase = 'serving';
+                    return generateCustomers(nextDayState);
+                    
+                case 'END_DAY':
+                    return { ...state, screen: 'daily-report', phase: 'day_end' };
+                    
+                case 'RESTART_GAME':
+                    let restartState = initState();
+                    restartState.screen = 'game';
+                    restartState.phase = 'serving';
+                    gameTurnCounter = 0;
+                    return generateCustomers(restartState);
+                    
+                case 'QUIT_GAME':
+                case 'GO_HOME':
+                    return { ...state, screen: 'home', isPaused: false };
+                    
+                case 'GENERATE_CUSTOMERS':
+                    return generateCustomers(state);
+                    
+                case 'UPDATE_CUSTOMERS':
+                    return updateCustomerPatience(state);
+                    
+                case 'RESTOCK':
+                    return restockProducts(state);
+                    
+                default:
+                    return state;
+            } 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function render(state) { 
+            // Hide action buttons by default
+            document.getElementById('action-buttons').style.display = 'none';
+            
+            // Show the appropriate screen
+            showScreen(state.screen);
+            
+            // Update status displays if on game screen
+            if (state.screen === 'game') {
+                document.getElementById('money-display').textContent = `¥${state.money}`;
+                document.getElementById('day-display').textContent = `第${state.day}天`;
+                document.getElementById('phase-display').textContent = getPhaseText(state.phase);
+                document.getElementById('action-buttons').style.display = 'block';
+                renderShopFloor(state);
+            } else if (state.screen === 'shop-upgrades') {
+                renderUpgrades(state);
+            } else if (state.screen === 'daily-report') {
+                renderDailyReport(state);
+            } else if (state.screen === 'game-result') {
+                renderGameResult(state);
+            } else if (state.screen === 'achievements') {
+                renderAchievements(state);
+            } else if (state.screen === 'settings') {
+                renderSettings(state);
+            } else if (state.screen === 'leaderboard') {
+                renderLeaderboard(state);
+            }
+        }
+
+        /**
+         * @param {string} phase Game phase
+         * @returns {string} Localized phase text
+         */
+        function getPhaseText(phase) {
+            switch (phase) {
+                case 'setup': return '准备中';
+                case 'serving': return '营业中';
+                case 'day_end': return '日终结算';
+                case 'game_over': return '游戏结束';
+                default: return '营业中';
+            }
+        }
+
+        /**
+         * @param {string} screenId Base screen ID (without '-screen' suffix)
+         * @returns {void}
+         */
+        function showScreen(screenId) { 
+            // Hide all screens first
+            let screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+
+            // Show the target screen
+            let targetScreen = document.getElementById(screenId + '-screen');
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            } 
+        }
+
+        /**
+         * @returns {void}
+         */
+        function startGame() { 
+            gameState = initState();
+render(gameState);
+
+            // Wire up all button event listeners
+            document.getElementById('start-game-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'START_GAME' });
+                render(gameState);
+                startGameLoop();
+            });
+
+            document.getElementById('achievements-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_ACHIEVEMENTS' });
+                render(gameState);
+            });
+
+            document.getElementById('leaderboard-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_LEADERBOARD' });
+                render(gameState);
+            });
+
+            document.getElementById('settings-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_SETTINGS' });
+                render(gameState);
+            });
+
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'PAUSE_GAME' });
+                render(gameState);
+            });
+
+            document.getElementById('back-to-shop-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'BACK_TO_SHOP' });
+                render(gameState);
+            });
+
+            document.getElementById('next-day-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'NEXT_DAY' });
+                render(gameState);
+            });
+
+            document.getElementById('restart-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'RESTART_GAME' });
+                render(gameState);
+                startGameLoop();
+            });
+
+            document.getElementById('home-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'GO_HOME' });
+                render(gameState);
+                stopGameLoop();
+            });
+
+            document.getElementById('achievements-back-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'GO_HOME' });
+                render(gameState);
+            });
+
+            document.getElementById('settings-back-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'GO_HOME' });
+                render(gameState);
+            });
+
+            document.getElementById('leaderboard-back-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'GO_HOME' });
+                render(gameState);
+            });
+
+            document.getElementById('resume-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'RESUME_GAME' });
+                render(gameState);
+            });
+
+            document.getElementById('upgrades-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_UPGRADES' });
+                render(gameState);
+            });
+
+            document.getElementById('quit-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'QUIT_GAME' });
+                render(gameState);
+                stopGameLoop();
+            });
+
+            render(gameState); 
+        }
+
+        /**
+         * Starts the main game loop
+         */
+        function startGameLoop() {
+            if (gameLoop) clearInterval(gameLoop);
+            
+            gameLoop = setInterval(() => {
+                if (gameState.screen === 'game' && !gameState.isPaused && !gameState.gameEnded) {
+                    gameTurnCounter++;
+                    
+                    // Update customers
+                    gameState = handleAction(gameState, { type: 'UPDATE_CUSTOMERS' });
+                    
+                    // Generate new customers occasionally
+                    if (Math.random() < 0.3) {
+                        gameState = handleAction(gameState, { type: 'GENERATE_CUSTOMERS' });
+                    }
+                    
+                    // Check if day should end (either by time or turn limit)
+                    if (gameState.timeOfDay >= 50 || gameTurnCounter >= maxGameTurns) {
+                        gameState = handleAction(gameState, { type: 'END_DAY' });
+                    }
+                    
+                    // Check if game should end
+                    if (checkGameEnd(gameState) || gameTurnCounter >= maxGameTurns) {
+                        gameState.screen = 'game-result';
+                        gameState.phase = 'game_over';
+                        gameState.gameEnded = true;
+                        gameState.finalScore = calculateScore(gameState);
+                        stopGameLoop();
+                    }
+                    
+                    render(gameState);
+                }
+            }, 1000);
+        }
+
+        /**
+         * Stops the main game loop
+         */
+        function stopGameLoop() {
+            if (gameLoop) {
+                clearInterval(gameLoop);
+                gameLoop = null;
+            }
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderShopFloor(state) { 
+            let shopContent = document.getElementById('shop-floor-content');
+            let content = '';
+
+            // Render shop counter
+            content += '<div class="shop-counter p-4 mb-4 text-white">';
+            content += '<h3 class="text-lg font-bold mb-2">店铺柜台</h3>';
+            content += '<div class="grid grid-cols-2 gap-4">';
+
+            // Render products
+            if (state.products && state.products.length > 0) {
+                state.products.forEach(product => {
+                    let isSelected = state.selectedProduct === product.id;
+                    let productClass = `product-item p-3 bg-white bg-opacity-20 rounded-lg cursor-pointer ${isSelected ? 'selected border-yellow-400' : ''}`;
+                    content += `<div class="${productClass}" onclick="selectProduct('${product.id}')">`;
+                    content += `<div class="text-sm font-semibold">${product.name}</div>`;
+                    content += `<div class="text-xs">¥${product.price}</div>`;
+                    content += `<div class="text-xs">库存: ${product.stock || 0}</div>`;
+                    content += `</div>`;
+                });
+            } else {
+                content += '<div class="col-span-2 text-center text-sm opacity-75">暂无商品</div>';
+            }
+
+            content += '</div></div>';
+
+            // Render customers area
+            content += '<div class="bg-white rounded-lg p-4">';
+            content += '<h3 class="text-lg font-bold mb-3">顾客区域</h3>';
+
+            if (state.customers && state.customers.length > 0) {
+                content += '<div class="grid grid-cols-3 gap-3">';
+                state.customers.forEach(customer => {
+                    let isSelected = state.selectedCustomer === customer.id;
+                    let customerClass = `customer ${customer.mood === 'happy' ? 'bg-green-200' : customer.mood === 'angry' ? 'bg-red-200' : 'bg-yellow-200'}`;
+                    if (isSelected) customerClass += ' ring-2 ring-blue-400';
+                    
+                    content += `<div class="text-center">`;
+                    content += `<div class="${customerClass}" onclick="selectCustomer('${customer.id}')" data-customer-id="${customer.id}">`;
+                    content += `<span class="text-lg">${customer.emoji || '👤'}</span>`;
+                    content += `</div>`;
+                    
+                    if (customer.wantedProduct) {
+                        content += `<div class="text-xs text-center mt-1">想要: ${getProductName(state, customer.wantedProduct)}</div>`;
+                    }
+                    
+                    // Patience bar
+                    let patiencePercent = Math.max(0, (customer.patience / customer.maxPatience) * 100);
+                    let patienceColor = patiencePercent > 60 ? 'bg-green-400' : patiencePercent > 30 ? 'bg-yellow-400' : 'bg-red-400';
+                    content += `<div class="patience-bar mt-1">`;
+                    content += `<div class="patience-fill ${patienceColor}" style="width: ${patiencePercent}%"></div>`;
+                    content += `</div>`;
+                    content += `</div>`;
+                });
+                content += '</div>';
+            } else {
+                content += '<div class="text-center text-gray-500">暂无顾客</div>';
+            }
+
+            content += '</div>';
+
+            shopContent.innerHTML = content;
+
+            // Render action buttons
+            let actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) {
+                let buttonsContent = '';
+                
+                if (state.selectedCustomer && state.selectedProduct) {
+                    buttonsContent += '<button onclick="serveSelected()" class="bg-green-600 text-white px-4 py-2 rounded-lg">服务顾客</button>';
+                }
+                
+                buttonsContent += '<button onclick="restockAll()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">补货</button>';
+                buttonsContent += '<button onclick="endDayEarly()" class="bg-orange-600 text-white px-4 py-2 rounded-lg">结束营业</button>';
+                
+                actionButtons.innerHTML = '<div class="flex justify-center space-x-4">' + buttonsContent + '</div>';
+            } 
+        }
+
+        /**
+         * Global helper functions for onclick handlers
+         */
+        function selectProduct(productId) {
+            gameState = handleAction(gameState, { type: 'SELECT_PRODUCT', productId: productId });
+            render(gameState);
+        }
+
+        function selectCustomer(customerId) {
+            gameState = handleAction(gameState, { type: 'SELECT_CUSTOMER', customerId: customerId });
+            render(gameState);
+        }
+
+        function serveSelected() {
+            gameState = handleAction(gameState, { type: 'SERVE_SELECTED' });
+            render(gameState);
+        }
+
+        function restockAll() {
+            gameState = handleAction(gameState, { type: 'RESTOCK' });
+            render(gameState);
+        }
+
+        function endDayEarly() {
+            gameState = handleAction(gameState, { type: 'END_DAY' });
+            render(gameState);
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @param {string} productId Product ID
+         * @returns {string} Product name
+         */
+        function getProductName(state, productId) {
+            let product = state.products.find(p => p.id === productId);
+            return product ? product.name : productId;
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderUpgrades(state) { 
+            let upgradesList = document.getElementById('upgrades-list');
+            upgradesList.innerHTML = '';
+
+            let upgrades = [
+                {
+                    id: 'faster_service',
+                    name: '提升服务速度',
+                    description: '更快地服务顾客',
+                    cost: 150,
+                    owned: state.upgrades && state.upgrades.faster_service && state.upgrades.faster_service.owned || false
+                },
+                {
+                    id: 'better_products',
+                    name: '优质商品',
+                    description: '商品价格更高',
+                    cost: 200,
+                    owned: state.upgrades && state.upgrades.better_products && state.upgrades.better_products.owned || false
+                },
+                {
+                    id: 'customer_patience',
+                    name: '顾客耐心',
+                    description: '顾客等待时间更长',
+                    cost: 120,
+                    owned: state.upgrades && state.upgrades.customer_patience && state.upgrades.customer_patience.owned || false
+                }
+            ];
+
+            upgrades.forEach(upgrade => {
+                let upgradeDiv = document.createElement('div');
+                upgradeDiv.className = 'bg-white p-4 rounded-lg shadow-sm border';
+                
+                let canAfford = state.money >= upgrade.cost;
+                let isOwned = upgrade.owned;
+                
+                upgradeDiv.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg">${upgrade.name}</h3>
+                            <p class="text-gray-600 text-sm mb-2">${upgrade.description}</p>
+                            <p class="text-green-600 font-bold">¥${upgrade.cost}</p>
+                        </div>
+                        <button 
+                            class="px-4 py-2 rounded-lg font-semibold ${
+                                isOwned ? 'bg-gray-300 text-gray-600 cursor-not-allowed' :
+                                canAfford ? 'bg-purple-600 text-white hover:bg-purple-700' :
+                                'bg-gray-300 text-gray-600 cursor-not-allowed'
+                            }"
+                            ${isOwned || !canAfford ? 'disabled' : ''}
+                            onclick="purchaseUpgradeClick('${upgrade.id}')"
+                        >
+                            ${isOwned ? '已拥有' : canAfford ? '购买' : '资金不足'}
+                        </button>
+                    </div>
+                `;
+                
+                upgradesList.appendChild(upgradeDiv);
+            }); 
+        }
+
+        function purchaseUpgradeClick(upgradeId) {
+            gameState = handleAction(gameState, { type: 'PURCHASE_UPGRADE', upgradeId: upgradeId });
+            render(gameState);
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderDailyReport(state) { 
+            let dailyStatsDiv = document.getElementById('daily-stats');
+            
+            // Calculate daily statistics
+            let todaysRevenue = state.dailyStats.revenue || 0;
+            let customersServed = state.dailyStats.customersServed || 0;
+            let totalExpenses = state.dailyStats.expenses || 50;
+            let profit = todaysRevenue - totalExpenses;
+            
+            // Display daily statistics
+            dailyStatsDiv.innerHTML = `
+                <div class="flex justify-between">
+                    <span>今日营业额:</span>
+                    <span class="text-green-600 font-bold">¥${todaysRevenue}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>服务客户:</span>
+                    <span class="text-blue-600 font-bold">${customersServed}人</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>日常开支:</span>
+                    <span class="text-red-600 font-bold">¥${totalExpenses}</span>
+                </div>
+                <div class="flex justify-between border-t pt-2">
+                    <span class="font-bold">今日利润:</span>
+                    <span class="font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">¥${profit}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>总资金:</span>
+                    <span class="text-purple-600 font-bold">¥${state.money}</span>
+                </div>
+            `; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderGameResult(state) { 
+            let finalScore = calculateScore(state);
+            let resultTitle = document.getElementById('result-title');
+            let finalStats = document.getElementById('final-stats');
+
+            // Set result title based on performance
+            if (finalScore >= 10000) {
+                resultTitle.textContent = '恭喜！经营大师！';
+                resultTitle.className = 'text-3xl font-bold mb-4 text-yellow-500';
+            } else if (finalScore >= 5000) {
+                resultTitle.textContent = '不错的成绩！';
+                resultTitle.className = 'text-3xl font-bold mb-4 text-green-500';
+            } else {
+                resultTitle.textContent = '继续努力！';
+                resultTitle.className = 'text-3xl font-bold mb-4 text-blue-500';
+            }
+
+            // Display final statistics
+            finalStats.innerHTML = `
+                <div class="text-lg space-y-2">
+                    <p><span class="font-semibold">最终得分:</span> ${finalScore}</p>
+                    <p><span class="font-semibold">总收入:</span> ¥${state.totalEarnings || 0}</p>
+                    <p><span class="font-semibold">经营天数:</span> ${state.day}</p>
+                    <p><span class="font-semibold">服务顾客:</span> ${state.totalCustomersServed || 0}人</p>
+                    <p><span class="font-semibold">最终资金:</span> ¥${state.money}</p>
+                </div>
+            `; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderAchievements(state) { 
+            // Get achievements list container
+            let achievementsList = document.getElementById('achievements-list');
+
+            // Define achievements structure
+            let achievements = [
+                {
+                    id: 'first_sale',
+                    title: '第一笔生意',
+                    description: '完成第一次销售',
+                    condition: (state) => state.totalCustomersServed > 0,
+                    icon: '💰'
+                },
+                {
+                    id: 'money_maker',
+                    title: '赚钱高手',
+                    description: '累计赚取¥1000',
+                    condition: (state) => state.totalEarnings >= 1000,
+                    icon: '💵'
+                },
+                {
+                    id: 'week_survivor',
+                    title: '一周生存',
+                    description: '坚持经营7天',
+                    condition: (state) => state.day >= 7,
+                    icon: '📅'
+                },
+                {
+                    id: 'customer_master',
+                    title: '客户达人',
+                    description: '服务100位客户',
+                    condition: (state) => state.totalCustomersServed >= 100,
+                    icon: '👥'
+                }
+            ];
+
+            // Clear existing content
+            achievementsList.innerHTML = '';
+
+            // Render each achievement
+            achievements.forEach(achievement => {
+                let isUnlocked = achievement.condition(state);
+                
+                let achievementDiv = document.createElement('div');
+                achievementDiv.className = `p-4 rounded-lg border-2 ${
+                    isUnlocked 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-gray-50 border-gray-200'
+                }`;
+                
+                achievementDiv.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="text-2xl ${isUnlocked ? '' : 'grayscale opacity-50'}">${achievement.icon}</div>
+                        <div class="flex-1">
+                            <h3 class="font-bold ${isUnlocked ? 'text-green-800' : 'text-gray-600'}">${achievement.title}</h3>
+                            <p class="text-sm ${isUnlocked ? 'text-green-600' : 'text-gray-500'}">${achievement.description}</p>
+                        </div>
+                        <div class="text-right">
+                            ${isUnlocked 
+                                ? '<span class="text-green-600 font-bold">✓ 已解锁</span>' 
+                                : '<span class="text-gray-400">未解锁</span>'
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                achievementsList.appendChild(achievementDiv);
+            });
+
+            // Show achievement statistics
+            let unlockedCount = achievements.filter(a => a.condition(state)).length;
+            let totalCount = achievements.length;
+
+            let statsDiv = document.createElement('div');
+            statsDiv.className = 'bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4';
+            statsDiv.innerHTML = `
+                <div class="text-center">
+                    <h3 class="font-bold text-blue-800 mb-2">成就进度</h3>
+                    <div class="text-2xl font-bold text-blue-600">${unlockedCount}/${totalCount}</div>
+                    <div class="w-full bg-blue-200 rounded-full h-2 mt-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${(unlockedCount / totalCount) * 100}%"></div>
+                    </div>
+                </div>
+            `;
+
+            achievementsList.insertBefore(statsDiv, achievementsList.firstChild); 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderSettings(state) { 
+            // Settings screen content
+            let settingsHTML = `
+                <div class="bg-white rounded-lg p-4 mb-4">
+                    <h3 class="text-lg font-semibold mb-3">音频设置</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span>音效</span>
+                            <button class="px-4 py-2 rounded bg-green-500 text-white">开启</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg p-4 mb-4">
+                    <h3 class="text-lg font-semibold mb-3">游戏设置</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span>难度</span>
+                            <select class="px-3 py-2 border rounded">
+                                <option value="easy">简单</option>
+                                <option value="normal" selected>普通</option>
+                                <option value="hard">困难</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg p-4">
+                    <h3 class="text-lg font-semibold mb-3">关于游戏</h3>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p>版本: 1.0.0</p>
+                        <p>开发者: Shop Manager Team</p>
+                        <p>© 2024 All rights reserved</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('settings-options').innerHTML = settingsHTML; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {void}
+         */
+        function renderLeaderboard(state) { 
+            let leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '<div class="text-center text-gray-500 py-8">暂无排行榜数据</div>'; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {object} Updated state after customer generation
+         */
+        function generateCustomers(state) { 
+            // Generate new customers based on time and shop reputation
+            let newState = { ...state };
+            
+            if (!newState.customers) {
+                newState.customers = [];
+            }
+            
+            // Don't generate customers if game is paused or not on game screen
+            if (newState.screen !== 'game' || newState.isPaused) {
+                return newState;
+            }
+            
+            // Generate customer if random check passes and not too many customers
+            if (Math.random() < 0.4 && newState.customers.length < 6) {
+                let customerEmojis = ['😊', '🤔', '😄', '🙂', '😐', '👨', '👩', '👴', '👵'];
+                let emoji = customerEmojis[Math.floor(Math.random() * customerEmojis.length)];
+                
+                let wantedProduct = newState.products[Math.floor(Math.random() * newState.products.length)].id;
+                
+                let customer = {
+                    id: 'customer_' + newState.customerIdCounter++,
+                    emoji: emoji,
+                    wantedProduct: wantedProduct,
+                    patience: 100,
+                    maxPatience: 100,
+                    mood: 'neutral'
+                };
+                
+                newState.customers.push(customer);
+            }
+            
+            return newState; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {object} Updated state after patience update
+         */
+        function updateCustomerPatience(state) {
+            let newState = { ...state };
+            
+            // Decrease patience for existing customers
+            for (let i = newState.customers.length - 1; i >= 0; i--) {
+                newState.customers[i].patience -= 5;
+                
+                // Update mood based on patience
+                if (newState.customers[i].patience > 60) {
+                    newState.customers[i].mood = 'happy';
+                } else if (newState.customers[i].patience > 30) {
+                    newState.customers[i].mood = 'neutral';
+                } else {
+                    newState.customers[i].mood = 'angry';
+                }
+                
+                // Remove customers who run out of patience
+                if (newState.customers[i].patience <= 0) {
+                    newState.customers.splice(i, 1);
+                    // Lose some reputation for unsatisfied customers
+                    newState.reputation = Math.max(0, newState.reputation - 5);
+                }
+            }
+            
+            // Advance time
+            newState.timeOfDay = (newState.timeOfDay || 0) + 1;
+            
+            return newState;
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @param {string} customerId Customer ID
+         * @param {string} productId Product ID
+         * @returns {object} Updated state after serving customer
+         */
+        function serveCustomer(state, customerId, productId) { 
+            // Find the customer and product
+            let customer = state.customers.find(c => c.id === customerId);
+            let product = state.products.find(p => p.id === productId);
+            
+            if (!customer || !product) {
+                return state;
+            }
+            
+            // Check if we have enough stock
+            if (product.stock <= 0) {
+                return state;
+            }
+            
+            let newState = { ...state };
+            
+            // Calculate success and earnings
+            let isCorrectOrder = customer.wantedProduct === productId;
+            let earnings = 0;
+            
+            if (isCorrectOrder) {
+                earnings = product.price;
+                newState.reputation = Math.min(100, newState.reputation + 2);
+                
+                // Bonus for fast service
+                if (customer.patience > 70) {
+                    earnings = Math.floor(earnings * 1.2);
+                }
+            } else {
+                // Wrong product - customer unhappy
+                newState.reputation = Math.max(0, newState.reputation - 5);
+            }
+            
+            // Remove customer and update product stock
+            newState.customers = newState.customers.filter(c => c.id !== customerId);
+            newState.products = newState.products.map(p => {
+                if (p.id === productId) {
+                    return { ...p, stock: p.stock - 1 };
+                }
+                return p;
+            });
+            
+            // Update money and stats
+            newState.money += earnings;
+            newState.dailyStats.revenue += earnings;
+            newState.dailyStats.customersServed += 1;
+            newState.totalEarnings = (newState.totalEarnings || 0) + earnings;
+            newState.totalCustomersServed = (newState.totalCustomersServed || 0) + 1;
+            
+            return newState; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @param {string} upgradeId Upgrade ID
+         * @returns {object} Updated state after purchasing upgrade
+         */
+        function purchaseUpgrade(state, upgradeId) { 
+            let upgradeCosts = {
+                'faster_service': 150,
+                'better_products': 200,
+                'customer_patience': 120
+            };
+            
+            let cost = upgradeCosts[upgradeId];
+            if (!cost || state.money < cost) {
+                return state;
+            }
+            
+            let newState = { ...state };
+            newState.money -= cost;
+            
+            if (!newState.upgrades[upgradeId]) {
+                newState.upgrades[upgradeId] = {};
+            }
+            newState.upgrades[upgradeId].owned = true;
+            
+            return newState; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {object} Updated state for next day
+         */
+        function advanceDay(state) { 
+            let newState = { ...state };
+
+            // Calculate daily profit
+            let dailyRevenue = newState.dailyStats.revenue;
+            let dailyExpenses = newState.dailyStats.expenses || 50;
+            let dailyProfit = dailyRevenue - dailyExpenses;
+
+            // Advance to next day
+            newState.day += 1;
+            newState.timeOfDay = 0;
+
+            // Reset daily statistics
+            newState.dailyStats = {
+                revenue: 0,
+                expenses: 50,
+                customersServed: 0,
+                productsSold: 0
+            };
+
+            // Clear customers for new day
+            newState.customers = [];
+            newState.selectedCustomer = null;
+            newState.selectedProduct = null;
+
+            return newState; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {object} Updated state after restocking
+         */
+        function restockProducts(state) {
+            let newState = { ...state };
+            let restockCost = 30;
+            
+            if (newState.money >= restockCost) {
+                newState.money -= restockCost;
+                newState.products = newState.products.map(p => ({
+                    ...p,
+                    stock: Math.min(20, p.stock + 10)
+                }));
+            }
+            
+            return newState;
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {boolean} True if game should end
+         */
+        function checkGameEnd(state) { 
+            // Check if the game should end based on various conditions
+            if (state.day >= state.maxDays) {
+                // Game ends after max days
+                return true;
+            }
+
+            if (state.money < -100) {
+                // Game ends if money goes too negative (bankruptcy)
+                return true;
+            }
+
+            if (gameTurnCounter >= maxGameTurns) {
+                // Game ends after max turns to prevent infinite loops
+                return true;
+            }
+
+            return false; 
+        }
+
+        /**
+         * @param {object} state Current game state
+         * @returns {number} Final score
+         */
+        function calculateScore(state) { 
+            // Base score from total money earned
+            let baseScore = state.money + (state.totalEarnings || 0);
+
+            // Bonus for days survived
+            let dayBonus = state.day * 100;
+
+            // Bonus for customer satisfaction
+            let satisfactionBonus = Math.floor((state.totalCustomersServed || 0) * 10);
+
+            // Final score calculation
+            let finalScore = baseScore + dayBonus + satisfactionBonus;
+
+            return Math.max(0, Math.floor(finalScore)); 
+        }
+
+        document.addEventListener('DOMContentLoaded', startGame);
+            function getPieceEmoji(pieceType) { const emojis = ['⭐','💎','🔮','🌟','✨','💫']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

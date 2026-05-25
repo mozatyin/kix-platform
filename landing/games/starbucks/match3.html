@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match-3 Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .hidden { display: none !important; }
+        
+        .game-piece {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .piece-selected { 
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+        }
+        
+        .grid-cell {
+            aspect-ratio: 1;
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+
+<style>
+/* KiX Brand Override — Starbucks */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+</style>
+</head>
+<body class="min-h-screen overflow-hidden" style="background:linear-gradient(135deg,#00704A,#1E3932)">
+    
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-4">
+            <div style="font-size:48px;margin-bottom:8px">☕</div>
+            <h1 class="text-4xl font-bold text-white mb-2 text-center">Starbucks</h1>
+            <p class="text-lg text-green-200 mb-8">Match & Collect</p>
+            <div class="space-y-4 w-full max-w-xs">
+                <button id="play-btn" class="w-full py-4 text-white text-xl font-bold rounded-xl shadow-lg" style="background:#00704A;border:2px solid #fff">PLAY</button>
+                <button id="levels-btn" class="w-full py-3 text-white text-lg font-semibold rounded-xl shadow-lg" style="background:#1E3932">LEVELS</button>
+                <button id="shop-btn" class="w-full py-3 text-white text-lg font-semibold rounded-xl shadow-lg" style="background:#1E3932">SHOP</button>
+                <button id="scores-btn" class="w-full py-3 text-white text-lg font-semibold rounded-xl shadow-lg" style="background:#1E3932">HIGH SCORES</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Select Screen -->
+    <div id="level_select-screen" class="screen">
+        <div class="p-4">
+            <button id="back-from-levels-btn" class="mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg">← Back</button>
+            <h2 class="text-3xl font-bold text-white text-center mb-6">Select Level</h2>
+            <div id="levels-grid" class="grid grid-cols-5 gap-3 max-w-md mx-auto"></div>
+        </div>
+    </div>
+
+    <!-- Gameplay Screen -->
+    <div id="gameplay-screen" class="screen">
+        <div class="flex flex-col h-screen">
+            <!-- Game Header -->
+            <div class="flex justify-between items-center p-4" style="background:rgba(0,0,0,0.3)">
+                <button id="pause-btn" class="px-3 py-2 text-white rounded" style="background:#1E3932">⏸</button>
+                <div class="text-white text-center">
+                    <div style="font-size:11px;opacity:0.7">☕ Starbucks Match</div>
+                    <div style="font-size:18px;font-weight:bold">Score: <span id="score-display">0</span></div>
+                    <div>Moves: <span id="moves-display">30</span></div>
+                </div>
+                <button id="settings-btn" class="px-3 py-2 text-white rounded" style="background:#1E3932">⚙</button>
+            </div>
+            
+            <!-- Game Board -->
+            <div class="flex-1 flex items-center justify-center p-4">
+                <div id="game-board" class="grid grid-cols-8 gap-1 p-2 rounded-xl shadow-xl max-w-sm mx-auto" style="background:rgba(255,255,255,0.9)"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pause Menu Screen -->
+    <div id="pause_menu-screen" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-black bg-opacity-50">
+            <div class="bg-white rounded-xl p-8 w-full max-w-xs text-center">
+                <h3 class="text-2xl font-bold mb-6">Game Paused</h3>
+                <div class="space-y-3">
+                    <button id="resume-btn" class="w-full py-3 bg-green-500 text-white rounded-lg">Resume</button>
+                    <button id="restart-btn" class="w-full py-3 bg-blue-500 text-white rounded-lg">Restart</button>
+                    <button id="quit-btn" class="w-full py-3 bg-red-500 text-white rounded-lg">Quit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="screen">
+        <div class="p-4">
+            <button id="back-from-settings-btn" class="mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg">← Back</button>
+            <h2 class="text-3xl font-bold text-white text-center mb-6">Settings</h2>
+            <div id="settings-content" class="bg-white rounded-xl p-4 max-w-md mx-auto"></div>
+        </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div id="shop-screen" class="screen">
+        <div class="p-4">
+            <button id="back-from-shop-btn" class="mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg">← Back</button>
+            <h2 class="text-3xl font-bold text-white text-center mb-6">Shop</h2>
+            <div id="shop-content" class="space-y-4 max-w-md mx-auto"></div>
+        </div>
+    </div>
+
+    <!-- Game Result Screen -->
+    <div id="game_result-screen" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-black bg-opacity-50">
+            <div class="bg-white rounded-xl p-8 w-full max-w-xs text-center">
+                <h3 id="result-title" class="text-3xl font-bold mb-4">Level Complete!</h3>
+                <div id="result-stats" class="mb-6 space-y-2"></div>
+                <div class="space-y-3">
+                    <button id="next-level-btn" class="w-full py-3 bg-green-500 text-white rounded-lg">Next Level</button>
+                    <button id="replay-btn" class="w-full py-3 bg-blue-500 text-white rounded-lg">Replay</button>
+                    <button id="home-btn" class="w-full py-3 bg-gray-500 text-white rounded-lg">Home</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- High Scores Screen -->
+    <div id="high_scores-screen" class="screen">
+        <div class="p-4">
+            <button id="back-from-scores-btn" class="mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg">← Back</button>
+            <h2 class="text-3xl font-bold text-white text-center mb-6">High Scores</h2>
+            <div id="scores-list" class="bg-white rounded-xl p-4 max-w-md mx-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        let gameState = null;
+
+        /** @returns {object} */
+        function initState() { return {
+        screen: 'home',
+        board: Array(8).fill(null).map(() => Array(8).fill(0)),
+        selectedCell: null,
+        score: 0,
+        moves: 30,
+        level: 1,
+        maxLevel: 20,
+        gameActive: false,
+        coins: 100,
+        powerups: {
+            bomb: 0,
+            shuffle: 0,
+            extraMoves: 0
+        },
+        settings: {
+            soundEnabled: true,
+            musicEnabled: true,
+            difficulty: 'normal'
+        },
+        highScores: [
+            { level: 1, score: 5000, moves: 25 },
+            { level: 2, score: 4500, moves: 28 },
+            { level: 3, score: 4000, moves: 30 }
+        ],
+        levelTargets: {
+            1: { targetScore: 1000, moves: 30 },
+            2: { targetScore: 1500, moves: 28 },
+            3: { targetScore: 2000, moves: 26 },
+            4: { targetScore: 2500, moves: 25 },
+            5: { targetScore: 3000, moves: 24 }
+        }
+    } }
+
+        /** @param {object} state @param {object} action @returns {object} */
+        function handleAction(state, action) { let newState = { ...state };
+
+switch (action.type) {
+    case 'navigate':
+        newState.screen = action.screen;
+        if (action.screen === 'gameplay') {
+            newState.board = generateBoard(newState);
+            newState.selectedCell = null;
+            newState.score = 0;
+            newState.moves = 30;
+            newState.gameOver = false;
+        }
+        break;
+
+    case 'select_level':
+        newState.level = action.level;
+        newState.screen = 'gameplay';
+        newState.board = generateBoard(newState);
+        newState.selectedCell = null;
+        newState.score = 0;
+        newState.moves = 30;
+        newState.gameOver = false;
+        break;
+
+    case 'cell_click':
+        if (newState.gameOver) break;
+        
+        if (!newState.selectedCell) {
+            newState.selectedCell = { row: action.row, col: action.col };
+        } else {
+            let { row: row1, col: col1 } = newState.selectedCell;
+            let { row: row2, col: col2 } = { row: action.row, col: action.col };
+            
+            if (row1 === row2 && col1 === col2) {
+                newState.selectedCell = null;
+            } else if (Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1) {
+                if (isValidSwap(newState, row1, col1, row2, col2)) {
+                    let swappedState = swapPieces(newState, row1, col1, row2, col2);
+                    newState.board = swappedState.board;
+                    newState.moves = Math.max(0, newState.moves - 1);
+                    
+                    let allMatches = [];
+                    for (let r = 0; r < 8; r++) {
+                        for (let c = 0; c < 8; c++) {
+                            let matches = findMatches(newState, r, c);
+                            if (matches.length >= 3) {
+                                allMatches.push(...matches);
+                            }
+                        }
+                    }
+                    
+                    if (allMatches.length > 0) {
+                        let uniqueMatches = [];
+                        let seen = new Set();
+                        for (let match of allMatches) {
+                            let key = `${match[0]},${match[1]}`;
+                            if (!seen.has(key)) {
+                                seen.add(key);
+                                uniqueMatches.push(match);
+                            }
+                        }
+                        
+                        let removedState = removeMatches(newState, uniqueMatches);
+                        newState.board = removedState.board;
+                        newState.score += uniqueMatches.length * 10;
+                        
+                        let droppedState = dropPieces(newState);
+                        newState.board = droppedState.board;
+                        
+                        let filledState = fillEmpty(newState);
+                        newState.board = filledState.board;
+                    }
+                }
+                newState.selectedCell = null;
+            } else {
+                newState.selectedCell = { row: action.row, col: action.col };
+            }
+        }
+        
+        if (checkGameOver(newState)) {
+            newState.gameOver = true;
+            newState.screen = 'game_result';
+        } else if (checkLevelComplete(newState)) {
+            newState.screen = 'game_result';
+        }
+        break;
+
+    case 'pause':
+        newState.screen = 'pause_menu';
+        break;
+
+    case 'resume':
+        newState.screen = 'gameplay';
+        break;
+
+    case 'restart':
+        newState.board = generateBoard(newState);
+        newState.selectedCell = null;
+        newState.score = 0;
+        newState.moves = 30;
+        newState.gameOver = false;
+        newState.screen = 'gameplay';
+        break;
+
+    case 'quit':
+        newState.screen = 'home';
+        break;
+
+    case 'next_level':
+        newState.level++;
+        newState.board = generateBoard(newState);
+        newState.selectedCell = null;
+        newState.score = 0;
+        newState.moves = 30;
+        newState.gameOver = false;
+        newState.screen = 'gameplay';
+        break;
+
+    case 'replay':
+        newState.board = generateBoard(newState);
+        newState.selectedCell = null;
+        newState.score = 0;
+        newState.moves = 30;
+        newState.gameOver = false;
+        newState.screen = 'gameplay';
+        break;
+
+    case 'buy_item':
+        if (newState.coins >= action.cost) {
+            newState.coins -= action.cost;
+            if (!newState.inventory) newState.inventory = [];
+            newState.inventory.push(action.item);
+        }
+        break;
+
+    case 'toggle_sound':
+        newState.soundEnabled = !newState.soundEnabled;
+        break;
+
+    case 'toggle_music':
+        newState.musicEnabled = !newState.musicEnabled;
+        break;
+
+    default:
+        break;
+}
+
+return newState; }
+
+        /** @param {object} state @returns {void} */
+        function render(state) { showScreen(state.screen);
+
+    // Update score and moves display
+    let scoreEl = document.getElementById('score-display');
+    let movesEl = document.getElementById('moves-display');
+    if (scoreEl) scoreEl.textContent = state.score;
+    if (movesEl) movesEl.textContent = state.moves;
+
+    // Render game board if on gameplay screen
+    if (state.screen === 'gameplay') {
+        renderBoard(state);
+    }
+
+    // Render level select if on level select screen
+    if (state.screen === 'level_select') {
+        renderLevelSelect(state);
+    }
+
+    // Render shop if on shop screen
+    if (state.screen === 'shop') {
+        renderShop(state);
+    }
+
+    // Render high scores if on high scores screen
+    if (state.screen === 'high_scores') {
+        renderHighScores(state);
+    }
+
+    // Render settings if on settings screen
+    if (state.screen === 'settings') {
+        renderSettings(state);
+    }
+
+    // Render game result screen
+    if (state.screen === 'game_result') {
+        let titleEl = document.getElementById('result-title');
+        let statsEl = document.getElementById('result-stats');
+        let nextBtnEl = document.getElementById('next-level-btn');
+        
+        if (titleEl) {
+            titleEl.textContent = state.gameWon ? 'Level Complete!' : 'Game Over';
+        }
+        
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <div>Score: ${state.score}</div>
+                <div>Level: ${state.level}</div>
+            `;
+        }
+        
+        if (nextBtnEl) {
+            nextBtnEl.style.display = state.gameWon ? 'block' : 'none';
+        }
+    } }
+
+        /** @param {string} screenId @returns {void} */
+        function showScreen(screenId) { // Hide all screens first
+let screens = document.querySelectorAll('.screen');
+screens.forEach(screen => screen.classList.remove('active'));
+
+// Show the requested screen
+let targetScreen = document.getElementById(screenId + '-screen');
+if (targetScreen) {
+    targetScreen.classList.add('active');
+} }
+
+        /** @returns {void} */
+        function startGame() { gameState = initState();
+render(gameState);
+
+// Home screen buttons
+document.getElementById('play-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'gameplay'});
+    render(gameState);
+});
+
+document.getElementById('levels-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'level_select'});
+    render(gameState);
+});
+
+document.getElementById('shop-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'shop'});
+    render(gameState);
+});
+
+document.getElementById('scores-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'high_scores'});
+    render(gameState);
+});
+
+// Level select screen
+document.getElementById('back-from-levels-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'home'});
+    render(gameState);
+});
+
+// Gameplay screen
+document.getElementById('pause-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'pause'});
+    render(gameState);
+});
+
+document.getElementById('settings-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'settings'});
+    render(gameState);
+});
+
+// Pause menu screen
+document.getElementById('resume-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'resume'});
+    render(gameState);
+});
+
+document.getElementById('restart-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'restart'});
+    render(gameState);
+});
+
+document.getElementById('quit-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'quit'});
+    render(gameState);
+});
+
+// Settings screen
+document.getElementById('back-from-settings-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'gameplay'});
+    render(gameState);
+});
+
+// Shop screen
+document.getElementById('back-from-shop-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'home'});
+    render(gameState);
+});
+
+// Game result screen
+document.getElementById('next-level-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'next_level'});
+    render(gameState);
+});
+
+document.getElementById('replay-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'replay'});
+    render(gameState);
+});
+
+document.getElementById('home-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'quit'});
+    render(gameState);
+});
+
+// High scores screen
+document.getElementById('back-from-scores-btn').addEventListener('click', () => {
+    gameState = handleAction(gameState, {type: 'navigate', screen: 'home'});
+    render(gameState);
+}); }
+
+        /** @param {object} state @returns {void} */
+        function renderBoard(state) { let board = gameState.board;
+    let boardElement = document.getElementById('game-board');
+    
+    if (!boardElement || !board) return;
+    
+    boardElement.innerHTML = '';
+    
+    for (let row = 0; row < board.length; row++) {
+        for (let col = 0; col < board[row].length; col++) {
+            let cellDiv = document.createElement('div');
+            cellDiv.className = 'grid-cell flex items-center justify-center';
+            
+            let pieceType = board[row][col];
+            if (pieceType > 0) {
+                let pieceDiv = document.createElement('div');
+                pieceDiv.className = 'game-piece';
+                pieceDiv.textContent = getPieceEmoji(pieceType);
+                
+                if (state.selectedCell && state.selectedCell.row === row && state.selectedCell.col === col) {
+                    pieceDiv.classList.add('piece-selected');
+                }
+                
+                pieceDiv.addEventListener('click', () => handleBoardClick(row, col));
+                cellDiv.appendChild(pieceDiv);
+            }
+            
+            boardElement.appendChild(cellDiv);
+        }
+    } }
+
+        /** @param {number} row @param {number} col @returns {void} */
+        function handleBoardClick(row, col) {
+    if (!gameState.board || gameState.gameOver) return;
+    if (row < 0 || row >= 8 || col < 0 || col >= 8) return;
+    gameState = handleAction(gameState, {type: 'cell_click', row: row, col: col});
+    render(gameState);
+}
+
+        /** @param {object} state @returns {Array<Array<number>>} */
+        function generateBoard(state) { let board = [];
+    let rows = 8;
+    let cols = 8;
+    
+    for (let row = 0; row < rows; row++) {
+        board[row] = [];
+        for (let col = 0; col < cols; col++) {
+            let pieceType;
+            let attempts = 0;
+            let maxAttempts = 10;
+            
+            do {
+                pieceType = getRandomPieceType();
+                attempts++;
+            } while (attempts < maxAttempts && wouldCreateMatch(board, row, col, pieceType));
+            
+            board[row][col] = pieceType;
+        }
+    }
+    
+    function wouldCreateMatch(board, row, col, pieceType) {
+        // Check horizontal match (3 in a row)
+        if (col >= 2 && 
+            board[row][col-1] === pieceType && 
+            board[row][col-2] === pieceType) {
+            return true;
+        }
+        
+        // Check vertical match (3 in a row)
+        if (row >= 2 && 
+            board[row-1] && board[row-2] &&
+            board[row-1][col] === pieceType && 
+            board[row-2][col] === pieceType) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    return board; }
+
+        /** @param {object} state @param {number} row @param {number} col @returns {Array<[number,number]>} */
+        function findMatches(state, row, col) { // Find all connected matches starting from the given position
+if (state.board[row][col] === 0) return []; // Empty cell has no matches
+
+let pieceType = state.board[row][col];
+let matches = [];
+let visited = Array(8).fill().map(() => Array(8).fill(false));
+
+// Check horizontal matches
+let horizontalMatches = [[row, col]];
+visited[row][col] = true;
+
+// Check left
+for (let c = col - 1; c >= 0; c--) {
+    if (state.board[row][c] === pieceType) {
+        horizontalMatches.push([row, c]);
+        visited[row][c] = true;
+    } else {
+        break;
+    }
+}
+
+// Check right
+for (let c = col + 1; c < 8; c++) {
+    if (state.board[row][c] === pieceType) {
+        horizontalMatches.push([row, c]);
+        visited[row][c] = true;
+    } else {
+        break;
+    }
+}
+
+// Add horizontal matches if 3 or more
+if (horizontalMatches.length >= 3) {
+    matches = matches.concat(horizontalMatches);
+}
+
+// Reset visited for vertical check
+visited = Array(8).fill().map(() => Array(8).fill(false));
+
+// Check vertical matches
+let verticalMatches = [[row, col]];
+visited[row][col] = true;
+
+// Check up
+for (let r = row - 1; r >= 0; r--) {
+    if (state.board[r][col] === pieceType) {
+        verticalMatches.push([r, col]);
+        visited[r][col] = true;
+    } else {
+        break;
+    }
+}
+
+// Check down
+for (let r = row + 1; r < 8; r++) {
+    if (state.board[r][col] === pieceType) {
+        verticalMatches.push([r, col]);
+        visited[r][col] = true;
+    } else {
+        break;
+    }
+}
+
+// Add vertical matches if 3 or more
+if (verticalMatches.length >= 3) {
+    matches = matches.concat(verticalMatches);
+}
+
+// Remove duplicates (the center piece might be in both horizontal and vertical)
+let uniqueMatches = [];
+for (let match of matches) {
+    let isDuplicate = false;
+    for (let unique of uniqueMatches) {
+        if (unique[0] === match[0] && unique[1] === match[1]) {
+            isDuplicate = true;
+            break;
+        }
+    }
+    if (!isDuplicate) {
+        uniqueMatches.push(match);
+    }
+}
+
+return uniqueMatches; }
+
+        /** @param {object} state @param {Array<[number,number]>} matches @returns {object} */
+        function removeMatches(state, matches) { let newState = { ...state };
+    let newBoard = state.board.map(row => [...row]);
+    let newScore = state.score;
+    
+    // Remove matched pieces and calculate score
+    for (let match of matches) {
+        var [row, col] = match;
+        newBoard[row][col] = 0; // 0 represents empty cell
+        newScore += 10; // Points per piece matched
+    }
+    
+    newState.board = newBoard;
+    newState.score = newScore;
+    
+    return newState; }
+
+        /** @param {object} state @returns {object} */
+        function dropPieces(state) { let newBoard = state.board.map(row => [...row]);
+    let piecesDropped = false;
+    
+    // Process each column from bottom to top
+    for (let col = 0; col < newBoard[0].length; col++) {
+        let writePos = newBoard.length - 1;
+        
+        // Move all non-zero pieces down
+        for (let row = newBoard.length - 1; row >= 0; row--) {
+            if (newBoard[row][col] !== 0) {
+                if (row !== writePos) {
+                    newBoard[writePos][col] = newBoard[row][col];
+                    newBoard[row][col] = 0;
+                    piecesDropped = true;
+                }
+                writePos--;
+            }
+        }
+    }
+    
+    return { ...state, board: newBoard }; }
+
+        /** @param {object} state @returns {object} */
+        function fillEmpty(state) { let newState = { ...state };
+    let board = newState.board.map(row => [...row]);
+    let changed = false;
+
+    // Fill empty cells (0) from top to bottom
+    for (let col = 0; col < board[0].length; col++) {
+        for (let row = board.length - 1; row >= 0; row--) {
+            if (board[row][col] === 0) {
+                board[row][col] = getRandomPieceType();
+                changed = true;
+            }
+        }
+    }
+
+    newState.board = board;
+    return newState; }
+
+        /** @param {object} state @param {number} row1 @param {number} col1 @param {number} row2 @param {number} col2 @returns {boolean} */
+        function isValidSwap(state, row1, col1, row2, col2) { // Check if two adjacent cells can be swapped
+if (Math.abs(row1 - row2) + Math.abs(col1 - col2) !== 1) {
+    return false;
+}
+
+// Check bounds
+if (row1 < 0 || row1 >= 8 || col1 < 0 || col1 >= 8 ||
+    row2 < 0 || row2 >= 8 || col2 < 0 || col2 >= 8) {
+    return false;
+}
+
+// Create a temporary board with swapped pieces
+let tempBoard = state.board.map(row => [...row]);
+let temp = tempBoard[row1][col1];
+tempBoard[row1][col1] = tempBoard[row2][col2];
+tempBoard[row2][col2] = temp;
+
+// Create temporary state
+let tempState = { ...state, board: tempBoard };
+
+// Check if either position creates matches
+let matches1 = findMatches(tempState, row1, col1);
+let matches2 = findMatches(tempState, row2, col2);
+
+return matches1.length > 0 || matches2.length > 0; }
+
+        /** @param {object} state @param {number} row1 @param {number} col1 @param {number} row2 @param {number} col2 @returns {object} */
+        function swapPieces(state, row1, col1, row2, col2) { let newBoard = state.board.map(row => [...row]);
+    
+    // Swap the pieces
+    let temp = newBoard[row1][col1];
+    newBoard[row1][col1] = newBoard[row2][col2];
+    newBoard[row2][col2] = temp;
+    
+    return {
+        ...state,
+        board: newBoard
+    }; }
+
+        /** @param {object} state @returns {boolean} */
+        function checkGameOver(state) {
+if (state.moves <= 0) {
+    return true;
+}
+
+for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+        if (col < 7) {
+            if (isValidSwap(state, row, col, row, col + 1)) {
+                return false;
+            }
+        }
+        if (row < 7) {
+            if (isValidSwap(state, row, col, row + 1, col)) {
+                return false;
+            }
+        }
+    }
+}
+
+return true; }
+
+        /** @param {object} state @returns {boolean} */
+        function checkLevelComplete(state) {
+let target = state.levelTargets && state.levelTargets[state.level];
+if (target && target.targetScore && state.score >= target.targetScore) {
+    return true;
+}
+return false; }
+
+        /** @param {object} state @returns {void} */
+        function renderLevelSelect(state) { let levelsGrid = document.getElementById('levels-grid');
+levelsGrid.innerHTML = '';
+
+// Create 20 levels for now
+for (let i = 1; i <= 20; i++) {
+    let levelBtn = document.createElement('button');
+    levelBtn.className = 'w-full aspect-square bg-blue-500 text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition-colors';
+    levelBtn.textContent = i.toString();
+    
+    // Check if level is unlocked (for now, unlock first 5 levels)
+    if (i > 5 && (!state.unlockedLevels || !state.unlockedLevels.includes(i))) {
+        levelBtn.className = 'w-full aspect-square bg-gray-400 text-gray-600 font-bold rounded-lg shadow-lg cursor-not-allowed';
+        levelBtn.disabled = true;
+        levelBtn.textContent = '🔒';
+    }
+    
+    levelBtn.addEventListener('click', () => {
+        if (!levelBtn.disabled) {
+            gameState = handleAction(gameState, { type: 'SELECT_LEVEL', level: i });
+            render(gameState);
+        }
+    });
+    
+    levelsGrid.appendChild(levelBtn);
+} }
+
+        /** @param {object} state @returns {void} */
+        function renderShop(state) { let shopContent = document.getElementById('shop-content');
+    if (!shopContent) return;
+    
+    let html = '';
+    
+    // Display current coins
+    html += `<div class="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4 mb-4">
+        <div class="text-center">
+            <div class="text-2xl font-bold text-yellow-600">💰 ${state.coins || 0} Coins</div>
+        </div>
+    </div>`;
+    
+    // Shop items
+    let shopItems = [
+        {
+            id: 'extra_moves',
+            name: 'Extra Moves +5',
+            description: 'Add 5 extra moves to your current game',
+            price: 100,
+            icon: '🎯'
+        },
+        {
+            id: 'bomb_power',
+            name: 'Bomb Power-up',
+            description: 'Clear a 3x3 area around selected piece',
+            price: 150,
+            icon: '💣'
+        },
+        {
+            id: 'color_clear',
+            name: 'Color Clear',
+            description: 'Remove all pieces of one color',
+            price: 200,
+            icon: '🌈'
+        },
+        {
+            id: 'shuffle_board',
+            name: 'Shuffle Board',
+            description: 'Rearrange all pieces on the board',
+            price: 75,
+            icon: '🔄'
+        }
+    ];
+    
+    shopItems.forEach(item => {
+        let canAfford = (state.coins || 0) >= item.price;
+        html += `
+            <div class="bg-white border-2 ${canAfford ? 'border-green-300' : 'border-gray-300'} rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-2">
+                            <span class="text-2xl mr-2">${item.icon}</span>
+                            <h3 class="text-lg font-bold">${item.name}</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">${item.description}</p>
+                        <div class="text-lg font-bold text-yellow-600">💰 ${item.price}</div>
+                    </div>
+                    <button 
+                        id="buy-${item.id}" 
+                        class="ml-4 px-4 py-2 ${canAfford ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'} text-white rounded-lg font-semibold ${!canAfford ? 'cursor-not-allowed' : ''}"
+                        ${!canAfford ? 'disabled' : ''}
+                    >
+                        ${canAfford ? 'BUY' : 'NO FUNDS'}
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    shopContent.innerHTML = html;
+    
+    // Add event listeners for buy buttons
+    shopItems.forEach(item => {
+        let buyBtn = document.getElementById(`buy-${item.id}`);
+        if (buyBtn && !buyBtn.disabled) {
+            buyBtn.addEventListener('click', () => {
+                gameState = handleAction(gameState, {
+                    type: 'BUY_ITEM',
+                    itemId: item.id,
+                    price: item.price
+                });
+                render(gameState);
+            });
+        }
+    }); }
+
+        /** @param {object} state @returns {void} */
+        function renderHighScores(state) { let scoresList = document.getElementById('scores-list');
+    let scoresData = state.highScores || [];
+    
+    if (scoresData.length === 0) {
+        scoresList.innerHTML = '<p class="text-center text-gray-500">No high scores yet!</p>';
+        return;
+    }
+    
+    let html = '<div class="space-y-2">';
+    scoresData.forEach((score, index) => {
+        html += `
+            <div class="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
+                <span class="font-semibold">#${index + 1}</span>
+                <span class="text-lg">${score.score}</span>
+                <span class="text-sm text-gray-600">Level ${score.level}</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    scoresList.innerHTML = html; }
+
+        /** @param {object} state @returns {void} */
+        function renderSettings(state) { let settingsContent = document.getElementById('settings-content');
+    
+    settingsContent.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex justify-between items-center p-3 border-b">
+                <span class="font-semibold">Sound Effects</span>
+                <input type="checkbox" id="sound-toggle" ${state.settings.soundEnabled ? 'checked' : ''} class="w-6 h-6">
+            </div>
+            <div class="flex justify-between items-center p-3 border-b">
+                <span class="font-semibold">Music</span>
+                <input type="checkbox" id="music-toggle" ${state.settings.musicEnabled ? 'checked' : ''} class="w-6 h-6">
+            </div>
+            <div class="flex justify-between items-center p-3 border-b">
+                <span class="font-semibold">Animations</span>
+                <input type="checkbox" id="animations-toggle" ${state.settings.animationsEnabled ? 'checked' : ''} class="w-6 h-6">
+            </div>
+            <div class="flex justify-between items-center p-3 border-b">
+                <span class="font-semibold">Difficulty</span>
+                <select id="difficulty-select" class="px-3 py-1 border rounded">
+                    <option value="easy" ${state.settings.difficulty === 'easy' ? 'selected' : ''}>Easy</option>
+                    <option value="medium" ${state.settings.difficulty === 'medium' ? 'selected' : ''}>Medium</option>
+                    <option value="hard" ${state.settings.difficulty === 'hard' ? 'selected' : ''}>Hard</option>
+                </select>
+            </div>
+            <button id="reset-progress-btn" class="w-full py-3 bg-red-500 text-white rounded-lg">Reset Progress</button>
+        </div>
+    `; }
+
+        /** @param {number} pieceType @returns {string} */
+        function getPieceClass(pieceType) { return ''; }
+        function getPieceEmoji(pieceType) { const emojis = ['☕','🧁','🍪','🫘','🍵','🥐'];
+return emojis[pieceType - 1] || '☕'; }
+
+        /** @returns {number} */
+        function getRandomPieceType() { return Math.floor(Math.random() * 6) + 1; }
+
+        document.addEventListener('DOMContentLoaded', startGame);
+    </script>
+
+</body>
+</html>

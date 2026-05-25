@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX Platform — 让每个顾客都成为每日玩家</title>
+<meta name="description" content="KiX 游戏化平台，15 个互动模块，零摩擦身份系统，AI 驱动游戏，完整商业闭环。48 小时上线。">
+<meta property="og:title" content="KiX — 自我造血的游戏化平台">
+<meta property="og:description" content="15 个即插即用互动模块。影子身份零摩擦。能量-优惠券商业闭环。48 小时上线。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#00FC00;
+  --green-dim:#00cc00;
+  --dark:#0a0a0a;
+  --dark-2:#111;
+  --dark-3:#1a1a1a;
+  --gray-1:#86868b;
+  --gray-2:#6e6e73;
+  --gray-3:#f5f5f7;
+  --gray-4:#d2d2d7;
+  --white:#fff;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --max:1200px;
+  --radius:16px;
+}
+/* Language toggle */
+.lang-cn .en{display:none}
+.lang-en .cn{display:none}
+.lang-switch{display:inline-flex;align-items:center;gap:0;background:rgba(255,255,255,.08);border-radius:100px;padding:2px;border:1px solid rgba(255,255,255,.1)}
+.lang-switch button{background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;padding:6px 14px;border-radius:100px;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.lang-switch button.active{background:var(--green);color:var(--dark)}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);color:var(--dark);line-height:1.6;overflow-x:hidden;background:var(--white)}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+.container{max-width:var(--max);margin:0 auto;padding:0 24px}
+
+/* Reveal animation */
+.reveal{opacity:0;transform:translateY(32px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+.reveal-delay-4{transition-delay:.4s}
+
+/* ─── HEADER ─── */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(10,10,10,.85);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  transition:background .3s
+}
+header .inner{
+  display:flex;align-items:center;justify-content:space-between;
+  height:64px;max-width:var(--max);margin:0 auto;padding:0 24px
+}
+.logo{font-size:24px;font-weight:800;color:var(--white);letter-spacing:-1px}
+.logo span{color:var(--green)}
+nav{display:flex;align-items:center;gap:32px}
+nav a{color:rgba(255,255,255,.7);font-size:14px;font-weight:500;transition:color .2s}
+nav a:hover{color:var(--white)}
+.nav-cta{
+  background:var(--green);color:var(--dark);
+  padding:8px 20px;border-radius:100px;font-weight:600;font-size:14px;
+  transition:transform .2s,box-shadow .2s
+}
+.nav-cta:hover{transform:scale(1.04);box-shadow:0 0 24px rgba(0,252,0,.3);color:var(--dark)}
+.menu-btn{display:none;background:none;border:none;cursor:pointer}
+.menu-btn svg{stroke:var(--white);width:24px;height:24px}
+
+/* ─── HERO ─── */
+.hero{
+  min-height:100vh;display:flex;align-items:center;
+  background:var(--dark);position:relative;overflow:hidden;
+  padding:120px 0 80px
+}
+.hero::before{
+  content:'';position:absolute;
+  width:600px;height:600px;
+  background:radial-gradient(circle,rgba(0,252,0,.08) 0%,transparent 70%);
+  top:-100px;right:-100px;pointer-events:none
+}
+.hero::after{
+  content:'';position:absolute;
+  width:400px;height:400px;
+  background:radial-gradient(circle,rgba(0,252,0,.05) 0%,transparent 70%);
+  bottom:-50px;left:-50px;pointer-events:none
+}
+.hero-content{position:relative;z-index:1;max-width:800px}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(0,252,0,.1);border:1px solid rgba(0,252,0,.2);
+  border-radius:100px;padding:6px 16px;margin-bottom:32px;
+  font-size:13px;color:var(--green);font-weight:500
+}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero h1{
+  font-size:clamp(40px,6vw,72px);font-weight:800;
+  line-height:1.05;letter-spacing:-2px;color:var(--white);
+  margin-bottom:24px
+}
+.hero h1 em{font-style:normal;color:var(--green)}
+.hero .sub{font-size:clamp(17px,2vw,20px);color:var(--gray-1);max-width:600px;margin-bottom:48px;line-height:1.6}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--green);color:var(--dark);
+  padding:16px 32px;border-radius:100px;
+  font-size:16px;font-weight:700;border:none;cursor:pointer;
+  transition:transform .2s,box-shadow .2s
+}
+.btn-primary:hover{transform:scale(1.04);box-shadow:0 0 40px rgba(0,252,0,.3)}
+.btn-primary svg{width:18px;height:18px;transition:transform .2s}
+.btn-primary:hover svg{transform:translateX(4px)}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:transparent;color:var(--white);
+  padding:16px 32px;border-radius:100px;
+  font-size:16px;font-weight:600;border:1px solid rgba(255,255,255,.2);cursor:pointer;
+  transition:border-color .2s,background .2s
+}
+.btn-secondary:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.05)}
+
+/* ─── STATS BAR ─── */
+.stats-bar{
+  background:var(--dark-2);border-bottom:1px solid rgba(255,255,255,.06);
+  padding:48px 0
+}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;text-align:center}
+.stat-num{font-size:clamp(32px,4vw,48px);font-weight:800;color:var(--green);letter-spacing:-2px}
+.stat-label{font-size:14px;color:var(--gray-1);margin-top:4px}
+
+/* ─── SECTIONS ─── */
+section{padding:120px 0}
+section.alt{background:var(--gray-3)}
+.section-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--green-dim);margin-bottom:16px
+}
+.section-badge .line{width:24px;height:2px;background:var(--green);border-radius:1px}
+.section-title{
+  font-size:clamp(32px,4vw,52px);font-weight:800;
+  line-height:1.1;letter-spacing:-1.5px;
+  color:var(--dark);margin-bottom:16px
+}
+.section-title em{font-style:normal;color:var(--green-dim)}
+.section-sub{font-size:18px;color:var(--gray-1);max-width:600px;line-height:1.6}
+.section-header{margin-bottom:64px}
+
+/* ─── PROBLEM ─── */
+.problem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px}
+.problem-card{
+  background:var(--white);border:1px solid rgba(0,0,0,.06);
+  border-radius:var(--radius);padding:32px;
+  transition:transform .3s,box-shadow .3s
+}
+.problem-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.08)}
+.problem-icon{
+  width:48px;height:48px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:20px;font-size:24px
+}
+.problem-card h3{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--dark)}
+.problem-card p{font-size:15px;color:var(--gray-2);line-height:1.6}
+.problem-card .strike{text-decoration:line-through;color:var(--gray-4)}
+.problem-card .fix{color:var(--green-dim);font-weight:600}
+
+/* ─── HOW IT WORKS ─── */
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;counter-reset:step}
+.step{position:relative;padding:40px 32px;border-radius:var(--radius);background:var(--white);border:1px solid rgba(0,0,0,.06)}
+.step::before{
+  counter-increment:step;content:counter(step,decimal-leading-zero);
+  font-size:64px;font-weight:900;color:rgba(0,252,0,.12);
+  line-height:1;margin-bottom:16px;display:block
+}
+.step h3{font-size:20px;font-weight:700;margin-bottom:8px}
+.step p{font-size:15px;color:var(--gray-2);line-height:1.6}
+.step-arrow{
+  position:absolute;right:-20px;top:50%;transform:translateY(-50%);
+  color:var(--gray-4);font-size:24px;z-index:1
+}
+
+/* ─── TRY DEMO ─── */
+.demo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:32px;max-width:800px;margin:0 auto}
+.demo-card{
+  background:var(--white);border:2px solid rgba(0,200,0,.25);
+  border-radius:var(--radius);padding:40px 32px;
+  transition:transform .3s,box-shadow .3s,border-color .3s
+}
+.demo-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,252,0,.12);border-color:var(--green)}
+.demo-card .demo-emoji{font-size:40px;margin-bottom:16px;display:block}
+.demo-card h3{font-size:20px;font-weight:700;margin-bottom:8px;color:var(--dark)}
+.demo-card p{font-size:15px;color:var(--gray-2);line-height:1.6;margin-bottom:20px}
+.demo-card .demo-link{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:15px;font-weight:600;color:var(--green-dim);
+  transition:color .2s,gap .2s
+}
+.demo-card .demo-link:hover{color:var(--dark);gap:10px}
+.demo-card .demo-link svg{width:16px;height:16px}
+@media(max-width:768px){
+  .demo-grid{grid-template-columns:1fr}
+}
+
+/* ─── MODULES (KID/KIN/KASH/KLUB) ─── */
+.modules-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+.module-card{
+  border-radius:20px;padding:48px 40px;position:relative;overflow:hidden;
+  border:1px solid rgba(0,0,0,.06);transition:transform .3s,box-shadow .3s
+}
+.module-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.08)}
+.module-card.kid{background:linear-gradient(135deg,#f0fdf0 0%,#fff 100%)}
+.module-card.kin{background:linear-gradient(135deg,#f0f0ff 0%,#fff 100%)}
+.module-card.kash{background:linear-gradient(135deg,#fffbf0 0%,#fff 100%)}
+.module-card.klub{background:linear-gradient(135deg,#fff0f5 0%,#fff 100%)}
+.module-tag{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+  padding:4px 12px;border-radius:6px;display:inline-block;margin-bottom:16px
+}
+.kid .module-tag{background:rgba(0,200,0,.12);color:#006600}
+.kin .module-tag{background:rgba(80,80,220,.12);color:#3030aa}
+.kash .module-tag{background:rgba(220,160,0,.12);color:#886600}
+.klub .module-tag{background:rgba(200,0,80,.12);color:#880044}
+.module-card h3{font-size:24px;font-weight:800;margin-bottom:12px;letter-spacing:-.5px}
+.module-card p{font-size:15px;color:var(--gray-2);line-height:1.7;margin-bottom:20px}
+.module-features{list-style:none;display:flex;flex-direction:column;gap:8px}
+.module-features li{
+  font-size:14px;color:var(--gray-2);
+  padding-left:20px;position:relative
+}
+.module-features li::before{content:'';position:absolute;left:0;top:8px;width:8px;height:8px;border-radius:50%}
+.kid .module-features li::before{background:#00cc00}
+.kin .module-features li::before{background:#5050dc}
+.kash .module-features li::before{background:#dcaa00}
+.klub .module-features li::before{background:#cc0055}
+
+/* ─── NE TOOLKIT ─── */
+.ne-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.ne-chip{
+  background:var(--white);border:1px solid rgba(0,0,0,.06);
+  border-radius:12px;padding:20px 16px;text-align:center;
+  transition:transform .2s,border-color .2s,box-shadow .2s;cursor:default
+}
+.ne-chip:hover{transform:translateY(-2px);border-color:var(--green);box-shadow:0 8px 24px rgba(0,252,0,.1)}
+.ne-chip .ne-id{font-size:11px;font-weight:700;color:var(--green-dim);letter-spacing:1px;margin-bottom:4px}
+.ne-chip .ne-name{font-size:13px;font-weight:600;color:var(--dark)}
+.ne-chip .ne-cat{font-size:11px;color:var(--gray-1);margin-top:2px}
+
+/* ─── COMMERCE LOOP ─── */
+.loop-visual{
+  display:flex;align-items:center;justify-content:center;gap:0;
+  margin:48px 0;flex-wrap:wrap
+}
+.loop-node{
+  background:var(--white);border:2px solid rgba(0,0,0,.06);
+  border-radius:16px;padding:24px 28px;text-align:center;
+  min-width:160px;transition:transform .2s
+}
+.loop-node:hover{transform:scale(1.04)}
+.loop-node .icon{font-size:32px;margin-bottom:8px}
+.loop-node .label{font-size:14px;font-weight:700;color:var(--dark)}
+.loop-node .desc{font-size:12px;color:var(--gray-1);margin-top:4px}
+.loop-arrow{font-size:24px;color:var(--green);padding:0 8px;font-weight:700}
+
+/* ─── DIFFERENCE ─── */
+.diff-table{
+  width:100%;border-collapse:collapse;margin-top:48px;
+  border-radius:var(--radius);overflow:hidden;border:1px solid rgba(0,0,0,.06)
+}
+.diff-table th,.diff-table td{padding:16px 24px;text-align:left;font-size:15px}
+.diff-table thead{background:var(--dark)}
+.diff-table th{color:var(--white);font-weight:600}
+.diff-table th:last-child{color:var(--green)}
+.diff-table tbody tr{border-top:1px solid rgba(0,0,0,.06)}
+.diff-table tbody tr:hover{background:rgba(0,252,0,.03)}
+.diff-table td:first-child{font-weight:600;color:var(--dark)}
+.diff-table td:nth-child(2){color:var(--gray-1)}
+.diff-table td:last-child{color:var(--dark);font-weight:500}
+.check{color:var(--green-dim);font-weight:700}
+
+/* ─── IRON RULES ─── */
+.rules-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.rule-card{
+  background:var(--dark-3);border-radius:12px;padding:24px;
+  border:1px solid rgba(255,255,255,.06)
+}
+.rule-num{font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px}
+.rule-card h4{font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px;line-height:1.3}
+.rule-card p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.5}
+
+/* ─── FINAL CTA ─── */
+.final-cta{
+  background:var(--dark);padding:120px 0;text-align:center;
+  position:relative;overflow:hidden
+}
+.final-cta::before{
+  content:'';position:absolute;
+  width:800px;height:800px;
+  background:radial-gradient(circle,rgba(0,252,0,.06) 0%,transparent 60%);
+  top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none
+}
+.final-cta h2{
+  font-size:clamp(36px,5vw,56px);font-weight:800;
+  color:var(--white);letter-spacing:-2px;line-height:1.1;
+  margin-bottom:16px;position:relative;z-index:1
+}
+.final-cta h2 em{font-style:normal;color:var(--green)}
+.final-cta .sub{font-size:18px;color:var(--gray-1);margin-bottom:48px;position:relative;z-index:1}
+.final-cta .cta-group{position:relative;z-index:1;display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+
+/* ─── FOOTER ─── */
+footer{
+  background:var(--dark);border-top:1px solid rgba(255,255,255,.06);
+  padding:48px 0 24px;color:rgba(255,255,255,.5);font-size:13px
+}
+.footer-top{display:flex;justify-content:space-between;align-items:start;margin-bottom:48px;flex-wrap:wrap;gap:32px}
+.footer-brand .logo{margin-bottom:12px}
+.footer-brand p{font-size:13px;color:rgba(255,255,255,.4);max-width:280px;line-height:1.6}
+.footer-links{display:flex;gap:64px;flex-wrap:wrap}
+.footer-col h4{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:12px}
+.footer-col a{display:block;color:rgba(255,255,255,.5);font-size:13px;padding:4px 0;transition:color .2s}
+.footer-col a:hover{color:var(--white)}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.06);padding-top:24px;text-align:center}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:1024px){
+  .modules-grid{grid-template-columns:1fr}
+  .ne-grid{grid-template-columns:repeat(3,1fr)}
+  .rules-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  nav{display:none}
+  .menu-btn{display:block}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:24px}
+  .problem-grid,.steps-grid{grid-template-columns:1fr}
+  .step-arrow{display:none}
+  .ne-grid{grid-template-columns:repeat(2,1fr)}
+  .diff-table{font-size:13px}
+  .diff-table th,.diff-table td{padding:12px 16px}
+  .loop-visual{flex-direction:column}
+  .loop-arrow{transform:rotate(90deg)}
+  .rules-grid{grid-template-columns:1fr}
+  section{padding:80px 0}
+  .module-card{padding:32px 24px}
+  .footer-links{gap:32px}
+}
+@media(max-width:480px){
+  .ne-grid{grid-template-columns:1fr 1fr}
+  .hero-ctas{flex-direction:column}
+  .btn-primary,.btn-secondary{width:100%;justify-content:center}
+}
+</style>
+</head>
+<body class="lang-cn">
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="inner">
+    <a href="/" class="logo">Ki<span>X</span></a>
+    <nav>
+      <a href="#platform"><span class="en">Platform</span><span class="cn">平台</span></a>
+      <a href="#modules"><span class="en">Modules</span><span class="cn">模块</span></a>
+      <a href="#engine"><span class="en">NE Engine</span><span class="cn">NE引擎</span></a>
+      <a href="#loop"><span class="en">Commerce</span><span class="cn">商业</span></a>
+      <a href="#compare"><span class="en">Why KiX</span><span class="cn">为什么选KiX</span></a>
+      <div class="lang-switch" id="lang-switch">
+        <button id="lang-en" onclick="setLang('en')">EN</button>
+        <button id="lang-cn" class="active" onclick="setLang('cn')">中文</button>
+      </div>
+      <a href="portal.html" class="nav-cta"><span class="en">Get Started</span><span class="cn">立即开始</span></a>
+    </nav>
+    <button class="menu-btn" onclick="document.querySelector('nav').style.display=document.querySelector('nav').style.display==='flex'?'none':'flex'" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge reveal"><span class="dot"></span> <span class="en">Gamification-as-a-Service Platform</span><span class="cn">游戏化即服务平台</span></div>
+      <h1 class="reveal reveal-delay-1"><span class="en">Your customers<br>leave by Day 30.<br><em>Games bring them back.</em></span><span class="cn">你的顾客<br>第30天就流失了。<br><em>游戏把他们拉回来。</em></span></h1>
+      <p class="sub reveal reveal-delay-2"><span class="en">Push notifications stopped working. Discount codes aren't loyalty. KiX gives your brand 15 plug-and-play engagement modules, zero-friction identity, and a commerce loop that turns every game into revenue.</span><span class="cn">推送通知已经失效。折扣码不是忠诚。KiX 为你的品牌提供 15 个即插即用的互动模块、零摩擦身份系统、以及将每次游戏转化为收入的商业闭环。</span></p>
+      <div class="hero-ctas reveal reveal-delay-3">
+        <a href="portal.html" class="btn-primary">
+          <span class="en">Start Free</span><span class="cn">免费开始</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a href="#platform" class="btn-secondary"><span class="en">See How It Works</span><span class="cn">了解运作方式</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS BAR ═══ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="reveal">
+        <div class="stat-num">15</div>
+        <div class="stat-label"><span class="en">Engagement Modules</span><span class="cn">互动模块</span></div>
+      </div>
+      <div class="reveal reveal-delay-1">
+        <div class="stat-num">&lt;1s</div>
+        <div class="stat-label"><span class="en">Zero-Friction Entry</span><span class="cn">零摩擦入场</span></div>
+      </div>
+      <div class="reveal reveal-delay-2">
+        <div class="stat-num">48hr</div>
+        <div class="stat-label"><span class="en">Go-Live Time</span><span class="cn">上线时间</span></div>
+      </div>
+      <div class="reveal reveal-delay-3">
+        <div class="stat-num">26</div>
+        <div class="stat-label"><span class="en">API Endpoints</span><span class="cn">API 端点</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ THE PROBLEM ═══ -->
+<section class="alt" id="problem">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-badge"><span class="line"></span> <span class="en">The Problem</span><span class="cn">问题所在</span></div>
+      <h2 class="section-title"><span class="en">Retention tactics that <em>don't work</em> anymore</span><span class="cn">那些<em>不再有效</em>的留存策略</span></h2>
+      <p class="section-sub"><span class="en">80% of new users leave within 30 days. Here's what you've tried — and why it failed.</span><span class="cn">80% 的新用户在 30 天内流失。以下是你的尝试 — 和它们失败的原因。</span></p>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-card reveal">
+        <div class="problem-icon" style="background:rgba(255,60,60,.08)">&#128276;</div>
+        <h3><span class="strike en">"Send more pushes"</span><span class="strike cn">"多发推送"</span></h3>
+        <p class="en">Users mute your notifications after Day 3. More volume = more uninstalls. The channel is dead.</p><p class="cn">用户在第三天就静音了你的通知。更多的推送 = 更多的卸载。这个渠道已经死了。</p>
+        <p style="margin-top:12px" class="fix"><span class="en">KiX: Daily streaks they choose to return for.</span><span class="cn">KiX：每日连胜，他们主动回来。</span></p>
+      </div>
+      <div class="problem-card reveal reveal-delay-1">
+        <div class="problem-icon" style="background:rgba(255,180,0,.08)">&#127991;</div>
+        <h3><span class="strike en">WELCOME10 isn't loyalty</span><span class="strike cn">WELCOME10 不是忠诚</span></h3>
+        <p class="en">Discount codes train customers to wait for the next code. You're buying visits, not building habits.</p><p class="cn">折扣码训练客户等待下一个折扣码。你在购买访问量，不是建立习惯。</p>
+        <p style="margin-top:12px" class="fix"><span class="en">KiX: Vouchers earned through gameplay create real engagement.</span><span class="cn">KiX：通过游戏获得的优惠券创造真正的互动。</span></p>
+      </div>
+      <div class="problem-card reveal reveal-delay-2">
+        <div class="problem-icon" style="background:rgba(100,100,255,.08)">&#128640;</div>
+        <h3><span class="strike en">Build gamification in-house</span><span class="strike cn">自建游戏化系统</span></h3>
+        <p class="en">Time zones, cheat prevention, leaderboard scaling, A/B testing — 6 months of engineering before you launch.</p><p class="cn">时区、防作弊、排行榜扩展、A/B测试 — 上线前需要 6 个月的工程开发。</p>
+        <p style="margin-top:12px" class="fix"><span class="en">KiX: 15 modules, plug and play. Live in 48 hours.</span><span class="cn">KiX：15 个模块，即插即用。48 小时上线。</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section id="platform">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-badge"><span class="line"></span> <span class="en">How It Works</span><span class="cn">运作方式</span></div>
+      <h2 class="section-title"><span class="en">Three steps to <em>daily engagement</em></span><span class="cn">三步达成<em>每日互动</em></span></h2>
+      <p class="section-sub"><span class="en">Embed KiX into your app, web, or POS. Your customers play. Your brand earns.</span><span class="cn">将 KiX 嵌入你的 App、网页或收银系统。顾客玩游戏，品牌赚收益。</span></p>
+    </div>
+    <div class="steps-grid">
+      <div class="step reveal">
+        <h3><span class="en">Sign Up & Configure</span><span class="cn">注册与配置</span></h3>
+        <p class="en">Open the Brand Portal. Set your brand name, upload voucher codes, and add your store locations. No code, no developer needed.</p><p class="cn">打开品牌后台。设置品牌名称，上传优惠券码，添加门店位置。无需代码，无需开发者。</p>
+        <span class="step-arrow">&rarr;</span>
+      </div>
+      <div class="step reveal reveal-delay-1">
+        <h3><span class="en">Print QR & Go Live</span><span class="cn">打印二维码上线</span></h3>
+        <p class="en">Generate dynamic QR codes for each table. Display on your iPad or print the link. Customers scan and start playing instantly.</p><p class="cn">为每张桌子生成动态二维码。在 iPad 上展示或打印链接。顾客扫码即刻开始游戏。</p>
+        <span class="step-arrow">&rarr;</span>
+      </div>
+      <div class="step reveal reveal-delay-2">
+        <h3><span class="en">Watch Them Play & Return</span><span class="cn">看到他们玩并回来</span></h3>
+        <p class="en">Customers play games, compete on leaderboards, earn your vouchers. Track everything from your dashboard. The commerce loop runs itself.</p><p class="cn">顾客玩游戏、竞争排行榜、赢取你的优惠券。在后台追踪一切。商业闭环自动运转。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TRY DEMO ═══ -->
+<section class="alt" id="try-demo">
+  <div class="container">
+    <div class="section-header reveal" style="text-align:center">
+      <h2 class="section-title"><span class="en">Try It Now — <em>No signup needed</em></span><span class="cn">立即体验 — <em>无需注册</em></span></h2>
+    </div>
+    <div class="demo-grid">
+      <div class="demo-card reveal">
+        <span class="demo-emoji">&#9749;</span>
+        <h3><span class="en">I'm a Cafe Owner</span><span class="cn">我是咖啡馆老板</span></h3>
+        <p class="en">Set up your brand, upload vouchers, and generate QR codes for your tables.</p><p class="cn">设置品牌、上传优惠券、为每张桌子生成二维码。</p>
+        <a href="portal.html" class="demo-link">
+          <span class="en">Open Brand Portal</span><span class="cn">打开品牌后台</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+      <div class="demo-card reveal reveal-delay-1">
+        <span class="demo-emoji">&#127918;</span>
+        <h3><span class="en">I'm a Customer</span><span class="cn">我是顾客</span></h3>
+        <p class="en">Scan, play games, win rewards. Experience KiX as a player.</p><p class="cn">扫码、玩游戏、赢奖励。以玩家身份体验 KiX。</p>
+        <a href="play.html?brand=bean-brothers" class="demo-link">
+          <span class="en">Play Demo (bean-brothers)</span><span class="cn">体验 Demo（bean-brothers）</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOUR MODULES ═══ -->
+<section class="alt" id="modules">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-badge"><span class="line"></span> <span class="en">Platform Architecture</span><span class="cn">平台架构</span></div>
+      <h2 class="section-title"><span class="en">Four systems, <em>one platform</em></span><span class="cn">四大系统<em>一个平台</em></span></h2>
+      <p class="section-sub"><span class="en">Each module works independently. Together, they create an engagement flywheel your competitors can't match.</span><span class="cn">每个模块独立运作。组合在一起，创造竞争对手无法匹敌的互动飞轮。</span></p>
+    </div>
+    <div class="modules-grid">
+      <div class="module-card kid reveal">
+        <span class="module-tag">KID — Identity</span>
+        <h3><span class="en">Zero-Friction Identity</span><span class="cn">零摩擦身份</span></h3>
+        <p class="en">No signup forms. No passwords. Users get a Shadow KID instantly from their device fingerprint. When they're ready, upgrade to a full account without losing anything.</p><p class="cn">无需注册表单。无需密码。用户通过设备指纹即刻获得影子身份。准备好后升级为完整账户，不丢失任何数据。</p>
+        <ul class="module-features">
+          <li><span class="en">Shadow → Full upgrade preserves all data</span><span class="cn">影子→完整升级，保留所有数据</span></li>
+          <li><span class="en">Google, Apple, Phone, WeChat login</span><span class="cn">Google、Apple、手机、微信登录</span></li>
+          <li><span class="en">Multi-tenant isolation per brand</span><span class="cn">按品牌多租户隔离</span></li>
+          <li><span class="en">Social graph (friends, teams, challenges)</span><span class="cn">社交图谱（好友、战队、挑战）</span></li>
+        </ul>
+      </div>
+      <div class="module-card kin reveal reveal-delay-1">
+        <span class="module-tag">KIN — Engagement</span>
+        <h3><span class="en">15-Module NE Engine</span><span class="cn">15 模块 NE 引擎</span></h3>
+        <p class="en">A toolkit of battle-tested engagement mechanics. Brands pick modules like a menu, configure rules via dashboard, and compose campaigns. No code required.</p><p class="cn">经过实战验证的互动机制工具箱。品牌像点菜一样选择模块，通过后台配置规则，组合营销活动。无需代码。</p>
+        <ul class="module-features">
+          <li><span class="en">Streaks, leagues, battle passes, collections</span><span class="cn">连胜、联赛、战令、收集</span></li>
+          <li><span class="en">Event-driven rule engine (when → then)</span><span class="cn">事件驱动规则引擎（当→则）</span></li>
+          <li><span class="en">Redis-powered real-time leaderboards</span><span class="cn">Redis 驱动的实时排行榜</span></li>
+          <li><span class="en">Duolingo-style cohort matching</span><span class="cn">多邻国式同群匹配</span></li>
+        </ul>
+      </div>
+      <div class="module-card kash reveal">
+        <span class="module-tag">KASH — Commerce</span>
+        <h3><span class="en">Energy-Voucher Commerce Loop</span><span class="cn">能量-优惠券商业闭环</span></h3>
+        <p class="en">The magic: users win vouchers by playing games. Redeeming vouchers at your store recharges their Energy. More Energy means more gameplay. A perfect closed loop.</p><p class="cn">魔力所在：用户玩游戏赢取优惠券。到店兑换优惠券为能量充值。更多能量意味着更多游戏。完美的闭环。</p>
+        <ul class="module-features">
+          <li><span class="en">QR-code voucher redemption</span><span class="cn">二维码优惠券核销</span></li>
+          <li><span class="en">Double-entry immutable ledger</span><span class="cn">复式记账不可篡改账本</span></li>
+          <li><span class="en">Server-side anti-cheat & fraud detection</span><span class="cn">服务端防作弊与欺诈检测</span></li>
+          <li><span class="en">Configurable reward rules engine</span><span class="cn">可配置奖励规则引擎</span></li>
+        </ul>
+      </div>
+      <div class="module-card klub reveal reveal-delay-1">
+        <span class="module-tag">KLUB — Operations</span>
+        <h3><span class="en">Brand Command Center</span><span class="cn">品牌指挥中心</span></h3>
+        <p class="en">A full operations hub where brands manage games, fans, competitions, promotions, and analytics. Think Shopify admin panel — for gamification.</p><p class="cn">完整的运营中心，品牌管理游戏、粉丝、比赛、促销和分析。就像 Shopify 后台 — 但用于游戏化。</p>
+        <ul class="module-features">
+          <li><span class="en">AI-powered custom game generation (ELTM)</span><span class="cn">AI 驱动定制游戏生成 (ELTM)</span></li>
+          <li><span class="en">Fan segmentation & targeted notifications</span><span class="cn">粉丝分群与定向通知</span></li>
+          <li><span class="en">KC Spotlight: nightly flagship competition</span><span class="cn">KC 聚光灯：每晚旗舰竞赛</span></li>
+          <li><span class="en">CPM/CPC ad engine with budget controls</span><span class="cn">CPM/CPC 广告引擎含预算控制</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ NE ENGINE 15 MODULES ═══ -->
+<section id="engine">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-badge"><span class="line"></span> <span class="en">NE Engine Toolkit</span><span class="cn">NE 引擎工具箱</span></div>
+      <h2 class="section-title"><span class="en"><em>15 modules.</em> Pick what you need.</span><span class="cn"><em>15 个模块。</em>按需选择。</span></h2>
+      <p class="section-sub"><span class="en">Every module follows a standard interface: events in, state out. Mix and match for your perfect engagement recipe.</span><span class="cn">每个模块遵循标准接口：事件进，状态出。自由组合打造完美的互动配方。</span></p>
+    </div>
+    <div class="ne-grid">
+      <div class="ne-chip reveal"><div class="ne-id">T01</div><div class="ne-name">Team Unlock</div><div class="ne-cat">Viral</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T02</div><div class="ne-name">Friend Challenge</div><div class="ne-cat">Viral</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T03</div><div class="ne-name">Ladder Bargain</div><div class="ne-cat">Viral</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T04</div><div class="ne-name">Gated Invite</div><div class="ne-cat">Viral</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T05</div><div class="ne-name">Streak</div><div class="ne-cat">Retention</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T06</div><div class="ne-name">Weekly League</div><div class="ne-cat">Retention</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T07</div><div class="ne-name">Tier System</div><div class="ne-cat">Retention</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T08</div><div class="ne-name">Resurrection</div><div class="ne-cat">Retention</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T09</div><div class="ne-name">Flash Contest</div><div class="ne-cat">Burst</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T10</div><div class="ne-name">Collection</div><div class="ne-cat">Burst</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T11</div><div class="ne-name">Community Day</div><div class="ne-cat">Burst</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T12</div><div class="ne-name">Battle Pass</div><div class="ne-cat">Conversion</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T13</div><div class="ne-name">Spin Wheel</div><div class="ne-cat">Conversion</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T14</div><div class="ne-name">Nurture</div><div class="ne-cat">Retention</div></div>
+      <div class="ne-chip reveal"><div class="ne-id">T15</div><div class="ne-name">Quest Sprint</div><div class="ne-cat">Burst</div></div>
+    </div>
+    <p style="text-align:center;color:var(--gray-1);font-size:14px;margin-top:24px">
+      <span style="color:var(--green-dim);font-weight:600"><span class="en">4 categories</span><span class="cn">4 个类别</span></span> &mdash;
+      <span class="en">Viral (acquire) &bull; Retention (keep) &bull; Burst (excite) &bull; Conversion (monetize)</span><span class="cn">裂变（获客）&bull; 留存（保持）&bull; 爆发（激活）&bull; 转化（变现）</span>
+    </p>
+  </div>
+</section>
+
+<!-- ═══ COMMERCE LOOP ═══ -->
+<section class="alt" id="loop">
+  <div class="container">
+    <div class="section-header reveal" style="text-align:center;max-width:100%">
+      <div class="section-badge" style="justify-content:center"><span class="line"></span> <span class="en">The KASH Loop</span><span class="cn">KASH 循环</span></div>
+      <h2 class="section-title" style="text-align:center"><span class="en">The commerce loop that <em>pays for itself</em></span><span class="cn"><em>自我造血</em>的商业闭环</span></h2>
+      <p class="section-sub" style="margin:0 auto;text-align:center"><span class="en">Every cycle strengthens: more play, more spend, more Energy, more play. Your brand captures value at every step.</span><span class="cn">每个循环都在强化：更多游戏、更多消费、更多能量、更多游戏。品牌在每一步捕获价值。</span></p>
+    </div>
+    <div class="loop-visual reveal">
+      <div class="loop-node">
+        <div class="icon">&#127918;</div>
+        <div class="label"><span class="en">Play Game</span><span class="cn">玩游戏</span></div>
+        <div class="desc"><span class="en">Energy consumed</span><span class="cn">消耗能量</span></div>
+      </div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-node">
+        <div class="icon">&#127942;</div>
+        <div class="label"><span class="en">Win Voucher</span><span class="cn">赢优惠券</span></div>
+        <div class="desc"><span class="en">Brand reward</span><span class="cn">品牌奖励</span></div>
+      </div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-node">
+        <div class="icon">&#128722;</div>
+        <div class="label"><span class="en">Spend In-Store</span><span class="cn">到店消费</span></div>
+        <div class="desc"><span class="en">QR redemption</span><span class="cn">二维码核销</span></div>
+      </div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-node" style="border-color:var(--green)">
+        <div class="icon">&#9889;</div>
+        <div class="label"><span class="en">Energy Recharge</span><span class="cn">能量充值</span></div>
+        <div class="desc"><span class="en">Play again</span><span class="cn">再次游戏</span></div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:32px" class="reveal">
+      <p style="font-size:15px;color:var(--gray-2);max-width:560px;margin:0 auto">
+        <span class="en">Every voucher redeemed is proof of real-world spending. Every Energy recharge means another session. The ledger is <strong>double-entry and immutable</strong> — every transaction is auditable.</span><span class="cn">每张核销的优惠券都是真实消费的证明。每次能量充值意味着又一次游戏。账本是<strong>复式记账且不可篡改</strong> — 每笔交易可审计。</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMPARISON ═══ -->
+<section id="compare">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-badge"><span class="line"></span> <span class="en">Why KiX</span><span class="cn">为什么选KiX</span></div>
+      <h2 class="section-title"><span class="en">Build it yourself vs. <em>KiX Platform</em></span><span class="cn">自建 vs. <em>KiX 平台</em></span></h2>
+      <p class="section-sub"><span class="en">We solved the hard problems so you don't have to.</span><span class="cn">我们解决了难题，你不需要。</span></p>
+    </div>
+    <div class="reveal">
+    <table class="diff-table">
+      <thead>
+        <tr><th><span class="en">Challenge</span><span class="cn">挑战</span></th><th><span class="en">Build In-House</span><span class="cn">自建方案</span></th><th><span class="en">KiX Platform</span><span class="cn">KiX 平台</span></th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="en">User Identity</span><span class="cn">用户身份</span></td><td><span class="en">OAuth integration, session management, device linking</span><span class="cn">OAuth 集成、会话管理、设备关联</span></td><td><span class="check">&#10003;</span> <span class="en">Shadow KID — &lt;1s, zero friction</span><span class="cn">影子KID — &lt;1秒，零摩擦</span></td></tr>
+        <tr><td><span class="en">Engagement Mechanics</span><span class="cn">互动机制</span></td><td><span class="en">Build each from scratch, 3-6 months</span><span class="cn">从零开发，3-6个月</span></td><td><span class="check">&#10003;</span> <span class="en">15 modules, plug and play</span><span class="cn">15个模块，即插即用</span></td></tr>
+        <tr><td><span class="en">Leaderboards at Scale</span><span class="cn">大规模排行榜</span></td><td><span class="en">Redis setup, time zones, cheat prevention</span><span class="cn">Redis 搭建、时区、防作弊</span></td><td><span class="check">&#10003;</span> <span class="en">Built-in Redis ZSET, anti-cheat</span><span class="cn">内置 Redis ZSET，防作弊</span></td></tr>
+        <tr><td><span class="en">Commerce Integration</span><span class="cn">商业集成</span></td><td><span class="en">Payment gateway, voucher system, fraud detection</span><span class="cn">支付网关、优惠券系统、欺诈检测</span></td><td><span class="check">&#10003;</span> <span class="en">Complete KASH loop with QR verify</span><span class="cn">完整 KASH 闭环，二维码核销</span></td></tr>
+        <tr><td><span class="en">Multi-Tenant</span><span class="cn">多租户</span></td><td><span class="en">RLS policies, data isolation, GDPR compliance</span><span class="cn">RLS 策略、数据隔离、GDPR 合规</span></td><td><span class="check">&#10003;</span> <span class="en">Database-level isolation, Day 1</span><span class="cn">数据库级隔离，第一天就绪</span></td></tr>
+        <tr><td><span class="en">Brand Dashboard</span><span class="cn">品牌后台</span></td><td><span class="en">Admin panel, analytics, campaign management</span><span class="cn">管理面板、分析、活动管理</span></td><td><span class="check">&#10003;</span> <span class="en">Full KLUB operations hub</span><span class="cn">完整 KLUB 运营中心</span></td></tr>
+        <tr><td><span class="en">AI Game Generation</span><span class="cn">AI游戏生成</span></td><td><span class="en">Not feasible in-house</span><span class="cn">内部不可行</span></td><td><span class="check">&#10003;</span> <span class="en">ELTM generates branded games</span><span class="cn">ELTM 生成品牌游戏</span></td></tr>
+        <tr><td><span class="en">Time to Market</span><span class="cn">上市时间</span></td><td><span class="en">6-12 months, 3-5 engineers</span><span class="cn">6-12个月，3-5名工程师</span></td><td><span class="check">&#10003;</span> <span class="en">48 hours to go live</span><span class="cn">48小时上线</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 8 IRON RULES ═══ -->
+<section style="background:var(--dark);padding:100px 0">
+  <div class="container">
+    <div class="section-header reveal" style="margin-bottom:48px">
+      <div class="section-badge"><span class="line"></span> KiX Connect</div>
+      <h2 class="section-title" style="color:var(--white)"><span class="en">8 Iron Rules <em>we never break</em></span><span class="cn">8条铁律<em>永不打破</em></span></h2>
+      <p class="section-sub" style="color:rgba(255,255,255,.5)"><span class="en">Written into our code, enforced by CI. These aren't values on a wall — they're constraints we ship with.</span><span class="cn">写入代码，CI 强制执行。不是墙上的价值观 — 是我们交付时内置的约束。</span></p>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card reveal">
+        <div class="rule-num">#1</div>
+        <h4><span class="en">One-Tap Entry</span><span class="cn">一键入场</span></h4>
+        <p class="en">Shadow KID in &lt;1 second. Zero user input required.</p><p class="cn">影子KID &lt;1秒生成。零用户输入。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#2</div>
+        <h4><span class="en">Brand Earns First</span><span class="cn">品牌先赚</span></h4>
+        <p class="en">Free plan has no MAU cap. No feature time-locks.</p><p class="cn">免费计划无 MAU 上限。无功能时间锁。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#3</div>
+        <h4><span class="en">NE is Visible</span><span class="cn">NE 可见</span></h4>
+        <p class="en">Brands always see "players KiX brought" metrics.</p><p class="cn">品牌始终可见"KiX 带来的玩家"数据。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#4</div>
+        <h4><span class="en">Free Never Shrinks</span><span class="cn">免费永不缩水</span></h4>
+        <p class="en">Free tier features only grow. CI blocks removals.</p><p class="cn">免费层功能只增不减。CI 阻止删除。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#5</div>
+        <h4><span class="en">12-Month API Grace</span><span class="cn">12个月API过渡</span></h4>
+        <p class="en">Deprecated APIs maintained 24 months minimum.</p><p class="cn">废弃 API 至少维护 24 个月。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#6</div>
+        <h4><span class="en">Never Compete</span><span class="cn">永不竞争</span></h4>
+        <p class="en">Zero brand business logic in platform code. Ever.</p><p class="cn">平台代码零品牌业务逻辑。永无。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#7</div>
+        <h4><span class="en">Data Isolation Day 1</span><span class="cn">数据隔离从第一天起</span></h4>
+        <p class="en">RLS-enforced. Brands see only their data. PII never exposed.</p><p class="cn">RLS 强制执行。品牌只看到自己的数据。绝不暴露 PII。</p>
+      </div>
+      <div class="rule-card reveal">
+        <div class="rule-num">#8</div>
+        <h4><span class="en">Rates Only Go Down</span><span class="cn">价格只降不升</span></h4>
+        <p class="en">Pricing table is versioned. Old rates never retroactively changed.</p><p class="cn">价格表版本化。旧价格永不追溯修改。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FINAL CTA ═══ -->
+<section class="final-cta" id="start">
+  <div class="container">
+    <h2 class="reveal"><span class="en">Stop buying users.<br>Start building <em>habits.</em></span><span class="cn">别再买用户了。<br>开始建立<em>习惯。</em></span></h2>
+    <p class="sub reveal reveal-delay-1"><span class="en">Go live in 48 hours. See real impact by Day 30. Free tier forever.</span><span class="cn">48小时上线。第30天看到真实效果。免费层永久。</span></p>
+    <div class="cta-group reveal reveal-delay-2">
+      <a href="portal.html" class="btn-primary">
+        <span class="en">Get Started Free</span><span class="cn">免费开始</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <a href="mailto:partners@letskix.com?subject=KiX Platform Demo Request" class="btn-secondary"><span class="en">Talk to a Human</span><span class="cn">与真人沟通</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo">Ki<span>X</span></div>
+        <p><span class="en">The gamification platform that turns passive customers into daily players.</span><span class="cn">将被动顾客转化为每日玩家的游戏化平台。</span></p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Platform</h4>
+          <a href="#modules">KID Identity</a>
+          <a href="#engine">KIN Engine</a>
+          <a href="#loop">KASH Commerce</a>
+          <a href="#modules">KLUB Operations</a>
+        </div>
+        <div class="footer-col">
+          <h4>Developers</h4>
+          <a href="/docs">API Documentation</a>
+          <a href="/partners/">Developer Program</a>
+          <a href="#">SDK Downloads</a>
+        </div>
+        <div class="footer-col">
+          <h4>Try KiX</h4>
+          <a href="portal.html">Brand Portal</a>
+          <a href="play.html?brand=bean-brothers">Play Demo</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="https://impact.mozat.com/">About Mozat</a>
+          <a href="/contact/">Contact</a>
+          <a href="/privacy-policy/">Privacy</a>
+          <a href="/terms-of-service/">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      &copy; 2025-2026 Lobah Play Pte Ltd. All rights reserved.
+    </div>
+  </div>
+</footer>
+
+<script>
+// Language toggle
+function setLang(lang){
+  document.body.className = 'lang-' + lang;
+  document.querySelectorAll('.lang-switch button').forEach(b => b.classList.remove('active'));
+  document.getElementById('lang-' + lang).classList.add('active');
+  localStorage.setItem('kix_lang', lang);
+}
+// Restore saved language, default CN
+(function(){
+  var saved = localStorage.getItem('kix_lang') || 'cn';
+  setLang(saved);
+})();
+
+// Scroll-triggered reveal animation
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+
+</body>
+</html>

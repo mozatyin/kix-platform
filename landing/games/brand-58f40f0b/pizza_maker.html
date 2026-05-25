@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizza Maker</title>
+    <script src="https://cdn.tailwindcss.com">        function getPieceEmoji(pieceType) { const emojis = ['🍔','🍕','🌮','🍜','🍲','🥘']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+    <style>
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .hidden { display: none !important; }
+        
+        .ingredient-slot {
+            width: 60px;
+            height: 60px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+        }
+        
+        .ingredient-item {
+            width: 50px;
+            height: 50px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .pizza-base {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: #f4c430;
+            position: relative;
+        }
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}</style>
+<style>
+/* KiX Brand CSS — 海南鸡饭店 */
+:root {
+  --kix-brand: #FFD700;
+  --kix-accent: #8B4513;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #FFD700, #7f6b00) !important;
+  --tw-gradient-from: #FFD700 !important;
+  --tw-gradient-to: #7f6b00 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #FFD700 !important;
+  background: #FFD700 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #7f6b00 !important;
+  background: #7f6b00 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #FFD700 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-orange-50 min-h-screen">
+    
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen active">
+        <div class="text-center p-6">
+            <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">海南鸡饭店</h1>
+            <div class="space-y-4">
+                <button id="start-game-btn" class="w-full bg-red-500 text-white py-3 px-6 rounded-lg text-lg font-semibold">Start Cooking</button>
+                <button id="show-rules-btn" class="w-full bg-blue-500 text-white py-3 px-6 rounded-lg">Rules</button>
+                <button id="show-achievements-btn" class="w-full bg-yellow-500 text-white py-3 px-6 rounded-lg">Achievements</button>
+                <button id="show-settings-btn" class="w-full bg-gray-500 text-white py-3 px-6 rounded-lg">Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules Screen -->
+    <div id="rules-screen" class="screen">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">How to Play</h2>
+            <div id="rules-content" class="space-y-3 text-gray-700">
+                <!-- Rules content populated by render() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="screen">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">Settings</h2>
+            <div id="settings-content" class="space-y-4">
+                <!-- Settings content populated by render() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Screen -->
+    <div id="achievements-screen" class="screen">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">Achievements</h2>
+            <div id="achievements-list" class="space-y-3">
+                <!-- Achievements populated by render() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Pizza Shop Screen -->
+    <div id="pizza_shop-screen" class="screen">
+        <div class="p-4">
+            <div id="shop-header" class="mb-4">
+                <!-- Day, money, timer populated by render() -->
+            </div>
+            <div id="customer-order" class="mb-6 p-4 bg-white rounded-lg shadow">
+                <!-- Current customer order populated by render() -->
+            </div>
+            <div id="pizza-workspace" class="mb-6">
+                <!-- Pizza being made populated by render() -->
+            </div>
+            <div id="ingredients-panel" class="grid grid-cols-4 gap-2">
+                <!-- Available ingredients populated by render() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Results Screen -->
+    <div id="day_results-screen" class="screen">
+        <div class="p-6 text-center">
+            <h2 class="text-2xl font-bold mb-4">Day Complete!</h2>
+            <div id="results-stats" class="space-y-3 mb-6">
+                <!-- Day statistics populated by render() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Fixed Action Buttons -->
+    <div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t p-4 flex gap-3">
+        <button id="back-btn" class="flex-1 bg-gray-400 text-white py-2 px-4 rounded">Back</button>
+        <button id="serve-pizza-btn" class="flex-1 bg-green-500 text-white py-2 px-4 rounded hidden">Serve Pizza</button>
+        <button id="next-day-btn" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded hidden">Next Day</button>
+        <button id="clear-pizza-btn" class="flex-1 bg-orange-500 text-white py-2 px-4 rounded hidden">Clear Pizza</button>
+    </div>
+
+    <script>
+        let gameState = null;
+        let gameTimer = null;
+
+        /** @returns {object} Initial game state */
+        function initState() {
+            return {
+                screen: 'home',
+                day: 1,
+                money: 50,
+                score: 0,
+                timeRemaining: 300,
+                dayStarted: false,
+                
+                currentPizza: {
+                    base: null,
+                    toppings: []
+                },
+                
+                currentOrder: {
+                    id: 1,
+                    base: 'thin',
+                    toppings: ['cheese', 'pepperoni'],
+                    payment: 15,
+                    timeRemaining: 60,
+                    customerName: 'Customer #1'
+                },
+                ordersCompleted: 0,
+                ordersCorrect: 0,
+                
+                ingredients: {
+                    pepperoni: { name: 'Pepperoni', emoji: '🍕', cost: 2 },
+                    mushroom: { name: 'Mushroom', emoji: '🍄', cost: 1 },
+                    cheese: { name: 'Cheese', emoji: '🧀', cost: 1 },
+                    olive: { name: 'Olive', emoji: '🫒', cost: 1 },
+                    tomato: { name: 'Tomato', emoji: '🍅', cost: 1 },
+                    bell_pepper: { name: 'Bell Pepper', emoji: '🫑', cost: 1 },
+                    onion: { name: 'Onion', emoji: '🧅', cost: 1 }
+                },
+                
+                availableIngredients: ['pepperoni', 'mushroom', 'cheese', 'olive', 'tomato', 'bell_pepper', 'onion'],
+                
+                achievements: [
+                    { name: 'First Pizza', description: 'Serve your first pizza', completed: false },
+                    { name: 'Perfect Day', description: 'Get all orders correct in a day', completed: false },
+                    { name: 'Speed Demon', description: 'Serve 10 pizzas in one day', completed: false },
+                    { name: 'Money Maker', description: 'Earn $100', completed: false }
+                ],
+                
+                settings: {
+                    soundEnabled: true,
+                    animationsEnabled: true,
+                    difficulty: 'normal'
+                },
+                
+                dayStats: {
+                    ordersServed: 0,
+                    correctOrders: 0,
+                    moneyEarned: 0,
+                    timeBonus: 0
+                }
+            };
+        }
+
+        /** @param {object} state @param {object} action @returns {object} */
+        function handleAction(state, action) {
+            let newState = { ...state };
+
+            switch (action.type) {
+                case 'navigate':
+                    newState.screen = action.screen;
+                    break;
+
+                case 'START_GAME':
+                case 'start_cooking':
+                    newState.screen = 'pizza_shop';
+                    newState.day = 1;
+                    newState.money = 50;
+                    newState.timeRemaining = 120;
+                    newState.currentPizza = { base: null, toppings: [] };
+                    newState.ordersCompleted = 0;
+                    newState.ordersCorrect = 0;
+                    newState = generateCustomerOrder(newState);
+                    startGameTimer();
+                    break;
+
+                case 'SHOW_RULES':
+                    newState.screen = 'rules';
+                    break;
+
+                case 'SHOW_ACHIEVEMENTS':
+                    newState.screen = 'achievements';
+                    break;
+
+                case 'SHOW_SETTINGS':
+                    newState.screen = 'settings';
+                    break;
+
+                case 'GO_BACK':
+                    newState.screen = 'home';
+                    stopGameTimer();
+                    break;
+
+                case 'ADD_INGREDIENT':
+                case 'add_ingredient':
+                    if (canAddIngredient(newState, action.ingredientType || action.ingredient)) {
+                        newState = addIngredientToPizza(newState, action.ingredientType || action.ingredient);
+                    }
+                    break;
+
+                case 'CLEAR_PIZZA':
+                case 'clear_pizza':
+                    newState.currentPizza = { base: null, toppings: [] };
+                    break;
+
+                case 'SERVE_PIZZA':
+                case 'serve_pizza':
+                    if (newState.currentPizza.toppings.length > 0) {
+                        newState = servePizza(newState);
+                        if (newState.timeRemaining > 0 && newState.ordersCompleted < 10) {
+                            newState = generateCustomerOrder(newState);
+                        } else {
+                            newState.screen = 'day_results';
+                            newState = calculateDayScore(newState);
+                            stopGameTimer();
+                        }
+                    }
+                    break;
+
+                case 'NEXT_DAY':
+                case 'next_day':
+                    newState = startNextDay(newState);
+                    startGameTimer();
+                    break;
+
+                case 'tick':
+                    if (newState.screen === 'pizza_shop' && newState.timeRemaining > 0) {
+                        newState.timeRemaining = Math.max(0, newState.timeRemaining - 1);
+                        if (newState.currentOrder && newState.currentOrder.timeRemaining > 0) {
+                            newState.currentOrder.timeRemaining = Math.max(0, newState.currentOrder.timeRemaining - 1);
+                        }
+                        if (newState.timeRemaining === 0) {
+                            newState.screen = 'day_results';
+                            newState = calculateDayScore(newState);
+                            stopGameTimer();
+                        }
+                    }
+                    break;
+
+                case 'toggle_sound':
+                    newState.settings.soundEnabled = !newState.settings.soundEnabled;
+                    break;
+
+                case 'set_difficulty':
+                    newState.settings.difficulty = action.difficulty;
+                    break;
+
+                case 'reset_progress':
+                    newState.achievements.forEach(achievement => achievement.completed = false);
+                    newState.money = 50;
+                    newState.day = 1;
+                    break;
+
+                default:
+                    break;
+            }
+
+            return newState;
+        }
+
+        /** @param {object} state @returns {void} */
+        function render(state) {
+            showScreen(state.screen);
+
+            if (state.screen === 'home') {
+                // Home screen is static
+            } else if (state.screen === 'rules') {
+                let rulesContent = document.getElementById('rules-content');
+                rulesContent.innerHTML = `
+                    <p>• Make pizzas according to customer orders</p>
+                    <p>• Click ingredients to add them to your pizza</p>
+                    <p>• Match the customer's exact order to earn money</p>
+                    <p>• Complete as many orders as possible before time runs out</p>
+                    <p>• Earn achievements by reaching certain milestones</p>
+                `;
+            } else if (state.screen === 'settings') {
+                let settingsContent = document.getElementById('settings-content');
+                settingsContent.innerHTML = `
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" ${state.settings.soundEnabled ? 'checked' : ''} id="sound-toggle" class="mr-2">
+                            Sound Effects
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" ${state.settings.animationsEnabled ? 'checked' : ''} id="animations-toggle" class="mr-2">
+                            Animations
+                        </label>
+                    </div>
+                `;
+            } else if (state.screen === 'achievements') {
+                let achievementsList = document.getElementById('achievements-list');
+                let html = '';
+                
+                state.achievements.forEach(achievement => {
+                    let completed = achievement.completed ? 'bg-green-100 border-green-300' : 'bg-gray-100 border-gray-300';
+                    let icon = achievement.completed ? '✅' : '⭕';
+                    html += `
+                        <div class="p-3 border rounded ${completed}">
+                            <div class="flex items-center">
+                                <span class="text-xl mr-3">${icon}</span>
+                                <div>
+                                    <div class="font-semibold">${achievement.name}</div>
+                                    <div class="text-sm text-gray-600">${achievement.description}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                achievementsList.innerHTML = html;
+            } else if (state.screen === 'pizza_shop') {
+                renderShop(state);
+            } else if (state.screen === 'day_results') {
+                renderDayResults(state);
+            }
+
+            updateActionButtons(state);
+        }
+
+        /** @param {string} screenId @returns {void} */
+        function showScreen(screenId) {
+            let screens = document.querySelectorAll('.screen');
+            for (let i = 0; i < screens.length; i++) {
+                screens[i].classList.remove('active');
+            }
+
+            let targetScreen = document.getElementById(screenId + '-screen');
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            }
+        }
+
+        /** @param {object} state @returns {object} */
+        function generateCustomerOrder(state) {
+            let availableIngredients = ['cheese', 'pepperoni', 'mushroom', 'olive', 'tomato', 'bell_pepper'];
+            
+            let numIngredients = Math.floor(Math.random() * 3) + 2;
+            let selectedIngredients = [];
+            
+            for (let i = 0; i < numIngredients; i++) {
+                let randomIndex = Math.floor(Math.random() * availableIngredients.length);
+                let ingredient = availableIngredients[randomIndex];
+                if (selectedIngredients.indexOf(ingredient) === -1) {
+                    selectedIngredients.push(ingredient);
+                }
+            }
+            
+            let basePayment = 10 + (selectedIngredients.length * 3);
+            let timeLimit = 45 + (selectedIngredients.length * 5);
+            
+            let newState = { ...state };
+            newState.currentOrder = {
+                id: state.ordersCompleted + 1,
+                base: 'thin',
+                toppings: selectedIngredients,
+                payment: basePayment,
+                timeRemaining: timeLimit,
+                customerName: "Customer #" + (state.ordersCompleted + 1)
+            };
+            
+            return newState;
+        }
+
+        /** @param {object} state @param {string} ingredientType @returns {boolean} */
+        function canAddIngredient(state, ingredientType) {
+            if (!state.currentPizza || !state.currentOrder) {
+                return false;
+            }
+
+            if (state.availableIngredients.indexOf(ingredientType) === -1) {
+                return false;
+            }
+
+            if (state.currentPizza.toppings.indexOf(ingredientType) !== -1) {
+                return false;
+            }
+
+            if (state.currentPizza.toppings.length >= 6) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /** @param {object} state @param {string} ingredientType @returns {object} */
+        function addIngredientToPizza(state, ingredientType) {
+            let newState = { ...state };
+            let newPizza = { ...state.currentPizza };
+            newPizza.toppings = [...state.currentPizza.toppings, ingredientType];
+            newState.currentPizza = newPizza;
+            return newState;
+        }
+
+        /** @param {object} state @returns {boolean} */
+        function pizzaMatchesOrder(state) {
+            if (!state.currentOrder || !state.currentPizza) {
+                return false;
+            }
+
+            let orderToppings = [...state.currentOrder.toppings].sort();
+            let pizzaToppings = [...state.currentPizza.toppings].sort();
+
+            if (orderToppings.length !== pizzaToppings.length) {
+                return false;
+            }
+
+            for (let i = 0; i < orderToppings.length; i++) {
+                if (orderToppings[i] !== pizzaToppings[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /** @param {object} state @returns {object} */
+        function servePizza(state) {
+            let isCorrect = pizzaMatchesOrder(state);
+            let moneyEarned = isCorrect ? state.currentOrder.payment : Math.floor(state.currentOrder.payment * 0.5);
+            
+            let newState = { ...state };
+            newState.money += moneyEarned;
+            newState.ordersCompleted += 1;
+            
+            if (isCorrect) {
+                newState.ordersCorrect += 1;
+            }
+            
+            newState.dayStats.ordersServed += 1;
+            newState.dayStats.moneyEarned += moneyEarned;
+            if (isCorrect) {
+                newState.dayStats.correctOrders += 1;
+            }
+
+            newState.currentPizza = { base: null, toppings: [] };
+            
+            // Check for achievements
+            if (newState.ordersCompleted === 1 && !newState.achievements[0].completed) {
+                newState.achievements[0].completed = true;
+            }
+            if (newState.money >= 100 && !newState.achievements[3].completed) {
+                newState.achievements[3].completed = true;
+            }
+            
+            return newState;
+        }
+
+        /** @param {object} state @returns {object} */
+        function calculateDayScore(state) {
+            let baseScore = state.dayStats.ordersServed * 50;
+            let accuracyBonus = state.dayStats.correctOrders * 25;
+            let timeBonus = Math.floor(state.timeRemaining * 2);
+            let perfectBonus = (state.dayStats.ordersServed > 0 && state.dayStats.correctOrders === state.dayStats.ordersServed) ? 200 : 0;
+
+            let totalScore = baseScore + accuracyBonus + timeBonus + perfectBonus;
+            
+            let newState = { ...state };
+            newState.score += totalScore;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+            newState.dayStats.totalScore = totalScore;
+            
+            // Check perfect day achievement
+            if (perfectBonus > 0 && state.dayStats.ordersServed >= 3 && !newState.achievements[1].completed) {
+                newState.achievements[1].completed = true;
+            }
+            
+            // Check speed demon achievement
+            if (state.dayStats.ordersServed >= 10 && !newState.achievements[2].completed) {
+                newState.achievements[2].completed = true;
+            }
+            
+            return newState;
+        }
+
+        /** @param {object} state @returns {object} */
+        function startNextDay(state) {
+            let newState = { ...state };
+            newState.day += 1;
+            newState.timeRemaining = 120;
+            newState.screen = 'pizza_shop';
+            newState.currentPizza = { base: null, toppings: [] };
+            
+            newState.dayStats = {
+                ordersServed: 0,
+                correctOrders: 0,
+                moneyEarned: 0,
+                totalScore: 0
+            };
+            
+            newState = generateCustomerOrder(newState);
+            return newState;
+        }
+
+        /** @param {object} state @returns {void} */
+        function renderShop(state) {
+            let headerEl = document.getElementById('shop-header');
+            headerEl.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div class="text-lg font-semibold">Day ${state.day}</div>
+                    <div class="text-lg font-semibold text-green-600">$${state.money}</div>
+                    <div class="text-lg font-semibold text-blue-600">Time: ${state.timeRemaining}s</div>
+                </div>
+            `;
+
+            renderCustomerOrder(state);
+            renderPizzaWorkspace(state);
+            renderIngredients(state);
+        }
+
+        /** @param {object} state @returns {void} */
+        function renderPizzaWorkspace(state) {
+            let workspace = document.getElementById('pizza-workspace');
+            if (!workspace) return;
+
+            let html = '<div class="text-center">';
+            html += '<h3 class="text-lg font-semibold mb-4">Your Pizza</h3>';
+            html += '<div class="pizza-base mx-auto relative bg-yellow-300 border-4 border-yellow-400">';
+
+            if (state.currentPizza && state.currentPizza.toppings) {
+                let ingredientPositions = [
+                    { top: '20%', left: '30%' },
+                    { top: '30%', left: '60%' },
+                    { top: '50%', left: '20%' },
+                    { top: '50%', left: '70%' },
+                    { top: '70%', left: '40%' },
+                    { top: '60%', left: '65%' }
+                ];
+                
+                for (let i = 0; i < state.currentPizza.toppings.length && i < ingredientPositions.length; i++) {
+                    let ingredient = state.currentPizza.toppings[i];
+                    let position = ingredientPositions[i];
+                    let emoji = state.ingredients[ingredient] ? state.ingredients[ingredient].emoji : '🔴';
+                    
+                    html += `<div class="absolute text-lg" style="top: ${position.top}; left: ${position.left}; transform: translate(-50%, -50%);">${emoji}</div>`;
+                }
+            }
+
+            html += '</div>';
+            html += '</div>';
+
+            workspace.innerHTML = html;
+        }
+
+        /** @param {object} state @returns {void} */
+        function renderIngredients(state) {
+            let ingredientsPanel = document.getElementById('ingredients-panel');
+            if (!ingredientsPanel) return;
+
+            let availableIngredients = ['cheese', 'pepperoni', 'mushroom', 'olive', 'tomato', 'bell_pepper'];
+            let ingredientEmojis = {
+                cheese: '🧀',
+                pepperoni: '🍕',
+                mushroom: '🍄',
+                olive: '🫒',
+                tomato: '🍅',
+                bell_pepper: '🫑'
+            };
+
+            ingredientsPanel.innerHTML = availableIngredients.map(ingredient => `
+                <div class="ingredient-item bg-white border-2 border-gray-300 rounded-lg p-2 text-center cursor-pointer hover:bg-gray-100" 
+                     data-ingredient="${ingredient}">
+                    <div class="text-2xl">${ingredientEmojis[ingredient]}</div>
+                    <div class="text-xs text-gray-600">${ingredient}</div>
+                </div>
+            `).join('');
+        }
+
+        /** @param {object} state @returns {void} */
+        function renderCustomerOrder(state) {
+            let orderContainer = document.getElementById('customer-order');
+            if (!state.currentOrder) {
+                orderContainer.innerHTML = '<p class="text-gray-500">No current order</p>';
+                return;
+            }
+
+            let order = state.currentOrder;
+            let orderHtml = `
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-semibold">${order.customerName}</h3>
+                    <span class="text-green-600 font-bold">$${order.payment}</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-sm text-gray-600">
+                        <p><strong>Base:</strong> ${order.base}</p>
+                        <p><strong>Toppings:</strong> ${order.toppings.join(', ')}</p>
+                    </div>
+                </div>
+            `;
+
+            if (order.timeRemaining !== undefined) {
+                orderHtml += `
+                    <div class="mt-3 bg-gray-100 rounded p-2">
+                        <div class="text-sm text-gray-600">Customer patience: ${order.timeRemaining}s</div>
+                        <div class="w-full bg-gray-300 rounded-full h-2 mt-1">
+                            <div class="bg-red-500 h-2 rounded-full" style="width: ${Math.max(0, Math.min(100, (order.timeRemaining / 60) * 100))}%"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            orderContainer.innerHTML = orderHtml;
+        }
+
+        /** @param {object} state @returns {void} */
+        function renderDayResults(state) {
+            let resultsDiv = document.getElementById('results-stats');
+            if (!resultsDiv) return;
+
+            let dayStats = state.dayStats || {};
+            let totalEarned = dayStats.moneyEarned || 0;
+            let pizzasServed = dayStats.ordersServed || 0;
+            let perfectPizzas = dayStats.correctOrders || 0;
+            let accuracy = pizzasServed > 0 ? Math.round((perfectPizzas / pizzasServed) * 100) : 0;
+
+            resultsDiv.innerHTML = `
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-bold mb-3">Day ${state.day} Results</h3>
+                    <div class="space-y-2 text-left">
+                        <div class="flex justify-between">
+                            <span>Pizzas Served:</span>
+                            <span class="font-bold">${pizzasServed}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Perfect Orders:</span>
+                            <span class="font-bold text-green-600">${perfectPizzas}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Accuracy:</span>
+                            <span class="font-bold">${accuracy}%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Money Earned:</span>
+                            <span class="font-bold text-yellow-600">$${totalEarned}</span>
+                        </div>
+                        <div class="flex justify-between border-t pt-2">
+                            <span>Total Money:</span>
+                            <span class="font-bold text-green-600">$${state.money}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /** @param {object} state @returns {void} */
+        function updateActionButtons(state) {
+            let backBtn = document.getElementById('back-btn');
+            let servePizzaBtn = document.getElementById('serve-pizza-btn');
+            let nextDayBtn = document.getElementById('next-day-btn');
+            let clearPizzaBtn = document.getElementById('clear-pizza-btn');
+
+            if (state.screen === 'home') {
+                backBtn.classList.add('hidden');
+            } else {
+                backBtn.classList.remove('hidden');
+            }
+
+            if (state.screen === 'pizza_shop') {
+                if (state.currentPizza && state.currentPizza.toppings && state.currentPizza.toppings.length > 0) {
+                    servePizzaBtn.classList.remove('hidden');
+                    clearPizzaBtn.classList.remove('hidden');
+                } else {
+                    servePizzaBtn.classList.add('hidden');
+                    clearPizzaBtn.classList.remove('hidden');
+                }
+                nextDayBtn.classList.add('hidden');
+            } else if (state.screen === 'day_results') {
+                servePizzaBtn.classList.add('hidden');
+                clearPizzaBtn.classList.add('hidden');
+                nextDayBtn.classList.remove('hidden');
+            } else {
+                servePizzaBtn.classList.add('hidden');
+                clearPizzaBtn.classList.add('hidden');
+                nextDayBtn.classList.add('hidden');
+            }
+        }
+
+        function startGameTimer() {
+            if (gameTimer) {
+                clearInterval(gameTimer);
+            }
+            gameTimer = setInterval(() => {
+                if (gameState && gameState.screen === 'pizza_shop') {
+                    gameState = handleAction(gameState, { type: 'tick' });
+                    render(gameState);
+                }
+            }, 1000);
+        }
+
+        function stopGameTimer() {
+            if (gameTimer) {
+                clearInterval(gameTimer);
+                gameTimer = null;
+            }
+        }
+
+        /** @returns {void} */
+        function startGame() {
+            gameState = initState();
+            render(gameState);
+
+            document.getElementById('start-game-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'START_GAME' });
+                render(gameState);
+            });
+
+            document.getElementById('show-rules-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_RULES' });
+                render(gameState);
+            });
+
+            document.getElementById('show-achievements-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_ACHIEVEMENTS' });
+                render(gameState);
+            });
+
+            document.getElementById('show-settings-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SHOW_SETTINGS' });
+                render(gameState);
+            });
+
+            document.getElementById('back-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'GO_BACK' });
+                render(gameState);
+            });
+
+            document.getElementById('serve-pizza-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'SERVE_PIZZA' });
+                render(gameState);
+            });
+
+            document.getElementById('next-day-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'NEXT_DAY' });
+                render(gameState);
+            });
+
+            document.getElementById('clear-pizza-btn').addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'CLEAR_PIZZA' });
+                render(gameState);
+            });
+
+            document.getElementById('ingredients-panel').addEventListener('click', (e) => {
+                let target = e.target.closest('.ingredient-item');
+                if (target && target.dataset.ingredient) {
+                    let ingredientType = target.dataset.ingredient;
+                    gameState = handleAction(gameState, { type: 'ADD_INGREDIENT', ingredientType: ingredientType });
+                    render(gameState);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', startGame);
+            function getPieceEmoji(pieceType) { const emojis = ['🍔','🍕','🌮','🍜','🍲','🥘']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>
