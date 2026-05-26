@@ -1,33 +1,36 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Match-3 Game</title>
-  <script src="https://cdn.tailwindcss.com">        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match-3 Game</title>
+    <script src="https://cdn.tailwindcss.com">        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
     </script>
-  <style>
-    .screen { display: none; }
-    .screen.active { display: block; }
-    .gem {
-      width: 50px;
-      height: 50px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .gem.selected { transform: scale(1.1); box-shadow: 0 0 10px yellow; }
-    .gem-red { background: linear-gradient(45deg, #ff6b6b, #ff4757); }
-    .gem-blue { background: linear-gradient(45deg, #74b9ff, #0984e3); }
-    .gem-green { background: linear-gradient(45deg, #00b894, #00a085); }
-    .gem-yellow { background: linear-gradient(45deg, #fdcb6e, #f39c12); }
-    .gem-purple { background: linear-gradient(45deg, #a29bfe, #6c5ce7); }
-    .gem-orange { background: linear-gradient(45deg, #fd79a8, #e84393); }
-  </style>
+    <style>
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .game-piece { width: 50px; height: 50px; border-radius: 8px; transition: all 0.3s ease; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 32px; background: rgba(255,255,255,0.15); }
+        
+        
+        
+        
+        
+        
+        .selected { transform: scale(0.9); box-shadow: 0 0 0 3px #fbbf24; }
+        .matched { opacity: 0.5; }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            aspect-ratio: 1;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .board-cell {
+            aspect-ratio: 1;
+            position: relative;
+        }
+    </style>
 <style>.screen:not(.active){display:none!important}.screen.active{display:block!important}</style>
 <style>
 /* KiX Brand CSS — 咖啡店 */
@@ -96,833 +99,911 @@ button.bg-blue-500, button.bg-blue-600,
 </script>
 </head>
 <body class="bg-purple-900 text-white min-h-screen">
-
-<div id="home-screen" class="screen active p-4 text-center">
-  <div style="font-size:48px;margin-bottom:8px">☕</div>
+    
+    <div id="home-screen" class="screen active p-4 text-center">
+        <div style="font-size:48px;margin-bottom:8px">☕</div>
 <h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">咖啡店</h1>
-  <div class="space-y-4">
-    <button id="play-btn" class="w-full bg-green-500 text-white py-3 rounded-lg text-xl">Play</button>
-    <button id="shop-btn" class="w-full bg-blue-500 text-white py-3 rounded-lg text-xl">Shop</button>
-    <button id="scores-btn" class="w-full bg-yellow-500 text-white py-3 rounded-lg text-xl">High Scores</button>
-    <button id="settings-btn" class="w-full bg-gray-500 text-white py-3 rounded-lg text-xl">Settings</button>
-  </div>
-</div>
-
-<div id="level_select-screen" class="screen p-4">
-  <h2 class="text-2xl font-bold mb-4">Select Level</h2>
-  <div id="levels-grid" class="grid grid-cols-3 gap-4 mb-20"></div>
-</div>
-
-<div id="gameplay-screen" class="screen p-2">
-  <div class="flex justify-between items-center mb-2">
-    <div class="text-sm">Score: <span id="score">0</span></div>
-    <div class="text-sm">Moves: <span id="moves">30</span></div>
-    <button id="pause-btn" class="bg-gray-600 px-3 py-1 rounded text-sm">Pause</button>
-  </div>
-  <div class="text-xs mb-2">Target: <span id="target">1000</span></div>
-  <div id="game-board" class="mx-auto"></div>
-</div>
-
-<div id="pause_menu-screen" class="screen p-4 text-center">
-  <h2 class="text-2xl font-bold mb-8">Game Paused</h2>
-  <div class="space-y-4">
-    <button id="resume-btn" class="w-full bg-green-500 text-white py-3 rounded-lg">Resume</button>
-    <button id="restart-btn" class="w-full bg-yellow-500 text-white py-3 rounded-lg">Restart</button>
-    <button id="quit-btn" class="w-full bg-red-500 text-white py-3 rounded-lg">Quit</button>
-  </div>
-</div>
-
-<div id="settings-screen" class="screen p-4">
-  <h2 class="text-2xl font-bold mb-4">Settings</h2>
-  <div class="space-y-4 mb-20">
-    <div class="flex justify-between items-center">
-      <span>Sound</span>
-      <input type="checkbox" id="sound-toggle" checked>
+        <div class="space-y-4">
+            <button id="play-btn" class="bg-green-600 px-8 py-4 rounded-xl text-xl font-bold w-full">Play</button>
+            <button id="levels-btn" class="bg-blue-600 px-8 py-4 rounded-xl text-xl font-bold w-full">Levels</button>
+            <button id="shop-btn" class="bg-purple-600 px-8 py-4 rounded-xl text-xl font-bold w-full">Shop</button>
+            <button id="scores-btn" class="bg-orange-600 px-8 py-4 rounded-xl text-xl font-bold w-full">High Scores</button>
+        </div>
     </div>
-    <div class="flex justify-between items-center">
-      <span>Music</span>
-      <input type="checkbox" id="music-toggle" checked>
+
+    <div id="level_select-screen" class="screen p-4">
+        <h2 class="text-2xl font-bold mb-4 text-center">Select Level</h2>
+        <div id="level-grid" class="grid grid-cols-5 gap-2 mb-4">
+        </div>
     </div>
-  </div>
-</div>
 
-<div id="shop-screen" class="screen p-4">
-  <h2 class="text-2xl font-bold mb-4">Shop</h2>
-  <div class="text-lg mb-4">Coins: <span id="coins">100</span></div>
-  <div id="shop-items" class="space-y-4 mb-20"></div>
-</div>
+    <div id="gameplay-screen" class="screen p-4">
+        <div class="flex justify-between items-center mb-4">
+            <div class="text-sm">
+                <div>Score: <span id="score">0</span></div>
+                <div>Moves: <span id="moves">30</span></div>
+            </div>
+            <button id="pause-btn" class="bg-gray-600 px-3 py-1 rounded">Pause</button>
+        </div>
+        <div id="game-board"></div>
+    </div>
 
-<div id="game_result-screen" class="screen p-4 text-center">
-  <h2 id="result-title" class="text-3xl font-bold mb-4">Level Complete!</h2>
-  <div class="mb-8">
-    <div class="text-xl mb-2">Final Score: <span id="final-score">0</span></div>
-    <div class="text-lg">Stars: <span id="stars">⭐⭐⭐</span></div>
-  </div>
-  <div class="space-y-4">
-    <button id="next-level-btn" class="w-full bg-green-500 text-white py-3 rounded-lg">Next Level</button>
-    <button id="retry-btn" class="w-full bg-blue-500 text-white py-3 rounded-lg">Retry</button>
-    <button id="menu-btn" class="w-full bg-gray-500 text-white py-3 rounded-lg">Menu</button>
-  </div>
-</div>
+    <div id="pause_menu-screen" class="screen p-4 text-center">
+        <h2 class="text-2xl font-bold mb-8">Game Paused</h2>
+        <div class="space-y-4">
+            <button id="resume-btn" class="bg-green-600 px-8 py-4 rounded-xl font-bold w-full">Resume</button>
+            <button id="restart-btn" class="bg-yellow-600 px-8 py-4 rounded-xl font-bold w-full">Restart</button>
+            <button id="quit-btn" class="bg-red-600 px-8 py-4 rounded-xl font-bold w-full">Quit</button>
+        </div>
+    </div>
 
-<div id="high_scores-screen" class="screen p-4">
-  <h2 class="text-2xl font-bold mb-4">High Scores</h2>
-  <div id="scores-list" class="space-y-2 mb-20"></div>
-</div>
+    <div id="settings-screen" class="screen p-4">
+        <h2 class="text-2xl font-bold mb-4 text-center">Settings</h2>
+        <div id="settings-content" class="space-y-4">
+        </div>
+    </div>
 
-<div class="fixed bottom-0 left-0 right-0 bg-purple-800 p-2 z-40 flex justify-center">
-  <button id="back-btn" class="bg-gray-600 px-6 py-2 rounded-lg">Back</button>
-</div>
+    <div id="shop-screen" class="screen p-4">
+        <h2 class="text-2xl font-bold mb-4 text-center">Shop</h2>
+        <div id="shop-items" class="space-y-4">
+        </div>
+    </div>
 
-<script>
-let gameState;
+    <div id="game_result-screen" class="screen p-4 text-center">
+        <h2 id="result-title" class="text-3xl font-bold mb-4">Level Complete!</h2>
+        <div id="result-stats" class="mb-8">
+        </div>
+        <div class="space-y-4">
+            <button id="next-level-btn" class="bg-green-600 px-8 py-4 rounded-xl font-bold w-full">Next Level</button>
+            <button id="retry-btn" class="bg-yellow-600 px-8 py-4 rounded-xl font-bold w-full">Try Again</button>
+            <button id="home-btn" class="bg-blue-600 px-8 py-4 rounded-xl font-bold w-full">Home</button>
+        </div>
+    </div>
 
-/** @returns {object} */
-function initState() { return {
+    <div id="high_scores-screen" class="screen p-4">
+        <h2 class="text-2xl font-bold mb-4 text-center">High Scores</h2>
+        <div id="scores-list">
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-800 p-2 z-40 flex justify-center space-x-4">
+        <button id="back-btn" class="bg-gray-600 px-4 py-2 rounded font-bold">Back</button>
+        <button id="settings-btn" class="bg-gray-600 px-4 py-2 rounded font-bold">Settings</button>
+    </div>
+
+    <script>
+        let gameState = {};
+
+        /** @returns {object} */
+        function initState() { return {
     screen: 'home',
-    phase: 'menu',
-    currentLevel: 1,
-    maxUnlockedLevel: 1,
     board: [],
-    boardSize: 8,
+    selectedCell: null,
+    selectedPiece: null,
     score: 0,
     moves: 30,
-    target: 1000,
-    selectedGem: null,
-    gameStatus: 'playing',
+    currentLevel: 1,
+    gameActive: false,
+    gameOver: false,
+    won: false,
     coins: 100,
+    highScores: [],
     settings: {
-      sound: true,
-      music: true
+        soundEnabled: true,
+        musicEnabled: true,
+        difficulty: 'normal'
     },
-    highScores: [
-      { level: 1, score: 2500, stars: 3 },
-      { level: 1, score: 2100, stars: 2 },
-      { level: 1, score: 1800, stars: 2 },
-      { level: 1, score: 1500, stars: 1 },
-      { level: 1, score: 1200, stars: 1 }
-    ],
-    shopItems: [
-      { id: 1, name: 'Extra Moves +5', cost: 50, type: 'moves' },
-      { id: 2, name: 'Score Boost 2x', cost: 100, type: 'score' },
-      { id: 3, name: 'Lucky Gem', cost: 75, type: 'gem' }
-    ],
-    levels: [
-      { id: 1, target: 1000, moves: 30, unlocked: true },
-      { id: 2, target: 1500, moves: 25, unlocked: false },
-      { id: 3, target: 2000, moves: 20, unlocked: false },
-      { id: 4, target: 2500, moves: 25, unlocked: false },
-      { id: 5, target: 3000, moves: 20, unlocked: false },
-      { id: 6, target: 3500, moves: 18, unlocked: false },
-      { id: 7, target: 4000, moves: 16, unlocked: false },
-      { id: 8, target: 4500, moves: 15, unlocked: false },
-      { id: 9, target: 5000, moves: 14, unlocked: false }
-    ]
-  } }
+    boardSize: 8,
+    pieceTypes: 6,
+    targetScore: 1000,
+    levelConfig: {
+        targetScore: 1000,
+        maxMoves: 30,
+        moves: 30
+    },
+    animations: []
+} }
 
-/** @param {object} state @param {object} action @returns {object} */
-function handleAction(state, action) { let newState = { ...state };
+        /** @param {object} state @param {object} action @returns {object} */
+        function handleAction(state, action) { let newState = { ...state };
 
 switch (action.type) {
-  case 'NAVIGATE_TO_SCREEN':
-    newState.screen = action.screen;
-    if (action.screen === 'level_select') {
-      newState.phase = 'level_select';
-    } else if (action.screen === 'gameplay') {
-      newState.phase = 'playing';
-    } else if (action.screen === 'shop') {
-      newState.phase = 'shop';
-    } else if (action.screen === 'settings') {
-      newState.phase = 'settings';
-    } else if (action.screen === 'high_scores') {
-      newState.phase = 'high_scores';
-    } else {
-      newState.phase = 'menu';
-    }
-    break;
+    case 'navigate':
+        newState.screen = action.screen;
+        break;
 
-  case 'NAVIGATE_TO_LEVEL_SELECT':
-    newState.screen = 'level_select';
-    newState.phase = 'level_select';
-    break;
+    case 'start_game':
+        startLevel(newState, 1);
+        newState.screen = 'gameplay';
+        newState.gameActive = true;
+        newState.gameOver = false;
+        break;
 
-  case 'NAVIGATE_TO_SHOP':
-    newState.screen = 'shop';
-    newState.phase = 'shop';
-    break;
+    case 'show_levels':
+        newState.screen = 'level_select';
+        break;
 
-  case 'NAVIGATE_TO_HIGH_SCORES':
-    newState.screen = 'high_scores';
-    newState.phase = 'high_scores';
-    break;
+    case 'select_level':
+        startLevel(newState, action.level);
+        newState.screen = 'gameplay';
+        newState.gameActive = true;
+        newState.gameOver = false;
+        break;
 
-  case 'NAVIGATE_TO_SETTINGS':
-    newState.screen = 'settings';
-    newState.phase = 'settings';
-    break;
+    case 'pause_game':
+        newState.screen = 'pause_menu';
+        break;
 
-  case 'NAVIGATE_BACK':
-    if (newState.screen === 'level_select' || newState.screen === 'shop' || 
-        newState.screen === 'settings' || newState.screen === 'high_scores') {
-      newState.screen = 'home';
-      newState.phase = 'menu';
-    } else if (newState.screen === 'pause_menu') {
-      newState.screen = 'gameplay';
-      newState.phase = 'playing';
-    } else if (newState.screen === 'game_result') {
-      newState.screen = 'home';
-      newState.phase = 'menu';
-    }
-    break;
+    case 'resume_game':
+        newState.screen = 'gameplay';
+        break;
 
-  case 'SELECT_LEVEL':
-    newState.currentLevel = action.level;
-    newState.screen = 'gameplay';
-    newState.phase = 'playing';
-    newState.score = 0;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
-    newState.moves = 30;
-    newState.target = 1000 + (action.level - 1) * 500;
-    newState.board = [];
-    for (let i = 0; i < 8; i++) {
-      newState.board[i] = [];
-      for (let j = 0; j < 8; j++) {
-        newState.board[i][j] = getRandomGemType();
-      }
-    }
-    newState.selectedGem = null;
-    newState.gameStatus = 'playing';
-    break;
-
-  case 'CELL_CLICK':
-    if (newState.selectedGem && 
-        newState.selectedGem.row === action.row && 
-        newState.selectedGem.col === action.col) {
-      newState.selectedGem = null;
-    } else if (newState.selectedGem) {
-      let fromRow = newState.selectedGem.row;
-      let fromCol = newState.selectedGem.col;
-      let toRow = action.row;
-      let toCol = action.col;
-      
-      if (canSwapGems(newState, fromRow, fromCol, toRow, toCol)) {
-        let swappedState = swapGems(newState, fromRow, fromCol, toRow, toCol);
-        Object.assign(newState, swappedState);
-        
-        let matches = findMatches(newState);
-        while (matches.length > 0) {
-          let matchState = removeMatches(newState, matches);
-          Object.assign(newState, matchState);
-          
-          let dropState = dropGems(newState);
-          Object.assign(newState, dropState);
-          
-          let fillState = fillEmptySpaces(newState);
-          Object.assign(newState, fillState);
-          
-          matches = findMatches(newState);
+    case 'restart_level':
+        if (newState.currentLevel) {
+            startLevel(newState, newState.currentLevel);
+            newState.screen = 'gameplay';
+            newState.gameActive = true;
+            newState.gameOver = false;
         }
-        
-        newState.moves--;
-        newState.selectedGem = null;
-        
-        if (checkWinCondition(newState)) {
-          newState.screen = 'game_result';
-          newState.phase = 'game_over';
-          newState.gameStatus = 'won';
-        } else if (checkLoseCondition(newState)) {
-          newState.screen = 'game_result';
-          newState.phase = 'game_over';
-          newState.gameStatus = 'lost';
+        break;
+
+    case 'quit_game':
+    case 'quit_to_menu':
+        newState.screen = 'home';
+        newState.gameActive = false;
+        break;
+
+    case 'cell_click':
+        if (newState.screen === 'gameplay' && !newState.gameOver) {
+            handleCellClickAction(newState, action.row, action.col);
         }
-      } else {
-        newState.selectedGem = { row: action.row, col: action.col };
-      }
-    } else {
-      newState.selectedGem = { row: action.row, col: action.col };
-    }
-    break;
+        break;
 
-  case 'PAUSE_GAME':
-    newState.screen = 'pause_menu';
-    newState.phase = 'paused';
-    break;
-
-  case 'RESUME_GAME':
-    newState.screen = 'gameplay';
-    newState.phase = 'playing';
-    break;
-
-  case 'RESTART_LEVEL':
-    newState.screen = 'gameplay';
-    newState.phase = 'playing';
-    newState.score = 0;
-    newState.moves = 30;
-    newState.target = 1000 + (newState.currentLevel - 1) * 500;
-    newState.board = [];
-    for (let i = 0; i < 8; i++) {
-      newState.board[i] = [];
-      for (let j = 0; j < 8; j++) {
-        newState.board[i][j] = getRandomGemType();
-      }
-    }
-    newState.selectedGem = null;
-    newState.gameStatus = 'playing';
-    break;
-
-  case 'QUIT_TO_MENU':
-    newState.screen = 'home';
-    newState.phase = 'menu';
-    break;
-
-  case 'NEXT_LEVEL':
-    let nextLevel = (newState.currentLevel || 1) + 1;
-    if (nextLevel <= 9) {
-      newState.currentLevel = nextLevel;
-      newState.screen = 'gameplay';
-      newState.phase = 'playing';
-      newState.score = 0;
-      newState.moves = 30;
-      newState.target = 1000 + (nextLevel - 1) * 500;
-      newState.board = [];
-      for (let i = 0; i < 8; i++) {
-        newState.board[i] = [];
-        for (let j = 0; j < 8; j++) {
-          newState.board[i][j] = getRandomGemType();
+    case 'next_level':
+        let nextLevel = newState.currentLevel + 1;
+        if (nextLevel <= 20) {
+            startLevel(newState, nextLevel);
+            newState.screen = 'gameplay';
+            newState.gameActive = true;
+            newState.gameOver = false;
+        } else {
+            newState.screen = 'home';
         }
-      }
-      newState.selectedGem = null;
-      newState.gameStatus = 'playing';
-    } else {
-      newState.screen = 'home';
-      newState.phase = 'menu';
-    }
-    break;
+        break;
 
-  case 'RETRY_LEVEL':
-    newState.screen = 'gameplay';
-    newState.phase = 'playing';
-    newState.score = 0;
-    newState.moves = 30;
-    newState.target = 1000 + (newState.currentLevel - 1) * 500;
-    newState.board = [];
-    for (let i = 0; i < 8; i++) {
-      newState.board[i] = [];
-      for (let j = 0; j < 8; j++) {
-        newState.board[i][j] = getRandomGemType();
-      }
-    }
-    newState.selectedGem = null;
-    newState.gameStatus = 'playing';
-    break;
+    case 'retry_level':
+        if (newState.currentLevel) {
+            startLevel(newState, newState.currentLevel);
+            newState.screen = 'gameplay';
+            newState.gameActive = true;
+            newState.gameOver = false;
+        }
+        break;
 
-  case 'RETURN_TO_MENU':
-    newState.screen = 'home';
-    newState.phase = 'menu';
-    break;
+    case 'go_home':
+        newState.screen = 'home';
+        newState.gameActive = false;
+        break;
 
-  case 'TOGGLE_SOUND':
-    newState.settings.sound = action.enabled;
-    break;
+    case 'show_shop':
+        newState.screen = 'shop';
+        break;
 
-  case 'TOGGLE_MUSIC':
-    newState.settings.music = action.enabled;
-    break;
+    case 'show_scores':
+        newState.screen = 'high_scores';
+        break;
 
-  case 'BUY_ITEM':
-    if (newState.coins >= action.cost) {
-      newState.coins -= action.cost;
-    }
-    break;
+    case 'show_settings':
+        newState.screen = 'settings';
+        break;
 
-  case 'SAVE_HIGH_SCORE':
-    if (!newState.highScores) {
-      newState.highScores = [];
-    }
-    newState.highScores.push({
-      score: newState.score,
-      level: newState.currentLevel,
-      date: Date.now()
-    });
-    newState.highScores.sort((a, b) => b.score - a.score);
-    newState.highScores = newState.highScores.slice(0, 10);
-    break;
+    case 'back':
+    case 'go_back':
+        if (newState.screen === 'level_select' || newState.screen === 'shop' || 
+            newState.screen === 'high_scores' || newState.screen === 'settings') {
+            newState.screen = 'home';
+        } else if (newState.screen === 'pause_menu') {
+            newState.screen = 'gameplay';
+        } else if (newState.screen === 'game_result') {
+            newState.screen = 'home';
+        }
+        break;
 
-  default:
-    break;
+    case 'GAME_OVER':
+        newState.gameOver = true;
+        newState.won = false;
+        newState.screen = 'game_result';
+        break;
+
+    case 'LEVEL_COMPLETE':
+        newState.gameOver = true;
+        newState.won = true;
+        newState.screen = 'game_result';
+        break;
+
+    default:
+        // No action taken for unknown action types
+        break;
 }
 
 return newState; }
 
-/** @param {object} state */
-function render(state) { showScreen(state.screen);
-  
-  let scoreEl = document.getElementById('score');
-  if (scoreEl) scoreEl.textContent = state.score;
-  
-  let movesEl = document.getElementById('moves');
-  if (movesEl) movesEl.textContent = state.moves;
-  
-  let targetEl = document.getElementById('target');
-  if (targetEl) targetEl.textContent = state.target;
-  
-  let coinsEl = document.getElementById('coins');
-  if (coinsEl) coinsEl.textContent = state.coins;
-  
-  if (state.screen === 'level_select') {
-    renderLevelSelect(state);
-  } else if (state.screen === 'gameplay') {
+        /** @param {object} state @param {number} row @param {number} col */
+        function handleCellClickAction(state, row, col) {
+            // Get current cell value
+            let currentPiece = state.board[row][col];
+            if (currentPiece === 0 || currentPiece === null) return;
+            
+            // If no piece is selected, select this piece
+            if (!state.selectedPiece) {
+                state.selectedPiece = { row, col };
+                return;
+            }
+            
+            // If clicking the same piece, deselect it
+            if (state.selectedPiece.row === row && state.selectedPiece.col === col) {
+                state.selectedPiece = null;
+                return;
+            }
+            
+            // Check if pieces are adjacent
+            let rowDiff = Math.abs(state.selectedPiece.row - row);
+            let colDiff = Math.abs(state.selectedPiece.col - col);
+            let isAdjacent = (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            
+            if (!isAdjacent) {
+                // Not adjacent, select this piece instead
+                state.selectedPiece = { row, col };
+                return;
+            }
+            
+            // Try to swap pieces
+            if (isValidSwap(state, state.selectedPiece.row, state.selectedPiece.col, row, col)) {
+                // Valid swap - perform it
+                state = swapPieces(state, state.selectedPiece.row, state.selectedPiece.col, row, col);
+                state.selectedPiece = null;
+                state.moves--;
+                
+                // Process matches
+                let matches = findMatches(state);
+                while (matches.length > 0) {
+                    state = removeMatches(state, matches);
+                    state = dropPieces(state);
+                    state = fillEmpty(state);
+                    matches = findMatches(state);
+                }
+                
+                // Check for game over conditions
+                if (isLevelComplete(state)) {
+                    state.gameOver = true;
+                    state.won = true;
+                } else if (isGameOver(state)) {
+                    state.gameOver = true;
+                    state.won = false;
+                }
+            } else {
+                // Invalid swap - just deselect
+                state.selectedPiece = null;
+            }
+        }
+
+        /** @param {object} state */
+        function render(state) { showScreen(state.screen);
+
+// Update score display
+let scoreElement = document.getElementById('score');
+if (scoreElement) {
+    scoreElement.textContent = state.score || 0;
+}
+
+// Update moves display
+let movesElement = document.getElementById('moves');
+if (movesElement) {
+    movesElement.textContent = state.moves || 0;
+}
+
+// Render game board if on gameplay screen
+if (state.screen === 'gameplay') {
     renderBoard(state);
-  } else if (state.screen === 'shop') {
-    renderShop(state);
-  } else if (state.screen === 'high_scores') {
-    renderHighScores(state);
-  } else if (state.screen === 'game_result') {
-    let resultTitleEl = document.getElementById('result-title');
-    if (resultTitleEl) {
-      resultTitleEl.textContent = state.gameStatus === 'won' ? 'Level Complete!' : 'Game Over!';
+}
+
+// Render level select grid
+if (state.screen === 'level_select') {
+    let levelGrid = document.getElementById('level-grid');
+    if (levelGrid) {
+        levelGrid.innerHTML = '';
+        for (let i = 1; i <= 20; i++) {
+            let levelBtn = document.createElement('button');
+            levelBtn.textContent = i;
+            levelBtn.className = 'bg-blue-600 p-4 rounded font-bold hover:bg-blue-500';
+            levelBtn.addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'select_level', level: i });
+                render(gameState);
+            });
+            levelGrid.appendChild(levelBtn);
+        }
+    }
+}
+
+// Render game result screen
+if (state.screen === 'game_result') {
+    let resultTitle = document.getElementById('result-title');
+    let resultStats = document.getElementById('result-stats');
+    
+    if (resultTitle && resultStats) {
+        if (state.won) {
+            resultTitle.textContent = 'Level Complete!';
+            resultTitle.className = 'text-3xl font-bold mb-4 text-green-400';
+        } else {
+            resultTitle.textContent = 'Game Over';
+            resultTitle.className = 'text-3xl font-bold mb-4 text-red-400';
+        }
+        
+        resultStats.innerHTML = `
+            <div class="text-xl">Final Score: ${state.score || 0}</div>
+            <div class="text-lg">Level: ${state.currentLevel || 1}</div>
+        `;
     }
     
-    let finalScoreEl = document.getElementById('final-score');
-    if (finalScoreEl) finalScoreEl.textContent = state.score;
-    
-    let starsEl = document.getElementById('stars');
-    if (starsEl) {
-      let starCount = 1;
-      if (state.score >= state.target * 1.5) starCount = 3;
-      else if (state.score >= state.target) starCount = 2;
-      starsEl.textContent = '⭐'.repeat(starCount);
-    }
-    
+    // Show/hide next level button based on win state
     let nextLevelBtn = document.getElementById('next-level-btn');
     if (nextLevelBtn) {
-      nextLevelBtn.style.display = state.gameStatus === 'won' ? 'block' : 'none';
+        nextLevelBtn.style.display = state.won ? 'block' : 'none';
     }
-  } }
-
-/** @param {string} screenId */
-function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
-for (let i = 0; i < screens.length; i++) {
-  screens[i].classList.remove('active');
 }
+
+// Render high scores
+if (state.screen === 'high_scores') {
+    let scoresList = document.getElementById('scores-list');
+    if (scoresList) {
+        scoresList.innerHTML = '';
+        let scores = state.highScores || [];
+        if (scores.length === 0) {
+            scoresList.innerHTML = '<div class="text-center text-gray-400">No scores yet</div>';
+        } else {
+            scores.forEach((score, index) => {
+                let scoreItem = document.createElement('div');
+                scoreItem.className = 'flex justify-between items-center bg-gray-700 p-3 rounded mb-2';
+                scoreItem.innerHTML = `
+                    <span>#${index + 1}</span>
+                    <span>Level ${score.level || 1}</span>
+                    <span>${score.score || 0}</span>
+                `;
+                scoresList.appendChild(scoreItem);
+            });
+        }
+    }
+}
+
+// Render shop
+if (state.screen === 'shop') {
+    let shopItems = document.getElementById('shop-items');
+    if (shopItems) {
+        shopItems.innerHTML = `
+            <div class="bg-gray-700 p-4 rounded">
+                <h3 class="font-bold mb-2">Extra Moves</h3>
+                <p class="text-sm text-gray-300 mb-2">Get 5 extra moves for tough levels</p>
+                <button class="bg-green-600 px-4 py-2 rounded font-bold">Buy - 100 coins</button>
+            </div>
+            <div class="bg-gray-700 p-4 rounded">
+                <h3 class="font-bold mb-2">Hint System</h3>
+                <p class="text-sm text-gray-300 mb-2">Show possible moves when stuck</p>
+                <button class="bg-green-600 px-4 py-2 rounded font-bold">Buy - 200 coins</button>
+            </div>
+        `;
+    }
+}
+
+// Render settings
+if (state.screen === 'settings') {
+    let settingsContent = document.getElementById('settings-content');
+    if (settingsContent) {
+        settingsContent.innerHTML = `
+            <div class="bg-gray-700 p-4 rounded">
+                <h3 class="font-bold mb-2">Sound Effects</h3>
+                <button class="bg-blue-600 px-4 py-2 rounded font-bold">On</button>
+            </div>
+            <div class="bg-gray-700 p-4 rounded">
+                <h3 class="font-bold mb-2">Music</h3>
+                <button class="bg-blue-600 px-4 py-2 rounded font-bold">On</button>
+            </div>
+            <div class="bg-gray-700 p-4 rounded">
+                <h3 class="font-bold mb-2">Difficulty</h3>
+                <button class="bg-blue-600 px-4 py-2 rounded font-bold">Normal</button>
+            </div>
+        `;
+    }
+} }
+
+        /** @param {string} screenId */
+        function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+screens.forEach(screen => screen.classList.remove('active'));
 
 let targetScreen = document.getElementById(screenId + '-screen');
 if (targetScreen) {
-  targetScreen.classList.add('active');
+    targetScreen.classList.add('active');
 } }
 
-/** @param {object} state */
-function renderBoard(state) { let boardElement = document.getElementById('game-board');
-if (!boardElement) return {};
-
-let html = '';
-html += '<div class="grid grid-cols-8 gap-1 w-fit mx-auto">';
-
+        /** @param {object} state @returns {Array<Array<number>>} */
+        function generateBoard(state) { // Generate a new 8x8 board with random pieces
+let board = [];
 for (let row = 0; row < 8; row++) {
-  for (let col = 0; col < 8; col++) {
-    let gemType = state.board[row][col];
-    let gemColors = ['', 'gem-red', 'gem-blue', 'gem-green', 'gem-yellow', 'gem-purple', 'gem-orange'];
-    let colorClass = gemColors[gemType] || 'gem-red';
-    
-    let isSelected = state.selectedGem && state.selectedGem.row === row && state.selectedGem.col === col;
-    let selectedClass = isSelected ? ' selected' : '';
-    
-    html += `<div class="gem ${colorClass}${selectedClass}" data-row="${row}" data-col="${col}"></div>`;
-  }
+    board[row] = [];
+    for (let col = 0; col < 8; col++) {
+        // Generate random piece type (0-5 for different colors, indexed from 0)
+        let pieceType;
+        let attempts = 0;
+        do {
+            pieceType = Math.floor(Math.random() * 6);
+            attempts++;
+        } while (attempts < 10 && (
+            // Avoid horizontal matches of 3
+            (col >= 2 && board[row][col-1] === pieceType && board[row][col-2] === pieceType) ||
+            // Avoid vertical matches of 3
+            (row >= 2 && board[row-1] && board[row-1][col] === pieceType && 
+             board[row-2] && board[row-2][col] === pieceType)
+        ));
+        
+        board[row][col] = pieceType;
+    }
 }
+return board; }
 
-html += '</div>';
-boardElement.innerHTML = html; }
-
-/** @param {object} state @param {number} row @param {number} col @returns {boolean} */
-function isValidMove(state, row, col) { if (row < 0 || row >= state.board.length || col < 0 || col >= state.board[0].length) {
-    return false;
-}
-
-if (state.board[row][col] === null || state.board[row][col] === undefined) {
-    return false;
-}
-
-if (state.selectedGem) {
-    let selectedRow = state.selectedGem.row;
-    let selectedCol = state.selectedGem.col;
+        /** @param {object} state */
+        function renderBoard(state) { let boardEl = document.getElementById('game-board');
+    if (!boardEl) return;
     
-    let isAdjacent = (Math.abs(row - selectedRow) === 1 && col === selectedCol) || 
-                     (Math.abs(col - selectedCol) === 1 && row === selectedRow);
+    boardEl.innerHTML = '';
     
-    if (!isAdjacent) {
-        return false;
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            let cell = document.createElement('div');
+            cell.className = 'board-cell';
+            
+            let piece = document.createElement('div');
+            piece.className = 'game-piece';
+            
+            let pieceType = state.board[row][col];
+            let pieceColors = ['piece-red', 'piece-blue', 'piece-green', 'piece-yellow', 'piece-purple', 'piece-orange'];
+            
+            if (pieceType >= 0 && pieceType < pieceColors.length) {
+                piece.classList.add(pieceColors[pieceType]);
+                piece.textContent = pieceType + 1;
+            }
+            
+            if (state.selectedPiece && state.selectedPiece.row === row && state.selectedPiece.col === col) {
+                piece.classList.add('selected');
+            }
+            
+            piece.addEventListener('click', () => {
+                gameState = handleAction(gameState, { type: 'cell_click', row: row, col: col });
+                render(gameState);
+                
+                // Check for game over conditions after render
+                if (gameState.gameOver) {
+                    if (gameState.won) {
+                        gameState = handleAction(gameState, { type: 'LEVEL_COMPLETE' });
+                    } else {
+                        gameState = handleAction(gameState, { type: 'GAME_OVER' });
+                    }
+                    render(gameState);
+                }
+            });
+            
+            cell.appendChild(piece);
+            boardEl.appendChild(cell);
+        }
+    } }
+
+        /** @param {object} state @param {number} row @param {number} col */
+        function handleCellClick(state, row, col) { // Get current cell value
+    let currentPiece = state.board[row][col];
+    if (currentPiece === 0) return {}; // Can't click empty cells
+    
+    // If no piece is selected, select this piece
+    if (!state.selectedPiece) {
+        let newState = { ...state };
+        newState.selectedPiece = { row, col };
+        gameState = newState;
+        render(gameState);
+        return {};
     }
     
-    return canSwapGems(state, selectedRow, selectedCol, row, col);
+    // If clicking the same piece, deselect it
+    if (state.selectedPiece.row === row && state.selectedPiece.col === col) {
+        let newState = { ...state };
+        newState.selectedPiece = null;
+        gameState = newState;
+        render(gameState);
+        return {};
+    }
+    
+    // Check if pieces are adjacent
+    let rowDiff = Math.abs(state.selectedPiece.row - row);
+    let colDiff = Math.abs(state.selectedPiece.col - col);
+    let isAdjacent = (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+    
+    if (!isAdjacent) {
+        // Not adjacent, select this piece instead
+        let newState = { ...state };
+        newState.selectedPiece = { row, col };
+        gameState = newState;
+        render(gameState);
+        return {};
+    }
+    
+    // Try to swap pieces
+    if (isValidSwap(state, state.selectedPiece.row, state.selectedPiece.col, row, col)) {
+        // Valid swap - perform it
+        let newState = swapPieces(state, state.selectedPiece.row, state.selectedPiece.col, row, col);
+        newState.selectedPiece = null;
+        newState.moves--;
+        
+        // Process matches
+        let matches = findMatches(newState);
+        if (matches.length > 0) {
+            newState = removeMatches(newState, matches);
+            newState = dropPieces(newState);
+            newState = fillEmpty(newState);
+            
+            // Keep processing cascading matches
+            while (true) {
+                let cascadeMatches = findMatches(newState);
+                if (cascadeMatches.length === 0) break;
+                newState = removeMatches(newState, cascadeMatches);
+                newState = dropPieces(newState);
+                newState = fillEmpty(newState);
+            }
+        }
+        
+        gameState = newState;
+        render(gameState);
+        
+        // Check for game over conditions
+        if (isGameOver(gameState)) {
+            gameState = handleAction(gameState, { type: 'GAME_OVER' });
+            render(gameState);
+        } else if (isLevelComplete(gameState)) {
+            gameState = handleAction(gameState, { type: 'LEVEL_COMPLETE' });
+            render(gameState);
+        }
+    } else {
+        // Invalid swap - just deselect
+        let newState = { ...state };
+        newState.selectedPiece = null;
+        gameState = newState;
+        render(gameState);
+    } }
+
+        /** @param {object} state @returns {Array<Array<[number,number]>>} */
+        function findMatches(state) { let matches = [];
+let visited = new Set();
+
+// Check horizontal matches
+for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+        if (state.board[row][col] === 0 || state.board[row][col] === null) continue;
+        
+        let currentType = state.board[row][col];
+        let matchGroup = [];
+        let startCol = col;
+        
+        // Count consecutive pieces of same type horizontally
+        while (col < 8 && state.board[row][col] === currentType) {
+            matchGroup.push([row, col]);
+            col++;
+        }
+        
+        // If we found 3 or more in a row, add to matches
+        if (matchGroup.length >= 3) {
+            matches.push(matchGroup);
+        }
+        
+        // Reset col to continue from where we left off
+        col = startCol;
+    }
 }
 
-return true; }
+// Check vertical matches
+for (let col = 0; col < 8; col++) {
+    for (let row = 0; row < 8; row++) {
+        if (state.board[row][col] === 0 || state.board[row][col] === null) continue;
+        
+        let currentType = state.board[row][col];
+        let matchGroup = [];
+        let startRow = row;
+        
+        // Count consecutive pieces of same type vertically
+        while (row < 8 && state.board[row][col] === currentType) {
+            matchGroup.push([row, col]);
+            row++;
+        }
+        
+        // If we found 3 or more in a column, add to matches
+        if (matchGroup.length >= 3) {
+            matches.push(matchGroup);
+        }
+        
+        // Reset row to continue from where we left off
+        row = startRow;
+    }
+}
 
-/** @param {object} state @param {number} fromRow @param {number} fromCol @param {number} toRow @param {number} toCol @returns {boolean} */
-function canSwapGems(state, fromRow, fromCol, toRow, toCol) { let rowDiff = Math.abs(toRow - fromRow);
-let colDiff = Math.abs(toCol - fromCol);
+return matches; }
+
+        /** @param {object} state @param {Array<Array<[number,number]>>} matches @returns {object} */
+        function removeMatches(state, matches) { let newState = JSON.parse(JSON.stringify(state));
+    let totalScore = 0;
+    
+    for (let matchGroup of matches) {
+        for (let [row, col] of matchGroup) {
+            if (newState.board[row] && newState.board[row][col] !== null) {
+                // Award points based on piece type
+                let pieceType = newState.board[row][col];
+                let points = 10; // Base points per piece
+                
+                // Bonus points for larger matches
+                if (matchGroup.length >= 4) {
+                    points *= 2;
+                }
+                if (matchGroup.length >= 5) {
+                    points *= 2;
+                }
+                
+                totalScore += points;
+                
+                // Remove the piece from the board
+                newState.board[row][col] = null;
+            }
+        }
+    }
+    
+    // Add to total score
+    newState.score += totalScore;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+    
+    return newState; }
+
+        /** @param {object} state @returns {object} */
+        function dropPieces(state) { let newBoard = state.board.map(row => [...row]);
+    let changed = false;
+
+    // Process each column from bottom to top
+    for (let col = 0; col < newBoard[0].length; col++) {
+        // Collect non-empty pieces from bottom to top
+        let pieces = [];
+        for (let row = newBoard.length - 1; row >= 0; row--) {
+            if (newBoard[row][col] !== 0 && newBoard[row][col] !== null) {
+                pieces.push(newBoard[row][col]);
+            }
+        }
+
+        // Clear the column
+        for (let row = 0; row < newBoard.length; row++) {
+            newBoard[row][col] = 0;
+        }
+
+        // Place pieces at the bottom
+        for (let i = 0; i < pieces.length; i++) {
+            let targetRow = newBoard.length - 1 - i;
+            newBoard[targetRow][col] = pieces[i];
+        }
+    }
+
+    // Check if any pieces actually moved by comparing with original
+    for (let row = 0; row < state.board.length; row++) {
+        for (let col = 0; col < state.board[row].length; col++) {
+            if (state.board[row][col] !== newBoard[row][col]) {
+                changed = true;
+                break;
+            }
+        }
+        if (changed) break;
+    }
+
+    return {
+        ...state,
+        board: newBoard
+    }; }
+
+        /** @param {object} state @returns {object} */
+        function fillEmpty(state) { let newState = { ...state };
+    let board = newState.board.map(row => [...row]);
+    let changed = false;
+
+    // Fill empty cells (0 or null) with new random pieces from the top
+    for (let col = 0; col < board[0].length; col++) {
+        for (let row = 0; row < board.length; row++) {
+            if (board[row][col] === 0 || board[row][col] === null) {
+                board[row][col] = Math.floor(Math.random() * 6);
+                changed = true;
+            }
+        }
+    }
+
+    newState.board = board;
+    return newState; }
+
+        /** @param {object} state @param {number} row1 @param {number} col1 @param {number} row2 @param {number} col2 @returns {boolean} */
+        function isValidSwap(state, row1, col1, row2, col2) { // Check if two positions are adjacent (horizontally or vertically)
+let rowDiff = Math.abs(row1 - row2);
+let colDiff = Math.abs(col1 - col2);
 let isAdjacent = (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
 
 if (!isAdjacent) {
-  return false;
+    return false;
 }
 
-let tempBoard = state.board.map(row => [...row]);
-let temp = tempBoard[fromRow][fromCol];
-tempBoard[fromRow][fromCol] = tempBoard[toRow][toCol];
-tempBoard[toRow][toCol] = temp;
+// Create a temporary state with swapped pieces
+let tempState = JSON.parse(JSON.stringify(state));
+let temp = tempState.board[row1][col1];
+tempState.board[row1][col1] = tempState.board[row2][col2];
+tempState.board[row2][col2] = temp;
 
-let tempState = {
-  ...state,
-  board: tempBoard
-};
-
+// Check if the swap creates any matches
 let matches = findMatches(tempState);
 return matches.length > 0; }
 
-/** @param {object} state @param {number} fromRow @param {number} fromCol @param {number} toRow @param {number} toCol @returns {object} */
-function swapGems(state, fromRow, fromCol, toRow, toCol) { let newState = {...state};
-let newBoard = state.board.map(row => [...row]);
-
-let temp = newBoard[fromRow][fromCol];
-newBoard[fromRow][fromCol] = newBoard[toRow][toCol];
-newBoard[toRow][toCol] = temp;
-
-newState.board = newBoard;
-return newState; }
-
-/** @param {object} state @returns {Array<Array<[number,number]>>} */
-function findMatches(state) { let matches = [];
-  let board = state.board;
-  let rows = board.length;
-  let cols = board[0].length;
-
-  for (let row = 0; row < rows; row++) {
-    let currentMatch = [];
-    for (let col = 0; col < cols; col++) {
-      if (board[row][col] === null || board[row][col] === 0) {
-        if (currentMatch.length >= 3) {
-          matches.push([...currentMatch]);
-        }
-        currentMatch = [];
-      } else if (currentMatch.length === 0 || board[row][col] === board[row][currentMatch[0][1]]) {
-        currentMatch.push([row, col]);
-      } else {
-        if (currentMatch.length >= 3) {
-          matches.push([...currentMatch]);
-        }
-        currentMatch = [[row, col]];
-      }
-    }
-    if (currentMatch.length >= 3) {
-      matches.push([...currentMatch]);
-    }
-  }
-
-  for (let col = 0; col < cols; col++) {
-    let currentMatch = [];
-    for (let row = 0; row < rows; row++) {
-      if (board[row][col] === null || board[row][col] === 0) {
-        if (currentMatch.length >= 3) {
-          matches.push([...currentMatch]);
-        }
-        currentMatch = [];
-      } else if (currentMatch.length === 0 || board[row][col] === board[currentMatch[0][0]][col]) {
-        currentMatch.push([row, col]);
-      } else {
-        if (currentMatch.length >= 3) {
-          matches.push([...currentMatch]);
-        }
-        currentMatch = [[row, col]];
-      }
-    }
-    if (currentMatch.length >= 3) {
-      matches.push([...currentMatch]);
-    }
-  }
-
-  return matches; }
-
-/** @param {object} state @param {Array<Array<[number,number]>>} matches @returns {object} */
-function removeMatches(state, matches) { let newState = { ...state }
-  let totalScore = 0
-  
-  for (let matchGroup of matches) {
-    let matchScore = matchGroup.length * 10
-    if (matchGroup.length >= 4) matchScore *= 2
-    if (matchGroup.length >= 5) matchScore *= 3
-    totalScore += matchScore
+        /** @param {object} state @param {number} row1 @param {number} col1 @param {number} row2 @param {number} col2 @returns {object} */
+        function swapPieces(state, row1, col1, row2, col2) { let newBoard = state.board.map(row => [...row]);
     
-    for (let [row, col] of matchGroup) {
-      newState.board[row][col] = 0
-    }
-  }
-  
-  newState.score += totalScore
-  
-  return newState }
-
-/** @param {object} state @returns {object} */
-function dropGems(state) { let newBoard = state.board.map(row => [...row]);
-  let changed = false;
-  
-  for (let col = 0; col < newBoard[0].length; col++) {
-    for (let row = newBoard.length - 2; row >= 0; row--) {
-      if (newBoard[row][col] !== 0) {
-        let currentRow = row;
-        while (currentRow + 1 < newBoard.length && newBoard[currentRow + 1][col] === 0) {
-          currentRow++;
-        }
-        if (currentRow !== row) {
-          newBoard[currentRow][col] = newBoard[row][col];
-          newBoard[row][col] = 0;
-          changed = true;
-        }
-      }
-    }
-  }
-  
-  return { ...state, board: newBoard }; }
-
-/** @param {object} state @returns {object} */
-function fillEmptySpaces(state) { let newState = { ...state }
-  let board = newState.board.map(row => [...row])
-  
-  for (let col = 0; col < 8; col++) {
-    for (let row = 7; row >= 0; row--) {
-      if (board[row][col] === 0) {
-        board[row][col] = getRandomGemType()
-      }
-    }
-  }
-  
-  newState.board = board
-  return newState }
-
-/** @returns {number} */
-function getRandomGemType() { return Math.floor(Math.random() * 6) + 1; }
-
-/** @param {object} state @returns {boolean} */
-function hasValidMoves(state) { for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      if (col < 7) {
-        let testState = swapGems(state, row, col, row, col + 1);
-        let matches = findMatches(testState);
-        if (matches.length > 0) {
-          return true;
-        }
-      }
-      
-      if (row < 7) {
-        let testState = swapGems(state, row, col, row + 1, col);
-        let matches = findMatches(testState);
-        if (matches.length > 0) {
-          return true;
-        }
-      }
-    }
-  }
-  
-  return false; }
-
-/** @param {object} state @returns {boolean} */
-function checkWinCondition(state) { return state.score >= state.target }
-
-/** @param {object} state @returns {boolean} */
-function checkLoseCondition(state) { return state.moves <= 0 && !checkWinCondition(state) }
-
-/** @param {Event} event */
-function handleBoardClick(event) { let target = event.target;
-if (!target.classList.contains('gem')) return {};
-
-let row = parseInt(target.dataset.row);
-let col = parseInt(target.dataset.col);
-
-if (isNaN(row) || isNaN(col)) return {};
-
-let action = {
-  type: 'CELL_CLICK',
-  row: row,
-  col: col
-};
-
-gameState = handleAction(gameState, action);
-render(gameState); }
-
-/** @param {object} state */
-function renderLevelSelect(state) { let levelsGrid = document.getElementById('levels-grid');
-levelsGrid.innerHTML = '';
-
-for (let i = 1; i <= 9; i++) {
-  let levelBtn = document.createElement('button');
-  levelBtn.className = 'bg-purple-600 hover:bg-purple-500 p-4 rounded-lg text-center';
-  
-  let isUnlocked = i <= (state.maxUnlockedLevel || 1);
-  if (!isUnlocked) {
-    levelBtn.className += ' opacity-50 cursor-not-allowed';
-  }
-  
-  levelBtn.innerHTML = `
-    <div class="text-lg font-bold">${i}</div>
-    <div class="text-xs">${isUnlocked ? 'Available' : 'Locked'}</div>
-  `;
-  
-  if (isUnlocked) {
-    levelBtn.addEventListener('click', () => {
-      gameState = handleAction(gameState, { type: 'SELECT_LEVEL', level: i });
-      render(gameState);
-    });
-  }
-  
-  levelsGrid.appendChild(levelBtn);
-} }
-
-/** @param {object} state */
-function renderShop(state) { let shopContainer = document.getElementById('shop-items');
-  let coinsDisplay = document.getElementById('coins');
-  
-  coinsDisplay.textContent = state.coins || 100;
-  
-  let shopItems = [
-    { id: 'extra_moves', name: 'Extra Moves (+5)', cost: 50, description: 'Add 5 extra moves to your next game' },
-    { id: 'score_boost', name: 'Score Booster (2x)', cost: 75, description: 'Double points for your next game' },
-    { id: 'hint_pack', name: 'Hint Pack (3x)', cost: 30, description: 'Get 3 hints for your next game' },
-    { id: 'shuffle', name: 'Board Shuffle', cost: 40, description: 'Shuffle the board when stuck' }
-  ];
-  
-  shopContainer.innerHTML = '';
-  
-  for (let item of shopItems) {
-    let itemDiv = document.createElement('div');
-    itemDiv.className = 'bg-purple-700 p-4 rounded-lg';
+    // Swap the pieces
+    let temp = newBoard[row1][col1];
+    newBoard[row1][col1] = newBoard[row2][col2];
+    newBoard[row2][col2] = temp;
     
-    let canAfford = (state.coins || 100) >= item.cost;
-    let buttonClass = canAfford ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500';
+    return {
+        ...state,
+        board: newBoard
+    }; }
+
+        /** @param {object} state @returns {boolean} */
+        function hasValidMoves(state) { // Check if there are any valid moves available on the board
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            // Check horizontal swap (right)
+            if (col < 7) {
+                if (isValidSwap(state, row, col, row, col + 1)) {
+                    return true;
+                }
+            }
+            
+            // Check vertical swap (down)
+            if (row < 7) {
+                if (isValidSwap(state, row, col, row + 1, col)) {
+                    return true;
+                }
+            }
+        }
+    }
     
-    itemDiv.innerHTML = `
-      <div class="flex justify-between items-start mb-2">
-        <div>
-          <h3 class="font-bold">${item.name}</h3>
-          <p class="text-sm text-gray-300">${item.description}</p>
-        </div>
-        <div class="text-right">
-          <div class="text-yellow-400 font-bold">${item.cost} coins</div>
-          <button 
-            class="${buttonClass} px-3 py-1 rounded text-sm mt-1 ${canAfford ? '' : 'cursor-not-allowed'}"
-            ${canAfford ? '' : 'disabled'}
-            onclick="gameState = handleAction(gameState, {type: 'BUY_ITEM', itemId: '${item.id}', cost: ${item.cost}}); render(gameState);"
-          >
-            ${canAfford ? 'Buy' : 'No coins'}
-          </button>
-        </div>
-      </div>
-    `;
-    
-    shopContainer.appendChild(itemDiv);
-  } }
+    return false; }
 
-/** @param {object} state */
-function renderHighScores(state) { let scoresList = document.getElementById('scores-list');
-let highScores = state.highScores || [];
+        /** @param {object} state @returns {boolean} */
+        function isGameOver(state) { return state.moves <= 0 && !isLevelComplete(state); }
 
-scoresList.innerHTML = '';
-
-if (highScores.length === 0) {
-  scoresList.innerHTML = '<div class="text-gray-400 text-center">No scores yet</div>';
-  return {};
+        /** @param {object} state @returns {boolean} */
+        function isLevelComplete(state) { // Check if the level is complete based on the current level's objectives
+if (!state.levelConfig) {
+    return state.score >= 1000; // Default target
 }
 
-highScores.forEach((score, index) => {
-  let scoreItem = document.createElement('div');
-  scoreItem.className = 'flex justify-between items-center bg-purple-700 p-3 rounded';
-  scoreItem.innerHTML = `
-    <span class="font-bold">#${index + 1}</span>
-    <span>Level ${score.level}</span>
-    <span>${score.score}</span>
-  `;
-  scoresList.appendChild(scoreItem);
-}); }
+let config = state.levelConfig;
 
-function startGame() { gameState = initState();
-render(gameState);
+// Check score objective
+if (config.targetScore && state.score >= config.targetScore) {
+    return true;
+}
 
-document.getElementById('play-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_LEVEL_SELECT' });
-  render(gameState);
-});
+// Default to false if target not reached
+return false; }
 
-document.getElementById('shop-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_SHOP' });
-  render(gameState);
-});
+        /** @param {object} state @param {number} level */
+        function startLevel(state, level) { state.currentLevel = level;
+    
+    let levelConfig = getLevelConfig(level);
+    state.levelConfig = levelConfig;
+    state.targetScore = levelConfig.targetScore;
+    state.moves = levelConfig.moves;
+    state.score = 0;
+    state.selectedCell = null;
+    state.selectedPiece = null;
+    state.board = generateBoard(state);
+    state.gameActive = true;
+    state.gameOver = false;
+    state.won = false;
+    
+    // Keep generating new boards until we get one without initial matches
+    while (findMatches(state).length > 0) {
+        state.board = generateBoard(state);
+    } }
 
-document.getElementById('scores-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_HIGH_SCORES' });
-  render(gameState);
-});
+        /** @param {number} level @returns {object} */
+        function getLevelConfig(level) { return {
+        moves: Math.max(20, 35 - level),
+        targetScore: level * 1000 + 500,
+        boardSize: 8,
+        pieceTypes: Math.min(6, 4 + Math.floor(level / 3)),
+        timeLimit: level > 10 ? Math.max(60, 180 - level * 5) : null,
+        specialObjectives: level > 5 ? {
+            collectSpecial: Math.floor(level / 5) * 2
+        } : null
+    }; }
 
-document.getElementById('settings-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'NAVIGATE_TO_SETTINGS' });
-  render(gameState);
-});
+        function startGame() { gameState = initState();
+        render(gameState);
 
-document.getElementById('back-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'NAVIGATE_BACK' });
-  render(gameState);
-});
+        // Home screen buttons
+        document.getElementById('play-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'start_game'});
+            render(gameState);
+        });
 
-document.getElementById('pause-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'PAUSE_GAME' });
-  render(gameState);
-});
+        document.getElementById('levels-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'show_levels'});
+            render(gameState);
+        });
 
-document.getElementById('resume-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'RESUME_GAME' });
-  render(gameState);
-});
+        document.getElementById('shop-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'navigate', screen: 'shop'});
+            render(gameState);
+        });
 
-document.getElementById('restart-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'RESTART_LEVEL' });
-  render(gameState);
-});
+        document.getElementById('scores-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'show_scores'});
+            render(gameState);
+        });
 
-document.getElementById('quit-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'QUIT_TO_MENU' });
-  render(gameState);
-});
+        // Gameplay screen buttons
+        document.getElementById('pause-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'pause_game'});
+            render(gameState);
+        });
 
-document.getElementById('next-level-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'NEXT_LEVEL' });
-  render(gameState);
-});
+        // Pause menu buttons
+        document.getElementById('resume-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'resume_game'});
+            render(gameState);
+        });
 
-document.getElementById('retry-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'RETRY_LEVEL' });
-  render(gameState);
-});
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'restart_level'});
+            render(gameState);
+        });
 
-document.getElementById('menu-btn').addEventListener('click', () => {
-  gameState = handleAction(gameState, { type: 'RETURN_TO_MENU' });
-  render(gameState);
-});
+        document.getElementById('quit-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'quit_to_menu'});
+            render(gameState);
+        });
 
-document.getElementById('sound-toggle').addEventListener('change', (event) => {
-  gameState = handleAction(gameState, { type: 'TOGGLE_SOUND', enabled: event.target.checked });
-  render(gameState);
-});
+        // Game result screen buttons
+        document.getElementById('next-level-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'next_level'});
+            render(gameState);
+        });
 
-document.getElementById('music-toggle').addEventListener('change', (event) => {
-  gameState = handleAction(gameState, { type: 'TOGGLE_MUSIC', enabled: event.target.checked });
-  render(gameState);
-});
+        document.getElementById('retry-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'retry_level'});
+            render(gameState);
+        });
 
-document.getElementById('game-board').addEventListener('click', handleBoardClick);
+        document.getElementById('home-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'go_home'});
+            render(gameState);
+        });
 
-render(gameState); }
+        // Footer buttons
+        document.getElementById('back-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'go_back'});
+            render(gameState);
+        });
 
-document.addEventListener('DOMContentLoaded', startGame);
-        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+        document.getElementById('settings-btn').addEventListener('click', () => {
+            gameState = handleAction(gameState, {type: 'navigate', screen: 'settings'});
+            render(gameState);
+        }); }
+
+        document.addEventListener('DOMContentLoaded', startGame);
+            function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
     </script>
-
 </body>
 </html>

@@ -1,0 +1,1609 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coffee Shop</title>
+  <script src="https://cdn.tailwindcss.com">        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+  <style>
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .coffee-cup { width: 60px; height: 60px; border-radius: 8px; }
+    .customer { width: 50px; height: 50px; border-radius: 50%; }
+    .ingredient { width: 40px; height: 40px; border-radius: 4px; }
+    .upgrade-item { min-height: 80px; }
+  </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board grid lines */
+.board>div,.board>*,[class*=board]>div,[class*=cell],.cell,[class*=grid-cell],.board-cell{border:1px solid rgba(139,115,85,0.4)!important;background:transparent!important}
+/* Override any solid board background that hides the grid */
+.board{background-color:#deb887!important;background-image:none!important}
+</style>
+<style>
+/* KiX Brand CSS — 咖啡店 */
+:root {
+  --kix-brand: #8B4513;
+  --kix-accent: #F5DEB3;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #8B4513, #452209) !important;
+  --tw-gradient-from: #8B4513 !important;
+  --tw-gradient-to: #452209 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #8B4513 !important;
+  background: #8B4513 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #452209 !important;
+  background: #452209 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #8B4513 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-amber-50 text-gray-800 overflow-hidden">
+  
+  <!-- Home Screen -->
+  <div id="home-screen" class="screen h-screen flex flex-col justify-center items-center p-4">
+    <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">咖啡店</h1>
+    <div id="home-stats" class="mb-8 text-center"></div>
+    <div class="space-y-4">
+      <button id="start-day-btn" class="w-48 py-3 bg-amber-600 text-white rounded-lg font-semibold">Start Day</button>
+      <button id="upgrades-btn" class="w-48 py-3 bg-blue-600 text-white rounded-lg font-semibold">Upgrades</button>
+      <button id="tutorial-btn" class="w-48 py-3 bg-green-600 text-white rounded-lg font-semibold">Tutorial</button>
+    </div>
+  </div>
+
+  <!-- Shop Floor Screen -->
+  <div id="shop_floor-screen" class="screen h-screen flex flex-col">
+    <div class="flex-1 p-4">
+      <div id="shop-header" class="flex justify-between mb-4"></div>
+      <div id="customer-queue" class="mb-4"></div>
+      <div id="coffee-stations" class="grid grid-cols-2 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- Drink Making Screen -->
+  <div id="drink_making-screen" class="screen h-screen flex flex-col p-4">
+    <div id="drink-header" class="mb-4"></div>
+    <div id="recipe-display" class="mb-4 p-4 bg-white rounded-lg"></div>
+    <div id="ingredients-grid" class="grid grid-cols-4 gap-2 mb-4"></div>
+    <div id="drink-progress" class="flex-1 bg-white rounded-lg p-4"></div>
+  </div>
+
+  <!-- Upgrade Menu Screen -->
+  <div id="upgrade_menu-screen" class="screen h-screen p-4">
+    <h2 class="text-2xl font-bold mb-4">Upgrades</h2>
+    <div id="upgrade-categories" class="mb-4"></div>
+    <div id="upgrade-list" class="space-y-2"></div>
+  </div>
+
+  <!-- Menu Customize Screen -->
+  <div id="menu_customize-screen" class="screen h-screen p-4">
+    <h2 class="text-2xl font-bold mb-4">Menu</h2>
+    <div id="menu-categories" class="mb-4"></div>
+    <div id="menu-items" class="grid grid-cols-2 gap-2"></div>
+  </div>
+
+  <!-- Daily Summary Screen -->
+  <div id="daily_summary-screen" class="screen h-screen p-4">
+    <h2 class="text-2xl font-bold mb-4">Daily Summary</h2>
+    <div id="summary-stats" class="space-y-4 mb-8"></div>
+    <div id="summary-actions" class="space-y-2"></div>
+  </div>
+
+  <!-- Game Result Screen -->
+  <div id="game_result-screen" class="screen h-screen flex flex-col justify-center items-center p-4">
+    <div id="result-content" class="text-center mb-8"></div>
+    <div id="final-stats" class="mb-8"></div>
+    <div class="space-y-2">
+      <button id="play-again-btn" class="w-48 py-3 bg-amber-600 text-white rounded-lg font-semibold">Play Again</button>
+      <button id="main-menu-btn" class="w-48 py-3 bg-gray-600 text-white rounded-lg font-semibold">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- Tutorial Screen -->
+  <div id="tutorial-screen" class="screen h-screen p-4">
+    <h2 class="text-2xl font-bold mb-4">How to Play</h2>
+    <div id="tutorial-content" class="flex-1 overflow-y-auto"></div>
+    <button id="tutorial-close-btn" class="w-full py-3 bg-gray-600 text-white rounded-lg font-semibold mt-4">Close</button>
+  </div>
+
+  <!-- Settings Screen -->
+  <div id="settings-screen" class="screen h-screen p-4">
+    <h2 class="text-2xl font-bold mb-4">Settings</h2>
+    <div id="settings-options" class="space-y-4"></div>
+    <button id="settings-close-btn" class="w-full py-3 bg-gray-600 text-white rounded-lg font-semibold mt-8">Close</button>
+  </div>
+
+  <!-- Leaderboard Screen -->
+  <div id="leaderboard-screen" class="screen h-screen p-4">
+    <h2 class="text-2xl font-bold mb-4">Leaderboard</h2>
+    <div id="leaderboard-list" class="space-y-2"></div>
+    <button id="leaderboard-close-btn" class="w-full py-3 bg-gray-600 text-white rounded-lg font-semibold mt-8">Close</button>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-2 z-40">
+    <div class="flex justify-around">
+      <button id="home-btn" class="p-2 text-amber-600">🏠</button>
+      <button id="menu-btn" class="p-2 text-blue-600">📋</button>
+      <button id="settings-btn" class="p-2 text-gray-600">⚙️</button>
+      <button id="pause-btn" class="p-2 text-red-600">⏸️</button>
+    </div>
+  </div>
+
+  <script>
+    let gameState = null;
+
+    /**
+     * @returns {object} Initial game state
+     */
+    function initState() { return {
+  screen: 'home',
+  day: 1,
+  money: 50,
+  experience: 0,
+  level: 1,
+  
+  // Game timing
+  dayTimeLimit: 300000, // 5 minutes per day in milliseconds
+  dayTimeElapsed: 0,
+  isPaused: false,
+  gameStarted: false,
+  
+  // Shop stats
+  totalCustomersServed: 0,
+  totalRevenue: 0,
+  averageAccuracy: 0,
+  dailyCustomersServed: 0,
+  dailyRevenue: 0,
+  
+  // Customer management
+  customers: [],
+  customerQueue: [],
+  maxQueueSize: 4,
+  customerSpawnRate: 15000, // milliseconds between spawns
+  lastCustomerSpawn: 0,
+  nextCustomerId: 1,
+  
+  // Drink making
+  currentStation: null,
+  currentOrder: null,
+  currentDrink: {
+    ingredients: [],
+    temperature: 'hot',
+    size: 'medium'
+  },
+  
+  // Available ingredients
+  ingredients: {
+    coffee: { name: 'Coffee', cost: 0, unlocked: true },
+    espresso: { name: 'Espresso', cost: 0, unlocked: true },
+    milk: { name: 'Milk', cost: 0, unlocked: true },
+    foam: { name: 'Foam', cost: 0, unlocked: true },
+    sugar: { name: 'Sugar', cost: 0, unlocked: true },
+    vanilla: { name: 'Vanilla', cost: 5, unlocked: false },
+    caramel: { name: 'Caramel', cost: 5, unlocked: false },
+    chocolate: { name: 'Chocolate', cost: 5, unlocked: false },
+    cinnamon: { name: 'Cinnamon', cost: 3, unlocked: false },
+    whipped_cream: { name: 'Whipped Cream', cost: 4, unlocked: false }
+  },
+  
+  // Coffee stations
+  stations: [
+    { id: 1, type: 'espresso', busy: false, timeRemaining: 0 },
+    { id: 2, type: 'drip', busy: false, timeRemaining: 0 }
+  ],
+  
+  // Menu items
+  menu: {
+    espresso: { name: 'Espresso', price: 3, enabled: true, recipe: ['espresso'] },
+    americano: { name: 'Americano', price: 4, enabled: true, recipe: ['espresso', 'hot_water'] },
+    latte: { name: 'Latte', price: 5, enabled: true, recipe: ['espresso', 'milk', 'foam'] },
+    cappuccino: { name: 'Cappuccino', price: 5, enabled: true, recipe: ['espresso', 'milk', 'foam'] },
+    mocha: { name: 'Mocha', price: 6, enabled: false, recipe: ['espresso', 'chocolate', 'milk'] },
+    macchiato: { name: 'Macchiato', price: 5, enabled: false, recipe: ['espresso', 'foam'] }
+  },
+  
+  // Upgrades
+  upgrades: {
+    // Equipment upgrades
+    faster_espresso: { 
+      name: 'Faster Espresso Machine', 
+      cost: 100, 
+      owned: false, 
+      category: 'equipment',
+      description: 'Reduces espresso brewing time by 25%'
+    },
+    third_station: { 
+      name: 'Third Coffee Station', 
+      cost: 200, 
+      owned: false, 
+      category: 'equipment',
+      description: 'Adds a third brewing station'
+    },
+    auto_grinder: { 
+      name: 'Auto Grinder', 
+      cost: 150, 
+      owned: false, 
+      category: 'equipment',
+      description: 'Automatically grinds beans, +10% efficiency'
+    },
+    
+    // Ingredient upgrades
+    premium_beans: { 
+      name: 'Premium Coffee Beans', 
+      cost: 75, 
+      owned: false, 
+      category: 'ingredients',
+      description: 'Unlocks premium coffee recipes, +15% tips'
+    },
+    syrup_station: { 
+      name: 'Syrup Station', 
+      cost: 120, 
+      owned: false, 
+      category: 'ingredients',
+      description: 'Unlocks vanilla, caramel, and chocolate syrups'
+    },
+    
+    // Service upgrades
+    customer_loyalty: { 
+      name: 'Loyalty Program', 
+      cost: 80, 
+      owned: false, 
+      category: 'service',
+      description: 'Customers wait 20% longer, +10% tips'
+    },
+    queue_expansion: { 
+      name: 'Larger Waiting Area', 
+      cost: 60, 
+      owned: false, 
+      category: 'service',
+      description: 'Increases max queue size to 6 customers'
+    }
+  },
+  
+  // Customer types
+  customerTypes: [
+    { type: 'student', patience: 45, tipRate: 0.1, preferences: ['americano', 'latte'] },
+    { type: 'business', patience: 30, tipRate: 0.2, preferences: ['espresso', 'americano'] },
+    { type: 'casual', patience: 60, tipRate: 0.15, preferences: ['latte', 'cappuccino'] },
+    { type: 'tourist', patience: 90, tipRate: 0.25, preferences: ['cappuccino', 'mocha'] }
+  ],
+  
+  // Settings
+  settings: {
+    soundEnabled: true,
+    musicEnabled: true,
+    difficulty: 'normal', // easy, normal, hard
+    showTutorial: true
+  },
+  
+  // Tutorial progress
+  tutorial: {
+    completed: false,
+    currentStep: 0,
+    steps: [
+      'welcome',
+      'customer_orders',
+      'making_drinks',
+      'serving_customers',
+      'upgrades',
+      'daily_goals'
+    ]
+  },
+  
+  // Daily goals
+  dailyGoals: {
+    customersTarget: 15,
+    revenueTarget: 75,
+    accuracyTarget: 0.8
+  },
+  
+  // Performance tracking
+  performance: {
+    ordersCompleted: 0,
+    ordersFailed: 0,
+    totalAccuracy: 0,
+    bestDay: 0,
+    streak: 0
+  }
+}; }
+
+    /**
+     * @param {object} state Current game state
+     * @param {object} action Action to handle
+     * @returns {object} New game state
+     */
+    function handleAction(state, action) { // Create a deep copy of the state to avoid mutations
+let newState = JSON.parse(JSON.stringify(state));
+
+switch (action.type) {
+  case 'START_DAY':
+    newState.screen = 'shop_floor';
+    newState.gameActive = true;
+    newState.dayStartTime = Date.now();
+    newState.currentDay++;
+    newState.dayTime = 0;
+    newState.customers = [];
+    newState.completedOrders = [];
+    newState.dailyEarnings = 0;
+    break;
+
+  case 'GO_HOME':
+    newState.screen = 'home';
+    newState.gameActive = false;
+    break;
+
+  case 'SHOW_UPGRADES':
+    newState.screen = 'upgrade_menu';
+    break;
+
+  case 'SHOW_MENU':
+    newState.screen = 'menu_customize';
+    break;
+
+  case 'SHOW_TUTORIAL':
+    newState.screen = 'tutorial';
+    break;
+
+  case 'SHOW_SETTINGS':
+    newState.screen = 'settings';
+    break;
+
+  case 'SHOW_LEADERBOARD':
+    newState.screen = 'leaderboard';
+    break;
+
+  case 'CLOSE_SCREEN':
+    newState.screen = 'home';
+    break;
+
+  case 'START_DRINK':
+    newState.screen = 'drink_making';
+    newState.currentOrder = action.order;
+    newState.currentDrink = {
+      ingredients: [],
+      temperature: 'medium',
+      size: 'medium',
+      complete: false
+    };
+    break;
+
+  case 'ADD_INGREDIENT':
+    if (addIngredient(newState, action.ingredient)) {
+      // Ingredient was successfully added
+    }
+    break;
+
+  case 'CHANGE_TEMPERATURE':
+    if (newState.currentDrink) {
+      newState.currentDrink.temperature = action.temperature;
+    }
+    break;
+
+  case 'CHANGE_SIZE':
+    if (newState.currentDrink) {
+      newState.currentDrink.size = action.size;
+    }
+    break;
+
+  case 'FINISH_DRINK':
+    if (newState.currentDrink) {
+      let completedDrink = finishDrink(newState);
+      if (completedDrink && newState.currentOrder) {
+        let accuracy = calculateAccuracy(newState.currentOrder, completedDrink);
+        let earnings = Math.floor(newState.currentOrder.basePrice * accuracy);
+        
+        newState.money += earnings;
+        newState.dailyEarnings += earnings;
+        newState.totalEarnings += earnings;
+        
+        newState.completedOrders.push({
+          order: newState.currentOrder,
+          drink: completedDrink,
+          accuracy: accuracy,
+          earnings: earnings
+        });
+
+        // Remove served customer from queue
+        if (newState.customers.length > 0) {
+          newState.customers.shift();
+        }
+      }
+      
+      newState.currentOrder = null;
+      newState.currentDrink = null;
+      newState.screen = 'shop_floor';
+    }
+    break;
+
+  case 'PURCHASE_UPGRADE':
+    purchaseUpgrade(newState, action.upgradeId);
+    break;
+
+  case 'TOGGLE_MENU_ITEM':
+    if (newState.availableItems && newState.availableItems[action.itemId]) {
+      newState.availableItems[action.itemId].enabled = !newState.availableItems[action.itemId].enabled;
+    }
+    break;
+
+  case 'UPDATE_TIME':
+    if (newState.gameActive) {
+      updateGameTime(newState, action.deltaTime);
+      
+      // Check if day is complete
+      if (isDayComplete(newState)) {
+        newState.gameActive = false;
+        newState.screen = 'daily_summary';
+        newState.dayStats = calculateDayStats(newState);
+      }
+    }
+    break;
+
+  case 'SPAWN_CUSTOMER':
+    if (newState.gameActive && newState.customers.length < newState.maxCustomers) {
+      let customerTypes = ['casual', 'business', 'student', 'tourist'];
+      let randomType = customerTypes[Math.floor(Math.random() * customerTypes.length)];
+      
+      let newCustomer = {
+        id: Date.now() + Math.random(),
+        type: randomType,
+        patience: 30000 + Math.random() * 20000, // 30-50 seconds
+        arrivalTime: newState.dayTime,
+        order: null
+      };
+      
+      newCustomer.order = generateOrder(newCustomer, newCustomer.patience);
+      newState.customers.push(newCustomer);
+    }
+    break;
+
+  case 'END_DAY':
+    newState.screen = 'daily_summary';
+    newState.gameActive = false;
+    newState.dayStats = calculateDayStats(newState);
+    break;
+
+  case 'NEXT_DAY':
+    // Reset daily stats but keep progress
+    newState.screen = 'home';
+    newState.customers = [];
+    newState.completedOrders = [];
+    newState.dailyEarnings = 0;
+    newState.dayTime = 0;
+    break;
+
+  case 'PAUSE_GAME':
+    newState.paused = !newState.paused;
+    break;
+
+  case 'PLAY_AGAIN':
+    return initState();
+
+  case 'MAIN_MENU':
+    newState.screen = 'home';
+    newState.gameActive = false;
+    break;
+
+  default:
+    // Unknown action, return state unchanged
+    break;
+}
+
+return newState; }
+
+    /**
+     * @param {object} state Game state to render
+     */
+    function render(state) { // Update home screen stats
+  if (state.screen === 'home') {
+    let homeStats = document.getElementById('home-stats');
+    homeStats.innerHTML = `
+      <div class="text-lg">
+        <div>💰 Money: $${state.money}</div>
+        <div>📅 Day: ${state.day}</div>
+        <div>⭐ Reputation: ${state.reputation}/100</div>
+      </div>
+    `;
+  }
+
+  // Show the current screen
+  showScreen(state.screen);
+
+  // Render specific screen content
+  if (state.screen === 'shop_floor') {
+    renderShopFloor(state);
+  } else if (state.screen === 'drink_making') {
+    renderDrinkMaking(state);
+  } else if (state.screen === 'upgrade_menu') {
+    renderUpgradeMenu(state);
+  } else if (state.screen === 'menu_customize') {
+    renderMenuCustomize(state);
+  } else if (state.screen === 'daily_summary') {
+    renderDailySummary(state);
+  } else if (state.screen === 'game_result') {
+    let resultContent = document.getElementById('result-content');
+    let finalStats = document.getElementById('final-stats');
+    
+    if (state.gameOver) {
+      resultContent.innerHTML = `
+        <h2 class="text-3xl font-bold mb-4">Game Over!</h2>
+        <p class="text-lg">Your coffee shop journey has ended.</p>
+      `;
+    } else {
+      resultContent.innerHTML = `
+        <h2 class="text-3xl font-bold mb-4">Congratulations!</h2>
+        <p class="text-lg">You've successfully run your coffee shop!</p>
+      `;
+    }
+    
+    finalStats.innerHTML = `
+      <div class="text-center space-y-2">
+        <div>Final Money: $${state.money}</div>
+        <div>Days Completed: ${state.day}</div>
+        <div>Final Reputation: ${state.reputation}/100</div>
+        <div>Total Customers Served: ${state.totalCustomersServed || 0}</div>
+      </div>
+    `;
+  } else if (state.screen === 'tutorial') {
+    let tutorialContent = document.getElementById('tutorial-content');
+    tutorialContent.innerHTML = `
+      <div class="space-y-4">
+        <div class="bg-white p-4 rounded-lg">
+          <h3 class="font-bold mb-2">🏪 Shop Floor</h3>
+          <p>Customers will arrive and place orders. Click on them to see what they want, then prepare their drinks.</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg">
+          <h3 class="font-bold mb-2">☕ Making Drinks</h3>
+          <p>Select the correct ingredients to match the customer's order. Speed and accuracy matter!</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg">
+          <h3 class="font-bold mb-2">⬆️ Upgrades</h3>
+          <p>Use earned money to buy upgrades that improve your equipment and efficiency.</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg">
+          <h3 class="font-bold mb-2">⭐ Reputation</h3>
+          <p>Keep customers happy to maintain your reputation. Unhappy customers will hurt your business!</p>
+        </div>
+      </div>
+    `;
+  } else if (state.screen === 'settings') {
+    let settingsOptions = document.getElementById('settings-options');
+    settingsOptions.innerHTML = `
+      <div class="space-y-4">
+        <div class="bg-white p-4 rounded-lg">
+          <label class="flex items-center justify-between">
+            <span>Sound Effects</span>
+            <input type="checkbox" ${state.settings?.soundEnabled !== false ? 'checked' : ''}>
+          </label>
+        </div>
+        <div class="bg-white p-4 rounded-lg">
+          <label class="flex items-center justify-between">
+            <span>Music</span>
+            <input type="checkbox" ${state.settings?.musicEnabled !== false ? 'checked' : ''}>
+          </label>
+        </div>
+        <div class="bg-white p-4 rounded-lg">
+          <label class="flex items-center justify-between">
+            <span>Difficulty</span>
+            <select>
+              <option value="easy" ${state.settings?.difficulty === 'easy' ? 'selected' : ''}>Easy</option>
+              <option value="normal" ${state.settings?.difficulty !== 'easy' && state.settings?.difficulty !== 'hard' ? 'selected' : ''}>Normal</option>
+              <option value="hard" ${state.settings?.difficulty === 'hard' ? 'selected' : ''}>Hard</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    `;
+  } else if (state.screen === 'leaderboard') {
+    let leaderboardList = document.getElementById('leaderboard-list');
+    let scores = state.leaderboard || [];
+    
+    if (scores.length === 0) {
+      leaderboardList.innerHTML = '<div class="text-center text-gray-500">No scores yet!</div>';
+    } else {
+      leaderboardList.innerHTML = scores.map((score, index) => `
+        <div class="bg-white p-3 rounded-lg flex justify-between">
+          <span>#${index + 1}</span>
+          <span>Day ${score.day}</span>
+          <span>$${score.money}</span>
+        </div>
+      `).join('');
+    }
+  } }
+
+    /**
+     * @param {string} screenId Base screen ID (without -screen suffix)
+     */
+    function showScreen(screenId) { // Hide all screens
+document.querySelectorAll('.screen').forEach(screen => {
+  screen.classList.remove('active');
+});
+
+// Show the target screen
+let targetScreen = document.getElementById(screenId + '-screen');
+if (targetScreen) {
+  targetScreen.classList.add('active');
+} }
+
+    /**
+     * @param {object} state Game state
+     */
+    function renderShopFloor(state) { let shopHeader = document.getElementById('shop-header');
+let customerQueue = document.getElementById('customer-queue');
+let coffeeStations = document.getElementById('coffee-stations');
+
+// Render header with day info, time, and money
+shopHeader.innerHTML = `
+  <div class="flex items-center gap-4">
+    <h2 class="text-xl font-bold">Day ${state.day}</h2>
+    <div class="text-lg">⏰ ${Math.ceil(state.dayTimeRemaining / 1000)}s</div>
+    <div class="text-lg text-green-600">💰 $${state.money}</div>
+  </div>
+  <button id="end-day-btn" class="px-4 py-2 bg-red-600 text-white rounded">End Day</button>
+`;
+
+// Render customer queue
+let queueHtml = '<div class="flex gap-2 overflow-x-auto">';
+state.customerQueue.forEach((customer, index) => {
+  let waitTime = Math.ceil(customer.patience / 1000);
+  let patienceColor = customer.patience > 20000 ? 'text-green-600' : 
+                     customer.patience > 10000 ? 'text-yellow-600' : 'text-red-600';
+  
+  queueHtml += `
+    <div class="flex-shrink-0 p-2 bg-white rounded-lg text-center min-w-24">
+      <div class="customer mb-2" style="background-color: ${customer.color}; margin: 0 auto;"></div>
+      <div class="text-sm font-semibold">${customer.name}</div>
+      <div class="text-xs ${patienceColor}">${waitTime}s</div>
+      ${customer.order ? `<div class="text-xs mt-1">${customer.order.type}</div>` : ''}
+    </div>
+  `;
+});
+queueHtml += '</div>';
+customerQueue.innerHTML = queueHtml;
+
+// Render coffee stations
+let stationsHtml = '';
+state.coffeeStations.forEach((station, index) => {
+  let stationClass = station.busy ? 'bg-yellow-200' : 'bg-white';
+  let stationContent = '';
+  
+  if (station.busy && station.currentDrink) {
+    stationContent = `
+      <div class="text-center">
+        <div class="text-sm font-semibold mb-2">Making: ${station.currentDrink.type}</div>
+        <div class="coffee-cup mx-auto mb-2" style="background-color: ${station.currentDrink.color || '#8B4513'};"></div>
+        <div class="text-xs">Progress: ${station.currentDrink.ingredients ? station.currentDrink.ingredients.length : 0} steps</div>
+      </div>
+    `;
+  } else {
+    stationContent = `
+      <div class="text-center">
+        <div class="text-lg mb-2">☕</div>
+        <div class="text-sm">Station ${index + 1}</div>
+        <div class="text-xs text-gray-500">Available</div>
+      </div>
+    `;
+  }
+  
+  stationsHtml += `
+    <button id="station-${index}-btn" class="p-4 ${stationClass} rounded-lg border-2 border-gray-200 hover:border-amber-400 transition-colors">
+      ${stationContent}
+    </button>
+  `;
+});
+coffeeStations.innerHTML = stationsHtml; }
+
+    /**
+     * @param {object} state Game state
+     */
+    function renderDrinkMaking(state) { let drinkHeader = document.getElementById('drink-header');
+    let recipeDisplay = document.getElementById('recipe-display');
+    let ingredientsGrid = document.getElementById('ingredients-grid');
+    let drinkProgress = document.getElementById('drink-progress');
+
+    if (!state.currentOrder || !state.currentDrink) {
+        drinkHeader.innerHTML = '<button id="back-to-shop-btn" class="px-4 py-2 bg-gray-600 text-white rounded">Back to Shop</button>';
+        recipeDisplay.innerHTML = '<p class="text-gray-500">No order selected</p>';
+        ingredientsGrid.innerHTML = '';
+        drinkProgress.innerHTML = '';
+        return {};
+    }
+
+    let order = state.currentOrder;
+    let drink = state.currentDrink;
+
+    // Header with back button and customer info
+    drinkHeader.innerHTML = `
+        <div class="flex justify-between items-center">
+            <button id="back-to-shop-btn" class="px-4 py-2 bg-gray-600 text-white rounded">← Back</button>
+            <div class="text-center">
+                <div class="customer inline-block bg-${order.customer.color}-400 mr-2"></div>
+                <span class="font-semibold">${order.customer.name}</span>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-600">Time: ${Math.ceil(order.timeRemaining / 1000)}s</div>
+                <div class="text-sm text-gray-600">Tip: $${order.tip.toFixed(2)}</div>
+            </div>
+        </div>
+    `;
+
+    // Recipe display
+    let recipeIngredients = order.recipe.map(ing => `
+        <span class="inline-block px-2 py-1 bg-gray-200 rounded text-sm mr-1 mb-1">${ing}</span>
+    `).join('');
+    
+    recipeDisplay.innerHTML = `
+        <div class="text-center">
+            <h3 class="font-bold mb-2">${order.drinkType}</h3>
+            <div class="mb-2">Recipe:</div>
+            <div>${recipeIngredients}</div>
+        </div>
+    `;
+
+    // Available ingredients
+    let availableIngredients = ['coffee', 'milk', 'sugar', 'vanilla', 'caramel', 'whipped_cream', 'cinnamon', 'chocolate'];
+    ingredientsGrid.innerHTML = availableIngredients.map(ingredient => `
+        <button id="add-${ingredient}-btn" class="ingredient bg-amber-200 hover:bg-amber-300 flex items-center justify-center text-xs font-semibold border rounded">
+            ${ingredient.replace('_', ' ')}
+        </button>
+    `).join('');
+
+    // Current drink progress
+    let currentIngredients = drink.ingredients.map(ing => `
+        <span class="inline-block px-2 py-1 bg-green-200 rounded text-sm mr-1 mb-1">${ing}</span>
+    `).join('');
+
+    let accuracy = calculateAccuracy(order, drink);
+    let accuracyColor = accuracy >= 0.8 ? 'text-green-600' : accuracy >= 0.5 ? 'text-yellow-600' : 'text-red-600';
+
+    drinkProgress.innerHTML = `
+        <div class="text-center">
+            <h4 class="font-bold mb-2">Your Drink</h4>
+            <div class="mb-4">
+                <div class="coffee-cup bg-amber-600 mx-auto mb-2"></div>
+                <div class="text-sm">Ingredients: ${drink.ingredients.length}</div>
+            </div>
+            <div class="mb-4">
+                <div class="text-sm text-gray-600 mb-1">Added:</div>
+                <div>${currentIngredients || '<span class="text-gray-400">None yet</span>'}</div>
+            </div>
+            <div class="mb-4">
+                <div class="text-sm ${accuracyColor}">Accuracy: ${Math.round(accuracy * 100)}%</div>
+            </div>
+            <div class="space-y-2">
+                <button id="finish-drink-btn" class="w-full py-2 bg-green-600 text-white rounded font-semibold">Serve Drink</button>
+                <button id="restart-drink-btn" class="w-full py-2 bg-red-600 text-white rounded">Start Over</button>
+            </div>
+        </div>
+    `; }
+
+    /**
+     * @param {object} state Game state
+     */
+    function renderUpgradeMenu(state) { let upgradeCategories = document.getElementById('upgrade-categories');
+let upgradeList = document.getElementById('upgrade-list');
+
+// Render category tabs
+upgradeCategories.innerHTML = `
+  <div class="flex space-x-2">
+    <button id="equipment-tab" class="px-4 py-2 rounded ${state.upgradeCategory === 'equipment' ? 'bg-amber-600 text-white' : 'bg-gray-200'}">Equipment</button>
+    <button id="ingredients-tab" class="px-4 py-2 rounded ${state.upgradeCategory === 'ingredients' ? 'bg-amber-600 text-white' : 'bg-gray-200'}">Ingredients</button>
+    <button id="skills-tab" class="px-4 py-2 rounded ${state.upgradeCategory === 'skills' ? 'bg-amber-600 text-white' : 'bg-gray-200'}">Skills</button>
+  </div>
+`;
+
+// Get upgrades for current category
+let categoryUpgrades = state.upgrades.filter(upgrade => upgrade.category === state.upgradeCategory);
+
+// Render upgrade list
+let upgradesHtml = categoryUpgrades.map(upgrade => {
+  let owned = state.ownedUpgrades.includes(upgrade.id);
+  let canAfford = state.money >= upgrade.cost;
+  let buttonClass = owned ? 'bg-green-600' : (canAfford ? 'bg-blue-600' : 'bg-gray-400');
+  let buttonText = owned ? 'Owned' : `Buy ($${upgrade.cost})`;
+  
+  return `
+    <div class="upgrade-item bg-white p-4 rounded-lg flex justify-between items-center">
+      <div class="flex-1">
+        <h3 class="font-semibold">${upgrade.name}</h3>
+        <p class="text-sm text-gray-600">${upgrade.description}</p>
+        <p class="text-xs text-amber-600">${upgrade.effect}</p>
+      </div>
+      <button 
+        id="upgrade-${upgrade.id}" 
+        class="px-4 py-2 rounded text-white ${buttonClass}"
+        ${owned || !canAfford ? 'disabled' : ''}
+      >
+        ${buttonText}
+      </button>
+    </div>
+  `;
+}).join('');
+
+upgradeList.innerHTML = upgradesHtml || '<p class="text-gray-500">No upgrades available in this category.</p>';
+
+// Display current money
+let header = document.querySelector('#upgrade_menu-screen h2');
+header.innerHTML = `Upgrades <span class="text-lg text-amber-600">($${state.money})</span>`; }
+
+    /**
+     * @param {object} state Game state
+     */
+    function renderMenuCustomize(state) { let availableItems = [
+    {
+      id: 'espresso',
+      name: 'Espresso',
+      category: 'coffee',
+      basePrice: 3,
+      ingredients: ['coffee', 'water'],
+      unlocked: true
+    },
+    {
+      id: 'latte',
+      name: 'Latte',
+      category: 'coffee',
+      basePrice: 4,
+      ingredients: ['coffee', 'milk', 'water'],
+      unlocked: state.upgrades.includes('latte_recipe')
+    },
+    {
+      id: 'cappuccino',
+      name: 'Cappuccino',
+      category: 'coffee',
+      basePrice: 4,
+      ingredients: ['coffee', 'milk', 'foam'],
+      unlocked: state.upgrades.includes('cappuccino_recipe')
+    },
+    {
+      id: 'americano',
+      name: 'Americano',
+      category: 'coffee',
+      basePrice: 3,
+      ingredients: ['coffee', 'water', 'water'],
+      unlocked: state.upgrades.includes('americano_recipe')
+    },
+    {
+      id: 'mocha',
+      name: 'Mocha',
+      category: 'coffee',
+      basePrice: 5,
+      ingredients: ['coffee', 'milk', 'chocolate'],
+      unlocked: state.upgrades.includes('mocha_recipe')
+    },
+    {
+      id: 'tea',
+      name: 'Tea',
+      category: 'tea',
+      basePrice: 2,
+      ingredients: ['tea', 'water'],
+      unlocked: state.upgrades.includes('tea_menu')
+    },
+    {
+      id: 'green_tea',
+      name: 'Green Tea',
+      category: 'tea',
+      basePrice: 3,
+      ingredients: ['green_tea', 'water'],
+      unlocked: state.upgrades.includes('green_tea_recipe')
+    },
+    {
+      id: 'pastry',
+      name: 'Pastry',
+      category: 'food',
+      basePrice: 3,
+      ingredients: [],
+      unlocked: state.upgrades.includes('pastry_menu')
+    }
+  ];
+
+  let categories = ['coffee', 'tea', 'food'];
+  let selectedCategory = state.menuCategory || 'coffee';
+
+  let categoriesHtml = categories.map(cat => `
+    <button class="px-4 py-2 rounded ${selectedCategory === cat ? 'bg-amber-600 text-white' : 'bg-gray-200'}"
+            onclick="handleAction(gameState, {type: 'select_menu_category', category: '${cat}'})">
+      ${cat.charAt(0).toUpperCase() + cat.slice(1)}
+    </button>
+  `).join('');
+
+  document.getElementById('menu-categories').innerHTML = `
+    <div class="flex space-x-2 mb-4">
+      ${categoriesHtml}
+    </div>
+  `;
+
+  let filteredItems = availableItems.filter(item => 
+    item.category === selectedCategory && item.unlocked
+  );
+
+  let menuItemsHtml = filteredItems.map(item => {
+    let isActive = state.menuItems.includes(item.id);
+    let statusText = isActive ? 'Active' : 'Inactive';
+    let buttonClass = isActive ? 'bg-green-600' : 'bg-gray-400';
+    
+    return `
+      <div class="bg-white rounded-lg p-3 border">
+        <div class="font-semibold">${item.name}</div>
+        <div class="text-sm text-gray-600">$${item.basePrice}</div>
+        <div class="text-xs text-gray-500 mb-2">
+          ${item.ingredients.length > 0 ? item.ingredients.join(', ') : 'Ready to serve'}
+        </div>
+        <button class="w-full py-1 text-white rounded text-sm ${buttonClass}"
+                onclick="handleAction(gameState, {type: 'toggle_menu_item', itemId: '${item.id}'})">
+          ${statusText}
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('menu-items').innerHTML = menuItemsHtml; }
+
+    /**
+     * @param {object} state Game state
+     */
+    function renderDailySummary(state) { // Get stats for the completed day
+let stats = calculateDayStats(state);
+
+// Update summary stats display
+let summaryStats = document.getElementById('summary-stats');
+summaryStats.innerHTML = `
+  <div class="bg-white p-4 rounded-lg">
+    <h3 class="text-lg font-semibold mb-2">Day ${state.day} Results</h3>
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div>
+        <div class="font-medium">Customers Served</div>
+        <div class="text-xl font-bold text-green-600">${stats.customersServed}</div>
+      </div>
+      <div>
+        <div class="font-medium">Revenue</div>
+        <div class="text-xl font-bold text-green-600">$${stats.revenue.toFixed(2)}</div>
+      </div>
+      <div>
+        <div class="font-medium">Average Accuracy</div>
+        <div class="text-xl font-bold ${stats.averageAccuracy >= 0.8 ? 'text-green-600' : stats.averageAccuracy >= 0.6 ? 'text-yellow-600' : 'text-red-600'}">${(stats.averageAccuracy * 100).toFixed(1)}%</div>
+      </div>
+      <div>
+        <div class="font-medium">Tips Earned</div>
+        <div class="text-xl font-bold text-amber-600">$${stats.tips.toFixed(2)}</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white p-4 rounded-lg">
+    <h3 class="text-lg font-semibold mb-2">Performance</h3>
+    <div class="space-y-2 text-sm">
+      <div class="flex justify-between">
+        <span>Orders Completed:</span>
+        <span class="font-medium">${stats.ordersCompleted}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>Orders Missed:</span>
+        <span class="font-medium text-red-600">${stats.ordersMissed}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>Perfect Orders:</span>
+        <span class="font-medium text-green-600">${stats.perfectOrders}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>Total Earnings:</span>
+        <span class="font-medium text-green-600">$${(stats.revenue + stats.tips).toFixed(2)}</span>
+      </div>
+    </div>
+  </div>
+`;
+
+// Update summary actions
+let summaryActions = document.getElementById('summary-actions');
+summaryActions.innerHTML = `
+  <button id="next-day-btn" class="w-full py-3 bg-amber-600 text-white rounded-lg font-semibold">
+    Continue to Day ${state.day + 1}
+  </button>
+  <button id="return-home-btn" class="w-full py-3 bg-gray-600 text-white rounded-lg font-semibold">
+    Return to Home
+  </button>
+`; }
+
+    /**
+     * @param {object} customer Customer object
+     * @param {number} timeRemaining Time left for order
+     * @returns {object} Generated order
+     */
+    function generateOrder(customer, timeRemaining) { // Generate different drink types based on customer preferences and time of day
+let drinkTypes = ['espresso', 'latte', 'cappuccino', 'americano', 'mocha', 'macchiato'];
+let milkTypes = ['whole', 'skim', '2%', 'oat', 'almond', 'soy'];
+let sizes = ['small', 'medium', 'large'];
+let extras = ['extra_shot', 'decaf', 'extra_hot', 'extra_foam', 'whipped_cream', 'vanilla', 'caramel', 'cinnamon'];
+
+// Filter available options based on unlocked menu items
+let availableDrinks = drinkTypes.filter(drink => 
+  !state.unlockedItems || state.unlockedItems.includes(drink)
+);
+let availableMilk = milkTypes.filter(milk => 
+  !state.unlockedItems || state.unlockedItems.includes(milk)
+);
+let availableExtras = extras.filter(extra => 
+  !state.unlockedItems || state.unlockedItems.includes(extra)
+);
+
+// Use defaults if nothing is unlocked yet
+if (availableDrinks.length === 0) availableDrinks = ['espresso', 'latte', 'cappuccino'];
+if (availableMilk.length === 0) availableMilk = ['whole', 'skim'];
+
+// Customer preferences affect drink selection
+let drinkType = availableDrinks[Math.floor(Math.random() * availableDrinks.length)];
+let size = sizes[Math.floor(Math.random() * sizes.length)];
+let milk = null;
+
+// Only add milk for drinks that need it
+if (['latte', 'cappuccino', 'mocha', 'macchiato'].includes(drinkType)) {
+  milk = availableMilk[Math.floor(Math.random() * availableMilk.length)];
+}
+
+// Generate extras based on customer type and time pressure
+let orderExtras = [];
+let maxExtras = customer.patience > 0.7 ? 2 : customer.patience > 0.4 ? 1 : 0;
+
+for (let i = 0; i < maxExtras && availableExtras.length > 0; i++) {
+  if (Math.random() < 0.3) { // 30% chance per extra slot
+    let extra = availableExtras[Math.floor(Math.random() * availableExtras.length)];
+    if (!orderExtras.includes(extra)) {
+      orderExtras.push(extra);
+    }
+  }
+}
+
+// Calculate base price and tip potential
+let basePrice = size === 'small' ? 3 : size === 'medium' ? 4 : 5;
+basePrice += orderExtras.length * 0.5;
+
+let tipMultiplier = customer.patience * (timeRemaining / 60000); // Convert ms to minutes
+
+return {
+  id: Date.now() + Math.random(),
+  customerId: customer.id,
+  drinkType: drinkType,
+  size: size,
+  milk: milk,
+  extras: orderExtras,
+  basePrice: Math.round(basePrice * 100) / 100,
+  tipMultiplier: Math.round(tipMultiplier * 100) / 100,
+  timeOrdered: Date.now(),
+  timeLimit: Math.max(30000, timeRemaining * customer.patience) // At least 30 seconds
+}; }
+
+    /**
+     * @param {object} order Customer order
+     * @param {object} drink Made drink
+     * @returns {number} Accuracy score 0-1
+     */
+    function calculateAccuracy(order, drink) { let totalPoints = 0;
+let maxPoints = 0;
+
+// Check each aspect of the order against the drink
+if (order.type && drink.type) {
+  if (order.type === drink.type) {
+    totalPoints += 3;
+  }
+  maxPoints += 3;
+}
+
+if (order.size && drink.size) {
+  if (order.size === drink.size) {
+    totalPoints += 2;
+  }
+  maxPoints += 2;
+}
+
+if (order.milk && drink.milk) {
+  if (order.milk === drink.milk) {
+    totalPoints += 2;
+  }
+  maxPoints += 2;
+}
+
+if (order.extras && drink.extras) {
+  let extraMatches = 0;
+  let totalExtras = Math.max(order.extras.length, drink.extras.length);
+  
+  for (let extra of order.extras) {
+    if (drink.extras.includes(extra)) {
+      extraMatches++;
+    }
+  }
+  
+  if (totalExtras > 0) {
+    totalPoints += (extraMatches / totalExtras) * 2;
+    maxPoints += 2;
+  }
+}
+
+if (order.temperature && drink.temperature) {
+  if (order.temperature === drink.temperature) {
+    totalPoints += 1;
+  }
+  maxPoints += 1;
+}
+
+// Return accuracy as a percentage (0-1)
+return maxPoints > 0 ? totalPoints / maxPoints : 1; }
+
+    /**
+     * @param {object} state Game state
+     * @param {string} ingredient Ingredient to add
+     * @returns {boolean} Whether ingredient was added
+     */
+    function addIngredient(state, ingredient) { if (!state.currentDrink || !state.currentDrink.ingredients) {
+    return false;
+  }
+  
+  // Check if we have this ingredient available
+  let availableIngredients = state.ingredients || {};
+  if (!availableIngredients[ingredient] || availableIngredients[ingredient] <= 0) {
+    return false;
+  }
+  
+  // Check if drink already has maximum ingredients
+  let maxIngredients = state.upgrades?.cupSize || 5;
+  if (state.currentDrink.ingredients.length >= maxIngredients) {
+    return false;
+  }
+  
+  // Add ingredient to current drink
+  state.currentDrink.ingredients.push(ingredient);
+  
+  // Reduce available ingredient count
+  state.ingredients[ingredient]--;
+  
+  return true; }
+
+    /**
+     * @param {object} state Game state
+     * @returns {object} Completed drink
+     */
+    function finishDrink(state) { // Get the current drink being made
+    let currentDrink = state.currentDrink || { ingredients: [], type: '', temperature: 'hot' };
+    
+    // Determine the drink type based on ingredients
+    let drinkType = 'custom';
+    let ingredients = currentDrink.ingredients;
+    
+    // Simple drink type detection based on ingredients
+    if (ingredients.includes('espresso')) {
+        if (ingredients.includes('milk')) {
+            if (ingredients.includes('foam')) {
+                drinkType = 'cappuccino';
+            } else {
+                drinkType = 'latte';
+            }
+        } else {
+            drinkType = 'espresso';
+        }
+    } else if (ingredients.includes('coffee')) {
+        if (ingredients.includes('milk')) {
+            drinkType = 'coffee_with_milk';
+        } else {
+            drinkType = 'black_coffee';
+        }
+    } else if (ingredients.includes('tea')) {
+        drinkType = 'tea';
+    }
+    
+    // Create the finished drink object
+    let finishedDrink = {
+        type: drinkType,
+        ingredients: [...ingredients],
+        temperature: currentDrink.temperature || 'hot',
+        quality: Math.min(1.0, ingredients.length * 0.2), // Simple quality calculation
+        timeToMake: Date.now() - (state.drinkStartTime || Date.now())
+    };
+    
+    // Clear the current drink from state
+    state.currentDrink = null;
+    state.drinkStartTime = null;
+    
+    // If there's a current customer, serve them the drink
+    if (state.currentCustomer) {
+        let accuracy = calculateAccuracy(state.currentCustomer.order, finishedDrink);
+        let payment = Math.floor(state.currentCustomer.order.price * accuracy);
+        
+        // Add to earnings
+        state.money += payment;
+        state.dailyStats.earnings += payment;
+        state.dailyStats.drinksMade++;
+        
+        // Add to completed orders
+        if (!state.completedOrders) {
+            state.completedOrders = [];
+        }
+        state.completedOrders.push({
+            customer: state.currentCustomer,
+            drink: finishedDrink,
+            accuracy: accuracy,
+            payment: payment
+        });
+        
+        // Clear current customer
+        state.currentCustomer = null;
+    }
+    
+    return finishedDrink; }
+
+    /**
+     * @param {object} state Game state
+     * @param {string} upgradeId Upgrade to purchase
+     * @returns {boolean} Whether upgrade was successful
+     */
+    function purchaseUpgrade(state, upgradeId) { if (!state.upgrades || !upgradeId) {
+    return false;
+  }
+  
+  let upgrade = state.upgrades.find(u => u.id === upgradeId);
+  if (!upgrade) {
+    return false;
+  }
+  
+  // Check if already purchased
+  if (upgrade.purchased) {
+    return false;
+  }
+  
+  // Check if player has enough money
+  if (state.money < upgrade.cost) {
+    return false;
+  }
+  
+  // Deduct cost and mark as purchased
+  state.money -= upgrade.cost;
+  upgrade.purchased = true;
+  
+  // Apply upgrade effects
+  if (upgrade.type === 'speed') {
+    state.drinkMakeSpeed = (state.drinkMakeSpeed || 1) * upgrade.multiplier;
+  } else if (upgrade.type === 'capacity') {
+    state.maxCustomers = (state.maxCustomers || 4) + upgrade.bonus;
+  } else if (upgrade.type === 'profit') {
+    state.profitMultiplier = (state.profitMultiplier || 1) * upgrade.multiplier;
+  } else if (upgrade.type === 'patience') {
+    state.customerPatience = (state.customerPatience || 30000) * upgrade.multiplier;
+  } else if (upgrade.type === 'recipe') {
+    if (!state.unlockedRecipes) {
+      state.unlockedRecipes = [];
+    }
+    state.unlockedRecipes.push(upgrade.recipeId);
+  } else if (upgrade.type === 'ingredient') {
+    if (!state.unlockedIngredients) {
+      state.unlockedIngredients = [];
+    }
+    state.unlockedIngredients.push(upgrade.ingredientId);
+  }
+  
+  return true; }
+
+    /**
+     * @param {object} state Game state
+     * @param {number} deltaTime Time elapsed in ms
+     */
+    function updateGameTime(state, deltaTime) { if (state.gamePhase !== 'playing') return {};
+
+state.timeElapsed += deltaTime;
+state.timeRemaining = Math.max(0, state.dayDuration - state.timeElapsed);
+
+// Update customer patience
+state.customers.forEach(customer => {
+  if (customer.patience > 0) {
+    customer.patience = Math.max(0, customer.patience - deltaTime);
+    if (customer.patience === 0 && customer.status === 'waiting') {
+      customer.status = 'left';
+      state.customersLost++;
+    }
+  }
+});
+
+// Remove customers who left
+state.customers = state.customers.filter(customer => customer.status !== 'left');
+
+// Spawn new customers
+if (state.customers.length < state.maxCustomers && Math.random() < 0.3) {
+  let customerTypes = ['regular', 'businessman', 'student', 'tourist'];
+  let customerType = customerTypes[Math.floor(Math.random() * customerTypes.length)];
+  
+  let newCustomer = {
+    id: Date.now() + Math.random(),
+    type: customerType,
+    patience: 30000 + Math.random() * 20000, // 30-50 seconds
+    maxPatience: 30000 + Math.random() * 20000,
+    status: 'waiting',
+    order: null
+  };
+  
+  // Generate order for new customer
+  newCustomer.order = generateOrder(newCustomer, state.timeRemaining);
+  state.customers.push(newCustomer);
+}
+
+// Update coffee stations
+state.coffeeStations.forEach(station => {
+  if (station.brewing && station.brewTimeRemaining > 0) {
+    station.brewTimeRemaining = Math.max(0, station.brewTimeRemaining - deltaTime);
+    if (station.brewTimeRemaining === 0) {
+      station.brewing = false;
+      station.ready = true;
+    }
+  }
+}); }
+
+    /**
+     * @param {object} state Game state
+     * @returns {boolean} Whether day is complete
+     */
+    function isDayComplete(state) { // Check if the workday time limit has been reached
+if (state.timeRemaining <= 0) {
+  return true;
+}
+
+// Check if all customers have been served (no more in queue or waiting)
+let hasActiveCustomers = false;
+
+// Check queue for waiting customers
+if (state.customerQueue && state.customerQueue.length > 0) {
+  hasActiveCustomers = true;
+}
+
+// Check coffee stations for customers being served
+if (state.coffeeStations) {
+  for (let station of state.coffeeStations) {
+    if (station.customer) {
+      hasActiveCustomers = true;
+      break;
+    }
+  }
+}
+
+// Day is complete if time is up OR no customers remain and customer spawning has stopped
+let customerSpawningComplete = state.customersServed >= (state.targetCustomers || 20);
+
+return !hasActiveCustomers && customerSpawningComplete; }
+
+    /**
+     * @param {object} state Game state
+     * @returns {object} Daily performance stats
+     */
+    function calculateDayStats(state) { // Calculate total orders served and failed
+let totalOrders = 0;
+let completedOrders = 0;
+let failedOrders = 0;
+
+if (state.orderHistory) {
+  totalOrders = state.orderHistory.length;
+  completedOrders = state.orderHistory.filter(order => order.completed).length;
+  failedOrders = state.orderHistory.filter(order => order.failed || order.timeExpired).length;
+}
+
+// Calculate accuracy stats
+let totalAccuracy = 0;
+let accuracyCount = 0;
+if (state.orderHistory) {
+  for (let order of state.orderHistory) {
+    if (order.completed && order.accuracy !== undefined) {
+      totalAccuracy += order.accuracy;
+      accuracyCount++;
+    }
+  }
+}
+let averageAccuracy = accuracyCount > 0 ? totalAccuracy / accuracyCount : 0;
+
+// Calculate revenue and tips
+let totalRevenue = state.money - (state.startingMoney || 50);
+let totalTips = 0;
+if (state.orderHistory) {
+  totalTips = state.orderHistory.reduce((sum, order) => {
+    return sum + (order.tip || 0);
+  }, 0);
+}
+
+// Calculate time stats
+let dayDuration = state.dayTimeLimit || 300; // 5 minutes default
+let timeUsed = dayDuration - (state.timeRemaining || 0);
+let efficiency = dayDuration > 0 ? timeUsed / dayDuration : 0;
+
+// Calculate customer satisfaction
+let happyCustomers = 0;
+let totalCustomerRatings = 0;
+let ratingCount = 0;
+
+if (state.orderHistory) {
+  for (let order of state.orderHistory) {
+    if (order.completed) {
+      if (order.accuracy >= 0.8) {
+        happyCustomers++;
+      }
+      if (order.customerRating !== undefined) {
+        totalCustomerRatings += order.customerRating;
+        ratingCount++;
+      }
+    }
+  }
+}
+
+let averageRating = ratingCount > 0 ? totalCustomerRatings / ratingCount : 0;
+let satisfactionRate = totalOrders > 0 ? happyCustomers / totalOrders : 0;
+
+// Calculate performance grade
+let grade = 'F';
+let score = 0;
+
+if (completedOrders > 0) {
+  score = (completedOrders / Math.max(totalOrders, 1)) * 0.4 +
+          averageAccuracy * 0.3 +
+          satisfactionRate * 0.2 +
+          efficiency * 0.1;
+  
+  if (score >= 0.9) grade = 'A+';
+  else if (score >= 0.8) grade = 'A';
+  else if (score >= 0.7) grade = 'B';
+  else if (score >= 0.6) grade = 'C';
+  else if (score >= 0.5) grade = 'D';
+}
+
+return {
+  totalOrders,
+  completedOrders,
+  failedOrders,
+  averageAccuracy: Math.round(averageAccuracy * 100) / 100,
+  totalRevenue,
+  totalTips,
+  timeUsed: Math.round(timeUsed),
+  dayDuration,
+  efficiency: Math.round(efficiency * 100) / 100,
+  happyCustomers,
+  satisfactionRate: Math.round(satisfactionRate * 100) / 100,
+  averageRating: Math.round(averageRating * 100) / 100,
+  grade,
+  score: Math.round(score * 100) / 100
+}; }
+
+    /**
+     * Initializes game state and wires all event listeners
+     */
+    function startGame() { gameState = initState();
+    render(gameState);
+
+    // Home screen buttons
+    document.getElementById('start-day-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'start_day' });
+        render(gameState);
+    });
+
+    document.getElementById('upgrades-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'show_upgrades' });
+        render(gameState);
+    });
+
+    document.getElementById('tutorial-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'show_tutorial' });
+        render(gameState);
+    });
+
+    // Navigation buttons
+    document.getElementById('home-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'go_home' });
+        render(gameState);
+    });
+
+    document.getElementById('menu-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'show_menu' });
+        render(gameState);
+    });
+
+    document.getElementById('settings-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'show_settings' });
+        render(gameState);
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'toggle_pause' });
+        render(gameState);
+    });
+
+    // Close buttons
+    document.getElementById('tutorial-close-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'go_home' });
+        render(gameState);
+    });
+
+    document.getElementById('settings-close-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'go_home' });
+        render(gameState);
+    });
+
+    document.getElementById('leaderboard-close-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'go_home' });
+        render(gameState);
+    });
+
+    // Game result screen buttons
+    document.getElementById('play-again-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'restart_game' });
+        render(gameState);
+    });
+
+    document.getElementById('main-menu-btn').addEventListener('click', () => {
+        gameState = handleAction(gameState, { type: 'go_home' });
+        render(gameState);
+    });
+
+    // Game timer for real-time updates
+    let lastTime = 0;
+    function gameLoop(currentTime) {
+        if (lastTime === 0) lastTime = currentTime;
+        let deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        if (gameState.screen === 'shop_floor' && !gameState.paused) {
+            updateGameTime(gameState, deltaTime);
+            render(gameState);
+            
+            if (isDayComplete(gameState)) {
+                gameState = handleAction(gameState, { type: 'end_day' });
+                render(gameState);
+            }
+        }
+        
+        requestAnimationFrame(gameLoop);
+    }
+    requestAnimationFrame(gameLoop); }
+
+    document.addEventListener('DOMContentLoaded', startGame);
+          function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

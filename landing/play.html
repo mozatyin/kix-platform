@@ -849,7 +849,7 @@ function closeGame() {
   document.getElementById('game-canvas').innerHTML = '';
   state.currentSessionId = null;
   state.currentGameId = null;
-  // Signal portal to close iframe if embedded
+  // Signal portal IF user explicitly clicks Done (not auto)
   try { window.parent.postMessage({type:'kix_close_game'}, '*'); } catch(e) {}
 }
 

@@ -395,6 +395,17 @@ async def build_game_for_business(
             detail=f"Game slug '{body.game_slug}' not found in catalog",
         )
 
+    # Check for duplicate pending/building orders (same brand + same game)
+    brand_key = f"{_REDIS_BRAND_ORDERS_PREFIX}{brand_id}"
+    existing_ids = await r.smembers(brand_key)
+    for oid in existing_ids:
+        existing = await r.hgetall(f"{_REDIS_ORDER_PREFIX}{oid}")
+        if existing.get("game_slug") == body.game_slug and existing.get("status") in ("pending", "building"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"已有相同的游戏正在生成中（订单 {oid[:8]}...），请等待完成后再试",
+            )
+
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 

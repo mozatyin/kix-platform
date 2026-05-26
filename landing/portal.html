@@ -572,38 +572,24 @@ textarea.form-input{
       <h2 class="page-title">Dashboard / 仪表盘</h2>
       <p class="page-subtitle" id="dash-welcome">Welcome back</p>
 
-      <div class="stats-grid" id="stats-grid">
-        <div class="stat-card accent">
-          <div class="stat-label">Players / 玩家</div>
-          <div class="stat-value" id="stat-players">--</div>
-          <div class="stat-sub">Total registered</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Vouchers / 优惠券</div>
-          <div class="stat-value" id="stat-vouchers">--</div>
-          <div class="stat-sub" id="stat-vouchers-sub">Available</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Energy Today / 今日能量</div>
-          <div class="stat-value" id="stat-energy">--</div>
-          <div class="stat-sub">Grants today</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Locations / 门店</div>
-          <div class="stat-value" id="stat-locations">--</div>
-          <div class="stat-sub">Active</div>
+      <!-- First-time guide card -->
+      <div id="dash-guide" class="card" style="display:none;background:linear-gradient(135deg,rgba(0,252,0,.08),rgba(0,252,0,.02));border-color:var(--green-border);margin-bottom:16px;padding:24px">
+        <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:var(--green)">&#128075; 欢迎，<span id="dash-guide-name"></span>！</div>
+        <p style="font-size:14px;color:var(--text-dim);margin-bottom:16px">你的游戏化平台已就绪。这是你的第一步：</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-green" onclick="navigate('games')">&#127918; 创建第一款游戏</button>
+          <button class="btn btn-outline" onclick="openGamePlayer()">&#9654; 体验顾客视角</button>
         </div>
       </div>
 
-      <div class="card" style="border-color:var(--green-border);background:linear-gradient(135deg,rgba(0,252,0,.04),transparent);margin-bottom:24px">
-        <div class="section-title" style="margin-bottom:8px">Customer Play Link / 顾客游戏链接</div>
-        <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Share this link with your customers or display it as QR code</p>
-        <div class="share-url-box" id="share-play-url" onclick="copyPlayUrl()"></div>
-        <button class="btn btn-green" onclick="copyPlayUrl()" style="margin-top:4px">Copy Link / 复制链接</button>
+      <div class="section" id="dash-games-section" style="display:none">
+        <div class="section-title">你的游戏 / Your Games</div>
+        <div id="dash-games-mini"></div>
+        <button class="btn btn-outline" onclick="navigate('games')" style="margin-top:8px">查看全部 / View All</button>
       </div>
 
       <div class="section">
-        <div class="section-title">Quick Actions / 快捷操作</div>
+        <div class="section-title">快捷操作 / Quick Actions</div>
         <div class="quick-actions">
           <button class="action-btn" onclick="navigate('vouchers')">
             <svg viewBox="0 0 24 24"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z"/><path d="M9 5v14M15 5v14"/></svg>
@@ -1669,6 +1655,9 @@ async function loadDashboard(){
   }
 
   document.getElementById('stat-energy').textContent='--';
+
+  // Dashboard: show guide + mini games for 老王
+  loadDashboardGames();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2226,6 +2215,44 @@ function initGameView() {
   loadMyGames();
 }
 
+async function loadDashboardGames() {
+  var guide = document.getElementById('dash-guide');
+  var mini = document.getElementById('dash-games-mini');
+  var section = document.getElementById('dash-games-section');
+  var nameEl = document.getElementById('dash-guide-name');
+  if (nameEl) nameEl.textContent = state.brandName || '';
+
+  var games = [];
+  try {
+    var res = await apiFetch('/api/v1/game-catalog/orders/' + state.brandId);
+    if (res.ok) {
+      var data = await res.json();
+      (data.orders || []).forEach(function(o) {
+        if (o.status === 'completed' && o.game_file && o.game_name) {
+          var dup = games.some(function(g) { return g.slug === o.game_slug; });
+          if (!dup) games.push({name: o.game_name, slug: o.game_slug, file: o.game_file});
+        }
+      });
+    }
+  } catch(e) {}
+
+  if (games.length > 0) {
+    if (guide) guide.style.display = 'none';
+    if (section) section.style.display = 'block';
+    if (mini) mini.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      games.map(function(g) {
+        return '<div style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">' +
+          '<span style="font-weight:600;font-size:13px;color:var(--green)">' + esc(g.name) + '</span>' +
+          '<button onclick="openGamePlayer()" style="background:var(--green);color:var(--dark);border:none;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">▶ 玩</button>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  } else {
+    if (guide) guide.style.display = 'block';
+    if (section) section.style.display = 'none';
+  }
+}
+
 async function loadMyGames() {
   var section = document.getElementById('my-games-section');
   var list = document.getElementById('my-games-list');
@@ -2487,8 +2514,13 @@ function openGamePlayer() {
   overlay.style.display = 'block';
   // Listen for game end / close events from play.html
   window.addEventListener('message', function onKixMsg(e) {
-    if (e.data && (e.data.type === 'kix_close_game' || e.data.type === 'kix_game_end')) {
-      setTimeout(closeGamePlayer, 1500);
+    if (e.data && e.data.type === 'kix_close_game') {
+      // User clicked Done — close immediately
+      closeGamePlayer();
+    }
+    if (e.data && e.data.type === 'kix_game_end') {
+      // Game ended — show a toast, let user close manually
+      showToast('游戏结束! 点击 ✕ 关闭返回');
     }
   });
 }
