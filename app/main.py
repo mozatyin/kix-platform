@@ -91,6 +91,14 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, tags=["health"])
 
+    # ── Internal: ELTM callback ────────────────────────────────────────
+    from app.routers import eltm_callback
+    app.include_router(
+        eltm_callback.router,
+        prefix="/internal/eltm",
+        tags=["internal-eltm"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
