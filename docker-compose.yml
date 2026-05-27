@@ -32,7 +32,7 @@ services:
   centrifugo:
     image: centrifugo/centrifugo:v5
     ports:
-      - "8001:8000"
+      - "8002:8000"
     volumes:
       - ./config/centrifugo.json:/centrifugo/config.json:ro
     command: centrifugo -c config.json
@@ -40,7 +40,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev_centrifugo_key}
 
-  python-api:
+  kix-api:
     build: .
     ports:
       - "8000:8000"
@@ -50,16 +50,33 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://kix:${POSTGRES_PASSWORD:-kix_dev}@postgres:5432/kix
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: kix
+      POSTGRES_USER: kix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kix_dev}
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev_centrifugo_key}
       CENTRIFUGO_URL: http://centrifugo:8000
+      ELTM_API_URL: http://eltm:8001
+      KIX_PUBLIC_BASE_URL: http://kix-api:8000
     env_file:
       - .env
     volumes:
-      - ./app:/app/app
-      - ./lua:/app/lua:ro
+      - games:/app/landing/games
+
+  eltm:
+    build:
+      context: ../eltm
+    ports:
+      - "8001:8001"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      KIX_GAMES_DIR: /app/landing/games
+      ELTM_CALLBACK_SECRET: ${ELTM_CALLBACK_SECRET:-}
+    volumes:
+      - games:/app/landing/games
 
   nginx:
     image: nginx:alpine
@@ -68,9 +85,10 @@ services:
     volumes:
       - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - python-api
+      - kix-api
       - centrifugo
 
 volumes:
   pgdata:
   redisdata:
+  games:
