@@ -488,6 +488,126 @@ input,select,textarea,button{font-family:var(--font);font-size:14px}
 textarea.form-input{
   min-height:60px;resize:vertical;
 }
+
+/* ── Engagement: tabs / module marketplace ──────────────────────────── */
+.tabs{
+  display:flex;gap:6px;margin-bottom:16px;
+  overflow-x:auto;padding-bottom:2px;
+}
+.tabs::-webkit-scrollbar{height:0}
+.tab{
+  flex-shrink:0;padding:8px 14px;
+  background:transparent;color:var(--text-dim);
+  border:1px solid var(--border-light);border-radius:100px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:var(--transition);white-space:nowrap;
+}
+.tab:hover{color:var(--text);border-color:var(--text-muted)}
+.tab.active{
+  background:var(--green-bg);color:var(--green);
+  border-color:var(--green-border);
+}
+.modules-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:12px;
+}
+.module-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;
+  transition:var(--transition);
+  display:flex;flex-direction:column;gap:8px;
+  position:relative;
+}
+.module-card:hover{border-color:var(--border-light);background:var(--card-hover)}
+.module-card.enabled{border-color:var(--green-border);background:linear-gradient(180deg,var(--green-bg) 0%,var(--card) 60%)}
+.module-card.builtin{opacity:.7}
+.module-card-head{
+  display:flex;align-items:center;gap:10px;
+}
+.module-icon{
+  font-size:24px;line-height:1;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.04);border-radius:10px;flex-shrink:0;
+}
+.module-card.enabled .module-icon{background:var(--green-bg)}
+.module-name{font-size:14px;font-weight:700;line-height:1.2}
+.module-name-cn{font-size:11px;color:var(--text-dim);margin-top:2px}
+.module-desc{
+  font-size:12px;color:var(--text-dim);line-height:1.4;
+  min-height:32px;
+}
+.module-card-actions{
+  display:flex;gap:6px;margin-top:auto;
+}
+.module-card-actions .btn{flex:1;justify-content:center;font-size:11px;padding:6px 10px}
+.module-check{
+  position:absolute;top:10px;right:10px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--green);color:var(--dark);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;
+}
+.module-builtin-tag{
+  position:absolute;top:10px;right:10px;
+  font-size:9px;font-weight:700;
+  padding:2px 8px;border-radius:100px;
+  background:rgba(255,255,255,.06);color:var(--text-muted);
+  border:1px solid var(--border);
+  letter-spacing:.4px;text-transform:uppercase;
+}
+
+/* Active modules list */
+.active-modules-empty{
+  padding:18px;background:var(--card);border:1px dashed var(--border-light);
+  border-radius:var(--radius);color:var(--text-muted);font-size:13px;
+  text-align:center;
+}
+.active-module-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:var(--card);
+  border:1px solid var(--green-border);border-radius:var(--radius-sm);
+  margin-bottom:6px;
+}
+.active-module-row .module-icon{width:28px;height:28px;font-size:18px;border-radius:8px}
+.active-module-row-info{flex:1;min-width:0}
+.active-module-row-name{font-size:13px;font-weight:700}
+.active-module-row-meta{font-size:11px;color:var(--text-dim)}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:5000;
+  background:rgba(0,0,0,.75);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.modal-overlay.active{display:flex}
+.modal-card{
+  background:var(--card);border:1px solid var(--border-light);
+  border-radius:var(--radius);
+  width:100%;max-width:460px;max-height:90vh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.modal-head{
+  padding:18px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.modal-head .module-icon{width:40px;height:40px;font-size:24px}
+.modal-title{font-size:16px;font-weight:700;line-height:1.2}
+.modal-title-cn{font-size:12px;color:var(--text-dim);margin-top:2px}
+.modal-body{padding:20px;overflow-y:auto;flex:1}
+.modal-body .form-group{margin-bottom:14px}
+.modal-body .form-group label{font-size:12px}
+.modal-body .form-help{font-size:11px;color:var(--text-muted);margin-top:4px}
+.modal-foot{
+  padding:14px 20px;border-top:1px solid var(--border);
+  display:flex;gap:8px;justify-content:flex-end;
+}
+.modal-foot .btn{padding:9px 18px}
+
+/* engagement view wider on desktop */
+@media(min-width:768px){
+  .modules-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+}
 </style>
 </head>
 <body>
@@ -841,6 +961,49 @@ textarea.form-input{
         <div class="loading-center"><div class="spinner"></div></div>
       </div>
     </div>
+
+    <!-- ─── Engagement / 互动配置 ──────────────────────────────────── -->
+    <div id="view-engagement" class="view">
+      <h2 class="page-title">Engagement / 互动配置</h2>
+      <p class="page-subtitle">Select and configure gamification modules / 选择并配置 gamification 模块</p>
+
+      <div class="section">
+        <div class="section-title">Active Modules / 已启用</div>
+        <div id="active-modules">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Module Marketplace / 模块市场</div>
+        <div class="tabs" id="module-tabs">
+          <button class="tab active" data-cat="network">Network Effect / 病毒增长</button>
+          <button class="tab" data-cat="commerce">Commerce / 盈利闭环</button>
+          <button class="tab" data-cat="engagement">Engagement / 互动</button>
+          <button class="tab" data-cat="foundation">Foundation / 基础</button>
+        </div>
+        <div id="modules-grid" class="modules-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Module Config Modal -->
+  <div class="modal-overlay" id="module-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="module-icon" id="modal-icon">&#127919;</div>
+        <div style="flex:1;min-width:0">
+          <div class="modal-title" id="modal-title">Module</div>
+          <div class="modal-title-cn" id="modal-title-cn">模块</div>
+        </div>
+        <button class="btn-logout" onclick="closeModuleModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModuleModal()">Cancel / 取消</button>
+        <button class="btn btn-green" id="modal-save-btn" onclick="saveModuleConfig()">Save / 保存</button>
+      </div>
+    </div>
   </div>
 
   <!-- Bottom Navigation -->
@@ -852,6 +1015,10 @@ textarea.form-input{
     <div class="nav-item" data-view="games" onclick="navigate('games')">
       <svg viewBox="0 0 24 24"><path d="M6 12h4m-2-2v4m7-1h.01M18 12h.01M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Games</span>
+    </div>
+    <div class="nav-item" data-view="engagement" onclick="navigate('engagement')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+      <span>Engagement</span>
     </div>
     <div class="nav-item" data-view="vouchers" onclick="navigate('vouchers')">
       <svg viewBox="0 0 24 24"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 5v14M15 5v14" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1582,6 +1749,7 @@ function navigate(view){
     case'qr':loadQRLocations();break;
     case'locations':loadLocations();break;
     case'settings':loadSettings();break;
+    case'engagement':renderEngagement();break;
   }
 }
 
@@ -1590,7 +1758,7 @@ function showApp(){
   document.getElementById('app-shell').className='active';
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement'];
   navigate(validViews.includes(hash)?hash:'dashboard');
 }
 
@@ -2567,6 +2735,375 @@ async function submitCustomOrder() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ENGAGEMENT / 互动配置
+// ═══════════════════════════════════════════════════════════════════════
+const MODULES_CATALOG=[
+  // ── Network Effect ────────────────────────────────────────────────
+  {id:'share_to_win',category:'network',icon:'📤',name_en:'ShareToWin',name_cn:'分享赢奖',
+   desc_en:'High-score players share cards → friends sign up.',
+   desc_cn:'高分用户生成卡片，朋友点击注册',
+   config_schema:[
+     {key:'min_score',label:'Minimum score to trigger / 触发最低分',type:'number',default:100},
+     {key:'reward_coupon_id',label:'Reward coupon ID / 奖励券ID',type:'text',default:''},
+     {key:'share_message',label:'Share message / 分享文案',type:'text',default:'I just won at {brand}! Beat my score!'}
+   ]},
+  {id:'energy_invite',category:'network',icon:'⚡',name_en:'EnergyInvite',name_cn:'能量邀请',
+   desc_en:'Invite friends to refill your energy.',
+   desc_cn:'邀请朋友补充能量',
+   config_schema:[
+     {key:'energy_per_invite',label:'Energy per invite / 每次邀请奖励能量',type:'number',default:1},
+     {key:'max_per_day',label:'Max invites per day / 每天最多邀请',type:'number',default:5}
+   ]},
+  {id:'friend_challenge',category:'network',icon:'⚔️',name_en:'FriendChallenge',name_cn:'好友挑战',
+   desc_en:'1v1 head-to-head battles.',
+   desc_cn:'1v1 对战',
+   config_schema:[
+     {key:'win_reward_xp',label:'Winner XP reward / 胜者XP',type:'number',default:50},
+     {key:'challenge_window_hours',label:'Challenge expiry (h) / 挑战有效期(小时)',type:'number',default:24}
+   ]},
+  {id:'ladder_climb',category:'network',icon:'🪜',name_en:'LadderClimb',name_cn:'阶梯升级',
+   desc_en:'Invite N people to climb a tier.',
+   desc_cn:'邀请N人升Tier',
+   config_schema:[
+     {key:'invites_per_tier',label:'Invites needed per tier / 每级所需邀请数',type:'number',default:3},
+     {key:'tier_reward',label:'Tier reward (XP / coupon code) / 升级奖励',type:'text',default:'500 XP'}
+   ]},
+  {id:'streak_rescue',category:'network',icon:'💝',name_en:'StreakRescue',name_cn:'连胜救援',
+   desc_en:'Friends can rescue your broken streak.',
+   desc_cn:'朋友救你不断签',
+   config_schema:[
+     {key:'rescue_window_hours',label:'Rescue window (h) / 救援窗口(小时)',type:'number',default:24},
+     {key:'rescuer_reward_xp',label:'Rescuer XP / 救援者XP',type:'number',default:20}
+   ]},
+  {id:'auto_share',category:'network',icon:'📣',name_en:'AutoShare',name_cn:'自动分享',
+   desc_en:'Auto-post cards on big achievements.',
+   desc_cn:'大成就自动发卡',
+   config_schema:[
+     {key:'trigger_achievements',label:'Trigger achievement IDs (comma) / 触发成就ID',type:'text',default:'first_win,top_10'},
+     {key:'enabled_platforms',label:'Platforms (comma) / 平台',type:'text',default:'wechat,weibo'}
+   ]},
+
+  // ── Commerce Loop ─────────────────────────────────────────────────
+  {id:'score_to_coupon',category:'commerce',icon:'🎫',name_en:'ScoreToCoupon',name_cn:'分数换券',
+   desc_en:'Tiered score → coupon mapping.',
+   desc_cn:'阶梯优惠 — 高分换大券',
+   config_schema:[
+     {key:'tier_1_score',label:'Tier 1 score / 一档分数',type:'number',default:100},
+     {key:'tier_1_coupon',label:'Tier 1 coupon / 一档奖励',type:'text',default:'5_off'},
+     {key:'tier_2_score',label:'Tier 2 score / 二档分数',type:'number',default:500},
+     {key:'tier_2_coupon',label:'Tier 2 coupon / 二档奖励',type:'text',default:'15_off'}
+   ]},
+  {id:'energy_to_purchase',category:'commerce',icon:'💳',name_en:'EnergyToPurchase',name_cn:'能量充值',
+   desc_en:'Buy energy with real money.',
+   desc_cn:'付费购买能量',
+   config_schema:[
+     {key:'price_per_energy',label:'Price per energy (CNY) / 单价',type:'number',default:1},
+     {key:'bundles',label:'Bundles (e.g. 10:8,50:35) / 套餐',type:'text',default:'10:8,50:35,100:60'}
+   ]},
+  {id:'reward_chain',category:'commerce',icon:'⏳',name_en:'RewardChain',name_cn:'核销期限',
+   desc_en:'Coupons must be redeemed in time.',
+   desc_cn:'优惠券限期使用',
+   config_schema:[
+     {key:'expiry_hours',label:'Expiry (h) / 有效期(小时)',type:'number',default:48},
+     {key:'reminder_hours_before',label:'Reminder before expiry (h) / 到期前提醒',type:'number',default:6}
+   ]},
+  {id:'upsell_moment',category:'commerce',icon:'👑',name_en:'UpsellMoment',name_cn:'加价升级',
+   desc_en:'Push upsell at redemption.',
+   desc_cn:'核销时推升级',
+   config_schema:[
+     {key:'upsell_offer',label:'Upsell offer text / 升级文案',type:'text',default:'+5 yuan for a large size'},
+     {key:'discount_pct',label:'Discount % / 折扣率',type:'number',default:15}
+   ]},
+  {id:'redemption_store',category:'commerce',icon:'🏪',name_en:'RedemptionStore',name_cn:'兑换商店',
+   desc_en:'Exchange points for real rewards.',
+   desc_cn:'积分换真奖',
+   config_schema:[
+     {key:'point_to_yuan_ratio',label:'Points per CNY / 元兑换比例',type:'number',default:100},
+     {key:'featured_items',label:'Featured item SKUs (comma) / 主推SKU',type:'text',default:''}
+   ]},
+
+  // ── Engagement ────────────────────────────────────────────────────
+  {id:'reward_roulette',category:'engagement',icon:'🎰',name_en:'RewardRoulette',name_cn:'幸运转盘',
+   desc_en:'BARQ-style cash-back wheel spin.',
+   desc_cn:'BARQ式现金回馈转盘',
+   config_schema:[
+     {key:'spins_per_day',label:'Spins per day / 每天次数',type:'number',default:1},
+     {key:'prize_slots',label:'Prize slots (comma) / 奖项',type:'text',default:'0.5,1,2,5,10,jackpot'}
+   ]},
+  {id:'league',category:'engagement',icon:'🏆',name_en:'League',name_cn:'周赛',
+   desc_en:'Duolingo-style group promotion/demotion.',
+   desc_cn:'Duolingo 分组升降',
+   config_schema:[
+     {key:'players_per_group',label:'Players per group / 每组人数',type:'number',default:30},
+     {key:'promotion_count',label:'Promotions / 每周升级人数',type:'number',default:7},
+     {key:'demotion_count',label:'Demotions / 每周降级人数',type:'number',default:7}
+   ]},
+  {id:'tier',category:'engagement',icon:'⭐',name_en:'Tier',name_cn:'会员等级',
+   desc_en:'Starbucks Green/Gold style tiers.',
+   desc_cn:'星巴克 Green/Gold',
+   config_schema:[
+     {key:'tier_names',label:'Tier names (comma) / 等级名',type:'text',default:'Bronze,Silver,Gold,Platinum'},
+     {key:'tier_thresholds',label:'XP thresholds (comma) / 等级门槛XP',type:'text',default:'0,500,2000,5000'}
+   ]},
+  {id:'pass',category:'engagement',icon:'🎫',name_en:'Pass',name_cn:'通行证',
+   desc_en:'Fortnite-style battle pass.',
+   desc_cn:'Fortnite战令',
+   config_schema:[
+     {key:'season_days',label:'Season length (days) / 赛季时长',type:'number',default:30},
+     {key:'tiers',label:'Tier count / 阶层数',type:'number',default:50},
+     {key:'premium_price',label:'Premium price (CNY) / 高级版价格',type:'number',default:30}
+   ]},
+  {id:'smart_quests',category:'engagement',icon:'🎯',name_en:'SmartQuests',name_cn:'智能任务',
+   desc_en:'Adaptive-difficulty daily quests.',
+   desc_cn:'自适应难度任务',
+   config_schema:[
+     {key:'quests_per_day',label:'Quests per day / 每天任务数',type:'number',default:3},
+     {key:'reward_xp_per_quest',label:'Reward XP per quest / 每任务XP',type:'number',default:50}
+   ]},
+  {id:'story_quest',category:'engagement',icon:'📖',name_en:'StoryQuest',name_cn:'故事任务',
+   desc_en:'Chapter-based narrative quests.',
+   desc_cn:'章节叙事任务',
+   config_schema:[
+     {key:'chapters',label:'Chapter count / 章节数',type:'number',default:5},
+     {key:'unlock_xp_per_chapter',label:'XP to unlock each chapter / 每章XP门槛',type:'number',default:200}
+   ]},
+  {id:'life_system',category:'engagement',icon:'❤️',name_en:'LifeSystem',name_cn:'生命系统',
+   desc_en:'Lose lives on failure.',
+   desc_cn:'失败损血',
+   config_schema:[
+     {key:'max_lives',label:'Max lives / 最大生命',type:'number',default:5},
+     {key:'regen_minutes',label:'Regen per life (min) / 每生命恢复(分钟)',type:'number',default:30}
+   ]},
+  {id:'tourney',category:'engagement',icon:'🏁',name_en:'Tourney',name_cn:'锦标赛',
+   desc_en:'Time-limited competitions.',
+   desc_cn:'限时比赛',
+   config_schema:[
+     {key:'duration_hours',label:'Duration (h) / 时长(小时)',type:'number',default:48},
+     {key:'top_n_rewards',label:'Top N get reward / 前N名奖励',type:'number',default:10}
+   ]},
+  {id:'collection',category:'engagement',icon:'📚',name_en:'Collection',name_cn:'收藏',
+   desc_en:'Gacha-style collection book.',
+   desc_cn:'抽取图鉴',
+   config_schema:[
+     {key:'total_items',label:'Total collectibles / 收藏品总数',type:'number',default:50},
+     {key:'drop_rate_pct',label:'Drop rate % / 掉落率%',type:'number',default:20}
+   ]},
+  {id:'badge_wall',category:'engagement',icon:'🎖️',name_en:'BadgeWall',name_cn:'勋章墙',
+   desc_en:'Achievement showcase wall.',
+   desc_cn:'成就展示',
+   config_schema:[
+     {key:'show_locked',label:'Show locked badges (true/false) / 显示未解锁',type:'text',default:'true'}
+   ]},
+
+  // ── Foundation (built-in) ─────────────────────────────────────────
+  {id:'streak',category:'foundation',icon:'🔥',name_en:'Streak',name_cn:'每日打卡',
+   desc_en:'Daily check-in chain.',desc_cn:'每日打卡连签',builtin:true,config_schema:[]},
+  {id:'xp',category:'foundation',icon:'✨',name_en:'XP',name_cn:'经验值',
+   desc_en:'Experience points system.',desc_cn:'经验值系统',builtin:true,config_schema:[]},
+  {id:'level',category:'foundation',icon:'📈',name_en:'Level',name_cn:'等级',
+   desc_en:'Player level progression.',desc_cn:'玩家等级',builtin:true,config_schema:[]},
+  {id:'badge',category:'foundation',icon:'🏅',name_en:'Badge',name_cn:'勋章',
+   desc_en:'Achievement badges.',desc_cn:'成就勋章',builtin:true,config_schema:[]},
+  {id:'leaderboard',category:'foundation',icon:'📊',name_en:'Leaderboard',name_cn:'排行榜',
+   desc_en:'Top-N rankings.',desc_cn:'排行榜',builtin:true,config_schema:[]},
+  {id:'energy',category:'foundation',icon:'⚡',name_en:'Energy',name_cn:'能量',
+   desc_en:'Play-energy / stamina system.',desc_cn:'能量/体力系统',builtin:true,config_schema:[]}
+];
+
+// Local state for engagement view
+const engagementState={
+  activeModules:{},   // module_id -> config row from backend
+  currentCategory:'network',
+  editingModuleId:null,
+};
+
+function renderEngagement(){
+  // Wire up tab clicks once
+  document.querySelectorAll('#module-tabs .tab').forEach(tab=>{
+    tab.onclick=()=>{
+      document.querySelectorAll('#module-tabs .tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      engagementState.currentCategory=tab.dataset.cat;
+      renderMarketplace(tab.dataset.cat);
+    };
+  });
+  loadActiveModules();
+  renderMarketplace(engagementState.currentCategory);
+}
+
+async function loadActiveModules(){
+  const container=document.getElementById('active-modules');
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/modules',{noAuth:true});
+    if(!res.ok)throw new Error('Failed to load modules');
+    const data=await res.json();
+    engagementState.activeModules={};
+    (data||[]).forEach(m=>{engagementState.activeModules[m.id]=m;});
+    const enabled=(data||[]).filter(m=>m.enabled);
+
+    if(enabled.length===0){
+      container.innerHTML='<div class="active-modules-empty">No modules enabled yet / 暂未启用任何模块 — pick one below / 在下方选择一个</div>';
+    }else{
+      container.innerHTML=enabled.map(m=>{
+        const meta=MODULES_CATALOG.find(c=>c.id===m.id)||{icon:'🎮',name_en:m.id,name_cn:''};
+        const paramCount=m.params?Object.keys(m.params).length:0;
+        return `<div class="active-module-row">
+          <div class="module-icon">${meta.icon}</div>
+          <div class="active-module-row-info">
+            <div class="active-module-row-name">${esc(meta.name_en)} / ${esc(meta.name_cn)}</div>
+            <div class="active-module-row-meta">${paramCount} param${paramCount===1?'':'s'} configured</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="openConfigModal('${esc(m.id)}')">Configure / 配置</button>
+          <button class="btn btn-danger btn-sm" onclick="toggleModule('${esc(m.id)}',false)">Disable / 禁用</button>
+        </div>`;
+      }).join('');
+    }
+    // Re-render marketplace too so cards reflect enabled state
+    renderMarketplace(engagementState.currentCategory);
+  }catch(e){
+    console.error('loadActiveModules error:',e);
+    container.innerHTML='<div class="active-modules-empty">Failed to load / 加载失败 — '+esc(e.message)+'</div>';
+  }
+}
+
+function renderMarketplace(category){
+  const grid=document.getElementById('modules-grid');
+  const filtered=MODULES_CATALOG.filter(m=>m.category===category);
+  grid.innerHTML=filtered.map(m=>{
+    const active=engagementState.activeModules[m.id];
+    const isEnabled=!!(active&&active.enabled);
+    const isBuiltin=!!m.builtin;
+    return `<div class="module-card${isEnabled?' enabled':''}${isBuiltin?' builtin':''}">
+      ${isBuiltin?'<div class="module-builtin-tag">Built-in</div>':(isEnabled?'<div class="module-check">&#10003;</div>':'')}
+      <div class="module-card-head">
+        <div class="module-icon">${m.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div class="module-name">${esc(m.name_en)}</div>
+          <div class="module-name-cn">${esc(m.name_cn)}</div>
+        </div>
+      </div>
+      <div class="module-desc">${esc(m.desc_en)}<br><span style="color:var(--text-muted)">${esc(m.desc_cn)}</span></div>
+      <div class="module-card-actions">
+        ${isBuiltin
+          ?'<button class="btn btn-outline btn-sm" disabled style="opacity:.6;cursor:not-allowed">Always on / 始终启用</button>'
+          :(isEnabled
+              ?`<button class="btn btn-outline btn-sm" onclick="openConfigModal('${esc(m.id)}')">Configure / 配置</button>
+                <button class="btn btn-danger btn-sm" onclick="toggleModule('${esc(m.id)}',false)">Disable</button>`
+              :`<button class="btn btn-green btn-sm" onclick="toggleModule('${esc(m.id)}',true)">Enable / 启用</button>
+                <button class="btn btn-outline btn-sm" onclick="openConfigModal('${esc(m.id)}')">Configure</button>`
+            )
+        }
+      </div>
+    </div>`;
+  }).join('');
+  if(filtered.length===0){
+    grid.innerHTML='<div class="active-modules-empty">No modules in this category yet / 此分类暂无模块</div>';
+  }
+}
+
+async function toggleModule(moduleId,enabled){
+  try{
+    const res=await apiFetch(
+      '/api/v1/brands/'+state.brandId+'/modules/'+moduleId+'/toggle',
+      {method:'POST',json:{enabled:!!enabled},noAuth:true}
+    );
+    if(!res.ok)throw new Error('Toggle failed ('+res.status+')');
+    const data=await res.json();
+    engagementState.activeModules[moduleId]=data.module;
+    showToast((enabled?'Enabled / 已启用 — ':'Disabled / 已禁用 — ')+moduleId);
+    loadActiveModules();
+  }catch(e){
+    showToast(e.message,'error');
+  }
+}
+
+function openConfigModal(moduleId){
+  const meta=MODULES_CATALOG.find(m=>m.id===moduleId);
+  if(!meta){showToast('Unknown module / 未知模块','error');return;}
+  if(meta.builtin){
+    showToast('Built-in module — no configuration / 内置模块无需配置');
+    return;
+  }
+  engagementState.editingModuleId=moduleId;
+  document.getElementById('modal-icon').textContent=meta.icon;
+  document.getElementById('modal-title').textContent=meta.name_en;
+  document.getElementById('modal-title-cn').textContent=meta.name_cn;
+
+  const existing=engagementState.activeModules[moduleId];
+  const existingParams=(existing&&existing.params)||{};
+  const body=document.getElementById('modal-body');
+
+  if(!meta.config_schema||meta.config_schema.length===0){
+    body.innerHTML='<p style="color:var(--text-dim);font-size:13px">No parameters — just enable to use. / 此模块无需参数，启用即可使用。</p>';
+  }else{
+    body.innerHTML=meta.config_schema.map(f=>{
+      const val=existingParams[f.key]!==undefined?existingParams[f.key]:(f.default!==undefined?f.default:'');
+      const inputType=f.type==='number'?'number':'text';
+      return `<div class="form-group">
+        <label>${esc(f.label)}</label>
+        <input type="${inputType}" class="form-input" data-key="${esc(f.key)}" data-type="${esc(f.type)}" value="${esc(val)}">
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('module-modal').classList.add('active');
+}
+
+function closeModuleModal(){
+  document.getElementById('module-modal').classList.remove('active');
+  engagementState.editingModuleId=null;
+}
+
+async function saveModuleConfig(){
+  const moduleId=engagementState.editingModuleId;
+  if(!moduleId)return;
+  const meta=MODULES_CATALOG.find(m=>m.id===moduleId);
+  const params={};
+  document.querySelectorAll('#modal-body input[data-key]').forEach(inp=>{
+    const key=inp.dataset.key;
+    const type=inp.dataset.type;
+    let v=inp.value;
+    if(type==='number'){
+      const n=Number(v);
+      v=Number.isFinite(n)?n:0;
+    }
+    params[key]=v;
+  });
+
+  const btn=document.getElementById('modal-save-btn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    // Save config
+    const res=await apiFetch(
+      '/api/v1/brands/'+state.brandId+'/modules/'+moduleId+'/config',
+      {method:'POST',json:params,noAuth:true}
+    );
+    if(!res.ok)throw new Error('Save failed ('+res.status+')');
+
+    // Auto-enable on save if not enabled yet
+    const existing=engagementState.activeModules[moduleId];
+    if(!existing||!existing.enabled){
+      await apiFetch(
+        '/api/v1/brands/'+state.brandId+'/modules/'+moduleId+'/toggle',
+        {method:'POST',json:{enabled:true},noAuth:true}
+      );
+    }
+
+    showToast('Saved / 已保存 — '+(meta?meta.name_en:moduleId));
+    closeModuleModal();
+    loadActiveModules();
+  }catch(e){
+    showToast(e.message,'error');
+  }finally{
+    btn.disabled=false;btn.textContent='Save / 保存';
+  }
+}
+
+// Close modal on overlay click
+document.addEventListener('click',(e)=>{
+  if(e.target&&e.target.id==='module-modal')closeModuleModal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════
 function esc(s){
@@ -2615,7 +3152,7 @@ function esc(s){
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }

@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>消消乐 Match-3</title>
+<script src="https://cdn.tailwindcss.com">
+</script>
+<style>
+.screen{padding-bottom:72px;}
+.screen:not(.active){display:none!important}
+.screen.active{display:block!important}
+.cell{aspect-ratio:1;border-radius:8px;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.cell:active{transform:scale(.9);}
+.cell.selected{box-shadow:0 0 0 3px #fff,0 0 0 6px #fbbf24;transform:scale(1.05);z-index:2;}
+.cell.matched{animation:pulse .4s ease-out;}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.25);opacity:.5}100%{transform:scale(0);opacity:0}}
+
+
+
+
+
+#game-board{display:grid;gap:3px;padding:4px;background:rgba(0,0,0,.25);border-radius:12px;max-width:360px;margin:0 auto;}
+</style>
+<style>.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS —  */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #00704A, #003825) !important;
+  --tw-gradient-from: #00704A !important;
+  --tw-gradient-to: #003825 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #00704A !important;
+  background: #00704A !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #003825 !important;
+  background: #003825 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #00704A !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen font-sans overflow-hidden">
+
+<div id="app" class="relative w-full max-w-md mx-auto min-h-screen">
+
+<!-- HOME SCREEN -->
+<div id="home-screen" class="screen flex flex-col items-center justify-center min-h-screen px-6 text-center">
+<div style="font-size:48px;margin-bottom:8px">⭐</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px"></h1>
+<p class="text-gray-400 mb-8 text-lg">Match-3 Puzzle</p>
+<div class="flex flex-col gap-3 w-full max-w-xs" id="home-buttons">
+<button id="btn-play" class="w-full py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold rounded-xl text-lg shadow-lg">开始游戏</button>
+<button id="btn-levels" class="w-full py-3 bg-gray-700 text-white font-semibold rounded-xl">选择关卡</button>
+<button id="btn-shop-nav" class="w-full py-3 bg-gray-700 text-white font-semibold rounded-xl">商店</button>
+<button id="btn-scores-nav" class="w-full py-3 bg-gray-700 text-white font-semibold rounded-xl">排行榜</button>
+<button id="btn-settings-nav" class="w-full py-3 bg-gray-700 text-white font-semibold rounded-xl">设置</button>
+</div>
+</div>
+
+<!-- LEVEL SELECT SCREEN -->
+<div id="level_select-screen" class="screen hidden flex flex-col items-center min-h-screen px-4 pt-8">
+<h2 class="text-2xl font-bold mb-6">选择关卡</h2>
+<div id="level-grid" class="grid grid-cols-4 gap-3 w-full max-w-sm"></div>
+</div>
+
+<!-- GAMEPLAY SCREEN -->
+<div id="gameplay-screen" class="screen hidden flex flex-col items-center min-h-screen px-2 pt-4">
+<div class="flex justify-between items-center w-full max-w-sm mb-3 px-2">
+<div class="text-sm"><span class="text-gray-400">得分</span><br><span id="hud-score" class="text-xl font-bold text-yellow-400">0</span></div>
+<div class="text-sm text-center"><span class="text-gray-400">目标</span><br><span id="hud-target" class="text-xl font-bold text-green-400">1000</span></div>
+<div class="text-sm text-right"><span class="text-gray-400">剩余步数</span><br><span id="hud-moves" class="text-xl font-bold text-blue-400">30</span></div>
+</div>
+<div id="game-board" class="grid-cols-8"></div>
+</div>
+
+<!-- PAUSE MENU OVERLAY (not a .screen) -->
+<div id="pause_menu-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60">
+<div class="bg-gray-800 rounded-2xl p-8 w-full max-w-xs text-center shadow-2xl">
+<h2 class="text-2xl font-bold mb-6">暂停</h2>
+<button id="btn-resume" class="w-full py-3 bg-green-500 text-white font-bold rounded-xl mb-3">继续游戏</button>
+<button id="btn-restart" class="w-full py-3 bg-yellow-500 text-black font-bold rounded-xl mb-3">重新开始</button>
+<button id="btn-quit" class="w-full py-3 bg-gray-600 text-white font-semibold rounded-xl">退出</button>
+</div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div id="settings-screen" class="screen hidden flex flex-col items-center min-h-screen px-6 pt-8">
+<h2 class="text-2xl font-bold mb-6">设置</h2>
+<div class="w-full max-w-sm space-y-4" id="settings-list">
+<div class="flex justify-between items-center bg-gray-800 p-4 rounded-xl"><span>音效</span><button id="btn-toggle-sound" class="w-14 h-8 rounded-full bg-green-500 relative"></button></div>
+<div class="flex justify-between items-center bg-gray-800 p-4 rounded-xl"><span>音乐</span><button id="btn-toggle-music" class="w-14 h-8 rounded-full bg-green-500 relative"></button></div>
+<div class="flex justify-between items-center bg-gray-800 p-4 rounded-xl"><span>震动</span><button id="btn-toggle-vibration" class="w-14 h-8 rounded-full bg-green-500 relative"></button></div>
+</div>
+</div>
+
+<!-- SHOP SCREEN -->
+<div id="shop-screen" class="screen hidden flex flex-col items-center min-h-screen px-4 pt-8">
+<h2 class="text-2xl font-bold mb-2">商店</h2>
+<p class="text-yellow-400 mb-4">金币: <span id="shop-coins" class="font-bold">500</span></p>
+<div id="shop-items" class="grid grid-cols-2 gap-3 w-full max-w-sm"></div>
+</div>
+
+<!-- GAME RESULT SCREEN -->
+<div id="game_result-screen" class="screen hidden flex flex-col items-center justify-center min-h-screen px-6 text-center">
+<div id="result-icon" class="text-7xl mb-4">🎉</div>
+<h2 id="result-title" class="text-3xl font-extrabold mb-2">关卡通过!</h2>
+<p id="result-detail" class="text-gray-400 mb-6">得分: 0</p>
+<button id="btn-next-level" class="w-full max-w-xs py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold rounded-xl mb-3">下一关</button>
+<button id="btn-replay" class="w-full max-w-xs py-3 bg-gray-700 text-white font-semibold rounded-xl mb-3">再玩一次</button>
+<button id="btn-result-home" class="w-full max-w-xs py-3 bg-gray-600 text-white font-semibold rounded-xl">返回主页</button>
+</div>
+
+<!-- HIGH SCORES SCREEN -->
+<div id="high_scores-screen" class="screen hidden flex flex-col items-center min-h-screen px-4 pt-8">
+<h2 class="text-2xl font-bold mb-6">🏆 排行榜</h2>
+<div id="scores-list" class="w-full max-w-sm space-y-2"></div>
+</div>
+
+<!-- FIXED BOTTOM ACTION BAR -->
+<div id="action-bar" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gray-800/95 backdrop-blur border-t border-gray-700 flex justify-around items-center h-16 px-2 z-40 rounded-t-xl">
+<button id="btn-nav-back" class="hidden flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3"><span class="text-xl">←</span>返回</button>
+<button id="btn-nav-home" class="flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3"><span class="text-xl">🏠</span>主页</button>
+<button id="btn-nav-pause" class="hidden flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3"><span class="text-xl">⏸</span>暂停</button>
+<button id="btn-nav-play" class="hidden flex-col items-center text-xs text-yellow-400 hover:text-yellow-300 py-1 px-3"><span class="text-xl">▶</span>开始</button>
+<button id="btn-nav-settings" class="flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3"><span class="text-xl">⚙</span>设置</button>
+<button id="btn-nav-shop" class="flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3"><span class="text-xl">🛒</span>商店</button>
+<button id="btn-nav-scores" class="flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3"><span class="text-xl">🏆</span>排行</button>
+</div>
+
+</div>
+
+<script>
+/* ───────── GAME STATE ───────── */
+/** @returns {object} initial game state */
+function initState() { let state = {
+  screen: 'home',
+  previousScreen: 'home',
+  board: [],
+  rows: 8,
+  cols: 8,
+  pieceTypes: 5,
+  level: 1,
+  score: 0,
+  targetScore: 1000,
+  movesRemaining: 30,
+  selected: null,
+  isProcessing: false,
+  result: null,
+  won: false,
+  coins: 500,
+  soundEnabled: true,
+  musicEnabled: true,
+  vibrationEnabled: true,
+  unlockedLevel: 1,
+  levels: [
+    { level: 1, targetScore: 1000, moves: 30 },
+    { level: 2, targetScore: 2000, moves: 25 },
+    { level: 3, targetScore: 3000, moves: 25 },
+    { level: 4, targetScore: 4000, moves: 22 },
+    { level: 5, targetScore: 5000, moves: 20 },
+    { level: 6, targetScore: 6500, moves: 20 },
+    { level: 7, targetScore: 8000, moves: 18 },
+    { level: 8, targetScore: 10000, moves: 15 }
+  ],
+  highScores: [],
+  shopItems: [
+    { id: 'extra_moves', name: '额外步数+5', cost: 200, description: '增加5步移动', effect: 'addMoves', amount: 5, icon: '👟' },
+    { id: 'bomb', name: '炸弹', cost: 300, description: '消除3x3区域', effect: 'addScore', amount: 500, icon: '💣' },
+    { id: 'shuffle', name: '洗牌', cost: 150, description: '重新排列棋盘', effect: 'shuffle', amount: 0, icon: '🔀' },
+    { id: 'rainbow', name: '彩虹道具', cost: 500, description: '消除一种颜色', effect: 'addScore', amount: 1000, icon: '🌈' }
+  ]
+};
+return state; }
+
+/* ───────── SCREEN NAVIGATION ───────── */
+/** @param {string} screenId - base screen name (e.g. 'home', 'gameplay') */
+function showScreen(screenId) { let targetId = screenId + '-screen';
+let screens = document.querySelectorAll('.screen');
+for (let i = 0; i < screens.length; i++) {
+  screens[i].classList.remove('active');
+}
+let target = document.getElementById(targetId);
+if (target) {
+  target.classList.add('active');
+} }
+
+/* ───────── PAUSE OVERLAY ───────── */
+function showPauseOverlay(show) {
+  let overlay = document.getElementById('pause_menu-screen');
+  if (overlay) {
+    if (show) {
+      overlay.classList.remove('hidden');
+    } else {
+      overlay.classList.add('hidden');
+    }
+  }
+}
+
+/* ───────── MAIN RENDER ───────── */
+/** @param {object} state */
+function render(state) { showScreen(state.screen);
+showPauseOverlay(state.screen === 'pause_menu');
+renderActionBar(state);
+if (state.screen === 'gameplay') {
+  renderBoard(state);
+  renderHUD(state);
+} else if (state.screen === 'level_select') {
+  renderLevelSelect(state);
+} else if (state.screen === 'shop') {
+  renderShop(state);
+} else if (state.screen === 'high_scores') {
+  renderHighScores(state);
+} else if (state.screen === 'settings') {
+  renderSettings(state);
+} else if (state.screen === 'game_result') {
+  renderGameResult(state);
+} }
+
+/* ───────── ACTION HANDLER ───────── */
+/** @param {object} state @param {object} action @returns {object} new state */
+function handleAction(state, action) { let type = action.type;
+if (type === 'NAVIGATE') {
+  let screen = action.screen;
+  return { ...state, screen: screen };
+}
+if (type === 'PLAY' || type === 'START_GAME' || type === 'start') {
+  let newState = startLevel(state, 1);
+  return { ...newState, screen: 'gameplay' };
+}
+if (type === 'SELECT_LEVEL') {
+  let newState = startLevel(state, action.level);
+  return { ...newState, screen: 'gameplay' };
+}
+if (type === 'CELL_CLICK' || type === 'cell_click') {
+  return handleBoardClick(state, action.row, action.col);
+}
+if (type === 'PLAYER_ACTION') {
+  if (action.row !== undefined && action.col !== undefined) {
+    return handleBoardClick(state, action.row, action.col);
+  }
+  return state;
+}
+if (type === 'move') {
+  if (action.fromRow !== undefined && action.fromCol !== undefined && action.toRow !== undefined && action.toCol !== undefined) {
+    let withSelection = { ...state, selected: { row: action.fromRow, col: action.fromCol } };
+    return handleBoardClick(withSelection, action.toRow, action.toCol);
+  }
+  return state;
+}
+if (type === 'TOGGLE_SOUND') {
+  return { ...state, soundEnabled: !state.soundEnabled };
+}
+if (type === 'TOGGLE_MUSIC') {
+  return { ...state, musicEnabled: !state.musicEnabled };
+}
+if (type === 'TOGGLE_VIBRATION') {
+  return { ...state, vibrationEnabled: !state.vibrationEnabled };
+}
+if (type === 'RESUME') {
+  return { ...state, screen: 'gameplay' };
+}
+if (type === 'RESTART') {
+  let newState = startLevel(state, state.level);
+  return { ...newState, screen: 'gameplay' };
+}
+if (type === 'QUIT' || type === 'QUIT_TO_HOME') {
+  return { ...state, screen: 'home' };
+}
+if (type === 'NEXT_LEVEL') {
+  let nextLevel = state.level + 1;
+  if (nextLevel <= state.levels.length) {
+    let newState = startLevel(state, nextLevel);
+    let updatedUnlocked = Math.max(state.unlockedLevel || 1, nextLevel);
+    return { ...newState, unlockedLevel: updatedUnlocked, screen: 'gameplay' };
+  } else {
+    return { ...state, screen: 'home' };
+  }
+}
+if (type === 'REPLAY') {
+  let newState = startLevel(state, state.level);
+  return { ...newState, screen: 'gameplay' };
+}
+if (type === 'RESULT_HOME') {
+  return { ...state, screen: 'home' };
+}
+if (type === 'NAV_BACK') {
+  return { ...state, screen: 'home' };
+}
+if (type === 'NAV_HOME') {
+  return { ...state, screen: 'home' };
+}
+if (type === 'NAV_PAUSE' || type === 'PAUSE') {
+  if (state.screen === 'gameplay') {
+    return { ...state, previousScreen: state.screen, screen: 'pause_menu' };
+  }
+  return state;
+}
+if (type === 'NAV_PLAY') {
+  let newState = startLevel(state, 1);
+  return { ...newState, screen: 'gameplay' };
+}
+if (type === 'NAV_SETTINGS') {
+  return { ...state, screen: 'settings' };
+}
+if (type === 'NAV_SHOP') {
+  return { ...state, screen: 'shop' };
+}
+if (type === 'NAV_SCORES' || type === 'NAV_HIGH_SCORES') {
+  return { ...state, screen: 'high_scores' };
+}
+if (type === 'NAV_LEVEL_SELECT') {
+  return { ...state, screen: 'level_select' };
+}
+if (type === 'BUY_ITEM' || type === 'BUY_SHOP_ITEM') {
+  let itemId = action.itemId;
+  let shopItems = state.shopItems || [];
+  let item = shopItems.find(function(i) { return i.id === itemId; });
+  if (item && state.coins >= item.cost) {
+    let newState = { ...state, coins: state.coins - item.cost };
+    let effect = item.effect;
+    let amount = item.amount;
+    if (effect === 'addMoves') {
+      return { ...newState, movesRemaining: (state.movesRemaining || 0) + amount };
+    } else if (effect === 'addScore') {
+      let updatedScore = (state.score || 0) + amount;
+      let updated = { ...newState, score: updatedScore };
+      if (updatedScore >= state.targetScore) {
+        updated = { ...updated, result: 'win', won: true, screen: 'game_result' };
+      }
+      return updated;
+    } else if (effect === 'addCoins') {
+      return { ...newState, coins: newState.coins + amount };
+    } else if (effect === 'shuffle') {
+      let rows = state.rows || 8;
+      let cols = state.cols || 8;
+      let pieceTypes = state.pieceTypes || 5;
+      let newBoard = createBoard(rows, cols, pieceTypes);
+      return { ...newState, board: newBoard };
+    }
+    return newState;
+  }
+  return state;
+}
+return state; }
+
+/* ───────── STARTUP ───────── */
+var gameState; // module-level reference for event handlers
+
+function startGame() { gameState = initState();
+render(gameState);
+
+  // Home screen buttons
+  document.getElementById('btn-play').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'START_GAME' });
+    render(gameState);
+  });
+  document.getElementById('btn-levels').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_LEVEL_SELECT' });
+    render(gameState);
+  });
+  document.getElementById('btn-shop-nav').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_SHOP' });
+    render(gameState);
+  });
+  document.getElementById('btn-scores-nav').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_HIGH_SCORES' });
+    render(gameState);
+  });
+  document.getElementById('btn-settings-nav').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_SETTINGS' });
+    render(gameState);
+  });
+
+  // Bottom action bar
+  document.getElementById('btn-nav-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_HOME' });
+    render(gameState);
+  });
+  document.getElementById('btn-nav-settings').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_SETTINGS' });
+    render(gameState);
+  });
+  document.getElementById('btn-nav-shop').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_SHOP' });
+    render(gameState);
+  });
+  document.getElementById('btn-nav-scores').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_HIGH_SCORES' });
+    render(gameState);
+  });
+  document.getElementById('btn-nav-back').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_BACK' });
+    render(gameState);
+  });
+  document.getElementById('btn-nav-pause').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'PAUSE' });
+    render(gameState);
+  });
+  document.getElementById('btn-nav-play').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'START_GAME' });
+    render(gameState);
+  });
+
+  // Pause menu buttons
+  document.getElementById('btn-resume').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'RESUME' });
+    render(gameState);
+  });
+  document.getElementById('btn-restart').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'RESTART' });
+    render(gameState);
+  });
+  document.getElementById('btn-quit').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'QUIT_TO_HOME' });
+    render(gameState);
+  });
+
+  // Settings toggles
+  document.getElementById('btn-toggle-sound').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'TOGGLE_SOUND' });
+    render(gameState);
+  });
+  document.getElementById('btn-toggle-music').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'TOGGLE_MUSIC' });
+    render(gameState);
+  });
+  document.getElementById('btn-toggle-vibration').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'TOGGLE_VIBRATION' });
+    render(gameState);
+  });
+
+  // Game result screen
+  document.getElementById('btn-next-level').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NEXT_LEVEL' });
+    render(gameState);
+  });
+  document.getElementById('btn-replay').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'REPLAY' });
+    render(gameState);
+  });
+  document.getElementById('btn-result-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAV_HOME' });
+    render(gameState);
+  });
+
+  // Level select grid delegation
+  document.getElementById('level-grid').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-level]');
+    if (btn && btn.dataset.level) {
+      var level = parseInt(btn.dataset.level, 10);
+      gameState = handleAction(gameState, { type: 'SELECT_LEVEL', level: level });
+      render(gameState);
+    }
+  });
+
+  // Game board click delegation
+  document.getElementById('game-board').addEventListener('click', function(e) {
+    var cell = e.target.closest('.cell');
+    if (cell && cell.dataset.row !== undefined && cell.dataset.col !== undefined) {
+      var row = parseInt(cell.dataset.row, 10);
+      var col = parseInt(cell.dataset.col, 10);
+      gameState = handleAction(gameState, { type: 'CELL_CLICK', row: row, col: col });
+      render(gameState);
+    }
+  });
+
+  // Shop items delegation
+  document.getElementById('shop-items').addEventListener('click', function(e) {
+    var btn = e.target.closest('button');
+    if (btn && btn.dataset.itemId) {
+      var itemId = btn.dataset.itemId;
+      gameState = handleAction(gameState, { type: 'BUY_ITEM', itemId: itemId });
+      render(gameState);
+    }
+  });
+
+  render(gameState); }
+
+/* ───────── BOARD HELPERS ───────── */
+/** @param {number} rows @param {number} cols @param {number} pieceTypes @returns {Array<Array<number>>} */
+function createBoard(rows, cols, pieceTypes) { var board = [];
+for (var r = 0; r < rows; r++) {
+  board[r] = [];
+  for (var c = 0; c < cols; c++) {
+    var piece;
+    do {
+      piece = Math.floor(Math.random() * pieceTypes);
+    } while (
+      (c >= 2 && board[r][c - 1] === piece && board[r][c - 2] === piece) ||
+      (r >= 2 && board[r - 1][c] === piece && board[r - 2][c] === piece)
+    );
+    board[r][c] = piece;
+  }
+}
+return board; }
+
+/** @param {Array<Array<number>>} board @returns {Array<{row:number,col:number}>} matched cells */
+function findMatches(board) { var matches = [];
+var rows = board.length;
+var cols = board[0].length;
+
+// Horizontal matches
+for (var r = 0; r < rows; r++) {
+  for (var c = 0; c < cols - 2; c++) {
+    var piece = board[r][c];
+    if (piece !== null && piece !== -1 && piece === board[r][c + 1] && piece === board[r][c + 2]) {
+      var endCol = c + 2;
+      while (endCol + 1 < cols && board[r][endCol + 1] === piece) {
+        endCol++;
+      }
+      for (var k = c; k <= endCol; k++) {
+        matches.push({ row: r, col: k });
+      }
+      c = endCol;
+    }
+  }
+}
+
+// Vertical matches
+for (var c2 = 0; c2 < cols; c2++) {
+  for (var r2 = 0; r2 < rows - 2; r2++) {
+    var piece2 = board[r2][c2];
+    if (piece2 !== null && piece2 !== -1 && piece2 === board[r2 + 1][c2] && piece2 === board[r2 + 2][c2]) {
+      var endRow = r2 + 2;
+      while (endRow + 1 < rows && board[endRow + 1][c2] === piece2) {
+        endRow++;
+      }
+      for (var k2 = r2; k2 <= endRow; k2++) {
+        matches.push({ row: k2, col: c2 });
+      }
+      r2 = endRow;
+    }
+  }
+}
+
+return matches; }
+
+/** @param {Array<Array<number>>} board @param {Array<{row:number,col:number}>} matches @returns {Array<Array<number>>} */
+function removeMatches(board, matches) { var newBoard = deepCloneBoard(board);
+for (var i = 0; i < matches.length; i++) {
+  var m = matches[i];
+  newBoard[m.row][m.col] = -1;
+}
+return newBoard; }
+
+/** @param {Array<Array<number>>} board @returns {Array<Array<number>>} */
+function applyGravity(board) { var rows = board.length;
+var cols = board[0].length;
+var newBoard = [];
+for (var i = 0; i < rows; i++) {
+  newBoard[i] = [];
+  for (var j = 0; j < cols; j++) {
+    newBoard[i][j] = -1;
+  }
+}
+for (var c = 0; c < cols; c++) {
+  var columnPieces = [];
+  for (var r = 0; r < rows; r++) {
+    if (board[r][c] !== -1) {
+      columnPieces.push(board[r][c]);
+    }
+  }
+  var idx = columnPieces.length - 1;
+  for (var r2 = rows - 1; r2 >= 0 && idx >= 0; r2--) {
+    newBoard[r2][c] = columnPieces[idx];
+    idx--;
+  }
+}
+return newBoard; }
+
+/** @param {Array<Array<number>>} board @param {number} pieceTypes @returns {Array<Array<number>>} */
+function fillBoard(board, pieceTypes) { var rows = board.length;
+for (var r = 0; r < rows; r++) {
+  var cols = board[r].length;
+  for (var c = 0; c < cols; c++) {
+    if (board[r][c] === -1 || board[r][c] == null) {
+      board[r][c] = Math.floor(Math.random() * pieceTypes);
+    }
+  }
+}
+return board; }
+
+/** @param {Array<Array<number>>} board @param {number} r1 @param {number} c1 @param {number} r2 @param {number} c2 @returns {boolean} */
+function isAdjacent(r1, c1, r2, c2) { var rowDiff = Math.abs(r1 - r2);
+var colDiff = Math.abs(c1 - c2);
+return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1); }
+
+/** @param {Array<Array<number>>} board @param {number} r1 @param {number} c1 @param {number} r2 @param {number} c2 @returns {boolean} */
+function isValidSwap(board, r1, c1, r2, c2) { if (!isAdjacent(r1, c1, r2, c2)) return false;
+var newBoard = deepCloneBoard(board);
+var temp = newBoard[r1][c1];
+newBoard[r1][c1] = newBoard[r2][c2];
+newBoard[r2][c2] = temp;
+var matches = findMatches(newBoard);
+return matches.length > 0; }
+
+/** @param {Array<Array<number>>} board @returns {boolean} */
+function hasValidMoves(board) { var rows = board.length;
+var cols = board[0].length;
+for (var r = 0; r < rows; r++) {
+  for (var c = 0; c < cols; c++) {
+    if (c + 1 < cols) {
+      var testBoardH = deepCloneBoard(board);
+      var tempH = testBoardH[r][c];
+      testBoardH[r][c] = testBoardH[r][c+1];
+      testBoardH[r][c+1] = tempH;
+      if (findMatches(testBoardH).length > 0) return true;
+    }
+    if (r + 1 < rows) {
+      var testBoardV = deepCloneBoard(board);
+      var tempV = testBoardV[r][c];
+      testBoardV[r][c] = testBoardV[r+1][c];
+      testBoardV[r+1][c] = tempV;
+      if (findMatches(testBoardV).length > 0) return true;
+    }
+  }
+}
+return false; }
+
+/** @param {Array<Array<number>>} board @returns {Array<Array<number>>} */
+function deepCloneBoard(board) { return board.map(function(row) { return row.slice(); }); }
+
+/** @param {number} matchLength @returns {number} */
+function calculateScore(matchLength) { return (matchLength - 2) * 50; }
+
+/* ───────── RENDER HELPERS ───────── */
+/** @param {object} state */
+function renderBoard(state) { var boardEl = document.getElementById('game-board');
+var rows = state.rows;
+var cols = state.cols;
+boardEl.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+var html = '';
+for (var r = 0; r < rows; r++) {
+  for (var c = 0; c < cols; c++) {
+    var piece = state.board[r][c];
+    var classes = 'cell piece-' + piece;
+    if (state.selected && r === state.selected.row && c === state.selected.col) {
+      classes += ' selected';
+    }
+    html += '<div class="' + classes + '" data-row="' + r + '" data-col="' + c + '"></div>';
+  }
+}
+boardEl.innerHTML = html; }
+
+/** @param {object} state */
+function renderHUD(state) { var scoreEl = document.getElementById('hud-score');
+var targetEl = document.getElementById('hud-target');
+var movesEl = document.getElementById('hud-moves');
+if (scoreEl) scoreEl.textContent = state.score;
+if (targetEl) targetEl.textContent = state.targetScore;
+if (movesEl) movesEl.textContent = state.movesRemaining; }
+
+/** @param {object} state */
+function renderLevelSelect(state) { var grid = document.getElementById('level-grid');
+if (!grid) return;
+grid.innerHTML = '';
+var levels = state.levels || [];
+var unlockedLevel = state.unlockedLevel || 1;
+for (var i = 0; i < levels.length; i++) {
+  var lvl = levels[i];
+  var isUnlocked = lvl.level <= unlockedLevel;
+  var btn = document.createElement('div');
+  var baseClass = 'flex flex-col items-center justify-center bg-gray-800 rounded-xl p-2 cursor-pointer transition transform hover:scale-105';
+  if (!isUnlocked) {
+    btn.className = baseClass + ' opacity-50';
+    btn.innerHTML = '<span class="text-2xl">🔒</span><span class="text-xs text-gray-400 mt-1">' + lvl.level + '</span>';
+  } else {
+    btn.className = baseClass + ' bg-gradient-to-br from-yellow-500 to-orange-600';
+    btn.innerHTML = '<span class="text-3xl font-bold text-white">' + lvl.level + '</span><span class="text-xs text-yellow-200 mt-1">目标:' + lvl.targetScore + '</span>';
+    btn.setAttribute('data-level', lvl.level);
+  }
+  grid.appendChild(btn);
+} }
+
+/** @param {object} state */
+function renderShop(state) { var coinsEl = document.getElementById('shop-coins');
+var itemsEl = document.getElementById('shop-items');
+if (coinsEl) coinsEl.textContent = state.coins != null ? state.coins : 0;
+if (!itemsEl) return;
+itemsEl.innerHTML = '';
+var shopItems = state.shopItems || [];
+for (var i = 0; i < shopItems.length; i++) {
+  var item = shopItems[i];
+  var itemDiv = document.createElement('div');
+  itemDiv.className = 'bg-gray-700 rounded-xl p-3 flex flex-col items-center text-center';
+  itemDiv.innerHTML = '<span class="text-3xl mb-2">' + (item.icon || '💎') + '</span>' +
+    '<span class="font-semibold text-sm">' + item.name + '</span>' +
+    '<span class="text-xs text-gray-400">' + (item.description || '') + '</span>' +
+    '<button class="mt-2 px-4 py-1 bg-yellow-500 text-black font-bold rounded-full text-xs shop-buy-btn" data-item-id="' + item.id + '">' + item.cost + ' 💰</button>';
+  itemsEl.appendChild(itemDiv);
+} }
+
+/** @param {object} state */
+function renderHighScores(state) { var scoresList = document.getElementById('scores-list');
+var scores = state.highScores || [];
+var html = '';
+
+if (scores.length === 0) {
+  html = '<div class="text-gray-400 text-center py-8">暂无高分记录</div>';
+} else {
+  var sorted = scores.slice().sort(function(a, b) { return b.score - a.score; });
+  for (var i = 0; i < sorted.length; i++) {
+    var item = sorted[i];
+    var rank = i + 1;
+    html += '<div class="flex items-center bg-gray-800 p-3 rounded-xl mb-2">' +
+      '<span class="text-2xl font-bold w-10 text-center">' + rank + '</span>' +
+      '<div class="flex-1 ml-3">' +
+        '<div class="font-semibold">得分: ' + item.score + '</div>' +
+        '<div class="text-xs text-gray-400">关卡 ' + (item.level || '?') + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+}
+
+scoresList.innerHTML = html; }
+
+/** @param {object} state */
+function renderSettings(state) { var soundBtn = document.getElementById('btn-toggle-sound');
+var musicBtn = document.getElementById('btn-toggle-music');
+var vibrationBtn = document.getElementById('btn-toggle-vibration');
+if (soundBtn) {
+    soundBtn.className = 'w-14 h-8 rounded-full relative ' + (state.soundEnabled ? 'bg-green-500' : 'bg-gray-500');
+}
+if (musicBtn) {
+    musicBtn.className = 'w-14 h-8 rounded-full relative ' + (state.musicEnabled ? 'bg-green-500' : 'bg-gray-500');
+}
+if (vibrationBtn) {
+    vibrationBtn.className = 'w-14 h-8 rounded-full relative ' + (state.vibrationEnabled ? 'bg-green-500' : 'bg-gray-500');
+} }
+
+/** @param {object} state */
+function renderGameResult(state) { var icon = document.getElementById('result-icon');
+var title = document.getElementById('result-title');
+var detail = document.getElementById('result-detail');
+var nextBtn = document.getElementById('btn-next-level');
+var isWin = (state.result === 'win' || state.won === true);
+if (isWin) {
+  icon.innerText = '🎉';
+  title.innerText = '关卡通过!';
+  nextBtn.style.display = 'block';
+} else {
+  icon.innerText = '😢';
+  title.innerText = '游戏结束';
+  nextBtn.style.display = 'none';
+}
+detail.innerText = '得分: ' + state.score; }
+
+/** @param {object} state */
+function renderActionBar(state) { var screen = state.screen;
+var backBtn = document.getElementById('btn-nav-back');
+var homeBtn = document.getElementById('btn-nav-home');
+var pauseBtn = document.getElementById('btn-nav-pause');
+var playBtn = document.getElementById('btn-nav-play');
+var settingsBtn = document.getElementById('btn-nav-settings');
+var shopBtn = document.getElementById('btn-nav-shop');
+var scoresBtn = document.getElementById('btn-nav-scores');
+
+function toggle(el, show) {
+  if (!el) return;
+  if (show) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+toggle(backBtn, ['level_select', 'settings', 'shop', 'high_scores'].indexOf(screen) !== -1);
+toggle(homeBtn, screen !== 'home');
+toggle(pauseBtn, screen === 'gameplay');
+toggle(playBtn, screen === 'home');
+toggle(settingsBtn, screen !== 'settings' && screen !== 'gameplay' && screen !== 'pause_menu' && screen !== 'game_result');
+toggle(shopBtn, screen !== 'shop' && screen !== 'gameplay' && screen !== 'pause_menu' && screen !== 'game_result');
+toggle(scoresBtn, screen !== 'high_scores' && screen !== 'gameplay' && screen !== 'pause_menu' && screen !== 'game_result'); }
+
+/* ───────── GAME FLOW HELPERS ───────── */
+/** @param {object} state @returns {object} */
+function processBoard(state) { var board = deepCloneBoard(state.board);
+var scoreAdded = 0;
+var pieceTypes = state.pieceTypes || 5;
+var matches = findMatches(board);
+while (matches.length > 0) {
+    var matchSet = {};
+    for (var i = 0; i < matches.length; i++) {
+      matchSet[matches[i].row + ',' + matches[i].col] = true;
+    }
+    var horizVisited = {};
+    var vertVisited = {};
+    for (var mi = 0; mi < matches.length; mi++) {
+        var row = matches[mi].row;
+        var col = matches[mi].col;
+        if (!horizVisited[row + ',' + col]) {
+            var left = col;
+            while (left >= 0 && matchSet[row + ',' + left]) left--;
+            left++;
+            var right = col;
+            while (right < board[0].length && matchSet[row + ',' + right]) right++;
+            right--;
+            var runLength = right - left + 1;
+            if (runLength >= 3) {
+                scoreAdded += calculateScore(runLength);
+                for (var cc = left; cc <= right; cc++) {
+                    horizVisited[row + ',' + cc] = true;
+                }
+            }
+        }
+    }
+    for (var mj = 0; mj < matches.length; mj++) {
+        var row2 = matches[mj].row;
+        var col2 = matches[mj].col;
+        if (!vertVisited[row2 + ',' + col2]) {
+            var top = row2;
+            while (top >= 0 && matchSet[top + ',' + col2]) top--;
+            top++;
+            var bottom = row2;
+            while (bottom < board.length && matchSet[bottom + ',' + col2]) bottom++;
+            bottom--;
+            var runLength2 = bottom - top + 1;
+            if (runLength2 >= 3) {
+                scoreAdded += calculateScore(runLength2);
+                for (var rr = top; rr <= bottom; rr++) {
+                    vertVisited[rr + ',' + col2] = true;
+                }
+            }
+        }
+    }
+    board = removeMatches(board, matches);
+    board = applyGravity(board);
+    board = fillBoard(board, pieceTypes);
+    matches = findMatches(board);
+}
+return { ...state, board: board, score: state.score + scoreAdded }; }
+
+/** @param {object} state @returns {boolean} */
+function isLevelComplete(state) { return state.score >= state.targetScore; }
+
+/** @param {object} state @returns {boolean} */
+function isGameOver(state) { return state.movesRemaining <= 0 || !hasValidMoves(state.board); }
+
+/** @param {object} state @param {number} level @returns {object} */
+function startLevel(state, level) { var levelConfig = state.levels[level - 1];
+var rows = state.rows || 8;
+var cols = state.cols || 8;
+var pieceTypes = state.pieceTypes || 5;
+var board = createBoard(rows, cols, pieceTypes);
+var newState = {
+  ...state,
+  screen: 'gameplay',
+  board: board,
+  score: 0,
+  movesRemaining: levelConfig.moves,
+  targetScore: levelConfig.targetScore,
+  selected: null,
+  level: level,
+  result: null,
+  won: false
+};
+newState = processBoard(newState);
+return newState; }
+
+/* ───────── EVENT: BOARD CLICK ───────── */
+/** @param {object} state @param {number} row @param {number} col @returns {object} */
+function handleBoardClick(state, row, col) { if (state.screen !== 'gameplay') return state;
+if (isGameOver(state) || isLevelComplete(state)) return state;
+var selected = state.selected;
+if (!selected) {
+  return { ...state, selected: { row: row, col: col } };
+}
+if (selected.row === row && selected.col === col) {
+  return { ...state, selected: null };
+}
+if (isAdjacent(selected.row, selected.col, row, col)) {
+  if (isValidSwap(state.board, selected.row, selected.col, row, col)) {
+    var newBoard = deepCloneBoard(state.board);
+    var temp = newBoard[selected.row][selected.col];
+    newBoard[selected.row][selected.col] = newBoard[row][col];
+    newBoard[row][col] = temp;
+    var newState = { ...state, board: newBoard, selected: null, movesRemaining: state.movesRemaining - 1 };
+    newState = processBoard(newState);
+    if (isLevelComplete(newState)) {
+      newState = { ...newState, result: 'win', won: true, screen: 'game_result' };
+    } else if (isGameOver(newState)) {
+      newState = { ...newState, result: 'lose', won: false, screen: 'game_result' };
+    }
+    return newState;
+  } else {
+    return { ...state, selected: null };
+  }
+} else {
+  return { ...state, selected: { row: row, col: col } };
+} }
+
+/* ───────── BOOT ───────── */
+document.addEventListener('DOMContentLoaded', startGame);
+
+        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

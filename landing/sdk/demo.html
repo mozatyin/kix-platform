@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Brew Haven Coffee — Powered by KiX</title>
+  <style>
+    :root {
+      --brand: #6F4E37;
+      --brand-light: #B08968;
+      --cream: #FDF6EC;
+      --ink: #2D1B0F;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      margin: 0;
+      color: var(--ink);
+      background: var(--cream);
+    }
+    header {
+      background: var(--brand);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: .5px; }
+    header nav a { color: #fff; margin-left: 18px; text-decoration: none; font-size: 14px; opacity: .9; }
+    header nav a:hover { opacity: 1; }
+
+    .hero {
+      background: linear-gradient(135deg, #B08968 0%, #6F4E37 100%);
+      color: #fff;
+      padding: 80px 24px;
+      text-align: center;
+    }
+    .hero h2 { font-size: 42px; margin: 0 0 12px; font-weight: 700; }
+    .hero p { font-size: 18px; opacity: .92; margin: 0 0 24px; }
+    .hero .cta {
+      display: inline-block;
+      background: #fff;
+      color: var(--brand);
+      padding: 12px 28px;
+      border-radius: 999px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-size: 15px;
+    }
+
+    .grid {
+      max-width: 1080px;
+      margin: 48px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 40px;
+    }
+    .menu h3 { font-size: 26px; margin: 0 0 18px; color: var(--brand); }
+    .item {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .item h4 { margin: 0; font-size: 17px; }
+    .item p { margin: 4px 0 0; font-size: 13px; color: #777; }
+    .item .price { font-weight: 700; color: var(--brand); }
+    .item button {
+      margin-left: 12px;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    aside { position: sticky; top: 20px; align-self: start; }
+    aside h3 { color: var(--brand); margin: 0 0 12px; font-size: 18px; }
+
+    .debug-panel {
+      max-width: 1080px;
+      margin: 0 auto 60px;
+      padding: 20px 24px;
+      background: #1a1a1a;
+      color: #b9f5b9;
+      border-radius: 12px;
+      font: 13px/1.5 ui-monospace, monospace;
+    }
+    .debug-panel h4 { color: #fff; margin: 0 0 10px; font-family: system-ui; }
+    .debug-panel .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .debug-panel button {
+      background: #2d5a2d;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .debug-panel button:hover { background: #3d7a3d; }
+    #event-log {
+      background: #000;
+      padding: 10px;
+      border-radius: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: #777;
+      font-size: 13px;
+    }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h2 { font-size: 30px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>☕ Brew Haven</h1>
+    <nav>
+      <a href="#">Menu</a>
+      <a href="#">Locations</a>
+      <a href="#">Rewards</a>
+      <a href="#">Sign In</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h2>Coffee. Crafted with care.</h2>
+    <p>Earn rewards every time you order. Play games. Climb levels.</p>
+    <button class="cta" onclick="KiX && KiX.game.launch()">Play & Earn</button>
+  </section>
+
+  <main class="grid">
+    <section class="menu">
+      <h3>Today's Menu</h3>
+
+      <div class="item">
+        <div>
+          <h4>Espresso Doppio</h4>
+          <p>Two shots of our house blend.</p>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="price">$3.50</span>
+          <button onclick="orderItem('Espresso Doppio', 10)">Order</button>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <h4>Caramel Latte</h4>
+          <p>Steamed milk, espresso, caramel syrup.</p>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="price">$5.25</span>
+          <button onclick="orderItem('Caramel Latte', 20)">Order</button>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <h4>Cold Brew Tonic</h4>
+          <p>Cold brew over tonic water + citrus.</p>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="price">$4.75</span>
+          <button onclick="orderItem('Cold Brew Tonic', 15)">Order</button>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <h4>Almond Croissant</h4>
+          <p>Flaky pastry with almond cream.</p>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="price">$4.00</span>
+          <button onclick="orderItem('Almond Croissant', 12)">Order</button>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <h3>Your Rewards</h3>
+      <!-- INLINE WIDGET MOUNT -->
+      <div id="kix-inline" data-mode="inline"></div>
+    </aside>
+  </main>
+
+  <section class="debug-panel">
+    <h4>SDK Playground (developer view)</h4>
+    <div class="row">
+      <button onclick="KiX.xp.award(25,'demo')">+25 XP</button>
+      <button onclick="KiX.streak.checkin()">Daily Check-in</button>
+      <button onclick="KiX.badge.award('coffee_lover')">Award Badge</button>
+      <button onclick="KiX.energy.spend(10)">Spend 10 Energy</button>
+      <button onclick="KiX.game.launch()">Launch Game Modal</button>
+      <button onclick="KiX.share.inviteFriend('Coffee + games at Brew Haven!')">Invite Friend</button>
+      <button onclick="KiX.share.toWin(420).then(u=>logEvent('share url',u))">Share-to-Win</button>
+      <button onclick="logEvent('user',KiX.user.get()); logEvent('xp',JSON.stringify(KiX.xp.get()))">Read State</button>
+    </div>
+    <div id="event-log">Waiting for SDK ready…</div>
+  </section>
+
+  <footer>
+    Brew Haven Coffee Co. — Demo site for KiX SDK.
+  </footer>
+
+  <!-- ============================================================ -->
+  <!-- KiX SDK Integration: 2 lines.                                -->
+  <!-- The floating button auto-mounts; the inline div above mounts -->
+  <!-- as a dashboard because of data-mode="inline".                -->
+  <!-- ============================================================ -->
+  <script src="./kix.js"
+          data-brand="brand-9c7223a6"
+          data-base-url="http://localhost:8000"
+          data-mode="floating"
+          data-debug="true"></script>
+
+  <script>
+    // Application code wiring SDK events to the demo
+    function logEvent(name, data) {
+      var log = document.getElementById('event-log');
+      var line = '[' + new Date().toLocaleTimeString() + '] ' + name +
+                 (data !== undefined ? ' → ' + (typeof data === 'object' ? JSON.stringify(data) : data) : '');
+      log.textContent = line + '\n' + log.textContent;
+    }
+
+    function orderItem(name, xp) {
+      logEvent('ordered', name);
+      KiX.xp.award(xp, 'order:' + name);
+    }
+
+    // Wait for SDK init, then mount the inline dashboard
+    function bootInline() {
+      if (!window.KiX) return setTimeout(bootInline, 50);
+      KiX.on('ready', function (info) {
+        logEvent('SDK ready', { user: info.user_id });
+        // Re-init inline widget once SDK has user state
+        KiX.init({
+          brand_id: 'brand-9c7223a6',
+          base_url: 'http://localhost:8000',
+          mode: 'inline',
+          container_id: 'kix-inline'
+        });
+      });
+      KiX.on('xp_award',     function (d) { logEvent('xp_award', d); });
+      KiX.on('streak_checkin', function (d) { logEvent('streak_checkin', { streak: d.streak }); });
+      KiX.on('badge_award',  function (d) { logEvent('badge_award', d); });
+      KiX.on('game_open',    function (d) { logEvent('game_open', d); });
+      KiX.on('game_end',     function (d) { logEvent('game_end', d); });
+      KiX.on('score_update', function (d) { logEvent('score_update', d); });
+      KiX.on('invite_sent',  function (d) { logEvent('invite_sent', d); });
+    }
+    bootInline();
+  </script>
+
+</body>
+</html>

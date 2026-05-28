@@ -99,6 +99,42 @@ def create_app() -> FastAPI:
         tags=["internal-eltm"],
     )
 
+    # ── Progression: XP/Levels/Badges/Daily Check-in ───────────────────
+    from app.routers import progression
+    app.include_router(progression.router, prefix="/api/v1/progression", tags=["progression"])
+
+    # ── Layer 1 Primitives: Currency/Item/Achievement/Quest/Tier/Event ─
+    from app.routers import primitives
+    app.include_router(
+        primitives.router, prefix="/api/v1/primitives", tags=["primitives"]
+    )
+
+    # ── Network Effect: viral growth triggers ──────────────────────────
+    from app.routers import network_effect
+    app.include_router(
+        network_effect.router,
+        prefix="/api/v1/network",
+        tags=["network-effect"],
+    )
+
+    # ── Brand Modules: gamification module marketplace + config ────────
+    from app.routers import brand_modules
+    app.include_router(
+        brand_modules.router, prefix="/api/v1", tags=["brand-modules"]
+    )
+
+    # ── Commerce Loop Engine: ScoreToCoupon / Energy / Upsell / Store ──
+    from app.routers import commerce_loop
+    app.include_router(
+        commerce_loop.router, prefix="/api/v1/commerce", tags=["commerce"]
+    )
+
+    # ── Composable Gamification Modules (10 mechanics) ─────────────────
+    from app.routers import modules as gamif_modules
+    app.include_router(
+        gamif_modules.router, prefix="/api/v1/modules", tags=["modules"]
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
