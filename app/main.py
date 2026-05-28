@@ -135,6 +135,40 @@ def create_app() -> FastAPI:
         gamif_modules.router, prefix="/api/v1/modules", tags=["modules"]
     )
 
+    # ── Rule Engine: When-Then composition across all modules ──────────
+    from app.routers import rule_engine
+    app.include_router(
+        rule_engine.router, prefix="/api/v1/rules", tags=["rule-engine"]
+    )
+
+    # ── Group Actions: Pinduoduo-style viral mechanics (拼团/砍一刀) ────
+    from app.routers import group_actions
+    app.include_router(
+        group_actions.router, prefix="/api/v1/groups", tags=["groups"]
+    )
+
+    # ── Voucher Builder / Social / Triggers ────────────────────────────
+    from app.routers import voucher_builder, social, triggers
+    app.include_router(
+        voucher_builder.router,
+        prefix="/api/v1/vouchers",
+        tags=["voucher-builder"],
+    )
+    app.include_router(social.router, prefix="/api/v1/social", tags=["social"])
+    app.include_router(
+        triggers.router, prefix="/api/v1/triggers", tags=["triggers"]
+    )
+
+    # ── P2P transfer: GiftSending + TradingPost ────────────────────────
+    from app.routers import p2p
+    app.include_router(p2p.router, prefix="/api/v1/p2p", tags=["p2p"])
+
+    # ── Cooperative multiplayer: Quest / Raid / Squad / Territory ─────
+    from app.routers import multiplayer
+    app.include_router(
+        multiplayer.router, prefix="/api/v1/multiplayer", tags=["multiplayer"]
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
