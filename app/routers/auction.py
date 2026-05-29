@@ -303,11 +303,25 @@ def _schedule_match(schedule: dict[str, Any]) -> bool:
 
 async def _has_budget(r: aioredis.Redis, c: dict[str, str]) -> bool:
     cid = c.get("campaign_id", "")
+    brand_id = c.get("brand_id", "")
     daily_budget = int(c.get("daily_budget_cents", 0))
     total_budget = int(c.get("total_budget_cents", 0))
     max_bid = int(c.get("max_bid_cents", 0))
     if max_bid <= 0:
         return False
+
+    # ── Wallet-side backpressure check (sim fix: log-flood on cap) ──────
+    # If the wallet recently raised daily_budget_exceeded for this
+    # campaign or brand, the wallet router set a Redis flag with a TTL
+    # ending at the next UTC midnight. Short-circuit here so the auction
+    # never re-awards an impression that's guaranteed to 402 on charge.
+    if cid:
+        if await r.exists(f"auction:campaign:{cid}:budget_blocked"):
+            return False
+    if brand_id:
+        if await r.exists(f"auction:brand:{brand_id}:budget_blocked"):
+            return False
+
     daily_spent = await _read_daily_spend(r, cid)
     total_spent = await _read_total_spend(r, cid)
     if daily_budget > 0 and daily_spent + max_bid > daily_budget:
