@@ -54,7 +54,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 import redis.asyncio as aioredis
 
 from app.redis_client import get_redis
@@ -1760,6 +1760,17 @@ class CreateSeriesRequest(BaseModel):
     fulfiller_user_id: str | None = Field(None, max_length=128)
     beneficiary_user_id: str | None = Field(None, max_length=128)
     first_scheduled_at: int = Field(..., gt=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_scheduled_at(cls, data: Any) -> Any:
+        """Merchant-intuitive alias: accept ``scheduled_at`` (used by /create)
+        as a synonym for ``first_scheduled_at`` (the canonical series name).
+        """
+        if isinstance(data, dict):
+            if "scheduled_at" in data and "first_scheduled_at" not in data:
+                data = {**data, "first_scheduled_at": data["scheduled_at"]}
+        return data
     cadence_days: int | None = Field(None, ge=1, le=365)
     cadence_pattern: Literal["weekly", "biweekly", "monthly", "custom"] | None = None
     count: int = Field(..., ge=1, le=_MAX_SERIES_COUNT)

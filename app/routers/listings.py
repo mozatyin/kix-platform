@@ -49,7 +49,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 import redis.asyncio as aioredis
 
 from app.redis_client import get_redis
@@ -255,6 +255,23 @@ class PromoteRequest(BaseModel):
     payment_method: str = Field("user_wallet", max_length=32)
     boost_amount_cents: int = Field(500, ge=1, le=10_000_000)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_duration_days(cls, data: Any) -> Any:
+        """Merchant-intuitive alias: accept ``duration_days`` and convert to
+        ``duration_hours`` (× 24). Most sellers think in days for "promote
+        this listing for 3 days", not hours.
+        """
+        if isinstance(data, dict):
+            if "duration_days" in data and "duration_hours" not in data:
+                try:
+                    days = int(data["duration_days"])
+                except (TypeError, ValueError):
+                    return data
+                data = {k: v for k, v in data.items() if k != "duration_days"}
+                data["duration_hours"] = days * 24
+        return data
+
 
 class MarkSoldRequest(BaseModel):
     buyer_user_id: str = Field(..., min_length=1)
@@ -271,6 +288,17 @@ class OfferCreateRequest(BaseModel):
     buyer_user_id: str = Field(..., min_length=1, max_length=128)
     offer_price_cents: int = Field(..., ge=0, le=10_000_000_000)
     message: str | None = Field(None, max_length=1024)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_offer_cents(cls, data: Any) -> Any:
+        """Merchant-intuitive alias: accept ``offer_cents`` as a synonym for
+        ``offer_price_cents``.
+        """
+        if isinstance(data, dict):
+            if "offer_cents" in data and "offer_price_cents" not in data:
+                data = {**data, "offer_price_cents": data["offer_cents"]}
+        return data
 
 
 class OfferAcceptRequest(BaseModel):

@@ -31,7 +31,7 @@ from uuid import uuid4
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import settings
 from app.redis_client import get_redis
@@ -112,6 +112,30 @@ class FxRatePair(BaseModel):
 class ConfigureRatesRequest(BaseModel):
     admin_token: str
     pairs: list[FxRatePair] = Field(..., min_length=1, max_length=200)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_flat_pair(cls, data: Any) -> Any:
+        """Merchant-intuitive alias: accept a flat single-pair shape too.
+
+        Canonical form is ``{admin_token, pairs: [{from_currency, to_currency,
+        rate, ...}]}`` but callers often POST ``{admin_token, from_currency,
+        to_currency, rate, ...}`` for a single pair. Auto-wrap into a
+        single-element ``pairs`` list when ``pairs`` is absent.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "pairs" in data and data["pairs"]:
+            return data
+        if "from_currency" in data and "to_currency" in data and "rate" in data:
+            pair_keys = (
+                "from_currency", "to_currency", "rate", "expires_at", "source",
+            )
+            wrapped = {k: data[k] for k in pair_keys if k in data}
+            new_data = {k: v for k, v in data.items() if k not in pair_keys}
+            new_data["pairs"] = [wrapped]
+            return new_data
+        return data
 
 
 class ConfigureRatesResponse(BaseModel):

@@ -2110,5 +2110,1399 @@
       "primary_outcome": "seller_monetization",
       "objective": "monetization"
     }
+  },
+  {
+    "id": "coffee_daily_streak",
+    "name": "Daily Coffee Check-In Streak",
+    "name_cn": "每日咖啡打卡连击",
+    "description_en": "Daily check-in builds a streak — 5th cup of the week is free. Habit-forming loop for cafés.",
+    "description_cn": "每日到店打卡形成连击，每周第5杯免费，咖啡店养习惯的核心循环。",
+    "icon": "☕",
+    "category": "engagement",
+    "industry": "coffee",
+    "tags": ["streak", "voucher", "loyalty"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 5, 7, 14, 30], "actions": ["coffee_checkin"], "window_days": 7}},
+      {"id": "progression", "params": {"xp_per_action": {"coffee_checkin": 10, "purchase_made": 5}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "fifth_cup_free", "value": {"type": "free_item", "amount": 1, "label": "any_drink"}, "conditions": {"trigger": "5_day_streak"}}
+      ]}},
+      {"id": "triggers", "params": {"events": ["coffee_checkin", "streak_at_risk"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award streak on daily check-in",
+        "trigger_event": "coffee_checkin",
+        "actions": [
+          {"module": "streak", "method": "check", "params": {"key": "coffee_checkin"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 10}}
+        ]
+      },
+      {
+        "name": "Free 5th cup on streak milestone",
+        "trigger_event": "streak_milestone",
+        "conditions": {"type": "value", "metric": "streak_count", "op": ">=", "value": 5},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "fifth_cup_free"}}]
+      }
+    ],
+    "wireframe_hint": "5-cup progress bar + today's stamp animation + free-cup voucher card",
+    "metadata": {
+      "source": "Luckin + Starbucks daily-cup pattern",
+      "key_metric": "DAU",
+      "key_metric_value": "+35% target",
+      "primary_outcome": "daily_visit",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "coffee_seasonal_drink",
+    "name": "Seasonal Drink Collector",
+    "name_cn": "季节限定饮品收藏",
+    "description_en": "Limited-edition seasonal menu (PSL, cherry blossom etc.) + collect-all-flavors badge unlocks free drink.",
+    "description_cn": "季节限定饮品（南瓜拿铁/樱花系列）+ 全口味收集徽章解锁免费饮品。",
+    "icon": "🍂",
+    "category": "engagement",
+    "industry": "coffee",
+    "tags": ["collection", "limited", "achievement"],
+    "modules": [
+      {"id": "limited_drop", "params": {"window_days": 60, "drops_per_season": 5}},
+      {"id": "collection", "params": {"set_name": "seasonal_drinks", "items": [
+        {"id": "drink_1", "rarity": "common"},
+        {"id": "drink_2", "rarity": "common"},
+        {"id": "drink_3", "rarity": "rare"},
+        {"id": "drink_4", "rarity": "rare"},
+        {"id": "drink_5", "rarity": "epic"}
+      ], "completion_bonus": {"type": "voucher", "value_cents": 3000}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "season_complete", "name": "Season Sommelier", "trigger": "set:seasonal_drinks_complete"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"seasonal_drink_tried": 25}}}
+    ],
+    "rules": [
+      {
+        "name": "Add to collection on seasonal purchase",
+        "trigger_event": "purchase_made",
+        "conditions": {"type": "value", "metric": "item_is_seasonal", "op": "==", "value": true},
+        "actions": [
+          {"module": "collection", "method": "add", "params": {"set": "seasonal_drinks"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 25}}
+        ]
+      },
+      {
+        "name": "Grant badge + voucher on full set",
+        "trigger_event": "collection_complete",
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "season_complete"}}]
+      }
+    ],
+    "wireframe_hint": "Seasonal menu carousel + collection grid (5 slots with tick marks) + completion countdown",
+    "metadata": {
+      "source": "Starbucks PSL + Luckin seasonal drops",
+      "key_metric": "seasonal_attach_rate",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "seasonal_sales",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "coffee_morning_routine",
+    "name": "Morning Routine Recognition",
+    "name_cn": "晨间常客识别",
+    "description_en": "Track visits in the 7-10am window → barista recognition tier + 'usual order' shortcut + morning-only perks.",
+    "description_cn": "追踪7-10点早晨到店次数，咖啡师识别等级 + 一键'老规矩' + 早晨专属福利。",
+    "icon": "🌅",
+    "category": "loyalty",
+    "industry": "coffee",
+    "tags": ["tier", "triggers", "voucher"],
+    "modules": [
+      {"id": "triggers", "params": {"time_windows": [{"id": "morning_rush", "start": "07:00", "end": "10:00"}]}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "new_face", "name": "New Face", "threshold_xp": 0, "perks": []},
+        {"id": "the_regular", "name": "The Regular", "threshold_xp": 200, "perks": ["barista_greeting", "usual_order_shortcut"]},
+        {"id": "first_name", "name": "On First-Name Terms", "threshold_xp": 1000, "perks": ["free_size_up", "secret_menu_access"]}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"morning_visit": 20, "named_order": 5}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "morning_pastry_free", "value": {"type": "free_item", "amount": 1, "label": "pastry"}, "conditions": {"window": "morning_rush", "tier_required": "the_regular"}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award morning XP on early visit",
+        "trigger_event": "coffee_checkin",
+        "conditions": {"type": "window", "metric": "checkin_time", "op": "in", "value": "morning_rush"},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 20}}]
+      },
+      {
+        "name": "Issue free-pastry on tier promotion",
+        "trigger_event": "tier_promoted",
+        "conditions": {"type": "value", "metric": "tier_id", "op": "==", "value": "the_regular"},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "morning_pastry_free"}}]
+      }
+    ],
+    "wireframe_hint": "Morning-routine card + 'your usual' one-tap order + barista-recognition tier crest",
+    "metadata": {
+      "source": "Local-café regular recognition pattern",
+      "key_metric": "morning_visit_share",
+      "key_metric_value": "+25% target",
+      "primary_outcome": "morning_loyalty",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "boba_flavor_collector",
+    "name": "Boba Flavor Collector",
+    "name_cn": "茶饮口味收藏家",
+    "description_en": "Try every flavor on the menu → badge + free upsize on next order. Drives menu exploration.",
+    "description_cn": "尝遍所有口味解锁徽章 + 下次免费升杯，驱动菜单探索。",
+    "icon": "🧋",
+    "category": "engagement",
+    "industry": "bubble_tea",
+    "tags": ["collection", "achievement", "voucher"],
+    "modules": [
+      {"id": "collection", "params": {"set_name": "boba_flavors", "items": [
+        {"id": "classic_milk_tea", "rarity": "common"},
+        {"id": "taro", "rarity": "common"},
+        {"id": "matcha", "rarity": "common"},
+        {"id": "brown_sugar", "rarity": "common"},
+        {"id": "fruit_tea", "rarity": "common"},
+        {"id": "cheese_foam", "rarity": "rare"},
+        {"id": "signature_secret", "rarity": "epic"}
+      ], "completion_bonus": {"type": "free_upsize", "amount": 1}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "flavor_explorer", "name": "Flavor Explorer", "trigger": "flavors_tried>=5"},
+        {"id": "flavor_master", "name": "Flavor Master", "trigger": "set:boba_flavors_complete"}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "free_upsize_voucher", "value": {"type": "free_upsize", "amount": 1}, "conditions": {"trigger": "set_complete"}}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"new_flavor_tried": 30}}}
+    ],
+    "rules": [
+      {
+        "name": "Add flavor on purchase",
+        "trigger_event": "purchase_made",
+        "actions": [
+          {"module": "collection", "method": "add", "params": {"set": "boba_flavors", "item_from_sku": true}},
+          {"module": "progression", "method": "award_xp", "params": {"amount_if_new": 30}}
+        ]
+      },
+      {
+        "name": "Grant free upsize on full set",
+        "trigger_event": "collection_complete",
+        "actions": [
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "flavor_master"}},
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "free_upsize_voucher"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Flavor grid with checked/unchecked cups + collection progress bar + free-upsize voucher card",
+    "metadata": {
+      "source": "Heytea + Nayuki menu-exploration pattern",
+      "key_metric": "menu_breadth_per_user",
+      "key_metric_value": "+60% target",
+      "primary_outcome": "flavor_exploration",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "boba_buddy_share",
+    "name": "Boba Buddy Buy-2-Get-1",
+    "name_cn": "茶友拼单买二送一",
+    "description_en": "Bring a friend + both order = third drink free. Friend-pair viral mechanic for tea shops.",
+    "description_cn": "拉朋友拼单，两人下单送第三杯，茶饮店朋友配对裂变机制。",
+    "icon": "👯",
+    "category": "viral",
+    "industry": "bubble_tea",
+    "tags": ["group_actions", "share_to_win", "voucher"],
+    "modules": [
+      {"id": "group_actions", "params": {"buy": {"min_size": 2, "max_size": 2, "expiry_hours": 1, "reward": "third_free"}}},
+      {"id": "share_to_win", "params": {"channel": "wechat", "reward_currency": "coins", "reward_amount": 20}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "third_drink_free", "value": {"type": "free_item", "amount": 1, "label": "drink"}, "conditions": {"trigger": "buddy_pair_complete"}}
+      ]}},
+      {"id": "network_effect", "params": {"viral_coefficient_target": 1.0}}
+    ],
+    "rules": [
+      {
+        "name": "Open buddy pair on share",
+        "trigger_event": "share_initiated",
+        "actions": [{"module": "group_actions", "method": "create_buy", "params": {"size": 2}}]
+      },
+      {
+        "name": "Grant free third drink when pair completes",
+        "trigger_event": "buddy_pair_complete",
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "third_drink_free"}},
+          {"module": "network_effect", "method": "track", "params": {"metric": "viral_pair"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Share-to-WeChat CTA + pair status (you + waiting friend) + 1-hour countdown + free drink voucher",
+    "metadata": {
+      "source": "Heytea + Coco buddy referral pattern",
+      "key_metric": "viral_coefficient",
+      "key_metric_value": "1.0 target",
+      "primary_outcome": "friend_pair_viral",
+      "objective": "growth"
+    }
+  },
+  {
+    "id": "boba_loyalty_tier",
+    "name": "Multi-Store Loyalty Tier",
+    "name_cn": "多店通用会员等级",
+    "description_en": "Gold/Platinum tiers persist across every shop in the chain — points pool unified, perks scale with tier.",
+    "description_cn": "金/白金等级跨连锁所有门店通用，积分统一池，福利按等级递增。",
+    "icon": "👑",
+    "category": "loyalty",
+    "industry": "bubble_tea",
+    "tags": ["tier", "progression", "voucher"],
+    "modules": [
+      {"id": "tier", "params": {"tiers": [
+        {"id": "silver_cup", "name": "Silver Cup", "threshold_xp": 0, "perks": ["birthday_drink"]},
+        {"id": "gold_cup", "name": "Gold Cup", "threshold_xp": 1000, "perks": ["10%_off", "free_upgrade_topping"]},
+        {"id": "platinum_cup", "name": "Platinum Cup", "threshold_xp": 5000, "perks": ["15%_off", "secret_menu", "priority_queue"]}
+      ], "cross_store": true}},
+      {"id": "progression", "params": {"xp_per_action": {"purchase_made": 10, "cross_store_visit": 30}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "tier_birthday", "value": {"type": "free_item", "amount": 1, "label": "any_drink"}, "conditions": {"event": "birthday"}},
+        {"id": "platinum_secret_menu", "value": {"type": "menu_access", "amount": 1, "label": "secret"}, "conditions": {"tier_required": "platinum_cup"}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "globetrotter", "name": "Chain Globetrotter", "trigger": "stores_visited>=10"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on any-store purchase",
+        "trigger_event": "purchase_made",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 10}},
+          {"module": "tier", "method": "recompute", "params": {}}
+        ]
+      },
+      {
+        "name": "Bonus XP on new store",
+        "trigger_event": "purchase_made",
+        "conditions": {"type": "value", "metric": "store_first_time", "op": "==", "value": true},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 30}}]
+      }
+    ],
+    "wireframe_hint": "Tier crest + cross-store points pool + stores-visited map + tier-perks list",
+    "metadata": {
+      "source": "Heytea Go + Nayuki chain loyalty",
+      "key_metric": "cross_store_visit_share",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "chain_retention",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "restaurant_first_visit",
+    "name": "First-Visit Welcome",
+    "name_cn": "首次到店欢迎",
+    "description_en": "New diner gets welcome voucher + a table-side mini-game (waiting-for-food entertainment).",
+    "description_cn": "新客欢迎券 + 餐桌等餐时小游戏，把等位变娱乐。",
+    "icon": "🍽️",
+    "category": "engagement",
+    "industry": "food",
+    "tags": ["voucher", "quest", "achievement"],
+    "modules": [
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "welcome_30", "value": {"type": "discount_cash", "amount": 30}, "conditions": {"first_visit": true, "min_spend_cents": 5000}}
+      ]}},
+      {"id": "smartquests", "params": {"refresh_daily": false, "quest_pool": ["table_quiz", "guess_the_dish", "spin_wheel"], "context": "table_side"}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_bite", "name": "First Bite", "trigger": "first_visit_complete"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"first_visit": 100, "table_game_played": 20}}}
+    ],
+    "rules": [
+      {
+        "name": "Grant welcome voucher on first scan",
+        "trigger_event": "first_visit",
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "welcome_30"}},
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "first_bite"}}
+        ]
+      },
+      {
+        "name": "Spawn table-side game while waiting",
+        "trigger_event": "order_placed",
+        "actions": [{"module": "smartquests", "method": "generate", "params": {"context": "table_side", "count": 1}}]
+      }
+    ],
+    "wireframe_hint": "Welcome modal with ¥30 voucher + 'play while you wait' game card + first-bite badge",
+    "metadata": {
+      "source": "Haidilao waiting-area games + welcome voucher",
+      "key_metric": "first_visit_to_repeat",
+      "key_metric_value": "+35% target",
+      "primary_outcome": "first_visit_activation",
+      "objective": "activation"
+    }
+  },
+  {
+    "id": "restaurant_repeat_visit",
+    "name": "Third-Visit Chef's Special",
+    "name_cn": "三访主厨特餐",
+    "description_en": "3rd visit unlocks chef's-special dish — encourages 1→3 visit retention in casual dining.",
+    "description_cn": "第3次到店解锁主厨特餐，鼓励1→3次到访留存。",
+    "icon": "👨‍🍳",
+    "category": "loyalty",
+    "industry": "food",
+    "tags": ["voucher", "achievement", "progression"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"visit_completed": 100}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "third_visit", "name": "Threepeat", "trigger": "visits>=3"},
+        {"id": "tenth_visit", "name": "Decimater", "trigger": "visits>=10"}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "chef_special", "value": {"type": "free_item", "amount": 1, "label": "chef_special"}, "conditions": {"visits>=": 3, "one_time_only": true}}
+      ]}},
+      {"id": "triggers", "params": {"events": ["visit_completed", "visit_milestone"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on every visit",
+        "trigger_event": "visit_completed",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 100}}]
+      },
+      {
+        "name": "Unlock chef's special on 3rd visit",
+        "trigger_event": "visit_completed",
+        "conditions": {"type": "count", "metric": "visits", "op": "==", "value": 3},
+        "actions": [
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "third_visit"}},
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "chef_special"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Visit counter (1/2/3 with chef silhouette unlocked at 3) + chef's-special teaser card",
+    "metadata": {
+      "source": "Casual-dining 3-visit retention curve",
+      "key_metric": "visit_3_rate",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "repeat_visits",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "restaurant_review_reward",
+    "name": "Review-for-Voucher",
+    "name_cn": "评价换券",
+    "description_en": "Leave an honest review on Dianping/Meituan → ¥20 voucher for next visit. Drives review volume + repeat.",
+    "description_cn": "去大众点评/美团写评价得¥20券下次抵扣，刷评价量+复购双赢。",
+    "icon": "📝",
+    "category": "engagement",
+    "industry": "food",
+    "tags": ["voucher", "triggers", "share"],
+    "modules": [
+      {"id": "triggers", "params": {"events": ["review_submitted", "review_verified"], "verify_platform": ["dianping", "meituan"]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "review_20", "value": {"type": "discount_cash", "amount": 20}, "conditions": {"review_verified": true, "min_spend_cents": 5000}}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"review_submitted": 30, "photo_review": 60, "video_review": 100}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "top_reviewer", "name": "Top Reviewer", "trigger": "reviews>=10"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Grant ¥20 voucher on verified review",
+        "trigger_event": "review_verified",
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "review_20"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount_by_media_type": true}}
+        ]
+      },
+      {
+        "name": "Top reviewer badge",
+        "trigger_event": "review_submitted",
+        "conditions": {"type": "count", "metric": "reviews", "op": ">=", "value": 10},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "top_reviewer"}}]
+      }
+    ],
+    "wireframe_hint": "Post-meal 'rate us' card + platform picker (Dianping/Meituan) + ¥20 voucher reveal after verification",
+    "metadata": {
+      "source": "Dianping/Meituan review-bonus standard",
+      "key_metric": "review_submission_rate",
+      "key_metric_value": "+200% target",
+      "primary_outcome": "review_volume",
+      "objective": "growth"
+    }
+  },
+  {
+    "id": "dining_anniversary_remember",
+    "name": "Anniversary Reminder",
+    "name_cn": "纪念日记忆",
+    "description_en": "Couples register their anniversary; the restaurant proactively reminds and offers a free dessert/bottle on the date.",
+    "description_cn": "情侣登记纪念日，餐厅主动提醒并在当天送甜点/酒水。",
+    "icon": "💝",
+    "category": "loyalty",
+    "industry": "restaurant",
+    "tags": ["triggers", "voucher", "achievement"],
+    "modules": [
+      {"id": "triggers", "params": {"calendar_events": ["anniversary"], "remind_days_before": [30, 7, 1]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "anniv_dessert", "value": {"type": "free_item", "amount": 1, "label": "dessert"}, "conditions": {"event": "anniversary", "one_per_year": true}},
+        {"id": "anniv_wine", "value": {"type": "discount_pct", "amount": 30}, "conditions": {"event": "anniversary", "category": "wine"}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "anniversary_regular", "name": "Anniversary Regular", "trigger": "anniversary_visits>=3"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"anniversary_visit": 500}}}
+    ],
+    "rules": [
+      {
+        "name": "Send reminder 7 days before anniversary",
+        "trigger_event": "anniversary_T7",
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "anniversary_reminder"}}]
+      },
+      {
+        "name": "Grant free dessert + wine discount on anniversary booking",
+        "trigger_event": "anniversary_booking",
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "anniv_dessert"}},
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "anniv_wine"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Couple-profile card with anniversary date + reminder timeline + free-dessert/wine voucher",
+    "metadata": {
+      "source": "Mandarin Oriental + Din Tai Fung anniversary programs",
+      "key_metric": "anniversary_repeat_rate",
+      "key_metric_value": "+60% target",
+      "primary_outcome": "anniversary_loyalty",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "dining_wine_pairing_journey",
+    "name": "Wine Pairing Journey",
+    "name_cn": "侍酒师之旅",
+    "description_en": "Multi-chapter wine education (varietals, regions, pairings) + cellar access at the end. Premium-dining education-as-loyalty.",
+    "description_cn": "多章节葡萄酒教育（品种/产区/搭配）+ 最终解锁酒窖访问。高端餐饮教育即留存。",
+    "icon": "🍷",
+    "category": "loyalty",
+    "industry": "restaurant",
+    "tags": ["storyquest", "tier", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["whites", "reds", "regions", "pairings", "cellar_access"]}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "apprentice", "name": "Apprentice", "threshold_xp": 0, "perks": []},
+        {"id": "enthusiast", "name": "Enthusiast", "threshold_xp": 500, "perks": ["by_glass_discount"]},
+        {"id": "connoisseur", "name": "Connoisseur", "threshold_xp": 3000, "perks": ["cellar_access", "private_tasting"]}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "cellar_key", "name": "Cellar Key Holder", "trigger": "chapter:cellar_access_unlocked"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"wine_tasted": 50, "chapter_completed": 200, "private_event_attended": 500}}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP per wine tasted",
+        "trigger_event": "wine_tasted",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 50}}]
+      },
+      {
+        "name": "Unlock cellar access on connoisseur tier",
+        "trigger_event": "tier_promoted",
+        "conditions": {"type": "value", "metric": "tier_id", "op": "==", "value": "connoisseur"},
+        "actions": [
+          {"module": "storyquest", "method": "advance", "params": {"chapter": "cellar_access"}},
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "cellar_key"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "5-chapter wine map + tasting log + cellar-key badge + tier crest",
+    "metadata": {
+      "source": "Le Bernardin + Eleven Madison Park wine programs",
+      "key_metric": "wine_attach_rate",
+      "key_metric_value": "+45% target",
+      "primary_outcome": "wine_engagement",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "dining_chef_table_unlock",
+    "name": "Chef's Table Unlock",
+    "name_cn": "主厨餐桌解锁",
+    "description_en": "VIP spend threshold unlocks reservation for the chef's table — a top-of-funnel aspiration moment.",
+    "description_cn": "VIP消费阈值解锁主厨餐桌预约，高端餐饮顶级向往时刻。",
+    "icon": "🌟",
+    "category": "loyalty",
+    "industry": "restaurant",
+    "tags": ["tier", "limited_drop", "achievement"],
+    "modules": [
+      {"id": "tier", "params": {"tiers": [
+        {"id": "guest", "name": "Guest", "threshold_xp": 0, "perks": []},
+        {"id": "patron", "name": "Patron", "threshold_xp": 5000, "perks": ["priority_booking"]},
+        {"id": "vip_table", "name": "VIP", "threshold_xp": 25000, "perks": ["chef_table_unlock", "concierge"]}
+      ]}},
+      {"id": "limited_drop", "params": {"window_days": 30, "max_seats_per_window": 8, "for_tier": "vip_table"}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "chef_table_guest", "name": "Chef's Table Guest", "trigger": "chef_table_attended"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"spend_per_100_yuan": 10}}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP per ¥100 spend",
+        "trigger_event": "purchase_made",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount_per_100_yuan": 10}}]
+      },
+      {
+        "name": "Unlock chef-table slot at VIP tier",
+        "trigger_event": "tier_promoted",
+        "conditions": {"type": "value", "metric": "tier_id", "op": "==", "value": "vip_table"},
+        "actions": [{"module": "limited_drop", "method": "issue_invite", "params": {"event_type": "chef_table"}}]
+      }
+    ],
+    "wireframe_hint": "VIP tier crest + chef's-table availability calendar (8 seats/month) + booking CTA",
+    "metadata": {
+      "source": "Per Se + Sublimotion VIP programs",
+      "key_metric": "vip_tier_share",
+      "key_metric_value": "+5% target",
+      "primary_outcome": "vip_aspiration",
+      "objective": "loyalty"
+    }
+  },
+  {
+    "id": "luxury_pre_arrival_game",
+    "name": "VIP Pre-Arrival Countdown",
+    "name_cn": "VIP抵店倒计时游戏",
+    "description_en": "10-day countdown mini-game leading to VIP arrival — daily tease (menu preview, sommelier video, signature dish lore).",
+    "description_cn": "VIP抵店前10天每日小游戏（菜单预告/侍酒师视频/招牌菜典故），制造期待。",
+    "icon": "⏳",
+    "category": "engagement",
+    "industry": "luxury_dining",
+    "tags": ["streak", "storyquest", "triggers"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 7, 10], "actions": ["pre_arrival_checkin"]}},
+      {"id": "storyquest", "params": {"chapters": ["menu_preview", "sommelier_intro", "signature_lore", "chef_message", "arrival"]}},
+      {"id": "triggers", "params": {"pre_arrival_days": [10, 7, 3, 1]}},
+      {"id": "progression", "params": {"xp_per_action": {"pre_arrival_checkin": 50, "preview_watched": 30}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "arrival_aperitif", "value": {"type": "free_item", "amount": 1, "label": "welcome_aperitif"}, "conditions": {"checkin_streak>=": 7}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Daily check-in advances storyquest",
+        "trigger_event": "pre_arrival_checkin",
+        "actions": [
+          {"module": "streak", "method": "check", "params": {"key": "pre_arrival"}},
+          {"module": "storyquest", "method": "advance", "params": {"by_day": true}}
+        ]
+      },
+      {
+        "name": "Grant welcome aperitif on 7-day streak",
+        "trigger_event": "streak_milestone",
+        "conditions": {"type": "value", "metric": "streak_count", "op": ">=", "value": 7},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "arrival_aperitif"}}]
+      }
+    ],
+    "wireframe_hint": "10-day countdown clock + today's tease card (chef video/menu/sommelier) + arrival aperitif unlock",
+    "metadata": {
+      "source": "Noma + Atelier Crenn arrival rituals",
+      "key_metric": "pre_arrival_engagement",
+      "key_metric_value": "70% open rate target",
+      "primary_outcome": "anticipation_buildup",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "luxury_concierge_personalized",
+    "name": "Personalized Concierge",
+    "name_cn": "个性化管家",
+    "description_en": "Chef + sommelier + maître d' all see the guest's preferences (allergies, favorite dishes, last visit) before arrival — handcrafted recognition.",
+    "description_cn": "主厨/侍酒师/领班抵店前即知客人喜好（过敏/最爱菜品/上次到访），手工级别识别。",
+    "icon": "🎩",
+    "category": "loyalty",
+    "industry": "luxury_dining",
+    "tags": ["collection", "tier", "social_graph"],
+    "modules": [
+      {"id": "collection", "params": {"items": ["allergy", "preference", "favourite_dish", "wine_pref", "anniversary_date"], "encryption": true}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "recognized", "name": "Recognized Guest", "threshold_xp": 0, "perks": ["chef_greeting", "preferred_seat"]},
+        {"id": "personal", "name": "Personal Guest", "threshold_xp": 10000, "perks": ["custom_menu", "private_room_option"]}
+      ]}},
+      {"id": "social_graph", "params": {"directed": true, "edge_type": "guest_to_staff", "max_per_guest": 10}},
+      {"id": "triggers", "params": {"events": ["booking_confirmed", "guest_arrived"], "prefetch_profile": true}}
+    ],
+    "rules": [
+      {
+        "name": "Push guest profile to staff on booking",
+        "trigger_event": "booking_confirmed",
+        "actions": [{"module": "collection", "method": "share", "params": {"to_role": "staff", "scope": "guest_profile"}}]
+      },
+      {
+        "name": "Auto-greet recognized guest on arrival",
+        "trigger_event": "guest_arrived",
+        "conditions": {"type": "tier", "op": ">=", "value": "recognized"},
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "personalized_greeting", "to_role": "maitre_d"}}]
+      }
+    ],
+    "wireframe_hint": "Guest profile card (allergies/favourites/anniversary) + staff side-panel with prefetched details",
+    "metadata": {
+      "source": "Eleven Madison Park 'Dreamweaver' service",
+      "key_metric": "personalization_recall_rate",
+      "key_metric_value": "95% target",
+      "primary_outcome": "personalized_recognition",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "luxury_wine_certification",
+    "name": "Sommelier Certification Path",
+    "name_cn": "侍酒师认证之路",
+    "description_en": "Multi-level wine education tied to in-house sommelier; tier badges = Level 1/2/3 certifications.",
+    "description_cn": "与馆内侍酒师配对的多级教育，等级徽章对应1/2/3级认证。",
+    "icon": "🍇",
+    "category": "education",
+    "industry": "luxury_dining",
+    "tags": ["storyquest", "tier", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["basics", "varietals", "regions", "blind_tasting", "certification_exam"]}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "level_1", "name": "Level 1 Sommelier", "threshold_xp": 1000, "perks": ["badge_pin"]},
+        {"id": "level_2", "name": "Level 2 Sommelier", "threshold_xp": 5000, "perks": ["cellar_tour"]},
+        {"id": "level_3", "name": "Level 3 Master", "threshold_xp": 20000, "perks": ["private_tasting_quarterly", "winemaker_dinner_invite"]}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "blind_tasting_pass", "name": "Blind Tasting Adept", "trigger": "blind_tasting_score>=80"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"tasting_attended": 100, "exam_passed": 500, "blind_tasting_correct": 50}}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on tasting attendance",
+        "trigger_event": "tasting_attended",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 100}}]
+      },
+      {
+        "name": "Grant blind-tasting badge at 80% score",
+        "trigger_event": "blind_tasting_completed",
+        "conditions": {"type": "value", "metric": "score_pct", "op": ">=", "value": 80},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "blind_tasting_pass"}}]
+      }
+    ],
+    "wireframe_hint": "5-chapter sommelier curriculum + Level 1/2/3 pin progression + blind-tasting score gauge",
+    "metadata": {
+      "source": "Court of Master Sommeliers framework adapted to restaurant",
+      "key_metric": "certification_rate",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "wine_expertise",
+      "objective": "loyalty"
+    }
+  },
+  {
+    "id": "baby_milestone_journal",
+    "name": "Baby Milestone Journal",
+    "name_cn": "宝宝里程碑日记",
+    "description_en": "Track milestones (first smile, first crawl, first step) → brand provides a small voucher per logged milestone.",
+    "description_cn": "记录宝宝里程碑（第一次笑/爬/走），每条品牌送小额代金券。",
+    "icon": "👶",
+    "category": "engagement",
+    "industry": "baby_products",
+    "tags": ["collection", "voucher", "achievement"],
+    "modules": [
+      {"id": "collection", "params": {"set_name": "baby_milestones", "items": [
+        {"id": "first_smile", "month_range": [0, 3]},
+        {"id": "first_roll", "month_range": [3, 6]},
+        {"id": "first_crawl", "month_range": [6, 10]},
+        {"id": "first_word", "month_range": [9, 14]},
+        {"id": "first_step", "month_range": [9, 18]},
+        {"id": "first_tooth", "month_range": [4, 12]}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "milestone_15", "value": {"type": "discount_cash", "amount": 15}, "conditions": {"per_milestone": true}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "milestone_keeper", "name": "Milestone Keeper", "trigger": "milestones_logged>=5"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"milestone_logged": 50, "photo_attached": 25}}}
+    ],
+    "rules": [
+      {
+        "name": "Grant voucher on milestone logged",
+        "trigger_event": "milestone_logged",
+        "actions": [
+          {"module": "collection", "method": "add", "params": {"set": "baby_milestones"}},
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "milestone_15"}}
+        ]
+      },
+      {
+        "name": "Milestone keeper badge",
+        "trigger_event": "milestone_logged",
+        "conditions": {"type": "count", "metric": "milestones_logged", "op": ">=", "value": 5},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "milestone_keeper"}}]
+      }
+    ],
+    "wireframe_hint": "Baby timeline with milestone cards + photo upload + ¥15 voucher per milestone + keeper badge",
+    "metadata": {
+      "source": "Babytree + Pampers club milestone tracking",
+      "key_metric": "monthly_journal_entries",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "milestone_engagement",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "baby_mom_referral",
+    "name": "Mom-to-Mom Referral",
+    "name_cn": "宝妈互荐",
+    "description_en": "Mom invites mom — both get baby-care vouchers. Chain shares with WeChat groups, high-trust female social graph.",
+    "description_cn": "宝妈邀请宝妈，双方得母婴券；微信群链式分享，高信任女性社交。",
+    "icon": "🤱",
+    "category": "viral",
+    "industry": "baby_products",
+    "tags": ["share_to_win", "voucher", "network_effect"],
+    "modules": [
+      {"id": "share_to_win", "params": {"channel": "wechat", "reward_currency": "coins", "reward_amount": 50, "buddy_bonus": true}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "referrer_30", "value": {"type": "discount_cash", "amount": 30}, "conditions": {"trigger": "friend_first_purchase"}},
+        {"id": "newcomer_50", "value": {"type": "discount_cash", "amount": 50}, "conditions": {"new_customer": true}}
+      ]}},
+      {"id": "ladder_climb", "params": {"milestones": [1, 3, 10], "rewards": [
+        {"at": 1, "voucher": "referrer_30"},
+        {"at": 3, "voucher": "referrer_30", "extra": "diaper_pack"},
+        {"at": 10, "voucher": "referrer_30", "extra": "stroller_discount"}
+      ]}},
+      {"id": "network_effect", "params": {"viral_coefficient_target": 1.5}}
+    ],
+    "rules": [
+      {
+        "name": "Grant both moms vouchers on first purchase",
+        "trigger_event": "friend_first_purchase",
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "referrer_30", "to": "referrer"}},
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "newcomer_50", "to": "new_user"}}
+        ]
+      },
+      {
+        "name": "Ladder bonus at 3 and 10 referrals",
+        "trigger_event": "referral_completed",
+        "actions": [{"module": "ladder_climb", "method": "advance", "params": {"milestone_key": "referrals"}}]
+      }
+    ],
+    "wireframe_hint": "Share-to-WeChat poster + referral tree (1/3/10 levels) + voucher counter for both moms",
+    "metadata": {
+      "source": "Babytree mom-circle + Pinduoduo viral patterns",
+      "key_metric": "viral_coefficient",
+      "key_metric_value": "1.5 target",
+      "primary_outcome": "mom_viral_acquisition",
+      "objective": "growth"
+    }
+  },
+  {
+    "id": "baby_subscription_diapers",
+    "name": "Diaper Auto-Replenish",
+    "name_cn": "纸尿裤自动续订",
+    "description_en": "Monthly auto-replenish for diapers/formula with loyalty discount that grows with consecutive months.",
+    "description_cn": "纸尿裤/奶粉每月自动补货，连续订阅月数累积忠诚折扣。",
+    "icon": "🍼",
+    "category": "loyalty",
+    "industry": "baby_products",
+    "tags": ["tier", "voucher", "progression"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"subscription_renewed": 1}}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "month_1", "name": "Trial", "threshold_xp": 1, "perks": ["5%_off"]},
+        {"id": "month_3", "name": "Loyal", "threshold_xp": 3, "perks": ["10%_off"]},
+        {"id": "month_6", "name": "Trusted", "threshold_xp": 6, "perks": ["15%_off", "free_shipping"]},
+        {"id": "month_12", "name": "Family", "threshold_xp": 12, "perks": ["20%_off", "priority_new_products"]}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "anniv_gift_box", "value": {"type": "free_item", "amount": 1, "label": "anniversary_box"}, "conditions": {"months_subscribed>=": 12}}
+      ]}},
+      {"id": "triggers", "params": {"events": ["subscription_renewed", "subscription_at_risk", "size_outgrown"]}}
+    ],
+    "rules": [
+      {
+        "name": "Tier-up on monthly renewal",
+        "trigger_event": "subscription_renewed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 1}},
+          {"module": "tier", "method": "recompute", "params": {}}
+        ]
+      },
+      {
+        "name": "Grant anniversary gift at 12mo",
+        "trigger_event": "tier_promoted",
+        "conditions": {"type": "value", "metric": "tier_id", "op": "==", "value": "month_12"},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "anniv_gift_box"}}]
+      },
+      {
+        "name": "Auto-suggest size upgrade on outgrown",
+        "trigger_event": "size_outgrown",
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "suggest_next_size"}}]
+      }
+    ],
+    "wireframe_hint": "Monthly subscription card + tier ladder (1/3/6/12 months) + next delivery countdown + size-suggest banner",
+    "metadata": {
+      "source": "Pampers Club + Amazon Subscribe & Save",
+      "key_metric": "12mo_retention",
+      "key_metric_value": "+30% target",
+      "primary_outcome": "subscription_retention",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "parent_progress_dashboard",
+    "name": "Parent Progress Dashboard",
+    "name_cn": "家长进度面板",
+    "description_en": "Multi-child progress dashboard shareable to grandparents — captures the extended-family viewer audience.",
+    "description_cn": "多孩进度面板可分享给爷爷奶奶，捕获大家庭观看者受众。",
+    "icon": "👵",
+    "category": "engagement",
+    "industry": "parenting",
+    "tags": ["progression", "auto_share", "achievement"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"child_progress_logged": 20, "report_viewed_by_grandparent": 30}, "shared_pool": "family"}},
+      {"id": "auto_share", "params": {"channels": ["wechat", "wechat_moments"], "default_on": false, "templates": ["weekly_report", "milestone_share"]}},
+      {"id": "social_graph", "params": {"edge_type": "family", "max_members": 10, "roles": ["parent", "grandparent", "guardian"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "family_storyteller", "name": "Family Storyteller", "trigger": "reports_shared>=10"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Generate weekly report",
+        "trigger_event": "weekly_cycle_end",
+        "actions": [{"module": "auto_share", "method": "prepare", "params": {"template": "weekly_report"}}]
+      },
+      {
+        "name": "Award XP when grandparent views",
+        "trigger_event": "report_viewed",
+        "conditions": {"type": "value", "metric": "viewer_role", "op": "==", "value": "grandparent"},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 30, "pool": "family"}}]
+      }
+    ],
+    "wireframe_hint": "Multi-child cards stacked + weekly report preview + share-to-WeChat CTA + grandparent-view counter",
+    "metadata": {
+      "source": "VIPKid parent dashboard + Chinese extended-family social pattern",
+      "key_metric": "extended_family_engagement",
+      "key_metric_value": "+3x target",
+      "primary_outcome": "family_visibility",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "parent_class_signup",
+    "name": "Parenting Class with Certificate",
+    "name_cn": "家长课堂结业证",
+    "description_en": "Sign up for parenting classes (sleep training, feeding, discipline) → completion certificate + badge.",
+    "description_cn": "报名家长课堂（睡眠/喂养/管教），完课得结业证 + 徽章。",
+    "icon": "🎓",
+    "category": "education",
+    "industry": "parenting",
+    "tags": ["storyquest", "achievement", "auto_share"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["sleep_training", "feeding", "discipline", "emotional_dev", "graduation"]}},
+      {"id": "smartquests", "params": {"refresh_weekly": true, "weekly_count": 2, "templates": ["watch_lesson", "submit_homework"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "certified_parent", "name": "Certified Parent", "trigger": "all_chapters_complete"},
+        {"id": "sleep_expert", "name": "Sleep Expert", "trigger": "chapter:sleep_training_done"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"lesson_completed": 50, "homework_submitted": 100, "course_completed": 1000}}},
+      {"id": "auto_share", "params": {"channels": ["wechat_moments"], "default_on": false, "templates": ["certificate_share"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on lesson complete",
+        "trigger_event": "lesson_completed",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 50}}]
+      },
+      {
+        "name": "Grant certificate on full course",
+        "trigger_event": "course_completed",
+        "actions": [
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "certified_parent"}},
+          {"module": "auto_share", "method": "offer", "params": {"template": "certificate_share"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "5-chapter course map + lesson video card + homework upload + certificate share button",
+    "metadata": {
+      "source": "Coursera + Babytree parenting classes",
+      "key_metric": "course_completion_rate",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "parenting_education",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "parent_community_advice",
+    "name": "Parent Q&A with Karma",
+    "name_cn": "家长问答与积分",
+    "description_en": "Ask/answer parenting questions; helpful answers earn karma points, leaderboard surfaces trusted parents.",
+    "description_cn": "家长问答互助，有用回答得karma积分，排行榜浮现可信家长。",
+    "icon": "💬",
+    "category": "viral",
+    "industry": "parenting",
+    "tags": ["social_feed", "leaderboard", "progression"],
+    "modules": [
+      {"id": "social_feed", "params": {"sources": ["follows", "topic_subscriptions"], "ttl_days": 30, "content_types": ["question", "answer"]}},
+      {"id": "progression", "params": {"xp_per_action": {"question_asked": 10, "answer_written": 30, "answer_upvoted": 5, "answer_marked_best": 100}}},
+      {"id": "leaderboard", "params": {"metric": "karma", "scope": "community", "cycle_days": 30}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "trusted_advisor", "name": "Trusted Advisor", "trigger": "best_answers>=10"},
+        {"id": "topic_expert_sleep", "name": "Sleep Expert", "trigger": "topic_karma_sleep>=500"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award karma on upvote",
+        "trigger_event": "answer_upvoted",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 5, "recipient": "answer_author"}}]
+      },
+      {
+        "name": "Big bonus on best-answer mark",
+        "trigger_event": "answer_marked_best",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 100, "recipient": "answer_author"}}]
+      },
+      {
+        "name": "Trusted advisor badge",
+        "trigger_event": "answer_marked_best",
+        "conditions": {"type": "count", "metric": "best_answers", "op": ">=", "value": 10},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "trusted_advisor"}}]
+      }
+    ],
+    "wireframe_hint": "Q&A feed cards + upvote button + karma counter + monthly leaderboard + topic-expert badges",
+    "metadata": {
+      "source": "Babytree + Zhihu + Stack Overflow karma model",
+      "key_metric": "answer_rate",
+      "key_metric_value": "85% questions answered target",
+      "primary_outcome": "community_advice_volume",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "ecom_cart_abandon_rescue",
+    "name": "Cart Abandonment Rescue",
+    "name_cn": "购物车放弃挽回",
+    "description_en": "Pixel-triggered voucher fires 1-3h after cart abandonment — voucher discount scales with cart value.",
+    "description_cn": "购物车放弃1-3小时后像素触发代金券，券额按购物车价值递进。",
+    "icon": "🛒",
+    "category": "monetization",
+    "industry": "ecommerce",
+    "tags": ["triggers", "voucher", "rate_limit"],
+    "modules": [
+      {"id": "triggers", "params": {"events": ["cart_abandoned"], "delay_minutes": [60, 180, 1440]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "rescue_5pct", "value": {"type": "discount_pct", "amount": 5}, "conditions": {"cart_value_cents<=": 20000}},
+        {"id": "rescue_10pct", "value": {"type": "discount_pct", "amount": 10}, "conditions": {"cart_value_cents": "20001-100000"}},
+        {"id": "rescue_15pct", "value": {"type": "discount_pct", "amount": 15}, "conditions": {"cart_value_cents>=": 100001}}
+      ]}},
+      {"id": "rate_limit", "params": {"max_rescue_per_user_per_week": 2}},
+      {"id": "progression", "params": {"xp_per_action": {"rescue_converted": 50}}}
+    ],
+    "rules": [
+      {
+        "name": "Fire rescue voucher 1h after abandonment",
+        "trigger_event": "cart_abandoned_T60",
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_by_cart_value": true}}]
+      },
+      {
+        "name": "Escalate at 24h if still no purchase",
+        "trigger_event": "cart_abandoned_T1440",
+        "conditions": {"type": "value", "metric": "purchase_made_since", "op": "==", "value": false},
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "final_rescue_call"}}]
+      }
+    ],
+    "wireframe_hint": "Email/push preview with cart items + voucher reveal + countdown timer",
+    "metadata": {
+      "source": "Shopify + Klaviyo cart-abandon best practice",
+      "key_metric": "cart_recovery_rate",
+      "key_metric_value": "12% target",
+      "primary_outcome": "cart_recovery",
+      "objective": "monetization"
+    }
+  },
+  {
+    "id": "ecom_review_loyalty",
+    "name": "Review + Photo Loyalty",
+    "name_cn": "评价晒图忠诚",
+    "description_en": "Review + photo upload after purchase → next-order discount. Higher discount for video review.",
+    "description_cn": "购后评价 + 晒图得下次订单折扣，视频评价折扣更高。",
+    "icon": "📸",
+    "category": "engagement",
+    "industry": "ecommerce",
+    "tags": ["progression", "voucher", "achievement"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"review_text": 20, "review_photo": 50, "review_video": 150}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "review_5pct", "value": {"type": "discount_pct", "amount": 5}, "conditions": {"review_text": true}},
+        {"id": "review_10pct", "value": {"type": "discount_pct", "amount": 10}, "conditions": {"review_photo": true}},
+        {"id": "review_15pct", "value": {"type": "discount_pct", "amount": 15}, "conditions": {"review_video": true}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "shai_dan_master", "name": "Shai-Dan Master", "trigger": "photo_reviews>=20"}
+      ]}},
+      {"id": "triggers", "params": {"events": ["order_delivered"], "review_window_days": 14}}
+    ],
+    "rules": [
+      {
+        "name": "Open review window 1d after delivery",
+        "trigger_event": "order_delivered",
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_hours": 24, "template": "review_prompt"}}]
+      },
+      {
+        "name": "Grant tiered voucher by review media",
+        "trigger_event": "review_submitted",
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_by_media": true}},
+          {"module": "progression", "method": "award_xp", "params": {"amount_by_media": true}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Post-delivery review prompt with text/photo/video tabs + voucher reveal tied to media type",
+    "metadata": {
+      "source": "Taobao 晒单 + Amazon Vine reviewer model",
+      "key_metric": "photo_review_rate",
+      "key_metric_value": "+150% target",
+      "primary_outcome": "review_volume_and_repeat",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "ecom_seasonal_sale",
+    "name": "Seasonal Flash Sale + Waitlist",
+    "name_cn": "季度闪购 + 候补",
+    "description_en": "Limited-window flash sale + countdown + waitlist for sold-out items + early-access to tier members.",
+    "description_cn": "限时闪购 + 倒计时 + 售罄候补 + 高等级会员提前购。",
+    "icon": "⚡",
+    "category": "monetization",
+    "industry": "ecommerce",
+    "tags": ["limited_drop", "tier", "fcfs"],
+    "modules": [
+      {"id": "limited_drop", "params": {"window_hours": 6, "stock_caps_per_sku": true, "schedule": "quarterly"}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "shopper", "name": "Shopper", "threshold_xp": 0, "perks": []},
+        {"id": "vip_shopper", "name": "VIP Shopper", "threshold_xp": 5000, "perks": ["early_access_30min"]}
+      ]}},
+      {"id": "fcfs", "params": {"max_claimers_default": "stock_qty", "default_window_seconds": 21600}},
+      {"id": "triggers", "params": {"events": ["sale_start_T60", "sale_start", "out_of_stock", "back_in_stock"]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "early_bird", "value": {"type": "discount_pct", "amount": 10}, "conditions": {"tier_required": "vip_shopper"}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Notify subscribers 60min before sale",
+        "trigger_event": "sale_start_T60",
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "sale_countdown_60min"}}]
+      },
+      {
+        "name": "Open early access to VIP shoppers",
+        "trigger_event": "sale_start_early",
+        "conditions": {"type": "tier", "op": ">=", "value": "vip_shopper"},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "early_bird"}}]
+      },
+      {
+        "name": "Add to waitlist on out-of-stock",
+        "trigger_event": "out_of_stock",
+        "actions": [{"module": "fcfs", "method": "join_waitlist", "params": {}}]
+      }
+    ],
+    "wireframe_hint": "Flash sale hero with countdown + product grid with stock bars + VIP early-access badge + waitlist button when sold out",
+    "metadata": {
+      "source": "Taobao 99 Mega Sale + Shein flash drops",
+      "key_metric": "sale_GMV_lift",
+      "key_metric_value": "+5x baseline target",
+      "primary_outcome": "flash_sale_GMV",
+      "objective": "monetization"
+    }
+  },
+  {
+    "id": "beauty_skincare_journal",
+    "name": "Skincare Routine Journal",
+    "name_cn": "护肤日记",
+    "description_en": "Track AM/PM routine, skin photos, product use → engine recommends next product + earns sample-redemption points.",
+    "description_cn": "记录早晚护肤、肤况照片、产品使用，引擎推荐下款 + 攒积分换试用装。",
+    "icon": "🧴",
+    "category": "engagement",
+    "industry": "beauty",
+    "tags": ["streak", "collection", "voucher"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [7, 30, 90], "actions": ["routine_logged"]}},
+      {"id": "collection", "params": {"items": ["am_routine", "pm_routine", "skin_photo", "product_used"], "encryption": true}},
+      {"id": "progression", "params": {"xp_per_action": {"routine_logged": 15, "photo_logged": 25, "product_added": 20}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "free_sample", "value": {"type": "free_item", "amount": 1, "label": "sample"}, "conditions": {"xp>=": 500}}
+      ]}},
+      {"id": "upsell", "params": {"recommend_after": ["routine_logged"], "based_on": "skin_concerns"}}
+    ],
+    "rules": [
+      {
+        "name": "Streak on twice-daily logging",
+        "trigger_event": "routine_logged",
+        "actions": [
+          {"module": "streak", "method": "check", "params": {"key": "routine"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 15}}
+        ]
+      },
+      {
+        "name": "Issue free sample at 500 XP",
+        "trigger_event": "xp_milestone",
+        "conditions": {"type": "value", "metric": "xp", "op": ">=", "value": 500},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "free_sample"}}]
+      }
+    ],
+    "wireframe_hint": "AM/PM routine cards + skin-photo timeline + streak flame + sample voucher progress",
+    "metadata": {
+      "source": "Sephora Beauty Insider + Soko Glam routine logs",
+      "key_metric": "twice_daily_logging_rate",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "routine_adherence",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "beauty_makeup_tutorial",
+    "name": "Makeup Tutorial-for-Samples",
+    "name_cn": "教程换试用",
+    "description_en": "Watch tutorial videos + try the look → earn sample products. Beauty content engine.",
+    "description_cn": "观看教程视频 + 模仿妆容打卡，攒积分换试用小样。美妆内容引擎。",
+    "icon": "💄",
+    "category": "engagement",
+    "industry": "beauty",
+    "tags": ["smartquests", "voucher", "achievement"],
+    "modules": [
+      {"id": "smartquests", "params": {"refresh_weekly": true, "weekly_count": 3, "templates": ["watch_tutorial", "post_look", "rate_look"]}},
+      {"id": "progression", "params": {"xp_per_action": {"tutorial_watched": 20, "look_posted": 80, "look_liked": 5}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "sample_kit_300xp", "value": {"type": "free_item", "amount": 3, "label": "sample_kit"}, "conditions": {"xp>=": 300}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "tutorial_pro", "name": "Tutorial Pro", "trigger": "tutorials_watched>=20"},
+        {"id": "look_creator", "name": "Look Creator", "trigger": "looks_posted>=5"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on tutorial watch",
+        "trigger_event": "tutorial_watched",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 20}}]
+      },
+      {
+        "name": "Bigger XP for posting a look",
+        "trigger_event": "look_posted",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 80}}]
+      },
+      {
+        "name": "Grant sample kit at 300 XP",
+        "trigger_event": "xp_milestone",
+        "conditions": {"type": "value", "metric": "xp", "op": ">=", "value": 300},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "sample_kit_300xp"}}]
+      }
+    ],
+    "wireframe_hint": "Tutorial video grid + 'post your look' upload + weekly quest checklist + sample-kit progress",
+    "metadata": {
+      "source": "Xiaohongshu beauty + Sephora video content",
+      "key_metric": "tutorial_completion_rate",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "content_engagement",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "beauty_brand_ambassador",
+    "name": "Brand Ambassador Tier",
+    "name_cn": "品牌大使等级",
+    "description_en": "Influencer/affiliate tier with revenue share — micro-KOC (kol-of-consumer) flywheel built into the brand.",
+    "description_cn": "网红/达人分销等级 + 收益分成，把KOC增长飞轮内化到品牌。",
+    "icon": "🌟",
+    "category": "viral",
+    "industry": "beauty",
+    "tags": ["tier", "share_to_win", "leaderboard"],
+    "modules": [
+      {"id": "tier", "params": {"actor": "ambassador", "tiers": [
+        {"id": "fan", "name": "Fan", "threshold_xp": 0, "perks": ["5%_commission"]},
+        {"id": "micro_kol", "name": "Micro KOL", "threshold_xp": 5000, "perks": ["10%_commission", "free_PR_box"]},
+        {"id": "kol", "name": "KOL", "threshold_xp": 50000, "perks": ["15%_commission", "co_branded_release"]}
+      ]}},
+      {"id": "share_to_win", "params": {"channel": "xiaohongshu", "tracking_param": "ambassador_id", "reward_currency": "commission_pct"}},
+      {"id": "leaderboard", "params": {"metric": "ambassador_revenue", "scope": "ambassadors", "cycle_days": 30}},
+      {"id": "progression", "params": {"xp_per_action": {"referred_purchase_per_100_yuan": 10, "post_engagement_per_100": 5}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_sale_via_link", "name": "First Sale", "trigger": "referred_sales>=1"},
+        {"id": "100_sales", "name": "Centurion Seller", "trigger": "referred_sales>=100"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Credit commission on referred purchase",
+        "trigger_event": "referred_purchase",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount_per_100_yuan": 10, "actor": "ambassador"}},
+          {"module": "tier", "method": "recompute", "params": {"actor": "ambassador"}}
+        ]
+      },
+      {
+        "name": "Send PR box on micro-KOL promotion",
+        "trigger_event": "tier_promoted",
+        "conditions": {"type": "value", "metric": "tier_id", "op": "==", "value": "micro_kol"},
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "pr_box_dispatch"}}]
+      }
+    ],
+    "wireframe_hint": "Ambassador dashboard with tier crest + commission rate + referred-revenue chart + monthly leaderboard",
+    "metadata": {
+      "source": "Perfect Diary + Florasis KOC flywheel",
+      "key_metric": "ambassador_GMV_share",
+      "key_metric_value": "30% target",
+      "primary_outcome": "kol_revenue",
+      "objective": "growth"
+    }
+  },
+  {
+    "id": "finsvc_kyc_onboarding",
+    "name": "Financial Services KYC + First Investment",
+    "name_cn": "金融服务实名 + 首投券",
+    "description_en": "OTP + 双录 + risk profile flow followed by a first-investment voucher to convert KYC→first-trade.",
+    "description_cn": "OTP + 双录 + 风测全流程后送首投券，把开户→首笔投资接力。",
+    "icon": "🏦",
+    "category": "compliance",
+    "industry": "financial_services",
+    "tags": ["storyquest", "voucher", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["phone_otp", "id_upload", "risk_profile", "consent_recording", "first_investment", "active_investor"]}},
+      {"id": "progression", "params": {"xp_per_action": {"phone_verified": 10, "id_uploaded": 30, "risk_profile_done": 50, "consent_recorded": 100, "first_investment": 500}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "first_invest_50", "value": {"type": "cash_voucher", "amount": 50}, "conditions": {"trigger": "first_investment"}},
+        {"id": "redeem_after_30d", "value": {"type": "no_fee_redemption", "amount": 1}, "conditions": {"holding_days>=": 30}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "verified_investor", "name": "Verified Investor", "trigger": "stage:first_investment"}
+      ]}},
+      {"id": "triggers", "params": {"events": ["kyc_step_completed", "first_investment"]}}
+    ],
+    "rules": [
+      {
+        "name": "Advance storyquest by KYC step",
+        "trigger_event": "kyc_step_completed",
+        "actions": [{"module": "storyquest", "method": "advance", "params": {"chapter_from_step": true}}]
+      },
+      {
+        "name": "Grant first-investment voucher on account active",
+        "trigger_event": "account_active",
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "first_invest_50"}}]
+      },
+      {
+        "name": "Verified investor badge on first trade",
+        "trigger_event": "first_investment",
+        "actions": [
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "verified_investor"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 500}}
+        ]
+      }
+    ],
+    "wireframe_hint": "6-step KYC progress bar + voucher reveal on completion + verified-investor badge",
+    "metadata": {
+      "source": "Lufax + Ant Wealth onboarding (CSRC compliant)",
+      "key_metric": "kyc_to_first_invest_conversion",
+      "key_metric_value": "+30% target",
+      "primary_outcome": "first_investment",
+      "objective": "activation"
+    }
+  },
+  {
+    "id": "finsvc_cross_product",
+    "name": "Cross-Product Discount Bridge",
+    "name_cn": "跨产品折扣桥",
+    "description_en": "Holding a fund → insurance premium discount; holding insurance → wealth-mgmt fee discount. Cross-sell flywheel.",
+    "description_cn": "持有基金→保险保费折扣；持有保险→理财费率折扣。跨产品交叉销售飞轮。",
+    "icon": "🔗",
+    "category": "monetization",
+    "industry": "financial_services",
+    "tags": ["voucher", "upsell", "progression"],
+    "modules": [
+      {"id": "upsell", "params": {"cross_sell_rules": [
+        {"from": "fund_held_30d", "to": "insurance", "discount_pct": 10},
+        {"from": "insurance_active", "to": "wealth_mgmt", "discount_pct": 5},
+        {"from": "wealth_mgmt_active", "to": "trust", "discount_pct": 3}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "fund_to_insurance_10pct", "value": {"type": "discount_pct", "amount": 10}, "conditions": {"requires_fund_30d": true}},
+        {"id": "insurance_to_wealth_5pct", "value": {"type": "fee_discount_pct", "amount": 5}, "conditions": {"requires_active_insurance": true}}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"cross_product_purchase": 300, "product_held_30d": 50}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "diversified_investor", "name": "Diversified Investor", "trigger": "product_count>=3"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Issue insurance discount on 30d fund holding",
+        "trigger_event": "product_held_30d",
+        "conditions": {"type": "value", "metric": "product_id", "op": "==", "value": "fund"},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "fund_to_insurance_10pct"}}]
+      },
+      {
+        "name": "Grant diversified badge at 3 products",
+        "trigger_event": "product_acquired",
+        "conditions": {"type": "count", "metric": "products_held", "op": ">=", "value": 3},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "diversified_investor"}}]
+      }
+    ],
+    "wireframe_hint": "Product ladder (fund→insurance→wealth→trust) + cross-product discount badges + diversified-investor badge",
+    "metadata": {
+      "source": "Ping An Group cross-sell + Ant Wealth flywheel",
+      "key_metric": "products_per_user",
+      "key_metric_value": "2.5 target",
+      "primary_outcome": "cross_sell",
+      "objective": "monetization"
+    }
+  },
+  {
+    "id": "finsvc_retirement_planner",
+    "name": "Retirement Planner",
+    "name_cn": "退休规划之旅",
+    "description_en": "Long-term goal tracking (10/20/30-year horizon) + milestone celebrations + auto-contribution streak.",
+    "description_cn": "10/20/30年长期目标追踪 + 里程碑庆祝 + 自动定投连击。",
+    "icon": "🌅",
+    "category": "loyalty",
+    "industry": "financial_services",
+    "tags": ["progression", "streak", "achievement"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"contribution_made": 50, "goal_milestone_hit": 500, "annual_review": 200}, "compound_metric": "retirement_score"}},
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 12, 36, 60, 120], "actions": ["monthly_contribution"], "window_days": 35}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "consistent_saver", "name": "Consistent Saver", "trigger": "monthly_contribution_streak>=12"},
+        {"id": "10pct_milestone", "name": "10% of Goal", "trigger": "progress_pct>=10"},
+        {"id": "50pct_milestone", "name": "Halfway There", "trigger": "progress_pct>=50"},
+        {"id": "100pct_milestone", "name": "Retirement Ready", "trigger": "progress_pct>=100"}
+      ]}},
+      {"id": "triggers", "params": {"events": ["monthly_contribution", "goal_off_track", "annual_review_due"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP + streak on monthly contribution",
+        "trigger_event": "monthly_contribution",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 50}},
+          {"module": "streak", "method": "check", "params": {"key": "monthly_contribution"}}
+        ]
+      },
+      {
+        "name": "Celebrate goal-progress milestones",
+        "trigger_event": "progress_milestone",
+        "actions": [{"module": "achievement", "method": "grant_by_pct", "params": {"thresholds": [10, 50, 100]}}]
+      },
+      {
+        "name": "Nudge on off-track",
+        "trigger_event": "goal_off_track",
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "rebalance_suggestion"}}]
+      }
+    ],
+    "wireframe_hint": "Long-horizon goal arc (0-100% target) + monthly contribution streak flame + milestone badges (10/50/100%)",
+    "metadata": {
+      "source": "Fidelity Retirement Score + Ant Pension flywheel",
+      "key_metric": "auto_contribution_retention_12mo",
+      "key_metric_value": "+45% target",
+      "primary_outcome": "retirement_planning_engagement",
+      "objective": "retention"
+    }
   }
 ]

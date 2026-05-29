@@ -2604,15 +2604,75 @@ async def set_entity_attribute(
     key: str | None = None,
     r: aioredis.Redis = Depends(get_redis),
 ):
-    """Set a single attribute on an entity.
+    """Set one or many attributes on an entity.
 
-    Body accepts the same shape as :class:`EntityAttrSet` plus an optional
-    ``key`` (top-level) — when ``key`` is omitted in the query string, the
-    body must contain ``key``. Time-series append happens iff any of
-    ``log`` / ``history`` / ``trend`` is true.
+    Single mode (canonical) — body has ``key`` + ``value`` (plus optional
+    log/history/trend/source/confidence/meta/ttl_seconds).
+
+    Bulk mode (merchant-intuitive alias) — body has ``attrs: {k1: v1, k2: v2,
+    ...}``. Each pair is stored as its own attribute. Other top-level fields
+    (``log``, ``source``, etc.) apply to every pair so the caller doesn't
+    need to repeat them. Returns ``{ok, entity_id, attrs: {k: value_str},
+    logged, ts}``.
     """
     if not await r.exists(_entity_key(eid)):
         raise HTTPException(404, detail=f"entity {eid} not found")
+
+    # ── Bulk mode ───────────────────────────────────────────────────────
+    if isinstance(body.get("attrs"), dict):
+        bulk_attrs = body["attrs"]
+        if not bulk_attrs:
+            raise HTTPException(422, detail="'attrs' must be non-empty")
+        meta_kwargs = {
+            k: v for k, v in body.items()
+            if k not in ("attrs", "key", "value")
+        }
+        now = int(time.time())
+        try:
+            parsed_meta = EntityAttrSet(value=None, **meta_kwargs)
+        except Exception as exc:
+            raise HTTPException(422, detail=f"invalid body: {exc}") from exc
+        do_log = parsed_meta.log or parsed_meta.history or parsed_meta.trend
+
+        pipe = r.pipeline()
+        results: dict[str, str] = {}
+        for ak, av in bulk_attrs.items():
+            if not isinstance(ak, str) or not ak:
+                raise HTTPException(422, detail=f"invalid attr key {ak!r}")
+            value_str = _serialize_attr_value(av)
+            results[ak] = value_str
+            pipe.hset(_entity_attrs_key(eid), ak, value_str)
+            if parsed_meta.ttl_seconds:
+                pipe.set(
+                    f"entity:{eid}:attribute:{ak}",
+                    value_str,
+                    ex=parsed_meta.ttl_seconds,
+                )
+            if do_log:
+                entry = {
+                    "entry_id": uuid.uuid4().hex[:16],
+                    "ts": now,
+                    "value": value_str,
+                    "source": parsed_meta.source,
+                }
+                if parsed_meta.confidence is not None:
+                    entry["confidence"] = round(float(parsed_meta.confidence), 4)
+                if parsed_meta.meta:
+                    entry["meta"] = parsed_meta.meta
+                log_key = _entity_attr_log_key(eid, ak)
+                pipe.lpush(log_key, json.dumps(entry))
+                pipe.ltrim(log_key, 0, _ATTR_LOG_MAX_ENTRIES - 1)
+        pipe.hset(_entity_key(eid), mapping={"updated_at": str(now)})
+        await pipe.execute()
+        return {
+            "ok": True,
+            "entity_id": eid,
+            "attrs": results,
+            "logged": do_log,
+            "ts": now,
+        }
+
+    # ── Single mode (canonical) ────────────────────────────────────────
     attr_key = key or body.get("key")
     if not attr_key or not isinstance(attr_key, str):
         raise HTTPException(422, detail="missing 'key'")

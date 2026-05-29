@@ -1181,6 +1181,28 @@ class TakeRateConfigureRequest(BaseModel):
     # supersedes the default when a transaction lands in that currency.
     currency_rates: dict[str, CurrencyTakeRate] = Field(default_factory=dict)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _expand_int_currency_rates(cls, data: Any) -> Any:
+        """Merchant-intuitive alias: a plain int value under ``currency_rates``
+        is treated as ``{default_rate_bps: <int>}`` so callers don't need to
+        spell out the whole :class:`CurrencyTakeRate` shape for the common
+        "just override the default bps for USD" case.
+        """
+        if not isinstance(data, dict):
+            return data
+        cr = data.get("currency_rates")
+        if not isinstance(cr, dict):
+            return data
+        expanded: dict[str, Any] = {}
+        for k, v in cr.items():
+            if isinstance(v, int) and not isinstance(v, bool):
+                expanded[k] = {"default_rate_bps": v}
+            else:
+                expanded[k] = v
+        data = {**data, "currency_rates": expanded}
+        return data
+
     @field_validator("category_rates")
     @classmethod
     def _cat_rates(cls, v: dict[str, int]) -> dict[str, int]:
@@ -1214,7 +1236,14 @@ class TakeRateConfigResponse(BaseModel):
 
 
 class MarketplaceChargeRequest(BaseModel):
-    transaction_id: str = Field(..., min_length=1, max_length=128)
+    # transaction_id is optional now — merchants who don't already mint their
+    # own settlement IDs get an auto-generated UUID. Still used for
+    # idempotency, so callers that *do* pass one keep their de-dup guarantee.
+    transaction_id: str = Field(
+        default_factory=lambda: uuid4().hex,
+        min_length=1,
+        max_length=128,
+    )
     listing_id: str = Field(..., min_length=1, max_length=128)
     seller_user_id: str = Field(..., min_length=1, max_length=128)
     buyer_user_id: str = Field(..., min_length=1, max_length=128)
@@ -1521,6 +1550,15 @@ class TopupWithFxRequest(BaseModel):
     # If omitted, defaults to wallet's existing base currency.
     convert_to_currency: str | None = Field(default=None, min_length=3, max_length=3)
     allow_stale_rate: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_currency(cls, data: Any) -> Any:
+        """Merchant-intuitive alias: accept ``currency`` for ``payment_currency``."""
+        if isinstance(data, dict):
+            if "currency" in data and "payment_currency" not in data:
+                data = {**data, "payment_currency": data["currency"]}
+        return data
 
     @field_validator("payment_currency", "convert_to_currency")
     @classmethod
