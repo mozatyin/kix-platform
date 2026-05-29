@@ -21,10 +21,13 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import time
+from datetime import date, timedelta
 from typing import Any
 from uuid import uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
@@ -93,6 +96,19 @@ LADDER_FRIENDS_NEEDED = 5
 
 # Streak rescue cost (in energy) for the friend doing the rescuing
 STREAK_RESCUE_COST = 5
+
+# ── Viral compounding constants (P0 fix 2026-05-29) ───────────────────────
+MAX_INHERITANCE_DEPTH = 5
+DAILY_COUNTER_TTL_SECONDS = 35 * 24 * 60 * 60
+K_EXPLOSION_THRESHOLD = 1.0
+DEFAULT_K_WINDOW_DAYS = 7
+AUTO_EMIT_TRIGGERS = (
+    TRIGGER_SHARE_TO_WIN,
+    TRIGGER_ENERGY_INVITE,
+    TRIGGER_FRIEND_CHALLENGE,
+    TRIGGER_LADDER_CLIMB,
+    TRIGGER_STREAK_RESCUE,
+)
 
 
 # ── Pydantic models ────────────────────────────────────────────────────────
@@ -173,6 +189,42 @@ def _k_pending(user_id: str, brand_id: str) -> str:
 def _k_ladder_progress(brand_id: str, user_id: str, target_tier: str) -> str:
     """Set of invite tokens this user has accumulated toward a tier."""
     return f"brand:{brand_id}:user:{user_id}:ladder:{target_tier}:invites"
+
+
+def _today_str() -> str:
+    return date.today().isoformat()
+
+
+def _k_viral_issued_day(brand_id: str, day: str) -> str:
+    return f"viral:brand:{brand_id}:invites_issued:day:{day}"
+
+
+def _k_viral_redeemed_day(brand_id: str, day: str) -> str:
+    return f"viral:brand:{brand_id}:invites_redeemed:day:{day}"
+
+
+def _k_viral_issued_day_mech(brand_id: str, day: str, trigger: str) -> str:
+    return f"viral:brand:{brand_id}:invites_issued:day:{day}:mech:{trigger}"
+
+
+def _k_viral_redeemed_day_mech(brand_id: str, day: str, trigger: str) -> str:
+    return f"viral:brand:{brand_id}:invites_redeemed:day:{day}:mech:{trigger}"
+
+
+def _k_invite_tree_depth(user_id: str) -> str:
+    return f"viral:user:{user_id}:invite_tree:depth"
+
+
+def _k_explosion_warning(brand_id: str) -> str:
+    return f"viral:brand:{brand_id}:explosion_warning"
+
+
+def _k_ab_assignment(brand_id: str, user_id: str) -> str:
+    return f"viral:brand:{brand_id}:user:{user_id}:invite_ab_arm"
+
+
+def _k_ab_metric(brand_id: str, arm: str, metric: str) -> str:
+    return f"viral:brand:{brand_id}:ab:{arm}:{metric}"
 
 
 # ── Core helpers ───────────────────────────────────────────────────────────
@@ -274,8 +326,10 @@ async def _store_invite(
     from_user_id: str,
     brand_id: str,
     extra: dict[str, Any] | None = None,
+    inherited_from: str | None = None,
+    depth: int = 0,
 ) -> dict[str, Any]:
-    """Persist invite record + bump invited counter. Returns the record."""
+    """Persist invite record + bump invited + daily K-factor counters."""
     now = _now()
     record: dict[str, Any] = {
         "trigger": trigger,
@@ -285,10 +339,20 @@ async def _store_invite(
         "expires_at": now + INVITE_TTL_SECONDS,
         "redeemed": False,
         "extra": extra or {},
+        "inherited_from": inherited_from,
+        "depth": depth,
     }
+    day = _today_str()
     pipe = r.pipeline()
     pipe.set(_k_invite(token), json.dumps(record), ex=INVITE_TTL_SECONDS)
     pipe.incr(_k_invited(brand_id, trigger))
+    pipe.incr(_k_viral_issued_day(brand_id, day))
+    pipe.expire(_k_viral_issued_day(brand_id, day), DAILY_COUNTER_TTL_SECONDS)
+    pipe.incr(_k_viral_issued_day_mech(brand_id, day, trigger))
+    pipe.expire(
+        _k_viral_issued_day_mech(brand_id, day, trigger),
+        DAILY_COUNTER_TTL_SECONDS,
+    )
     await pipe.execute()
     return record
 
@@ -408,8 +472,24 @@ async def _redeem_token(
         else:
             await r.set(_k_invite(invite_token), json.dumps(record))
 
-    # Bump conversion counter
+    # Bump conversion counter (lifetime)
     await r.incr(_k_converted(brand_id, trigger))
+
+    # Bump daily K-factor "redeemed" counters
+    day = _today_str()
+    pipe2 = r.pipeline()
+    pipe2.incr(_k_viral_redeemed_day(brand_id, day))
+    pipe2.expire(_k_viral_redeemed_day(brand_id, day), DAILY_COUNTER_TTL_SECONDS)
+    pipe2.incr(_k_viral_redeemed_day_mech(brand_id, day, trigger))
+    pipe2.expire(
+        _k_viral_redeemed_day_mech(brand_id, day, trigger),
+        DAILY_COUNTER_TTL_SECONDS,
+    )
+    await pipe2.execute()
+
+    issued_arm = record.get("extra", {}).get("ab_arm")
+    if issued_arm in ("personalized", "template"):
+        await r.incr(_k_ab_metric(brand_id, issued_arm, "redeemed"))
 
     # Resolve reward template
     template = REWARD_TEMPLATES.get(trigger, {})
@@ -475,7 +555,89 @@ async def _redeem_token(
                 record.get("extra", {}).get("target_tier", "next"),
             )
         )
+
+    # ── P0 viral compounding: auto-emit fresh invite to the redeemer ──
+    auto_emit_info: dict[str, Any] = {"emitted": False}
+    if trigger in AUTO_EMIT_TRIGGERS:
+        parent_depth = int(record.get("depth") or 0)
+        child_depth = parent_depth + 1
+        if child_depth > MAX_INHERITANCE_DEPTH:
+            auto_emit_info = {
+                "emitted": False,
+                "reason": "depth_cap_reached",
+                "depth_cap": MAX_INHERITANCE_DEPTH,
+            }
+        else:
+            root_inviter = record.get("inherited_from") or inviter_id
+            new_token = _new_token()
+            await _store_invite(
+                r,
+                token=new_token,
+                trigger=trigger,
+                from_user_id=new_user_id,
+                brand_id=brand_id,
+                extra={
+                    "auto_emitted": True,
+                    "parent_invite_token": invite_token,
+                    **(record.get("extra") or {}),
+                },
+                inherited_from=root_inviter,
+                depth=child_depth,
+            )
+            await r.set(_k_invite_tree_depth(new_user_id), child_depth)
+            share_url = _build_share_url(None, brand_id, new_token)
+            auto_emit_info = {
+                "emitted": True,
+                "invite_token": new_token,
+                "share_url": share_url,
+                "depth": child_depth,
+                "inherited_from": root_inviter,
+            }
+    result["auto_emitted_invite"] = auto_emit_info
+
+    await _refresh_explosion_warning(r, brand_id)
     return result
+
+
+async def _compute_k(
+    r: aioredis.Redis,
+    brand_id: str,
+    window_days: int = DEFAULT_K_WINDOW_DAYS,
+    trigger: str | None = None,
+) -> tuple[float, int, int]:
+    """Trailing N-day (K, issued, redeemed)."""
+    today = date.today()
+    issued_keys: list[str] = []
+    redeemed_keys: list[str] = []
+    for i in range(window_days):
+        day = (today - timedelta(days=i)).isoformat()
+        if trigger:
+            issued_keys.append(_k_viral_issued_day_mech(brand_id, day, trigger))
+            redeemed_keys.append(_k_viral_redeemed_day_mech(brand_id, day, trigger))
+        else:
+            issued_keys.append(_k_viral_issued_day(brand_id, day))
+            redeemed_keys.append(_k_viral_redeemed_day(brand_id, day))
+    pipe = r.pipeline()
+    for k in issued_keys + redeemed_keys:
+        pipe.get(k)
+    vals = await pipe.execute()
+    issued = sum(int(v or 0) for v in vals[: len(issued_keys)])
+    redeemed = sum(int(v or 0) for v in vals[len(issued_keys) :])
+    k_val = (redeemed / issued) if issued > 0 else 0.0
+    return k_val, issued, redeemed
+
+
+async def _refresh_explosion_warning(
+    r: aioredis.Redis, brand_id: str, window_days: int = DEFAULT_K_WINDOW_DAYS
+) -> float:
+    k_val, _i, _r = await _compute_k(r, brand_id, window_days)
+    if k_val > K_EXPLOSION_THRESHOLD:
+        await r.set(
+            _k_explosion_warning(brand_id), "1", ex=DAILY_COUNTER_TTL_SECONDS
+        )
+    else:
+        await r.delete(_k_explosion_warning(brand_id))
+    return k_val
 
 
 # ── 1. ShareToWin ──────────────────────────────────────────────────────────
@@ -846,6 +1008,221 @@ async def viral_stats(
             "converted": overall_converted,
             "coefficient": round(overall_coeff, 4),
         },
+    }
+
+
+# ── K-factor (trailing-window viral coefficient) ───────────────────────────
+
+
+@router.get("/k-factor/{brand_id}")
+async def k_factor(
+    brand_id: str,
+    window_days: int = DEFAULT_K_WINDOW_DAYS,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Trailing K-factor for a brand + per-mechanic breakdown."""
+    if window_days < 1 or window_days > 35:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="window_days must be in [1,35]",
+        )
+    overall_k, overall_issued, overall_redeemed = await _compute_k(
+        r, brand_id, window_days
+    )
+    breakdown: dict[str, dict[str, Any]] = {}
+    for trig in ALL_TRIGGERS:
+        k_t, issued_t, redeemed_t = await _compute_k(
+            r, brand_id, window_days, trigger=trig
+        )
+        breakdown[trig] = {
+            "issued": issued_t,
+            "redeemed": redeemed_t,
+            "k_factor": round(k_t, 4),
+        }
+    await _refresh_explosion_warning(r, brand_id, window_days)
+    explosion = bool(await r.get(_k_explosion_warning(brand_id)))
+    return {
+        "brand_id": brand_id,
+        "window_days": window_days,
+        "k_factor": round(overall_k, 4),
+        "invites_issued": overall_issued,
+        "invites_redeemed": overall_redeemed,
+        "explosion_warning": explosion,
+        "explosion_threshold": K_EXPLOSION_THRESHOLD,
+        "target_band": {"min": 0.3, "max": 1.2},
+        "per_mechanic": breakdown,
+    }
+
+
+# ── Personalized invite copy (LLM, quota-guarded) ──────────────────────────
+
+
+_TEMPLATE_INVITES: dict[str, str] = {
+    "default": "Hey — I'm playing on KiX. Join me and grab a bonus.",
+    "competitive": "Think you can beat me? Step up. Free entry on me.",
+    "casual": "Found a fun little game — wanna try? Takes 2 min.",
+    "social": "Doing this with friends. Join — first round on me.",
+    "deal_hunter": "Free reward when you sign up via this link. No catch.",
+    "foodie": "F&B perk inside — only takes a tap. Grab it before it expires.",
+}
+
+
+def _fallback_invite(persona_tag: str | None, inviter: str) -> str:
+    tag = (persona_tag or "default").lower()
+    return _TEMPLATE_INVITES.get(tag, _TEMPLATE_INVITES["default"])
+
+
+async def _llm_quota_paused() -> bool:
+    """Quota-pause check per CLAUDE.md feedback_llm_quota_guard.
+
+    Returns False when the monitor module isn't importable so production
+    is never blocked by missing optional infra. Patchable from tests.
+    """
+    try:
+        import importlib.util
+        import sys
+        from pathlib import Path
+
+        if "scripts.llm_quota_monitor" in sys.modules:
+            mod = sys.modules["scripts.llm_quota_monitor"]
+        else:
+            root = Path(__file__).resolve().parents[2]
+            path = root / "scripts" / "llm_quota_monitor.py"
+            if not path.exists():
+                return False
+            spec = importlib.util.spec_from_file_location(
+                "scripts.llm_quota_monitor", str(path)
+            )
+            if spec is None or spec.loader is None:
+                return False
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["scripts.llm_quota_monitor"] = mod
+            spec.loader.exec_module(mod)
+        check = getattr(mod, "is_paused", None)
+        if check is None:
+            return False
+        return bool(await check())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+async def _llm_personalize(
+    *, inviter: str, persona_tag: str, brand_id: str
+) -> str | None:
+    """Best-effort LLM personalization. None on any failure → template."""
+    if await _llm_quota_paused():
+        logger.info("LLM quota paused — fallback to template invite")
+        return None
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+    system = (
+        "You write 1-line viral invite messages (max 22 words). "
+        "Friendly, no emojis, no hashtags. Personalize to the invitee "
+        "persona tag. Output the message only — nothing else."
+    )
+    user = (
+        f"Inviter user_id: {inviter}\n"
+        f"Brand: {brand_id}\n"
+        f"Invitee persona tag: {persona_tag}\n"
+        "Write the invite message now."
+    )
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            resp = await c.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-3-5-haiku-latest",
+                    "max_tokens": 80,
+                    "system": system,
+                    "messages": [{"role": "user", "content": user}],
+                },
+            )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        for ch in data.get("content") or []:
+            if ch.get("type") == "text":
+                text = (ch.get("text") or "").strip()
+                if text:
+                    return text.splitlines()[0].strip()[:280]
+        return None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+@router.get("/share-to-win/personalized-message")
+async def personalized_invite_message(
+    inviter: str,
+    invitee_persona: str = "default",
+    brand_id: str = "default",
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Personalized invite copy. LLM with template fallback. Sticky A/B."""
+    if not inviter:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="inviter is required",
+        )
+    arm_key = _k_ab_assignment(brand_id, inviter)
+    existing_arm = await r.get(arm_key)
+    if existing_arm in ("personalized", "template"):
+        arm = existing_arm
+    else:
+        arm = "personalized" if (hash(inviter) & 1) == 0 else "template"
+        await r.set(arm_key, arm, ex=DAILY_COUNTER_TTL_SECONDS)
+    message: str | None = None
+    source = "template"
+    if arm == "personalized":
+        message = await _llm_personalize(
+            inviter=inviter, persona_tag=invitee_persona, brand_id=brand_id
+        )
+        if message is not None:
+            source = "llm"
+    if message is None:
+        message = _fallback_invite(invitee_persona, inviter)
+    await r.incr(_k_ab_metric(brand_id, arm, "issued"))
+    return {
+        "inviter": inviter,
+        "brand_id": brand_id,
+        "invitee_persona": invitee_persona,
+        "ab_arm": arm,
+        "source": source,
+        "message": message,
+    }
+
+
+@router.get("/share-to-win/ab-stats/{brand_id}")
+async def invite_ab_stats(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Personalized vs template invite A/B stats."""
+    pipe = r.pipeline()
+    for arm in ("personalized", "template"):
+        pipe.get(_k_ab_metric(brand_id, arm, "issued"))
+        pipe.get(_k_ab_metric(brand_id, arm, "redeemed"))
+    vals = await pipe.execute()
+    arms: dict[str, dict[str, Any]] = {}
+    for idx, arm in enumerate(("personalized", "template")):
+        issued = int(vals[idx * 2] or 0)
+        redeemed = int(vals[idx * 2 + 1] or 0)
+        arms[arm] = {
+            "issued": issued,
+            "redeemed": redeemed,
+            "rate": round((redeemed / issued) if issued else 0.0, 4),
+        }
+    return {
+        "brand_id": brand_id,
+        "arms": arms,
+        "uplift_personalized_vs_template": round(
+            arms["personalized"]["rate"] - arms["template"]["rate"], 4
+        ),
     }
 
 
