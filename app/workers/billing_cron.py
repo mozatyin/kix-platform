@@ -184,18 +184,37 @@ async def run_once(
         if owns_db:
             await db.close()
 
+    # ── Quality Score weekly sweep (P2 fix) ─────────────────────────────
+    # Best-effort — never let a QS recompute failure break the billing
+    # cycle. Each campaign is idempotent so repeated calls in the same
+    # week refresh snapshots without whiplashing the score.
+    qs_counters: dict[str, int] = {}
+    try:
+        from app.quality_score import recompute_all_active
+
+        qs_counters = await recompute_all_active(r)
+    except Exception:  # noqa: BLE001
+        logger.exception("quality_score sweep failed")
+
     logger.info(
-        "billing_cron sweep complete: scanned=%d charged=%d failed=%d downgraded=%d",
+        "billing_cron sweep complete: scanned=%d charged=%d failed=%d "
+        "downgraded=%d qs=%s",
         processed,
         charged,
         failed,
         downgraded,
+        qs_counters,
     )
     return {
         "scanned": processed,
         "charged": charged,
         "failed": failed,
         "downgraded": downgraded,
+        "qs_scanned": qs_counters.get("scanned", 0),
+        "qs_autocomputed": qs_counters.get("autocomputed", 0),
+        "qs_decayed": qs_counters.get("decayed", 0),
+        "qs_overridden": qs_counters.get("overridden", 0),
+        "qs_errored": qs_counters.get("errored", 0),
     }
 
 

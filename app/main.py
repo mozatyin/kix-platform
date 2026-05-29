@@ -30,6 +30,40 @@ async def lifespan(app: FastAPI):
             "recipes seed load failed: %s", _exc
         )
 
+    # ── Schema health check: detect missing critical PG tables ────────
+    # If alembic migrations haven't been applied to this env, certain
+    # routers (geofence/PostGIS) will 500 at first request. We log a WARN
+    # at startup so operators see the problem in the boot log instead of
+    # discovering it via traffic. NEVER fatal — the Redis-only geofence
+    # path keeps working, and other tables degrade gracefully too.
+    try:
+        from app.database import write_engine
+        from sqlalchemy import text as _sql_text
+
+        _CRITICAL_TABLES = ("geofences",)
+        async with write_engine.connect() as _conn:
+            for _tbl in _CRITICAL_TABLES:
+                row = await _conn.execute(
+                    _sql_text(
+                        "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                        "WHERE table_schema='public' AND table_name=:t)"
+                    ),
+                    {"t": _tbl},
+                )
+                exists = bool(row.scalar())
+                if not exists:
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "schema_health: missing PG table %r — run "
+                        "`alembic upgrade head` (Redis-only fallback active)",
+                        _tbl,
+                    )
+    except Exception as _exc:  # pragma: no cover — never fail startup
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "schema_health check skipped: %s", _exc
+        )
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────
@@ -353,8 +387,15 @@ and the shim helpers in `app.api_standards`.
 
     # ── Campaign Manager + Auction Engine (Google-Ads-style) ───────────
     from app.routers import campaigns, auction
+    from app import quality_score as qs_module
     app.include_router(
         campaigns.router, prefix="/api/v1/campaigns", tags=["campaigns"]
+    )
+    # P2 fix: QS auto-compute / decay / breakdown / override endpoints
+    # mount alongside campaigns so clients hit them at
+    # /api/v1/campaigns/{cid}/qs-{breakdown,override}.
+    app.include_router(
+        qs_module.router, prefix="/api/v1/campaigns", tags=["campaigns"]
     )
     app.include_router(
         auction.router, prefix="/api/v1/auction", tags=["auction"]
