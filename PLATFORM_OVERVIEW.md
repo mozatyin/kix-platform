@@ -6,6 +6,16 @@
 >
 > 软件免费 · 网络收费 · AI 复刻的功能永远免费 · 真正的护城河 = 商家之间的用户流动
 
+## 🌐 官方域名
+
+| 端 | 域名 | 用途 |
+|------|------|------|
+| **商家入口** | https://partner.letskix.com/ | Merchant Portal — 注册 / 钱包 / 活动 / 数据 |
+| **品牌主页** | https://partner.letskix.com/s/{brand_id} | Storefront — 用户公开访问的品牌页 |
+| **API 接口** | https://api.letskix.com/ | REST API 根 |
+| **Pixel SDK** | https://partner.letskix.com/sdk/kix-pixel.js | 商家网站埋码用 |
+| **Gamification SDK** | https://partner.letskix.com/sdk/kix.js | 嵌入游戏组件用 |
+
 ---
 
 ## 📌 给新接入成员（5 分钟读完版）
@@ -190,7 +200,7 @@ GMV > ¥1M       → 商家抽 5%  × KiX 拿 15% = KiX 净 0.75%
 
 ```html
 <!-- 任何页面顶部 -->
-<script src="https://api.kix.gg/sdk/kix-pixel.js" data-pixel="YOUR_PIXEL_ID"></script>
+<script src="https://partner.letskix.com/sdk/kix-pixel.js" data-pixel="YOUR_PIXEL_ID"></script>
 
 <!-- 注册成功时 -->
 <script>kix.identify('user_123');</script>
@@ -292,7 +302,8 @@ cd ../kix-platform
 .venv/bin/python scripts/sim_laowang.py
 
 # 6. 打开商家 Portal
-open http://localhost:8000/landing/portal.html
+open http://localhost:8000/landing/portal.html  # 本地开发
+# 生产环境：https://partner.letskix.com/
 ```
 
 ---
