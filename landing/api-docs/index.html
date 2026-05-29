@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX Platform API Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#00FC00;
+  --green-dim:#00cc00;
+  --green-bg:rgba(0,252,0,.08);
+  --green-border:rgba(0,252,0,.15);
+  --dark:#0a0a0a;
+  --card:#111;
+  --card-hover:#161616;
+  --border:#1e1e1e;
+  --border-light:#2a2a2a;
+  --text:#fff;
+  --text-dim:rgba(255,255,255,.6);
+  --text-muted:rgba(255,255,255,.35);
+  --danger:#ff4444;
+  --warning:#ffaa00;
+  --blue:#4488ff;
+  --purple:#a855f7;
+  --orange:#ff8a3d;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radius:16px;
+  --radius-sm:10px;
+  --radius-xs:6px;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--dark);color:var(--text);line-height:1.6;min-height:100vh}
+a{color:var(--green);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:13px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#555}
+
+/* ── Container ─────────────────────────────────────────── */
+.shell{max-width:1100px;margin:0 auto;padding:48px 24px 96px}
+
+/* ── Hero ──────────────────────────────────────────────── */
+.hero{
+  padding:56px 0 40px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:48px;
+  position:relative;
+}
+.hero::before{
+  content:'';position:absolute;
+  width:600px;height:400px;
+  background:radial-gradient(ellipse at top,rgba(0,252,0,.08) 0%,transparent 60%);
+  top:-80px;right:-100px;pointer-events:none;z-index:0;
+}
+.hero-inner{position:relative;z-index:1}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:600;letter-spacing:.08em;
+  color:var(--green);text-transform:uppercase;
+  background:var(--green-bg);border:1px solid var(--green-border);
+  padding:6px 12px;border-radius:99px;margin-bottom:20px;
+}
+.eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+h1{font-size:56px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin-bottom:18px}
+h1 span{color:var(--green)}
+.hero p{font-size:18px;color:var(--text-dim);max-width:680px}
+
+.cta-row{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 22px;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:600;border:1px solid var(--border-light);
+  background:var(--card);color:var(--text);transition:all .15s;
+  cursor:pointer;
+}
+.btn:hover{background:var(--card-hover);border-color:#444;text-decoration:none}
+.btn.primary{background:var(--green);color:#000;border-color:var(--green)}
+.btn.primary:hover{background:var(--green-dim);border-color:var(--green-dim)}
+.btn.ghost{background:transparent}
+
+/* ── Section heading ───────────────────────────────────── */
+h2{font-size:28px;font-weight:700;letter-spacing:-.5px;margin:64px 0 8px}
+h2:first-of-type{margin-top:0}
+.section-sub{color:var(--text-dim);font-size:14px;margin-bottom:24px}
+
+/* ── Category grid ─────────────────────────────────────── */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.cat{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:22px;
+  transition:all .15s;position:relative;overflow:hidden;
+}
+.cat:hover{background:var(--card-hover);border-color:var(--border-light);transform:translateY(-2px)}
+.cat-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat h3{font-size:16px;font-weight:700}
+.cat-desc{font-size:13px;color:var(--text-dim);margin:8px 0 14px;min-height:38px}
+.cat-stats{display:flex;gap:14px;font-size:12px;color:var(--text-muted);font-family:var(--mono)}
+.cat-stats b{color:var(--text);font-weight:600}
+.cat[data-color="green"] .cat-dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+.cat[data-color="blue"] .cat-dot{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.cat[data-color="purple"] .cat-dot{background:var(--purple);box-shadow:0 0 8px var(--purple)}
+.cat[data-color="orange"] .cat-dot{background:var(--orange);box-shadow:0 0 8px var(--orange)}
+.cat[data-color="warning"] .cat-dot{background:var(--warning);box-shadow:0 0 8px var(--warning)}
+
+/* ── Code samples ──────────────────────────────────────── */
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:6px;border-bottom:none}
+.tab{
+  padding:8px 14px;border-radius:var(--radius-xs);font-size:13px;font-weight:500;
+  color:var(--text-dim);background:transparent;border:none;cursor:pointer;transition:all .15s;
+}
+.tab.active{background:var(--dark);color:var(--green)}
+.tab:hover:not(.active){color:var(--text)}
+.code-wrap{
+  background:#0d0d0d;border:1px solid var(--border);border-radius:0 0 var(--radius-sm) var(--radius-sm);
+  padding:20px 22px;overflow-x:auto;
+}
+.code-wrap pre{font-family:var(--mono);font-size:13px;line-height:1.65;color:#e5e5e5}
+.code-wrap .k{color:#c084fc}
+.code-wrap .s{color:#86efac}
+.code-wrap .c{color:#737373;font-style:italic}
+.code-wrap .n{color:#fbbf24}
+.code-wrap .f{color:#60a5fa}
+.code-block{display:none}
+.code-block.active{display:block}
+
+/* ── Auth + Errors ─────────────────────────────────────── */
+.callout{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px 26px;margin-bottom:14px;
+}
+.callout h3{font-size:15px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.callout h3 .pill{
+  font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 8px;border-radius:99px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);
+}
+.callout p{font-size:14px;color:var(--text-dim)}
+.callout code{background:#1a1a1a;padding:2px 6px;border-radius:4px;color:#fbbf24}
+
+/* ── Error table ───────────────────────────────────────── */
+.error-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.error-table th,.error-table td{padding:13px 18px;text-align:left;font-size:13px;border-bottom:1px solid var(--border)}
+.error-table tr:last-child td{border-bottom:none}
+.error-table th{background:#0d0d0d;color:var(--text-dim);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.error-table td:first-child{font-family:var(--mono);color:var(--danger);font-weight:600;white-space:nowrap}
+.error-table td:nth-child(2){font-weight:600}
+.error-table td:nth-child(3){color:var(--text-dim)}
+.error-table tr:hover{background:var(--card-hover)}
+
+/* ── Footer ────────────────────────────────────────────── */
+.footer{
+  margin-top:80px;padding-top:32px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;color:var(--text-muted);flex-wrap:wrap;gap:12px;
+}
+.footer a{color:var(--text-dim)}
+.brand{font-weight:800;letter-spacing:-.5px;font-size:18px}
+.brand span{color:var(--green)}
+
+@media (max-width:640px){
+  h1{font-size:38px}
+  .shell{padding:32px 18px 60px}
+  .hero{padding:32px 0 24px;margin-bottom:32px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── HERO ─────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">API Reference · v5.0.0</div>
+      <h1>KiX Platform <span>API</span></h1>
+      <p>TikTok Ads for Gamification. Drive new-user acquisition through quality-adjusted auctions, deliver smart pushes, and grow loyal users with composable gamification modules — all from one platform.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="/docs">Open Swagger UI</a>
+        <a class="btn" href="/redoc">Open ReDoc</a>
+        <a class="btn ghost" href="https://partner.letskix.com" target="_blank" rel="noopener">Partner Portal</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CATEGORIES ───────────────────────────────────── -->
+  <h2>API Categories</h2>
+  <p class="section-sub">37 routers grouped into 5 functional domains. Tags inside Swagger UI mirror this taxonomy.</p>
+
+  <div class="cat-grid">
+    <div class="cat" data-color="green">
+      <div class="cat-head"><span class="cat-dot"></span><h3>Gamification Core</h3></div>
+      <p class="cat-desc">Engage your existing users — XP, levels, badges, streaks, currencies, quests, and 10 composable mechanics. Free to use.</p>
+      <div class="cat-stats"><span><b>17</b> routers</span><span><b>~180</b> endpoints</span><span style="color:var(--green)">FREE</span></div>
+    </div>
+
+    <div class="cat" data-color="blue">
+      <div class="cat-head"><span class="cat-dot"></span><h3>Ad Platform</h3></div>
+      <p class="cat-desc">Buy NEW users via quality-adjusted Vickrey GSP auction. Campaigns, attribution, audiences, wallet, pixel, and frequency capping.</p>
+      <div class="cat-stats"><span><b>10</b> routers</span><span><b>~120</b> endpoints</span><span style="color:var(--blue)">PAID · Auction</span></div>
+    </div>
+
+    <div class="cat" data-color="purple">
+      <div class="cat-head"><span class="cat-dot"></span><h3>Identity (KiX ID)</h3></div>
+      <p class="cat-desc">Universal user identity (<code>kid_xxx</code>) with OAuth-style merchant Connect and full GDPR / PIPL consent management.</p>
+      <div class="cat-stats"><span><b>2</b> routers</span><span><b>~25</b> endpoints</span><span style="color:var(--purple)">Identity</span></div>
+    </div>
+
+    <div class="cat" data-color="orange">
+      <div class="cat-head"><span class="cat-dot"></span><h3>Push Engine</h3></div>
+      <p class="cat-desc">Right-time, right-place, right-user algorithmic push delivery integrated with the auction. Pay only on delivery.</p>
+      <div class="cat-stats"><span><b>1</b> router</span><span><b>~15</b> endpoints</span><span style="color:var(--orange)">Delivery</span></div>
+    </div>
+
+    <div class="cat" data-color="warning">
+      <div class="cat-head"><span class="cat-dot"></span><h3>Master Account</h3></div>
+      <p class="cat-desc">Multi-store hierarchies with role-based access control. One corp account → many brand IDs → many stores.</p>
+      <div class="cat-stats"><span><b>1</b> router</span><span><b>~18</b> endpoints</span><span style="color:var(--warning)">RBAC</span></div>
+    </div>
+  </div>
+
+  <!-- ── QUICK START ──────────────────────────────────── -->
+  <h2>Quick Start</h2>
+  <p class="section-sub">Top up your wallet, launch a campaign targeting new users, then track conversions. Three steps, three languages.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-lang="curl">cURL</button>
+    <button class="tab" data-lang="python">Python</button>
+    <button class="tab" data-lang="js">JavaScript</button>
+  </div>
+
+  <div class="code-wrap">
+    <pre class="code-block active" data-lang="curl"><span class="c"># 1. Top up your merchant wallet (USD)</span>
+curl -X POST https://api.letskix.com<span class="f">/api/v1/wallet/brand_acme/topup</span> \
+  -H <span class="s">"Authorization: Bearer $KIX_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"amount_usd": 500, "payment_method": "stripe_card"}'</span>
+
+<span class="c"># 2. Create a new-user acquisition campaign</span>
+curl -X POST https://api.letskix.com<span class="f">/api/v1/campaigns/create</span> \
+  -H <span class="s">"Authorization: Bearer $KIX_API_KEY"</span> \
+  -d <span class="s">'{
+    "brand_id": "brand_acme",
+    "name": "Spring NewUser Push",
+    "target_audience": "new_users_only",
+    "bid_usd": 0.42,
+    "daily_budget_usd": 50
+  }'</span>
+
+<span class="c"># 3. Track conversion when user redeems</span>
+curl -X POST https://api.letskix.com<span class="f">/api/v1/attribution/track/conversion</span> \
+  -H <span class="s">"Authorization: Bearer $KIX_API_KEY"</span> \
+  -d <span class="s">'{"kid": "kid_abc123", "event": "purchase", "value_usd": 12.50}'</span></pre>
+
+    <pre class="code-block" data-lang="python"><span class="k">import</span> requests
+
+API = <span class="s">"https://api.letskix.com"</span>
+H = {<span class="s">"Authorization"</span>: <span class="s">f"Bearer {API_KEY}"</span>}
+
+<span class="c"># 1. Top up wallet</span>
+requests.<span class="f">post</span>(<span class="s">f"{API}/api/v1/wallet/brand_acme/topup"</span>,
+              headers=H, json={<span class="s">"amount_usd"</span>: <span class="n">500</span>,
+                               <span class="s">"payment_method"</span>: <span class="s">"stripe_card"</span>})
+
+<span class="c"># 2. Launch new-user campaign</span>
+campaign = requests.<span class="f">post</span>(<span class="s">f"{API}/api/v1/campaigns/create"</span>,
+    headers=H,
+    json={
+        <span class="s">"brand_id"</span>: <span class="s">"brand_acme"</span>,
+        <span class="s">"name"</span>: <span class="s">"Spring NewUser Push"</span>,
+        <span class="s">"target_audience"</span>: <span class="s">"new_users_only"</span>,  <span class="c"># pay only for NEW users</span>
+        <span class="s">"bid_usd"</span>: <span class="n">0.42</span>,
+        <span class="s">"daily_budget_usd"</span>: <span class="n">50</span>,
+    }).<span class="f">json</span>()
+<span class="f">print</span>(<span class="s">"campaign_id ="</span>, campaign[<span class="s">"campaign_id"</span>])
+
+<span class="c"># 3. Track conversion</span>
+requests.<span class="f">post</span>(<span class="s">f"{API}/api/v1/attribution/track/conversion"</span>,
+              headers=H, json={<span class="s">"kid"</span>: <span class="s">"kid_abc123"</span>,
+                               <span class="s">"event"</span>: <span class="s">"purchase"</span>,
+                               <span class="s">"value_usd"</span>: <span class="n">12.50</span>})</pre>
+
+    <pre class="code-block" data-lang="js"><span class="k">const</span> API = <span class="s">"https://api.letskix.com"</span>;
+<span class="k">const</span> H = { <span class="s">"Authorization"</span>: <span class="s">`Bearer ${API_KEY}`</span>,
+            <span class="s">"Content-Type"</span>: <span class="s">"application/json"</span> };
+
+<span class="c">// 1. Top up wallet</span>
+<span class="k">await</span> <span class="f">fetch</span>(<span class="s">`${API}/api/v1/wallet/brand_acme/topup`</span>, {
+  method: <span class="s">"POST"</span>, headers: H,
+  body: <span class="f">JSON.stringify</span>({ amount_usd: <span class="n">500</span>, payment_method: <span class="s">"stripe_card"</span> })
+});
+
+<span class="c">// 2. Launch a new-user acquisition campaign</span>
+<span class="k">const</span> camp = <span class="k">await</span> (<span class="k">await</span> <span class="f">fetch</span>(<span class="s">`${API}/api/v1/campaigns/create`</span>, {
+  method: <span class="s">"POST"</span>, headers: H,
+  body: <span class="f">JSON.stringify</span>({
+    brand_id: <span class="s">"brand_acme"</span>,
+    name: <span class="s">"Spring NewUser Push"</span>,
+    target_audience: <span class="s">"new_users_only"</span>,
+    bid_usd: <span class="n">0.42</span>,
+    daily_budget_usd: <span class="n">50</span>
+  })
+})).<span class="f">json</span>();
+
+<span class="c">// 3. Track conversion (or use the Pixel SDK: /sdk/kix-pixel.js)</span>
+<span class="k">await</span> <span class="f">fetch</span>(<span class="s">`${API}/api/v1/attribution/track/conversion`</span>, {
+  method: <span class="s">"POST"</span>, headers: H,
+  body: <span class="f">JSON.stringify</span>({ kid: <span class="s">"kid_abc123"</span>, event: <span class="s">"purchase"</span>, value_usd: <span class="n">12.5</span> })
+});</pre>
+  </div>
+
+  <!-- ── AUTHENTICATION ───────────────────────────────── -->
+  <h2>Authentication</h2>
+  <p class="section-sub">Three auth flavours depending on which audience the endpoint serves.</p>
+
+  <div class="callout">
+    <h3>Merchant Bearer Token <span class="pill">Server</span></h3>
+    <p>Long-lived API keys minted in the Brand Portal. Required for campaigns, wallet, attribution, audiences, and most write endpoints. Send as <code>Authorization: Bearer kix_live_xxx</code>.</p>
+  </div>
+
+  <div class="callout">
+    <h3>KiX ID Session (kid) <span class="pill">User</span></h3>
+    <p>Short-lived JWT representing an end-user (<code>kid_xxx</code>) — used by the KiX App, Pixel SDK, and merchant-embedded SDKs. Issued by <code>/api/v1/kix-id/session</code> and refreshed automatically.</p>
+  </div>
+
+  <div class="callout">
+    <h3>Pixel ID <span class="pill">Client</span></h3>
+    <p>Public, low-trust ID embedded in client JS for event collection only. Cannot read data; can only write conversions/page-views via <code>/api/v1/pixel/collect</code>. Rate-limited per origin.</p>
+  </div>
+
+  <!-- ── ERROR CODES ──────────────────────────────────── -->
+  <h2>Common Error Codes</h2>
+  <p class="section-sub">All errors return JSON with <code>{detail, code, request_id}</code>. Always log <code>request_id</code> when filing a support ticket.</p>
+
+  <table class="error-table">
+    <thead>
+      <tr><th>HTTP</th><th>code</th><th>When it fires</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>400</td><td>invalid_request</td><td>Malformed JSON, missing required field, or schema mismatch.</td></tr>
+      <tr><td>401</td><td>auth_required</td><td>Missing or expired Bearer token / kid session.</td></tr>
+      <tr><td>403</td><td>scope_forbidden</td><td>Token lacks the role/scope (RBAC) needed for this resource.</td></tr>
+      <tr><td>404</td><td>not_found</td><td>Brand, campaign, kid, or voucher id does not exist.</td></tr>
+      <tr><td>409</td><td>conflict</td><td>Duplicate idempotency key or state-machine collision (e.g. double redemption).</td></tr>
+      <tr><td>422</td><td>validation_failed</td><td>Field-level validation error — see <code>detail[].loc</code> for the failing path.</td></tr>
+      <tr><td>429</td><td>rate_limited</td><td>Per-token or per-origin quota exceeded. Honor <code>Retry-After</code> header.</td></tr>
+      <tr><td>451</td><td>consent_required</td><td>End-user has not granted the required GDPR / PIPL consent scope.</td></tr>
+      <tr><td>500</td><td>internal_error</td><td>Unexpected server error — report <code>request_id</code> to support.</td></tr>
+      <tr><td>503</td><td>service_unavailable</td><td>Downstream (Redis/auction engine) temporarily degraded. Safe to retry.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ── FOOTER ───────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="brand">Ki<span>X</span> · API</div>
+    <div>
+      <a href="/docs">Swagger</a> &middot;
+      <a href="/redoc">ReDoc</a> &middot;
+      <a href="/openapi.json">openapi.json</a> &middot;
+      <a href="mailto:partners@letskix.com">partners@letskix.com</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// Tabs
+const tabs = document.querySelectorAll('.tab');
+const blocks = document.querySelectorAll('.code-block');
+tabs.forEach(t => t.addEventListener('click', () => {
+  const lang = t.dataset.lang;
+  tabs.forEach(x => x.classList.toggle('active', x === t));
+  blocks.forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+}));
+</script>
+</body>
+</html>

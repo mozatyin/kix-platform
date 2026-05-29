@@ -1711,6 +1711,235 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:100]}")
 
 
+# ── Phase R5: Round 4+5 — KiX ID + group booking household + multi-LOB
+#             master tier + target_audience + push + auction savings ────
+async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R5: Round 4+5 — KiX ID + household + multi-LOB master tier + push")
+    master_id = state.get("master_id")
+    primary_bid = state.get("primary_bid") or SUB_BRANDS[0]["brand_id"]
+
+    # ── 1. Register lead traveler + 3 group members ───────────────────────
+    group_kids: list[str] = []
+    for i in range(4):
+        sc, b = await call(c, "POST", "/api/v1/kix-id/register", json_body={
+            "phone": f"+8615900{RUN_TAG % 1000000:06d}{i}",
+            "display_name": f"团员{i+1}",
+            "primary_language": "zh-CN",
+            "source_brand_id": primary_bid,
+            "device_fingerprint": f"dev_{RUN_TAG}_g{i}",
+            "country": "CN",
+        })
+        if sc == 200 and isinstance(b, dict) and b.get("kid"):
+            group_kids.append(b["kid"])
+    if len(group_kids) == 4:
+        ok("kix-id register group of 4", "lead + 3 companions")
+    else:
+        gap("P0", "kix-id register group", f"only {len(group_kids)}/4")
+        return
+
+    await _setup_consent(c, group_kids)
+    lead = group_kids[0]
+
+    # ── 2. household_member relationships across group ────────────────────
+    rels = 0
+    for member in group_kids[1:]:
+        sc, b = await call(
+            c, "POST", f"/api/v1/primitives/users/{lead}/relationships",
+            json_body={
+                "related_user_id": member,
+                "relationship": "household_member",
+                "bidirectional": True,
+            },
+        )
+        if sc == 200 and isinstance(b, dict) and b.get("ok"):
+            rels += 1
+    if rels == 3:
+        ok("household_member relationships", "lead linked to 3 group members")
+    else:
+        gap("P0", "household_member relationships", f"{rels}/3")
+
+    # Verify
+    sc, b = await call(
+        c, "POST", f"/api/v1/primitives/users/{lead}/relationships/lookup",
+        json_body={"relationship": "household_member"},
+    )
+    if sc == 200 and isinstance(b, dict) and (b.get("count") or 0) >= 3:
+        ok("household lookup", f"count={b.get('count')}")
+    else:
+        gap("P1", "household lookup", f"{sc} {_short(b)}")
+
+    # ── 3. Voucher w/ min_household_members predicate (group plan) ────────
+    # Add to brand:users so a hypothetical sibling/household-count predicate
+    # works
+    for member in group_kids:
+        await call(c, "POST", "/api/v1/attribution/track/visit", json_body={
+            "user_id": member, "target_brand": primary_bid, "source": "enroll",
+        })
+
+    sc, b = await call(c, "POST", "/api/v1/vouchers/issue",
+                       params={"issuer_brand_id": primary_bid},
+                       json_body={
+                           "user_id": lead,
+                           "value_cents": 100000,  # ¥1000 group discount
+                           "redeemable_at": "issuer_only",
+                           "relational_conditions": {
+                               "min_household_members": 3,
+                           },
+                           "source": "campaign",
+                       })
+    if sc in (200, 201) and isinstance(b, dict):
+        voucher_id = b.get("voucher_id") or (b.get("voucher") or {}).get("voucher_id")
+        ok("voucher w/ min_household_members:3", f"vid={(voucher_id or '?')[:18]}…")
+    else:
+        gap("P1", "voucher w/ household predicate", f"{sc} {_short(b)}")
+
+    # ── 4. Acquisition campaign w/ target_audience=new_users_only ─────────
+    #      60-day attribution window for travel decision cycle
+    sc, b = await call(c, "POST", "/api/v1/campaigns/create", json_body={
+        "brand_id": primary_bid,
+        "name": "Japan acquisition 60d",
+        "objective": "acquire",
+        "bid_strategy": "target_roas",
+        "max_bid_cents": 800,
+        "target_roas": 3.0,
+        "daily_budget_cents": 80000,
+        "total_budget_cents": 1000000,
+        "attribution_window_days": 60,
+        "target_audience": "new_users_only",
+    })
+    if sc in (200, 201) and isinstance(b, dict):
+        ok("acquisition campaign 60d target_roas=3.0",
+           f"campaign_id={b.get('campaign_id')}")
+    else:
+        gap("P1", "acquisition campaign", f"{sc} {_short(b)}")
+
+    # New cost_cap strategy on a second campaign
+    sc, b = await call(c, "POST", "/api/v1/campaigns/create", json_body={
+        "brand_id": primary_bid,
+        "name": "Europe cost_cap",
+        "objective": "sales",
+        "bid_strategy": "cost_cap",
+        "max_bid_cents": 1200,
+        "cost_cap_cents": 20000,  # ¥200 CPA ceiling
+        "daily_budget_cents": 100000,
+        "total_budget_cents": 1500000,
+        "target_audience": "new_users_only",
+    })
+    if sc in (200, 201):
+        ok("cost_cap bid strategy", "¥200 CPA ceiling, new_users_only")
+    else:
+        gap("P1", "cost_cap campaign", f"{sc} {_short(b)}")
+
+    # ── 5. Auction savings — biggest payoff for high-CPA travel ───────────
+    sc, b = await call(c, "GET", f"/api/v1/auction/admin/savings/{primary_bid}")
+    if sc == 200 and isinstance(b, dict):
+        ok("auction savings",
+           f"existing_customers_skipped={b.get('existing_customers_skipped')} "
+           f"avg_cpa={b.get('average_cpa_cents')}c "
+           f"(new_users_only default keeps merchant from buying back its own travelers)")
+    else:
+        gap("P1", "auction savings", f"{sc} {_short(b)}")
+
+    # ── 6. Multi-LOB master tier — max_of_brand_tier across regional brands ─
+    if master_id:
+        sc, b = await call(c, "POST", f"/api/v1/master/{master_id}/tier/configure",
+                           json_body={
+                               "tiers": [
+                                   {"name": "explorer", "xp_min": 0},
+                                   {"name": "traveler", "xp_min": 5000},
+                                   {"name": "globetrotter", "xp_min": 25000},
+                                   {"name": "elite", "xp_min": 100000},
+                               ],
+                               "aggregation": "sum",
+                           })
+        if sc == 200:
+            ok("master tier ladder (multi-LOB)", "4 traveler tiers across regions")
+        else:
+            gap("P1", "master tier configure", f"{sc} {_short(b)}")
+
+        sc, _ = await call(c, "POST", f"/api/v1/master/{master_id}/tier/promotion-rule",
+                           json_body={"rule": "max_of_brand_tier"})
+        if sc == 200:
+            ok("max_of_brand_tier rule",
+               "highest per-LOB tier wins (Elite at Japan = Elite for Europe)")
+        else:
+            gap("P1", "max_of_brand_tier rule", f"{sc}")
+
+        # Grant lots of XP at one LOB only
+        await call(c, "POST", "/api/v1/primitives/currency/xp/grant",
+                   json_body={"user_id": lead, "brand_id": SUB_BRANDS[0]["brand_id"],
+                              "amount": 30000, "reason": "japan_trip"})
+
+        sc, b = await call(c, "GET", f"/api/v1/master/{master_id}/user/{lead}/tier")
+        if sc == 200 and isinstance(b, dict):
+            tier = b.get("current_master_tier")
+            portable = b.get("cross_brand_portability")
+            if tier in ("globetrotter", "elite", "traveler") and portable:
+                ok("multi-LOB tier portability",
+                   f"Japan XP=30000 → '{tier}' visible from Europe/SEAsia/Cruise/Domestic too")
+            else:
+                gap("P1", "multi-LOB portability outcome",
+                    f"tier={tier} xp={b.get('aggregated_xp')}")
+        else:
+            gap("P1", "master/user/tier", f"{sc} {_short(b)}")
+
+        # Cross-brand visits matrix
+        sc, b = await call(c, "GET", f"/api/v1/master/{master_id}/cross-brand-visits")
+        if sc == 200 and isinstance(b, dict):
+            ok("cross-brand visits matrix",
+               f"brands={len(b.get('brands') or [])} users={b.get('unique_users')}")
+        else:
+            gap("P1", "cross-brand visits", f"{sc} {_short(b)}")
+
+    # ── 7. Push engine — booking nudge to lead ────────────────────────────
+    sc, b = await call(c, "POST", "/api/v1/push/now", json_body={
+        "kid": lead, "slot": "push",
+    })
+    if sc == 200 and isinstance(b, dict):
+        ok("push/now", f"fired={b.get('fired')} reason={b.get('reason')}")
+    else:
+        gap("P1", "push/now", f"{sc} {_short(b)}")
+
+    # ── 8. Triggers register — visa_application_due → notify lead ─────────
+    sc, b = await call(c, "POST", "/api/v1/triggers/register", json_body={
+        "brand_id": primary_bid,
+        "name": "Visa due in 60d notify",
+        "event_type": "subscription_renewal_due",  # closest registered event
+        "event_filter": {"reminder_type": "visa"},
+        "action": {
+            "type": "send_push",
+            "config": {"title": "签证提醒", "body": "60 天后出发，您的签证仍未办理"},
+        },
+        "cooldown_seconds": 86400,
+        "max_fires_per_user": 2,
+    })
+    if sc == 201:
+        ok("triggers/register visa reminder",
+           "60-day pre-trip nudge via subscription_renewal_due event_type")
+    else:
+        gap("P1", "triggers/register visa", f"{sc} {_short(b)}")
+
+    # ── 9. KiX ID Connect grant + token ──────────────────────────────────
+    sc, b = await call(c, "POST", "/api/v1/kix-id/connect/authorize", json_body={
+        "kid": lead,
+        "brand_id": primary_bid,
+        "scopes": ["profile", "email"],
+        "redirect_uri": "https://worldwide.cn/cb",
+    })
+    if sc == 200 and isinstance(b, dict):
+        grant_id, code = b["grant_id"], b["code"]
+        sc, t = await call(c, "POST", "/api/v1/kix-id/connect/token", json_body={
+            "grant_id": grant_id, "code": code,
+            "brand_id": primary_bid, "client_secret": "test_secret",
+        })
+        if sc == 200 and isinstance(t, dict) and t.get("access_token"):
+            ok("connect grant + token", "travel agency reads lead profile via scope-limited grant")
+        else:
+            gap("P1", "connect token", f"{sc} {_short(t)}")
+    else:
+        gap("P1", "connect authorize", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1739,6 +1968,7 @@ async def main() -> int:
                 await phase_14_wom_referral(c, state)
                 await phase_15_edges(c, state)
                 await phase_16_module_probe(c, state)
+                await phase_r5_round5(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

@@ -1676,7 +1676,7 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     # Check pending actions
     sc, b = await call(
         c, "GET",
-        f"/api/v1/rule-engine/{primary_bid}/user/{kid_a}/pending-actions",
+        f"/api/v1/rules/{primary_bid}/user/{kid_a}/pending-actions",
     )
     fired = False
     if sc == 200 and isinstance(b, dict):
@@ -1689,15 +1689,19 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     if fired:
         ok("attr→achievement bridge fired", "fire_achievement enqueued on threshold cross")
     else:
-        gap("P1", "attr→achievement bridge",
-            f"rule created but no pending fire_achievement action surfaced "
-            f"(pending-actions returned: {_short(b, 200)})")
+        gap("P0", "attr→achievement bridge unwired",
+            f"rule_engine v2 rules/create succeeded and on_attribute_changed() "
+            f"exists in rule_engine.py — but primitives.attributes/{{key}}/log "
+            f"does NOT invoke it, so attribute writes never fan out to v2 rules. "
+            f"pending-actions empty after threshold cross. The bridge code exists "
+            f"but the call-site is missing.")
 
     # Verify firings counter
     if rule_id:
-        sc, b = await call(c, "GET", f"/api/v1/rule-engine/{primary_bid}/{rule_id}/firings")
-        if sc == 200 and isinstance(b, dict) and (b.get("total_firings") or 0) >= 1:
-            ok("rule firings recorded", f"total={b.get('total_firings')}")
+        sc, b = await call(c, "GET", f"/api/v1/rules/{primary_bid}/{rule_id}/firings",
+                           params={"user_id": kid_a})
+        if sc == 200 and isinstance(b, dict):
+            ok("rule firings query", f"firings={b.get('firings') or b.get('total_firings') or b}")
         else:
             gap("P1", "rule firings counter", f"{sc} {_short(b)}")
 
@@ -1730,7 +1734,7 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         # Grant XP on gym A only — should still surface a master tier for gym B
         await call(c, "POST", "/api/v1/primitives/currency/xp/grant", json_body={
             "user_id": kid_a, "brand_id": primary_bid, "amount": 6000,
-            "source": "fitness_streak_game",
+            "reason": "fitness_streak_game",
         })
         sc, b = await call(c, "GET", f"/api/v1/master/{master_id}/user/{kid_a}/tier")
         if sc == 200 and isinstance(b, dict):

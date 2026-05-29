@@ -39,8 +39,65 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Build and configure the FastAPI application."""
     app = FastAPI(
-        title="KiX Platform",
+        title="KiX Platform API",
+        description="""
+KiX = TikTok Ads for Gamification.
+
+## Quick Start
+
+1. Register at [partner.letskix.com](https://partner.letskix.com)
+2. Use `/api/v1/wallet/{brand_id}/topup` to fund your account
+3. Create campaign via `/api/v1/campaigns/create`
+4. Default `target_audience=new_users_only` — pay only for NEW user acquisition
+5. Track conversions via Pixel SDK or `/api/v1/attribution/track/conversion`
+
+## Key Concepts
+- **Brand**: Your business (one or more stores = a master account)
+- **kid**: Universal KiX user identifier (kid_xxx)
+- **Auction**: Quality-adjusted Vickrey GSP — bids ranked by `bid × quality × pacing`
+- **Push**: KiX algorithm-driven smart push, you pay only on delivery
+
+## Modules (5 categories)
+
+- **Gamification core**: 17 routers managing your existing users (FREE)
+- **Ad Platform**: 10 routers for buying NEW users (PAID, auction-based)
+- **Identity (KiX ID)**: Universal user identity + OAuth Connect
+- **Push Engine**: Right-time/place/user delivery
+- **Master Account**: Multi-store hierarchy + RBAC
+""",
         version="5.0.0",
+        contact={
+            "name": "KiX Platform Team",
+            "url": "https://partner.letskix.com",
+            "email": "partners@letskix.com",
+        },
+        license_info={
+            "name": "KiX Partner Agreement",
+            "url": "https://partner.letskix.com/terms",
+        },
+        openapi_tags=[
+            {"name": "Gamification - Progression", "description": "XP, Levels, Badges, Streaks, Daily Check-in"},
+            {"name": "Gamification - Primitives", "description": "Currency, Items, Achievements, Quests, Tiers"},
+            {"name": "Gamification - Modules", "description": "10 composable top-level modules"},
+            {"name": "Ad Platform - Auction", "description": "Quality-adjusted Vickrey GSP auction"},
+            {"name": "Ad Platform - Campaigns", "description": "Campaign + AdGroup + Quality Score"},
+            {"name": "Ad Platform - Attribution", "description": "7-day last-touch + multi-touch + view-through"},
+            {"name": "Ad Platform - Wallet", "description": "Merchant balance, top-up, charge, refund"},
+            {"name": "Ad Platform - Audiences", "description": "Custom + Lookalike + Recency filters"},
+            {"name": "Ad Platform - Pixel", "description": "JS SDK for conversion tracking"},
+            {"name": "Identity - KiX ID", "description": "Universal user identity + OAuth Connect"},
+            {"name": "Identity - Consent", "description": "GDPR/PIPL consent management"},
+            {"name": "Push Engine", "description": "Smart push delivery with auction integration"},
+            {"name": "Geofence + LBS", "description": "Location-based discovery"},
+            {"name": "Master + Multi-Store", "description": "Multi-store hierarchy + RBAC"},
+            {"name": "Payments", "description": "Payouts, settlement, invoicing"},
+            {"name": "Frequency Cap", "description": "Anti-burnout + pacing"},
+            {"name": "Vouchers", "description": "Issue, redeem, transfer with relational predicates"},
+            {"name": "Reservations", "description": "Future-dated commitments + no-show recovery"},
+            {"name": "Disputes", "description": "Merchant complaint + refund workflow"},
+            {"name": "Storefront", "description": "Public brand profile + discover"},
+            {"name": "Partnerships", "description": "OPTIONAL: joint campaigns (advanced, rarely needed)"},
+        ],
         lifespan=lifespan,
     )
 
@@ -339,6 +396,18 @@ def create_app() -> FastAPI:
     @app.get("/")
     async def root_to_landing():
         return RedirectResponse(url="/landing/index.html")
+
+    # ── Public API Reference shortcuts ─────────────────────────────────
+    # `/docs` (Swagger UI) and `/redoc` (ReDoc) are auto-mounted by
+    # FastAPI. We add two vanity URLs that point at the curated
+    # human-friendly landing page under /landing/api-docs/.
+    @app.get("/api-docs", include_in_schema=False)
+    async def api_docs_redirect():
+        return RedirectResponse(url="/landing/api-docs/index.html")
+
+    @app.get("/api-reference", include_in_schema=False)
+    async def api_reference_redirect():
+        return RedirectResponse(url="/landing/api-docs/index.html")
 
     # ── Vanity URL for KiX App (`/app/*` → `/landing/app/*`) ───────────
     # Lets us advertise `partner.letskix.com/app/` as the user-facing
