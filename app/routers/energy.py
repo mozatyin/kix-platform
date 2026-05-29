@@ -204,6 +204,21 @@ async def grant_qr_energy(
     cooldown_ttl = config.get("qr_cooldown_ttl", 14400)
     next_available = datetime.now(timezone.utc) + timedelta(seconds=cooldown_ttl)
 
+    # 7. Dashboard daily counters (best-effort, never block response).
+    #    These feed /api/v1/dashboards/{brand_id}/today — see dashboards.py.
+    try:
+        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        scans_key = f"brand:{brand_id}:qr_scans:{day}"
+        users_key = f"brand:{brand_id}:scanning_users:{day}"
+        await r.sadd(scans_key, f"{user_id}:{nonce}")
+        await r.expire(scans_key, 60 * 60 * 24 * 35)
+        await r.sadd(users_key, user_id)
+        await r.expire(users_key, 60 * 60 * 24 * 35)
+        # Streak: mark today as an active day for this brand.
+        await r.sadd(f"brand:{brand_id}:active_days", day)
+    except Exception:  # pragma: no cover
+        logger.warning("dashboard counters failed for brand=%s", brand_id)
+
     return EnergyGrantResponse(
         energy_granted=actual_granted,
         energy_balance=new_balance,

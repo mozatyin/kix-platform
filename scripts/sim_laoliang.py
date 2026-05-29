@@ -2004,6 +2004,138 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         gap("P1", "connect authorize", f"{sc} {_short(b)}")
 
 
+# ── Phase R10: Round 10 — consolidated rollup, deposits, dynamic pricing,
+#              health check probes for the travel agency journey ──────────
+async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R10: master rollup + refundable deposits + surge pricing + health")
+    master_id = state.get("master_id")
+    primary_bid = state.get("primary_bid") or SUB_BRANDS[0]["brand_id"]
+
+    # Register a fresh traveler for deposit + pricing flows
+    sc, b = await call(c, "POST", "/api/v1/kix-id/register", json_body={
+        "phone": f"+8615911{RUN_TAG % 1000000:06d}",
+        "display_name": "R10 traveler",
+        "primary_language": "zh-CN",
+        "source_brand_id": primary_bid,
+        "device_fingerprint": f"dev_r10_{RUN_TAG}",
+        "country": "CN",
+    })
+    traveler_kid: str | None = None
+    if sc == 200 and isinstance(b, dict) and b.get("kid"):
+        traveler_kid = b["kid"]
+        ok("kix-id register R10 traveler", f"kid={traveler_kid}")
+    else:
+        gap("P1", "kix-id register R10 traveler", f"{sc} {_short(b)}")
+
+    # ── 1. GET /master/{mid}/reports/consolidated ─────────────────────────
+    if master_id:
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/reports/consolidated")
+        if sc == 200 and isinstance(b, dict):
+            ok("master reports/consolidated",
+               f"brands={b.get('brand_count') or len(b.get('by_brand') or [])} "
+               f"keys={list(b.keys())[:6]}")
+        else:
+            gap("P0", "master reports/consolidated", f"{sc} {_short(b)}")
+
+        # ── 2. GET /master/{mid}/revenue/by-brand ─────────────────────────
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/revenue/by-brand")
+        if sc == 200 and isinstance(b, dict):
+            ok("master revenue/by-brand",
+               f"brands={len(b.get('by_brand') or [])} "
+               f"total_cents={b.get('total_revenue_cents') or b.get('total_gmv_cents')}")
+        else:
+            gap("P0", "master revenue/by-brand", f"{sc} {_short(b)}")
+
+        # ── 3. GET /master/{mid}/transactions/all ─────────────────────────
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/transactions/all",
+                           params={"limit": 100})
+        if sc == 200 and isinstance(b, dict):
+            ok("master transactions/all",
+               f"count={b.get('count')} "
+               f"gmv={(b.get('totals') or {}).get('gmv_cents')}")
+        else:
+            gap("P0", "master transactions/all", f"{sc} {_short(b)}")
+
+        # ── 6. GET /master/{mid}/health/check ─────────────────────────────
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/health/check")
+        if sc == 200 and isinstance(b, dict):
+            ok("master health/check",
+               f"status={b.get('overall_status') or b.get('status')} "
+               f"issues={len(b.get('issues') or [])}")
+        else:
+            gap("P0", "master health/check", f"{sc} {_short(b)}")
+
+    # ── 4. POST /deposits/place — refundable tour deposit ──────────────────
+    if traveler_kid:
+        # Create wallet + topup so the freeze has funds
+        sc, _ = await call(c, "POST",
+                           f"/api/v1/user-wallet/{traveler_kid}/create",
+                           json_body={"currency": "CNY"})
+        if sc not in (200, 201):
+            gap("P1", "user-wallet/create", f"{sc}")
+        sc, _ = await call(c, "POST",
+                           f"/api/v1/user-wallet/{traveler_kid}/topup",
+                           json_body={
+                               "amount_cents": 50_00_00,  # ¥5000
+                               "source": "alipay",
+                               "reference_id": f"topup_{RUN_TAG}_r10",
+                           })
+        if sc == 200:
+            ok("user-wallet/topup ¥5000", "alipay")
+        else:
+            gap("P1", "user-wallet/topup", f"{sc}")
+
+        sc, b = await call(c, "POST", "/api/v1/deposits/place", json_body={
+            "user_id": traveler_kid,
+            "brand_id": primary_bid,
+            "amount_cents": 200_00_00,  # ¥20000 EU tour deposit
+            "purpose": "event_deposit",
+            "reference_id": f"tour_dep_{RUN_TAG}",
+            "refundable": True,
+            "note": "Europe 12-day tour booking deposit",
+        })
+        if sc in (200, 201) and isinstance(b, dict):
+            ok("deposits/place ¥20000 refundable tour deposit",
+               f"deposit_id={(b.get('deposit_id') or '?')[:24]}…")
+        else:
+            gap("P0", "deposits/place refundable tour deposit",
+                f"{sc} {_short(b)}")
+
+    # ── 5. POST /pricing/quote — peak-season surge for Chinese New Year ───
+    sc, b = await call(c, "POST", "/api/v1/pricing/rule/configure", json_body={
+        "brand_id": primary_bid,
+        "sku_or_listing_id": f"japan_tour_{RUN_TAG}",
+        "rules": [
+            {"trigger": "flag", "condition": {"flag": "peak_season"},
+             "multiplier": 1.8, "label": "CNY Golden Week surge"},
+            {"trigger": "demand", "condition": {"min_demand_index": 80},
+             "multiplier": 1.3, "label": "high demand"},
+        ],
+    })
+    if sc in (200, 201):
+        ok("pricing/rule/configure peak_season + demand", "1.8x + 1.3x")
+    else:
+        gap("P1", "pricing/rule/configure", f"{sc} {_short(b)}")
+
+    sc, b = await call(c, "POST", "/api/v1/pricing/quote", json_body={
+        "brand_id": primary_bid,
+        "sku_or_listing_id": f"japan_tour_{RUN_TAG}",
+        "base_price_cents": 800_000,  # ¥8000
+        "context": {"flag": {"peak_season": True}, "demand_index": 95},
+    })
+    if sc == 200 and isinstance(b, dict):
+        mult = b.get("multiplier_applied")
+        ok("pricing/quote peak season surge",
+           f"mult={mult} quoted={b.get('quoted_price_cents')}c "
+           f"fired={len(b.get('rules_fired') or [])}")
+    else:
+        gap("P0", "pricing/quote peak season surge", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -2041,6 +2173,7 @@ async def main() -> int:
                 await phase_15_edges(c, state)
                 await phase_16_module_probe(c, state)
                 await phase_r5_round5(c, state)
+                await phase_r10_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

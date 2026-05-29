@@ -1339,6 +1339,165 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:100]}")
 
 
+# ── Phase R10: Round 10 — first-class B2B accounts, org chart, buying
+#              committee, subscriptions w/ NDR/GRR, co-attribution ────────
+async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R10: accounts/subscriptions/co-attribution (B2B SaaS native)")
+    primary_bid = state.get("primary_bid")
+    users = state.get("users") or {}
+    ceo = (users.get("ceo") or [None])[0]
+    cto = (users.get("cto") or [None])[0]
+    procurement = (users.get("procurement") or [None])[0]
+    employee = (users.get("employee") or [None])[0]
+
+    if not (primary_bid and ceo and cto and procurement and employee):
+        gap("P0", "R10 prerequisites", "missing brand/users from earlier phases")
+        return
+
+    # ── 1. POST /accounts/register — enterprise B2B account ────────────────
+    sc, b = await call(c, "POST", "/api/v1/accounts/register", json_body={
+        "account_name": f"FactoryCorp {RUN_TAG}",
+        "industry": "manufacturing",
+        "size": "51-200",
+        "primary_contact_user_id": ceo,
+        "billing_contact_user_id": procurement,
+        "domain": f"factory{RUN_TAG}.example.cn",
+        "metadata": {"vertical": "saas_buyer"},
+    })
+    aid: str | None = None
+    if sc in (200, 201) and isinstance(b, dict) and b.get("account_id"):
+        aid = b["account_id"]
+        ok("accounts/register enterprise account",
+           f"account_id={aid} primary={ceo[:14]}")
+    else:
+        gap("P0", "accounts/register", f"{sc} {_short(b)}")
+        return
+
+    # ── 2. POST /accounts/{aid}/members/add — CTO + procurement + end_user
+    added = 0
+    for uid, role in (
+        (cto, "decision_maker"),
+        (procurement, "procurement"),
+        (employee, "end_user"),
+    ):
+        sc, b = await call(c, "POST",
+                           f"/api/v1/accounts/{aid}/members/add",
+                           json_body={
+                               "user_id": uid,
+                               "role": role,
+                               "seat_status": "active",
+                           })
+        if sc == 200:
+            added += 1
+    if added == 3:
+        ok("accounts/members/add", "CTO/procurement/end_user attached")
+    else:
+        gap("P0", "accounts/members/add", f"{added}/3 added")
+
+    # ── 3. POST /accounts/{aid}/org-chart/edge — CEO → CTO → end_user ─────
+    sc1, _ = await call(c, "POST",
+                        f"/api/v1/accounts/{aid}/org-chart/edge",
+                        json_body={
+                            "manager_user_id": ceo,
+                            "report_user_id": cto,
+                        })
+    sc2, _ = await call(c, "POST",
+                        f"/api/v1/accounts/{aid}/org-chart/edge",
+                        json_body={
+                            "manager_user_id": cto,
+                            "report_user_id": employee,
+                        })
+    if sc1 == 200 and sc2 == 200:
+        ok("accounts/org-chart/edge", "CEO → CTO → end_user 2-level tree")
+    else:
+        gap("P0", "accounts/org-chart/edge", f"sc1={sc1} sc2={sc2}")
+
+    # ── 4. GET /accounts/{aid}/buying-committee ────────────────────────────
+    sc, b = await call(c, "GET",
+                       f"/api/v1/accounts/{aid}/buying-committee")
+    if sc == 200 and isinstance(b, dict):
+        cnt = b.get("count") or len(b.get("members") or [])
+        # End-user should be excluded; CEO + CTO + procurement = 3
+        if cnt >= 3:
+            ok("accounts/buying-committee",
+               f"count={cnt} (end_user excluded)")
+        else:
+            gap("P1", "accounts/buying-committee count",
+                f"got {cnt}, expected >=3")
+    else:
+        gap("P0", "accounts/buying-committee", f"{sc} {_short(b)}")
+
+    # ── 5. POST /subscriptions/create — account-owned B2B seat plan ────────
+    now = time.time()
+    sc, b = await call(c, "POST", "/api/v1/subscriptions/create", json_body={
+        "account_id": aid,
+        "brand_id": primary_bid,
+        "plan_id": f"enterprise_plan_{RUN_TAG}",
+        "monthly_amount_cents": 50000,  # ¥500/seat/month
+        "seats": 10,
+        "billing_cycle": "annual",
+        "starts_at": now,
+        "auto_renew": True,
+        "metadata": {"tier": "enterprise"},
+    })
+    sid: str | None = None
+    if sc in (200, 201) and isinstance(b, dict) and b.get("subscription_id"):
+        sid = b["subscription_id"]
+        ok("subscriptions/create B2B account-owned",
+           f"sid={sid} seats={b.get('seats')} mrr={b.get('mrr_cents')}c")
+    else:
+        gap("P0", "subscriptions/create", f"{sc} {_short(b)}")
+
+    # ── 6. POST /subscriptions/{sid}/seat-change — seat expansion ──────────
+    if sid:
+        sc, b = await call(c, "POST",
+                           f"/api/v1/subscriptions/{sid}/seat-change",
+                           json_body={"new_seat_count": 25})
+        if sc == 200 and isinstance(b, dict):
+            ok("subscriptions/seat-change 10→25",
+               f"movement={b.get('movement')} "
+               f"delta_mrr={b.get('delta_mrr_cents')}c")
+        else:
+            gap("P0", "subscriptions/seat-change", f"{sc} {_short(b)}")
+
+    # ── 7. GET /subscriptions/brand/{bid}/metrics — NDR / GRR ──────────────
+    sc, b = await call(c, "GET",
+                       f"/api/v1/subscriptions/brand/{primary_bid}/metrics",
+                       params={"period": "monthly"})
+    if sc == 200 and isinstance(b, dict):
+        ok("subscriptions/brand/metrics NDR/GRR",
+           f"NDR={b.get('ndr')} GRR={b.get('grr')} "
+           f"customers={b.get('customer_count')} "
+           f"ARR_end={b.get('arr_end_cents')}c")
+    else:
+        gap("P0", "subscriptions/brand/metrics", f"{sc} {_short(b)}")
+
+    # ── 8. POST /attribution/track/conversion-co — multi-stakeholder split ─
+    # First grant consent to each named user so co-attribution doesn't 403.
+    await _setup_consent(c, [ceo, cto, procurement])
+    sc, b = await call(c, "POST",
+                       "/api/v1/attribution/track/conversion-co",
+                       json_body={
+                           "target_brand": primary_bid,
+                           "order_id": f"b2b_order_{RUN_TAG}",
+                           "amount_cents": 1_200_000,  # ¥12000 annual deal
+                           "account_id": aid,
+                           "co_attribution": [
+                               {"user_id": ceo,        "role": "signer",      "weight": 0.4},
+                               {"user_id": cto,        "role": "decider",     "weight": 0.4},
+                               {"user_id": procurement,"role": "influencer",  "weight": 0.2},
+                           ],
+                       })
+    if sc in (200, 201) and isinstance(b, dict):
+        users_out = b.get("attributed_users") or []
+        ok("attribution/track/conversion-co",
+           f"users={len(users_out)} "
+           f"total_commission={b.get('total_commission_cents')}c "
+           f"event={(b.get('event_id') or '?')[:18]}…")
+    else:
+        gap("P0", "attribution/track/conversion-co", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1372,6 +1531,7 @@ async def main() -> int:
                 await phase_12_renewal_campaign(c, state)
                 await phase_13_abm(c, state)
                 await phase_14_module_probe(c, state)
+                await phase_r10_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

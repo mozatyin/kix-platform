@@ -117,6 +117,21 @@ async def start_game(
         is_day1=is_day1,
     )
 
+    # Dashboard daily counters (best-effort, never block response).
+    #    Tracks games_played + first-seen-per-day for new-user proxy.
+    try:
+        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        await r.incr(f"brand:{brand_id}:game_plays:{day}")
+        await r.expire(f"brand:{brand_id}:game_plays:{day}", 60 * 60 * 24 * 35)
+        # New users today (first time we see this user_id for this brand)
+        if await r.sadd(f"brand:{brand_id}:users_ever", user_id):
+            await r.sadd(f"brand:{brand_id}:users_acquired:{day}", user_id)
+            await r.expire(
+                f"brand:{brand_id}:users_acquired:{day}", 60 * 60 * 24 * 35
+            )
+    except Exception:  # pragma: no cover
+        logger.warning("dashboard counters failed for brand=%s", brand_id)
+
     return GameStartResponse(
         session_id=session_id,
         access_token=access_token,
@@ -233,6 +248,28 @@ async def end_game(
             "Reward engine unavailable for session=%s, degraded response",
             body.session_id,
         )
+
+    # Dashboard daily counters (best-effort).
+    try:
+        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        await r.incr(f"brand:{brand_id}:games_completed:{day}")
+        await r.expire(
+            f"brand:{brand_id}:games_completed:{day}", 60 * 60 * 24 * 35
+        )
+        # Session duration: started_at is set by reserve_energy in session hash.
+        started_at = session_data.get("created_at")
+        if started_at:
+            try:
+                started_f = float(started_at)
+                dur = max(0, int(datetime.now(timezone.utc).timestamp() - started_f))
+                if 0 < dur < 3600:  # filter implausible sessions
+                    sd_key = f"brand:{brand_id}:session_dur:{day}"
+                    await r.rpush(sd_key, dur)
+                    await r.expire(sd_key, 60 * 60 * 24 * 35)
+            except (TypeError, ValueError):
+                pass
+    except Exception:  # pragma: no cover
+        logger.warning("dashboard counters failed for brand=%s", brand_id)
 
     return GameEndResponse(
         rank=rank,

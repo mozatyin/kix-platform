@@ -805,6 +805,16 @@ async def identity_link(
             r, kid, "link_phone", {"phone_hash": ph[:12]}
         )
         linked.append("phone")
+        # Dashboard counters: per-brand phone_verified set for today.
+        try:
+            day_str = time.strftime("%Y-%m-%d", time.gmtime(_now()))
+            brands = await r.smembers(f"kid:{kid}:brands")
+            for b in brands or []:
+                pv_key = f"brand:{b}:phone_verified:{day_str}"
+                await r.sadd(pv_key, kid)
+                await r.expire(pv_key, 60 * 60 * 24 * 35)
+        except Exception:  # pragma: no cover
+            pass
 
     if body.email:
         eh = _hash_identifier(body.email)
@@ -1436,6 +1446,24 @@ async def qr_scan_bind(
             "is_new_to_brand": is_new_to_brand,
         },
     )
+
+    # Dashboard daily counters (best-effort).
+    try:
+        day_str = time.strftime("%Y-%m-%d", time.gmtime(now))
+        scans_key = f"brand:{brand_id}:qr_scans:{day_str}"
+        await r.sadd(scans_key, f"{kid}:{int(now)}")
+        await r.expire(scans_key, 60 * 60 * 24 * 35)
+        await r.sadd(f"brand:{brand_id}:scanning_users:{day_str}", kid)
+        await r.expire(
+            f"brand:{brand_id}:scanning_users:{day_str}", 60 * 60 * 24 * 35
+        )
+        await r.sadd(f"brand:{brand_id}:active_days", day_str)
+        if is_new_to_brand:
+            users_key = f"brand:{brand_id}:users_acquired:{day_str}"
+            await r.sadd(users_key, kid)
+            await r.expire(users_key, 60 * 60 * 24 * 35)
+    except Exception:  # pragma: no cover
+        logger.warning("dashboard counters failed for brand=%s", brand_id)
 
     return {
         "kid": kid,

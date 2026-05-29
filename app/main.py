@@ -474,6 +474,22 @@ KiX = TikTok Ads for Gamification.
         tags=["subscriptions"],
     )
 
+    # ── Brand Subscriptions: FREE/STARTER/GROWTH/ENTERPRISE tier system ─
+    from app.routers import brand_subscriptions
+    app.include_router(
+        brand_subscriptions.router,
+        prefix="/api/v1/brand-subscriptions",
+        tags=["brand_subscriptions"],
+    )
+
+    # ── Payment Methods: card-on-file + anti-fraud + background charge ──
+    from app.routers import payment_methods
+    app.include_router(
+        payment_methods.router,
+        prefix="/api/v1/payment-methods",
+        tags=["payment_methods"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():

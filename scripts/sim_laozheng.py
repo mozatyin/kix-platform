@@ -1480,6 +1480,95 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:100]}")
 
 
+# ── Phase R10: Round 10 — consumer wallet, enterprise B2B accounts,
+#              and compliance rollups for the fintech journey ────────────
+async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R10: user_wallet + enterprise accounts + compliance rollups")
+    master_id = state.get("master_id")
+    primary_bid = state.get("primary_bid") or next(
+        iter(state.get("sub_brands", {}).values()), None
+    )
+    investors = state.get("investors") or []
+    primary_kid = (
+        state.get("primary_kid")
+        or (investors[0] if investors else None)
+    )
+
+    # ── 1. POST /user-wallet/{kid}/create — consumer money-in for retail ──
+    if primary_kid:
+        sc, b = await call(c, "POST",
+                           f"/api/v1/user-wallet/{primary_kid}/create",
+                           json_body={"currency": "CNY"})
+        if sc in (200, 201) and isinstance(b, dict):
+            ok("user-wallet/create",
+               f"balance={b.get('balance_cents')} currency={b.get('currency')}")
+        else:
+            gap("P0", "user-wallet/create", f"{sc} {_short(b)}")
+
+        # ── 2. POST /user-wallet/{kid}/topup — money-in ────────────────────
+        sc, b = await call(c, "POST",
+                           f"/api/v1/user-wallet/{primary_kid}/topup",
+                           json_body={
+                               "amount_cents": 1_000_000,  # ¥10000
+                               "source": "bank_transfer",
+                               "reference_id": f"laozheng_topup_{RUN_TAG}",
+                               "note": "fintech onboarding deposit",
+                           })
+        if sc == 200 and isinstance(b, dict):
+            ok("user-wallet/topup ¥10000",
+               f"new_balance={b.get('new_balance_cents')}c tx={b.get('tx_id')}")
+        else:
+            gap("P0", "user-wallet/topup consumer money in", f"{sc} {_short(b)}")
+
+    # ── 3. POST /accounts/register — enterprise B2B treasury client ────────
+    enterprise_primary = f"enterprise_lead_{RUN_TAG}"
+    sc, b = await call(c, "POST", "/api/v1/accounts/register", json_body={
+        "account_name": f"Acme Treasury Co {RUN_TAG}",
+        "industry": "manufacturing",
+        "size": "201-1000",
+        "primary_contact_user_id": enterprise_primary,
+        "domain": f"acme{RUN_TAG}.example.cn",
+        "metadata": {"vertical": "fintech_enterprise"},
+    })
+    enterprise_aid: str | None = None
+    if sc in (200, 201) and isinstance(b, dict) and b.get("account_id"):
+        enterprise_aid = b["account_id"]
+        ok("accounts/register enterprise B2B",
+           f"account_id={enterprise_aid} size=201-1000")
+    else:
+        gap("P0", "accounts/register enterprise B2B", f"{sc} {_short(b)}")
+
+    # ── 4. GET /master/{mid}/compliance/audit ──────────────────────────────
+    if master_id:
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/compliance/audit")
+        if sc == 200 and isinstance(b, dict):
+            ok("master compliance/audit",
+               f"keys={list(b.keys())[:6]} "
+               f"events={len(b.get('events') or b.get('audit_events') or [])}")
+        else:
+            gap("P0", "master compliance/audit", f"{sc} {_short(b)}")
+
+        # ── 5. GET /master/{mid}/compliance/dashboard ──────────────────────
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/compliance/dashboard")
+        if sc == 200 and isinstance(b, dict):
+            ok("master compliance/dashboard",
+               f"status={b.get('overall_status') or b.get('status')} "
+               f"brands={len(b.get('by_brand') or [])}")
+        else:
+            gap("P0", "master compliance/dashboard", f"{sc} {_short(b)}")
+
+        # Bonus: consolidated rollup is the natural fintech treasury view.
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/reports/consolidated")
+        if sc == 200 and isinstance(b, dict):
+            ok("master reports/consolidated (fintech rollup)",
+               f"brands={b.get('brand_count') or len(b.get('by_brand') or [])}")
+        else:
+            gap("P1", "master reports/consolidated", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1515,6 +1604,7 @@ async def main() -> int:
                 await phase_13_frequency_cap(c, state)
                 await phase_14_pixel_event(c, state)
                 await phase_15_module_probe(c, state)
+                await phase_r10_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

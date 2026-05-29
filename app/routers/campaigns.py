@@ -592,6 +592,38 @@ async def create_campaign(
             ),
         )
 
+    # ── Tier-quota gate (campaigns_active) ─────────────────────────────
+    # Block creation when the brand has hit the active-campaign quota for
+    # its current subscription tier. Fail-open if the subscription module
+    # is unavailable (defensive — never break creation because the quota
+    # subsystem is down).
+    try:
+        from app.routers.brand_subscriptions import check_quota
+        allowed, info = await check_quota(
+            body.brand_id, "campaigns_active", r
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_limit_reached",
+                    "message": (
+                        f"Your {info['tier']} tier allows "
+                        f"{info['limit']} active campaigns. Upgrade to "
+                        f"{info['upgrade_required_to']} for more."
+                    ),
+                    "tier": info["tier"],
+                    "current": info["current"],
+                    "limit": info["limit"],
+                    "upgrade_required_to": info["upgrade_required_to"],
+                },
+            )
+    except HTTPException:
+        raise
+    except (ImportError, ValueError):
+        # Module not available or unknown resource — fail-open.
+        pass
+
     campaign_id = f"camp_{uuid4().hex[:16]}"
     payload = _serialise_campaign(body, campaign_id)
 
@@ -632,6 +664,10 @@ async def create_campaign(
             "revenue_cents": 0,
         },
     )
+    # Tier-quota counter — INCR campaigns_count for this brand. Counts
+    # every newly created campaign (active or pending_review) since both
+    # consume merchant headroom; on delete / cancellation we DECR.
+    pipe.incr(f"brand:{body.brand_id}:campaigns_count")
     await pipe.execute()
 
     logger.info(
@@ -805,7 +841,20 @@ async def delete_campaign(
     pipe.srem(ACTIVE_CAMPAIGNS_KEY, campaign_id)
     if brand_id:
         pipe.srem(BRAND_CAMPAIGNS_KEY.format(bid=brand_id), campaign_id)
+        # Tier-quota counter — DECR campaigns_count. Floor at 0 to stay
+        # safe against double-deletes / external mutations.
+        pipe.decr(f"brand:{brand_id}:campaigns_count")
     await pipe.execute()
+    # Clamp the counter at 0 (DECR can go negative if the key was missing
+    # or already drained; the subscription tier UI would render an
+    # unsigned int oddly otherwise).
+    if brand_id:
+        try:
+            cur = await r.get(f"brand:{brand_id}:campaigns_count")
+            if cur is not None and int(cur) < 0:
+                await r.set(f"brand:{brand_id}:campaigns_count", 0)
+        except (TypeError, ValueError):
+            pass
     return {"ok": True, "deleted": campaign_id}
 
 
