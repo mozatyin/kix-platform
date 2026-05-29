@@ -25,15 +25,81 @@ import sys
 import time
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
-from app.database import async_session_factory
+from app.database import async_session_factory, write_engine
 from app.models.geofence import Geofence
 from app.redis_client import close_redis, get_redis, init_redis
 
 logger = logging.getLogger("migrate_geofence")
 
 SCAN_BATCH = 200
+
+
+# ── Idempotent table creation ─────────────────────────────────────────────
+#
+# In production the canonical path is ``alembic upgrade head`` (see
+# ``migrations/versions/0003_geofences.py``). In dev / staging environments
+# operators frequently forget that step and the migrate script is the first
+# thing to discover the missing table. We mirror the migration's DDL here
+# so the backfill is self-bootstrapping — every statement is guarded with
+# ``IF NOT EXISTS`` so it's safe to run after the real migration too.
+_BOOTSTRAP_DDL = [
+    "CREATE EXTENSION IF NOT EXISTS postgis",
+    """
+    CREATE TABLE IF NOT EXISTS geofences (
+        id              VARCHAR(64) PRIMARY KEY,
+        brand_id        VARCHAR(128) NOT NULL,
+        store_id        VARCHAR(128),
+        name            VARCHAR(256) NOT NULL,
+        radius_meters   INTEGER NOT NULL DEFAULT 500,
+        active          BOOLEAN NOT NULL DEFAULT TRUE,
+        metadata_json   JSONB NOT NULL DEFAULT '{}'::jsonb,
+        location        geography(POINT, 4326) NOT NULL
+                            DEFAULT ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography,
+        polygon         geography(POLYGON, 4326),
+        created_at      BIGINT NOT NULL,
+        updated_at      BIGINT NOT NULL,
+        db_created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        db_updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    # GiST spatial index — the whole point of the migration.
+    "CREATE INDEX IF NOT EXISTS ix_geofence_location_gist "
+    "ON geofences USING GIST(location)",
+    # Brand-scoped secondary indexes.
+    "CREATE INDEX IF NOT EXISTS ix_geofence_brand_active "
+    "ON geofences (brand_id, active)",
+    "CREATE INDEX IF NOT EXISTS ix_geofences_brand_id "
+    "ON geofences (brand_id)",
+    "CREATE INDEX IF NOT EXISTS ix_geofences_store_id "
+    "ON geofences (store_id)",
+]
+
+
+async def ensure_geofences_table() -> None:
+    """Create the ``geofences`` table + GIST index if missing.
+
+    Idempotent: every DDL statement uses ``IF NOT EXISTS`` so this is safe
+    to call repeatedly and safe to call after ``alembic upgrade head``
+    already provisioned the schema. Logs at INFO when the bootstrap fires
+    so ops can confirm the dev-env self-heal.
+    """
+    async with write_engine.begin() as conn:
+        # Probe first so we only log on actual creation.
+        row = await conn.execute(
+            text(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema='public' AND table_name='geofences')"
+            )
+        )
+        already = bool(row.scalar())
+        for stmt in _BOOTSTRAP_DDL:
+            await conn.execute(text(stmt))
+        if not already:
+            logger.info(
+                "geofences table bootstrapped (alembic was not applied)"
+            )
 
 
 # ── Decoders ──────────────────────────────────────────────────────────────
@@ -250,6 +316,13 @@ async def _amain(argv: list[str]) -> int:
 
     await init_redis()
     try:
+        # Self-heal: create the table if alembic wasn't applied. Safe to
+        # call after the real migration too (every stmt is IF NOT EXISTS).
+        try:
+            await ensure_geofences_table()
+        except Exception as exc:  # pragma: no cover — dev convenience
+            logger.warning("ensure_geofences_table skipped: %s", exc)
+
         if args.verify:
             stats = await verify()
             print(json.dumps(stats, indent=2))

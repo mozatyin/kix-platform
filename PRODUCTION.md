@@ -229,6 +229,54 @@ sudo systemctl restart kix-api
 curl -fsS https://api.letskix.com/api/v1/attribution/health
 ```
 
+## Geofence PG Setup
+
+The geofence module dual-writes to Redis (`GEOADD geofence:stores`) and a
+PostGIS-backed `geofences` table. Reads currently come from Redis, with PG
+serving as the future scale path once the 30-day soak verifies parity.
+
+If the PG table is missing the API logs:
+
+```
+WARN  schema_health: missing PG table 'geofences' — run `alembic upgrade head`
+```
+
+This is **non-fatal** — the Redis-only path keeps serving traffic — but
+the backfill script will fail and PG-side spatial queries (`ST_DWithin`)
+won't work until the table exists.
+
+### Apply the migration
+
+```bash
+cd /opt/kix-platform
+sudo -u kix .venv/bin/alembic upgrade head
+```
+
+This creates the `geofences` table with the `location geography(POINT,
+4326)` column, the `ix_geofence_location_gist` GiST index, and the brand-
+scoped secondary indexes.
+
+### Backfill from Redis (dual-write soak)
+
+```bash
+sudo -u kix .venv/bin/python -m scripts.migrate_geofence_to_postgis --dry-run
+sudo -u kix .venv/bin/python -m scripts.migrate_geofence_to_postgis
+sudo -u kix .venv/bin/python -m scripts.migrate_geofence_to_postgis --verify
+```
+
+The migrate script is **idempotent**: it bootstraps the `geofences` table
+itself (every DDL guarded with `IF NOT EXISTS`) so a fresh dev env can run
+the backfill without first running `alembic upgrade head`. In production
+still prefer alembic — the script's self-heal is a dev convenience, not
+the canonical schema source.
+
+### Verify the GiST index
+
+```bash
+psql -U kix -d kix -c "\d+ geofences"
+# expect: ix_geofence_location_gist gist (location)
+```
+
 ## Common Issues
 
 | Symptom | Cause | Fix |
