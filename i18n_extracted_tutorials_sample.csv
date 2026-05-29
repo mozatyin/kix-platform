@@ -1,0 +1,115 @@
+file,line,original,category,proposed_key,is_user_facing
+app/routers/tutorials.py,57,成长体系,button,tutorials.progression,yes
+app/routers/tutorials.py,58,代币系统,button,tutorials.currency,yes
+app/routers/tutorials.py,59,道具系统,button,tutorials.item,yes
+app/routers/tutorials.py,60,成就系统,button,tutorials.achievement,yes
+app/routers/tutorials.py,61,任务系统,button,tutorials.quest,yes
+app/routers/tutorials.py,62,等级 (Tier),label,tutorials.tier,yes
+app/routers/tutorials.py,63,活动事件,button,tutorials.event,yes
+app/routers/tutorials.py,65,Reward Roulette,label,tutorials.reward_roulette,yes
+app/routers/tutorials.py,65,抽奖轮盘,button,tutorials.lottery,yes
+app/routers/tutorials.py,66,联赛,button,tutorials.league,yes
+app/routers/tutorials.py,67,Battle Pass,label,tutorials.battle_pass,yes
+app/routers/tutorials.py,67,战令通行证,button,tutorials.battle_pass_2,yes
+app/routers/tutorials.py,68,Smart Quests,label,tutorials.smart_quests,yes
+app/routers/tutorials.py,68,智能任务,button,tutorials.quest_2,yes
+app/routers/tutorials.py,69,Story Quest,label,tutorials.story_quest,yes
+app/routers/tutorials.py,69,剧情任务,button,tutorials.quest_3,yes
+app/routers/tutorials.py,70,生命值,button,tutorials.s_37be5a,yes
+app/routers/tutorials.py,71,锦标赛,button,tutorials.s_1f4a41,yes
+app/routers/tutorials.py,72,收藏册,button,tutorials.s_3f4364,yes
+app/routers/tutorials.py,73,Badge Wall,label,tutorials.badge_wall,yes
+app/routers/tutorials.py,73,勋章墙,button,tutorials.s_61de78,yes
+app/routers/tutorials.py,75,连续打卡,button,tutorials.s_51ba2b,yes
+app/routers/tutorials.py,77,Voucher Builder,label,tutorials.voucher_builder,yes
+app/routers/tutorials.py,77,优惠券模板,button,tutorials.voucher,yes
+app/routers/tutorials.py,78,优惠券,button,tutorials.voucher_2,yes
+app/routers/tutorials.py,80,Social Graph,label,tutorials.social_graph,yes
+app/routers/tutorials.py,80,社交图谱,button,tutorials.s_897dfb,yes
+app/routers/tutorials.py,81,Social Feed,label,tutorials.social_feed,yes
+app/routers/tutorials.py,81,社交动态,button,tutorials.s_559d12,yes
+app/routers/tutorials.py,82,Auto Share,label,tutorials.auto_share,yes
+app/routers/tutorials.py,82,自动分享,button,tutorials.s_d7f675,yes
+app/routers/tutorials.py,83,Share to Win,label,tutorials.share_to_win,yes
+app/routers/tutorials.py,83,分享得奖,button,tutorials.s_9403af,yes
+app/routers/tutorials.py,84,Energy Invite,label,tutorials.energy_invite,yes
+app/routers/tutorials.py,84,邀请送能量,button,tutorials.s_1b690a,yes
+app/routers/tutorials.py,85,Friend Challenge,label,tutorials.friend_challenge,yes
+app/routers/tutorials.py,85,好友挑战,button,tutorials.s_27456c,yes
+app/routers/tutorials.py,86,Ladder Climb,label,tutorials.ladder_climb,yes
+app/routers/tutorials.py,86,天梯攀升,button,tutorials.s_2f1941,yes
+app/routers/tutorials.py,87,Streak Rescue,label,tutorials.streak_rescue,yes
+app/routers/tutorials.py,87,续命挽救,button,tutorials.s_3006da,yes
+app/routers/tutorials.py,88,排行榜,button,tutorials.leaderboard,yes
+app/routers/tutorials.py,89,Network Effect,label,tutorials.network_effect,yes
+app/routers/tutorials.py,89,网络效应,button,tutorials.s_4b0b21,yes
+app/routers/tutorials.py,91,Score → Coupon,label,tutorials.score_coupon,yes
+app/routers/tutorials.py,91,积分换券,button,tutorials.points,yes
+app/routers/tutorials.py,92,能量系统,button,tutorials.s_b4b8b4,yes
+app/routers/tutorials.py,93,增值推荐,button,tutorials.s_9dd59d,yes
+app/routers/tutorials.py,94,Redemption Store,label,tutorials.redemption_store,yes
+app/routers/tutorials.py,94,兑换商店,button,tutorials.redeem,yes
+app/routers/tutorials.py,95,Rate Limit,label,tutorials.rate_limit,yes
+app/routers/tutorials.py,95,频率限制,button,tutorials.s_6b57e8,yes
+app/routers/tutorials.py,97,Group Actions,label,tutorials.group_actions,yes
+app/routers/tutorials.py,97,团购助力,button,tutorials.s_93250c,yes
+app/routers/tutorials.py,98,Group Buy,label,tutorials.group_buy,yes
+app/routers/tutorials.py,98,拼团,button,tutorials.s_0dc5dc,yes
+app/routers/tutorials.py,99,Atomic Group,label,tutorials.atomic_group,yes
+app/routers/tutorials.py,99,原子团,button,tutorials.s_135421,yes
+app/routers/tutorials.py,100,Price Cut,label,tutorials.price_cut,yes
+app/routers/tutorials.py,100,砍一刀,button,tutorials.s_075ede,yes
+app/routers/tutorials.py,102,Coop Quest,label,tutorials.coop_quest,yes
+app/routers/tutorials.py,102,合作任务,button,tutorials.quest_4,yes
+app/routers/tutorials.py,103,副本,button,tutorials.s_0428b3,yes
+app/routers/tutorials.py,104,战队,button,tutorials.s_ffb4e2,yes
+app/routers/tutorials.py,105,领地战,button,tutorials.s_32a41a,yes
+app/routers/tutorials.py,107,Gift Sending,label,tutorials.gift_sending,yes
+app/routers/tutorials.py,107,送礼,button,tutorials.s_fd735e,yes
+app/routers/tutorials.py,108,Trading Post,label,tutorials.trading_post,yes
+app/routers/tutorials.py,108,交易所,button,tutorials.s_d60b79,yes
+app/routers/tutorials.py,109,Group Reward,label,tutorials.group_reward,yes
+app/routers/tutorials.py,109,团体奖励,button,tutorials.s_60fd9e,yes
+app/routers/tutorials.py,110,First-Come First-Served,label,tutorials.first_come_first_served,yes
+app/routers/tutorials.py,110,先到先得,button,tutorials.s_3a2004,yes
+app/routers/tutorials.py,112,Limited Drop,label,tutorials.limited_drop,yes
+app/routers/tutorials.py,112,限量发放,button,tutorials.s_3a18bf,yes
+app/routers/tutorials.py,113,触发器,button,tutorials.s_469672,yes
+app/routers/tutorials.py,135,我们将引导你搭建「{recipe_name}」。包含 {module_count} 个模块、{rule_count} 条规则。,label,tutorials.recipe_name_module_count_rule_,yes
+app/routers/tutorials.py,136,We'll walk you through setting up “{recipe_name}”. {module_count} modules and {rule_count} rules.,description,tutorials.we_ll_walk_you_through_setting,yes
+app/routers/tutorials.py,139,点击侧边栏的 Engagement 进入模块市场,label,tutorials.engagement,yes
+app/routers/tutorials.py,140,Click Engagement in the sidebar to open the module marketplace,label,tutorials.click_engagement_in_the_sideba,yes
+app/routers/tutorials.py,143,进入侧边栏的 Vouchers 配置优惠券模板,label,tutorials.voucher_3,yes
+app/routers/tutorials.py,144,Open Vouchers in the sidebar to configure voucher templates,label,tutorials.open_vouchers_in_the_sidebar_t,yes
+app/routers/tutorials.py,147,进入侧边栏的 Rules 配置事件规则,label,tutorials.rules,yes
+app/routers/tutorials.py,148,Open Rules in the sidebar to configure event rules,label,tutorials.open_rules_in_the_sidebar_to_c,yes
+app/routers/tutorials.py,151,启用 {module_name} 模块,label,tutorials.module_name,yes
+app/routers/tutorials.py,152,Enable the {module_name} module,label,tutorials.enable_the_module_name_module,yes
+app/routers/tutorials.py,155,配置 {module_name}：{params_summary},label,tutorials.module_name_params_summary,yes
+app/routers/tutorials.py,156,Configure {module_name}: {params_summary},description,tutorials.configure_module_name_params_s,yes
+app/routers/tutorials.py,159,创建优惠券模板：{template_summary},label,tutorials.voucher_4,yes
+app/routers/tutorials.py,163,创建规则：当 {trigger_event} 触发时执行 {actions_summary},label,tutorials.trigger_event_actions_summary,yes
+app/routers/tutorials.py,167,让我们模拟一次「{event_name}」来测试规则,label,tutorials.event_name,yes
+app/routers/tutorials.py,168,Let's simulate “{event_name}” to test the rules,label,tutorials.let_s_simulate_event_name_to_t,yes
+app/routers/tutorials.py,171,完成！你的「{recipe_name}」体系已经上线 🎉,notification,tutorials.recipe_name,yes
+app/routers/tutorials.py,172,Done! Your “{recipe_name}” setup is live 🎉,description,tutorials.done_your_recipe_name_setup_is,yes
+app/routers/tutorials.py,305,默认参数,button,tutorials.s_2171d1,yes
+app/routers/tutorials.py,329,无动作,button,tutorials.s_df3b23,yes
+app/routers/tutorials.py,405,欢迎,button,tutorials.s_47781b,yes
+app/routers/tutorials.py,440,GET /api/v1/brands/{brand_id}/modules/{mid},label,tutorials.get_api_v1_brands_brand_id_mod,yes
+app/routers/tutorials.py,461,GET /api/v1/brands/{brand_id}/modules/{mid},label,tutorials.get_api_v1_brands_brand_id_mod_2,yes
+app/routers/tutorials.py,537,POST /api/v1/rules/events/emit,label,tutorials.post_api_v1_rules_events_emit,yes
+app/routers/tutorials.py,548,完成 🎉,button,tutorials.s_765935,yes
+app/routers/tutorials.py,549,Done 🎉,other,,no
+app/routers/tutorials.py,635,在 Engagement 页找到 {var} 并点击启用,label,tutorials.engagement_var,yes
+app/routers/tutorials.py,637,Open Engagement and toggle {var} on,label,tutorials.open_engagement_and_toggle_var,yes
+app/routers/tutorials.py,649,开启 {var} 的启用开关,label,tutorials.var,yes
+app/routers/tutorials.py,651,Toggle {var} on,label,tutorials.toggle_var_on,yes
+app/routers/tutorials.py,665,请先完成上一步：启用模块,label,tutorials.s_e223cc,yes
+app/routers/tutorials.py,679,配置以下字段：{var},label,tutorials.var_2,yes
+app/routers/tutorials.py,681,Please configure: {var},description,tutorials.please_configure_var,yes
+app/routers/tutorials.py,695,请在 Vouchers 页创建对应的模板,label,tutorials.vouchers,yes
+app/routers/tutorials.py,704,请创建至少一个优惠券模板,label,tutorials.voucher_5,yes
+app/routers/tutorials.py,720,请在 Rules 页创建一条规则,label,tutorials.rules_2,yes
+app/routers/tutorials.py,736,请创建一条 trigger_event = {trigger} 的规则,label,tutorials.trigger_event_trigger,yes
+app/routers/tutorials.py,738,Add a rule with trigger_event = {trigger},label,tutorials.add_a_rule_with_trigger_event_,yes

@@ -305,6 +305,29 @@ psql -U kix -d kix -c "\d+ geofences"
 - Postgres: nightly VACUUM; partition `attribution_events` by month once
   monthly volume > 10M rows
 
+## Internationalisation (i18n)
+
+The platform ships with a Project Fluent runtime under `app/i18n/`.
+
+- **Locale registry** — `app.i18n.SUPPORTED_LOCALES` (currently
+  `en-SG`, `zh-Hans-SG`, `en-US`, `zh-Hans-CN`).
+- **Per-request resolution** — `LanguageMiddleware` reads
+  `?lang=` → JWT user pref → `Accept-Language` → region default →
+  `en-SG`. Result is exposed as `request.state.locale`, on the
+  `current_locale` ContextVar (`app.i18n.context`), and as the
+  `Content-Language` response header.
+- **Translation API** — `from app.i18n import t; t("welcome-message",
+  name="Alice")`. Missing keys log `i18n.missing_translation` and
+  return the key verbatim — never raise.
+- **Catalogs** — Fluent `.ftl` files at
+  `app/i18n/catalogs/<locale>/main.ftl`. Per-locale onboarding
+  checklist lives in `docs/i18n-adding-a-locale.md`.
+- **Region fallback chain** — see `language_fallback_chain` per
+  region in `app/region.py`; surfaced via
+  `region.get_supported_locales_for_region()`.
+- **Monitoring** — alert on the `i18n.missing_translation` log line;
+  it indicates a key shipped without a translation in some locale.
+
 ---
 
-Last reviewed: 2026-05-29
+Last reviewed: 2026-05-30

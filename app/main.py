@@ -155,6 +155,15 @@ and the shim helpers in `app.api_standards`.
     from app.middleware.tenant_isolation import TenantIsolationMiddleware
     app.add_middleware(TenantIsolationMiddleware)
 
+    # ── i18n: resolve request locale before auth/handlers run ─────────
+    # Mounted *after* tenant isolation so quota enforcement still fires
+    # first, but *before* any router-level dependency that reads the
+    # contextvar (push templates, error messages, etc.). Starlette's
+    # ``add_middleware`` is LIFO at request-time, so this stays close
+    # to the application boundary.
+    from app.i18n.middleware import LanguageMiddleware
+    app.add_middleware(LanguageMiddleware)
+
     # ── CORS ──────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
@@ -339,6 +348,12 @@ and the shim helpers in `app.api_standards`.
         wallet.router, prefix="/api/v1/wallet", tags=["wallet"]
     )
 
+    # ── i18n debug + locale-aware format preview ────────────────────────
+    from app.routers import i18n as i18n_router
+    app.include_router(
+        i18n_router.router, prefix="/api/v1/i18n", tags=["i18n"]
+    )
+
     # ── Disputes + Refund: merchant challenges fraud/fake conversions ──
     from app.routers import disputes
     app.include_router(
@@ -367,6 +382,14 @@ and the shim helpers in `app.api_standards`.
     from app.routers import compliance
     app.include_router(
         compliance.router,
+        prefix="/api/v1/compliance",
+        tags=["compliance"],
+    )
+
+    # ── Compliance Regional: per-region GDPR/LGPD/PDPA/DPDP rule sets ───
+    from app.routers import compliance_regional
+    app.include_router(
+        compliance_regional.router,
         prefix="/api/v1/compliance",
         tags=["compliance"],
     )

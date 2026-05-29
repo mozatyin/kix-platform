@@ -35,6 +35,9 @@ REGION_CONFIG: dict[str, dict[str, Any]] = {
         "supported_currencies": ["CNY"],
         "payment_methods": ["alipay", "wechat", "credit_card"],
         "languages": ["zh-CN"],
+        # Fallback chain consumed by app.i18n. Most-specific first; ends
+        # in en-US so any string missing from the primary always renders.
+        "language_fallback_chain": ["zh-Hans-CN", "zh-Hans", "en-US"],
         "default_phone_country_code": "+86",
         "redis_url": os.environ.get("REDIS_URL_CN", "redis://redis:6379/0"),
         "db_url": os.environ.get("DATABASE_URL_CN", ""),
@@ -49,6 +52,7 @@ REGION_CONFIG: dict[str, dict[str, Any]] = {
         "supported_currencies": ["IDR", "USD"],
         "payment_methods": ["gopay", "ovo", "dana", "credit_card"],
         "languages": ["id-ID", "en-US"],
+        "language_fallback_chain": ["id-ID", "en-US"],
         "default_phone_country_code": "+62",
         "redis_url": os.environ.get("REDIS_URL_ID", "redis://redis:6379/0"),
         "db_url": os.environ.get("DATABASE_URL_ID", ""),
@@ -62,7 +66,11 @@ REGION_CONFIG: dict[str, dict[str, Any]] = {
         "primary_currency": "SGD",
         "supported_currencies": ["SGD", "USD"],
         "payment_methods": ["paynow", "grabpay", "credit_card"],
-        "languages": ["en-US", "zh-CN", "id-ID", "ms-MY"],
+        "languages": ["en-SG", "zh-Hans-SG", "ms-MY", "ta-SG"],
+        # SG launch is bilingual EN/ZH first; ms/ta added in Phase 2.
+        "language_fallback_chain": [
+            "en-SG", "zh-Hans-SG", "zh-Hans-CN", "en-US",
+        ],
         "default_phone_country_code": "+65",
         "redis_url": os.environ.get("REDIS_URL_SG", "redis://redis:6379/0"),
         "db_url": os.environ.get("DATABASE_URL_SG", ""),
@@ -77,6 +85,7 @@ REGION_CONFIG: dict[str, dict[str, Any]] = {
         "supported_currencies": ["USD"],
         "payment_methods": ["credit_card", "apple_pay", "google_pay"],
         "languages": ["en-US", "es-US"],
+        "language_fallback_chain": ["en-US", "es-US"],
         "default_phone_country_code": "+1",
         "redis_url": os.environ.get("REDIS_URL_US", "redis://redis:6379/0"),
         "db_url": os.environ.get("DATABASE_URL_US", ""),
@@ -91,6 +100,7 @@ REGION_CONFIG: dict[str, dict[str, Any]] = {
         "supported_currencies": ["EUR", "USD"],
         "payment_methods": ["sepa", "credit_card", "ideal"],
         "languages": ["en-GB", "de-DE", "fr-FR"],
+        "language_fallback_chain": ["en-GB", "en-US", "de-DE", "fr-FR"],
         "default_phone_country_code": "+49",
         "redis_url": os.environ.get("REDIS_URL_EU", "redis://redis:6379/0"),
         "db_url": os.environ.get("DATABASE_URL_EU", ""),
@@ -134,3 +144,19 @@ def is_currency_supported(currency: str, region: str | None = None) -> bool:
     return currency.upper() in {
         c.upper() for c in get_region_config(region)["supported_currencies"]
     }
+
+
+def get_supported_locales_for_region(region: str | None = None) -> list[str]:
+    """Return the BCP 47 fallback chain advertised by the region.
+
+    Consumed by :class:`app.i18n.middleware.LanguageMiddleware` as the
+    region-level default when no ``?lang=``, user preference, or
+    ``Accept-Language`` header narrows things further. Falls back to
+    the legacy ``languages`` field for backward compatibility with
+    pre-i18n region configs.
+    """
+    cfg = get_region_config(region)
+    chain = cfg.get("language_fallback_chain")
+    if chain:
+        return list(chain)
+    return list(cfg.get("languages") or [])
