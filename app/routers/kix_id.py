@@ -1611,3 +1611,40 @@ async def push_device_unregister(
         {"device_id": device_id},
     )
     return {"kid": kid, "device_id": device_id, "status": "unregistered"}
+
+
+@router.get("/compliance/age-gate")
+async def kix_id_age_gate(
+    region: str,
+    age: int | None = None,
+) -> dict[str, Any]:
+    """Return whether the register flow must collect age + parental consent.
+
+    Additive integration with ``app.compliance_regional``. Existing
+    register endpoint is unchanged; clients can call this before
+    register to know what gate UI to show.
+    """
+    from app.compliance_regional import (
+        check_age_gate_required,
+        get_compliance_for_region,
+    )
+
+    try:
+        rules = get_compliance_for_region(region)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"unknown region: {region}",
+        )
+
+    gate = check_age_gate_required(region, age)
+    parental = (
+        age is not None and age < rules.parental_consent_threshold
+    )
+    return {
+        "region": region.lower(),
+        "age_gate_required": gate,
+        "parental_consent_required": parental,
+        "parental_consent_threshold": rules.parental_consent_threshold,
+        "age_of_consent": rules.age_of_consent,
+    }

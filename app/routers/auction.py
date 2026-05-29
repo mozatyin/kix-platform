@@ -333,6 +333,29 @@ async def _has_budget(r: aioredis.Redis, c: dict[str, str]) -> bool:
     return True
 
 
+async def _has_compliance(c: dict[str, str], region: str | None) -> bool:
+    """Return True iff campaign ad content is allowed in the user's region.
+
+    Additive regional gate on top of the CN ad-creative scanner in
+    ``app.routers.compliance``. Reads the campaign's
+    ``content_category`` field (set by the creative_gen pipeline) and
+    checks it against the region's banned list. Missing region or
+    missing category means we allow — this is fail-open by design so
+    legacy CN campaigns keep flowing.
+    """
+    if not region:
+        return True
+    category = c.get("content_category", "")
+    if not category:
+        return True
+    try:
+        from app.compliance_regional import check_content_allowed
+        allowed, _ = check_content_allowed(region, category)
+    except KeyError:
+        return True
+    return allowed
+
+
 async def _load_user_profile(
     r: aioredis.Redis, user_id: str | None
 ) -> dict[str, Any]:

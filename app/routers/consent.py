@@ -608,6 +608,29 @@ async def check_consent(
     return CheckResponse(allowed=allowed, reason=None if allowed else reason)
 
 
+@router.get("/required-modes")
+async def required_consent_modes(region: str) -> dict[str, Any]:
+    """Return the consent modes a region requires (GDPR=explicit, US=opt_out…).
+
+    Additive integration with ``app.compliance_regional`` — does not
+    affect CN/PIPL existing flows.
+    """
+    from app.compliance_regional import get_compliance_for_region
+    try:
+        rules = get_compliance_for_region(region)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"unknown region: {region}",
+        )
+    return {
+        "region": region.lower(),
+        "consent_modes": rules.consent_modes,
+        "cookie_banner_required": rules.cookie_banner_required,
+        "do_not_sell_required": rules.do_not_sell_required,
+    }
+
+
 # ── Endpoints: policy management (admin) ──────────────────────────────────
 
 
