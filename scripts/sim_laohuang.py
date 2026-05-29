@@ -166,6 +166,31 @@ def _sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+# ── Consent setup helper ─────────────────────────────────────────────────
+_consent_policy_published = False
+
+
+async def _setup_consent(c: httpx.AsyncClient, user_ids: list[str],
+                         policy_version: str = "1.0") -> None:
+    """Publish policy once + grant consent for each user. Idempotent."""
+    global _consent_policy_published
+    if not _consent_policy_published:
+        sc, _b = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+            "version": policy_version,
+            "text_md": "# Sim policy\nFor testing.",
+            "effective_at": int(time.time()) - 60,
+            "requires_re_grant": False,
+        })
+        _consent_policy_published = (sc == 200)
+    for uid in user_ids:
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": uid,
+            "scopes": ["cross_brand_tracking", "geo_lbs", "personalization", "marketing"],
+            "policy_version": policy_version,
+            "source": "web",
+        })
+
+
 # ── Phase 1: Single Brand Setup ──────────────────────────────────────────
 async def phase_1_brand_setup(c: httpx.AsyncClient) -> dict[str, Any]:
     _phase_init("1: Single Online Brand 'huang_baby_shop'")
@@ -326,21 +351,23 @@ async def phase_4_pixel(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
 
     pid = state["pixel_id"]
 
+    # Grant consent for the smoke-test users that will be tracked below.
+    smoke_uids = [f"user_smoke_{et}_{RUN_TAG}" for et in
+                  ("pageview", "add_to_cart", "signup", "purchase")]
+    await _setup_consent(c, smoke_uids)
+
     # PROBE: WeChat mini-program isn't standard web — does pixel SDK adapt?
-    # The wxapp:// scheme is not allowed (validator rejects non-http(s)),
-    # but we already used an https proxy origin above. Try the wx scheme.
+    # Round 2 added wx<appid>/alipay:/ios:/android:/kix-native: identifier support.
     sc, b = await call(c, "POST", "/api/v1/pixel/register", json_body={
         "brand_id": BRAND_ID,
-        "allowed_origins": ["wxapp://huangbaby-miniprogram"],
+        "allowed_origins": ["wxe1f2a3b4c5d6e7f8", "alipay:1234567890abcdef"],
     })
     if sc == 201:
-        ok("pixel register (mini-program native scheme)", "wxapp:// accepted")
+        ok("pixel register (mini-program native scheme)",
+           "wx<appid>/alipay: identifiers accepted")
     elif sc in (400, 422):
         gap("P0", "WeChat Mini-Program origin not supported",
-            f"allowed_origins validator rejects non-http(s) URLs ({sc} {_short(b)}). "
-            "WeChat Mini-Programs run with wxapp:// or no real origin at all — "
-            "merchants must spoof an https proxy origin. Need first-class "
-            "Mini-Program tracking (App ID-based identity, not Origin header).")
+            f"allowed_origins validator rejects mini-program identifiers ({sc} {_short(b)}).")
     else:
         gap("P1", "mini-program origin", f"{sc} {_short(b)}")
 
@@ -635,6 +662,26 @@ async def phase_7_cps_campaign(c: httpx.AsyncClient, state: dict[str, Any]) -> N
     else:
         info(f"approve returned {sc}: {_short(b)}")
 
+    # Explicit Round 2 probe: CPS using bid_percent_bps + max_bid_cents ceiling.
+    sc, b = await call(c, "POST", "/api/v1/campaigns/create", json_body={
+        "brand_id": BRAND_ID,
+        "name": "CPS test",
+        "objective": "sales",
+        "bid_strategy": "cps",
+        "bid_percent_bps": 800,       # 8% commission
+        "max_bid_cents": 50000,       # safety ceiling
+        "daily_budget_cents": 100000,
+        "total_budget_cents": MONTHLY_BUDGET_CENTS,
+        "targeting": {"geo": {"country": "CN"}},
+        "creative": {"recipe_id": state.get("recipe_id") or "default_baby_recipe"},
+        "schedule": {"start_at": time.time() - 60,
+                     "end_at": time.time() + 86400 * 30},
+    })
+    if sc == 200:
+        ok("CPS bid_percent_bps accepted", "8% commission configured")
+    else:
+        gap("P0", "CPS percent not supported", f"{sc} {_short(b)}")
+
 
 # ── Phase 8: Repeat Customer Engagement (60d dormant) ────────────────────
 async def phase_8_reengagement(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
@@ -706,6 +753,10 @@ async def phase_9_pixel_attribution(c: httpx.AsyncClient, state: dict[str, Any])
     rng = random.Random(RUN_TAG + 9)
     metrics = {"pageviews": 0, "carts": 0, "purchases": 0,
                "attributed": 0, "cart_abandon": 0}
+
+    # Grant consent for all journey users before any pixel events.
+    journey_uids = [f"u_journey_{RUN_TAG}_{i:02d}" for i in range(50)]
+    await _setup_consent(c, journey_uids)
 
     for i in range(50):
         uid = f"u_journey_{RUN_TAG}_{i:02d}"
@@ -885,6 +936,7 @@ async def phase_11_international(c: httpx.AsyncClient, state: dict[str, Any]) ->
     # PROBE: currency conversion for non-CNY orders
     pid = state.get("pixel_id")
     if pid:
+        await _setup_consent(c, [f"u_expat_{RUN_TAG}"])
         sc, b = await call(c, "POST", "/api/v1/pixel/event", json_body={
             "pixel_id": pid,
             "event_type": "purchase",
@@ -928,6 +980,7 @@ async def phase_12_edges(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     # 12b: Refund / returned order → auto-reverse KiX commission?
     pid = state.get("pixel_id")
     if pid:
+        await _setup_consent(c, [f"u_refund_{RUN_TAG}"])
         # Simulate a refund event
         sc, b = await call(c, "POST", "/api/v1/pixel/event", json_body={
             "pixel_id": pid,

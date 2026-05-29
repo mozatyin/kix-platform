@@ -1,0 +1,1458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>消消乐 - Match 3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --tile-size: clamp(36px, 10vw, 48px);
+            --board-cols: 8;
+            --board-rows: 8;
+            --tile-gap: 3px;
+            --safe-bottom: env(safe-area-inset-bottom, 16px);
+        }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+        body{overflow-x:hidden;overscroll-behavior:contain;touch-action:manipulation;}
+        .screen{position:fixed;inset:0;top:0;bottom:0;z-index:10;overflow-y:auto;padding-bottom:72px;background:#1a1a2e;color:#eee;}
+        .screen.hidden{display:none!important;}
+
+        #game-board{
+            display:grid;
+            grid-template-columns:repeat(var(--board-cols),var(--tile-size));
+            grid-template-rows:repeat(var(--board-rows),var(--tile-size));
+            gap:var(--tile-gap);
+            justify-content:center;
+            align-content:center;
+            padding:8px;
+            background:#0f0f1a;
+            border-radius:16px;
+            box-shadow:inset 0 0 24px rgba(0,0,0,.5);
+            margin:0 auto;
+            width:fit-content;
+        }
+        .tile{
+            width:var(--tile-size);
+            height:var(--tile-size);
+            border-radius:10px;
+            cursor:pointer;
+            transition:transform .12s ease,box-shadow .12s ease,opacity .2s ease;
+            position:relative;
+            box-shadow:0 2px 6px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.25);
+        }
+        .tile:active{transform:scale(.9);}
+        .tile.selected{
+            transform:scale(1.08);
+            box-shadow:0 0 0 3px #fff,0 0 18px 4px rgba(255,255,255,.5),0 4px 10px rgba(0,0,0,.4);
+            z-index:2;
+        }
+        .tile.highlight{animation:pulse .5s ease-in-out infinite alternate;}
+        @keyframes pulse{from{filter:brightness(1);}to{filter:brightness(1.5);}}
+        .tile.matched{animation:pop .3s ease forwards;}
+        @keyframes pop{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.25);opacity:.7;}100%{transform:scale(0);opacity:0;}}
+        .tile.drop{animation:drop .25s ease-out;}
+        @keyframes drop{from{transform:translateY(-60px);opacity:.4;}to{transform:translateY(0);opacity:1;}}
+
+        .tile-0{background:linear-gradient(135deg,#ff6b6b,#c0392b);} /* red */
+        .tile-1{background:linear-gradient(135deg,#54a0ff,#1e6fbf);} /* blue */
+        .tile-2{background:linear-gradient(135deg,#5cd859,#27ae60);} /* green */
+        .tile-3{background:linear-gradient(135deg,#ffd93d,#f0a500);} /* yellow */
+        .tile-4{background:linear-gradient(135deg,#c56cf0,#6c1d8f);} /* purple */
+        .tile-5{background:linear-gradient(135deg,#ff9f43,#d4731a);} /* orange */
+
+        #bottom-bar{background:#16162b;border-top:1px solid #2a2a44;padding:8px 16px calc(8px + var(--safe-bottom));}
+        .btn-action{
+            display:inline-flex;align-items:center;justify-content:center;
+            padding:10px 20px;border-radius:999px;font-weight:600;font-size:14px;
+            transition:all .15s ease;cursor:pointer;border:none;outline:none;
+            min-width:48px;min-height:48px;gap:6px;
+        }
+        .btn-action:active{transform:scale(.94);opacity:.85;}
+        .btn-primary{background:linear-gradient(135deg,#ff6b6b,#e74c3c);color:#fff;box-shadow:0 4px 14px rgba(255,107,107,.4);}
+        .btn-secondary{background:#2a2a44;color:#ccc;border:1px solid #3a3a55;}
+        .btn-accent{background:linear-gradient(135deg,#ffd93d,#f0a500);color:#1a1a2e;box-shadow:0 4px 14px rgba(255,217,61,.35);}
+
+        .score-badge{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+        .star{color:#ffd93d;font-size:28px;text-shadow:0 0 10px rgba(255,217,61,.6);}
+        .star.empty{color:#444;text-shadow:none;}
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS —  */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #00704A, #003825) !important;
+  --tw-gradient-from: #00704A !important;
+  --tw-gradient-to: #003825 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #00704A !important;
+  background: #00704A !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #003825 !important;
+  background: #003825 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #00704A !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-[#111122] text-white font-sans m-0 p-0 min-h-dvh">
+
+    <!-- ─────────────────── SCREENS ─────────────────── -->
+    <!-- HOME -->
+    <div id="home-screen" class="screen flex flex-col items-center justify-center gap-6 px-6">
+        <div class="text-5xl font-extrabold tracking-tight text-center bg-gradient-to-b from-yellow-300 to-orange-500 bg-clip-text text-transparent drop-shadow-lg">消消乐</div>
+        <div class="text-sm text-gray-400 -mt-2">Match 3 Puzzle</div>
+        <div class="flex flex-col gap-3 w-full max-w-xs mt-6" id="home-buttons">
+            <button data-action='{"type":"NAVIGATE","screen":"level_select"}' class="btn-action btn-primary text-lg py-3">🎮 开始游戏</button>
+            <button data-action='{"type":"NAVIGATE","screen":"shop"}' class="btn-action btn-secondary">🛒 商店</button>
+            <button data-action='{"type":"NAVIGATE","screen":"settings"}' class="btn-action btn-secondary">⚙️ 设置</button>
+            <button data-action='{"type":"NAVIGATE","screen":"high_scores"}' class="btn-action btn-secondary">🏆 排行榜</button>
+        </div>
+    </div>
+
+    <!-- LEVEL SELECT -->
+    <div id="level_select-screen" class="screen flex flex-col items-center gap-4 px-4 pt-8">
+        <h2 class="text-2xl font-bold">选择关卡</h2>
+        <div class="grid grid-cols-4 gap-3 w-full max-w-sm" id="level-grid">
+            <!-- render() fills level buttons -->
+        </div>
+        <button data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary mt-4">← 返回</button>
+    </div>
+
+    <!-- GAMEPLAY -->
+    <div id="gameplay-screen" class="screen flex flex-col items-center gap-3 px-3 pt-4">
+        <div class="flex items-center justify-between w-full max-w-sm px-2">
+            <div class="text-sm">⭐ <span id="score-display" class="score-badge font-bold text-lg">0</span></div>
+            <div class="text-xs px-3 py-1 bg-[#2a2a44] rounded-full">第 <span id="level-display">1</span> 关</div>
+            <div class="text-sm">🔢 <span id="moves-display" class="score-badge font-bold text-lg">30</span></div>
+        </div>
+        <div class="text-xs text-gray-400">目标: <span id="target-display">1000</span> 分</div>
+        <div id="game-board" class="mx-auto"></div>
+        <div class="text-xs text-gray-500 mt-1" id="combo-display"></div>
+    </div>
+
+    <!-- PAUSE MENU -->
+    <div id="pause_menu-screen" class="screen flex flex-col items-center justify-center gap-5 px-6">
+        <div class="text-3xl font-bold mb-4">⏸️ 暂停</div>
+        <button data-action='{"type":"RESUME"}' class="btn-action btn-primary text-lg w-full max-w-xs py-3">▶ 继续</button>
+        <button data-action='{"type":"RESTART"}' class="btn-action btn-secondary w-full max-w-xs">🔄 重新开始</button>
+        <button data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary w-full max-w-xs">🏠 返回首页</button>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="settings-screen" class="screen flex flex-col items-center gap-4 px-6 pt-8">
+        <h2 class="text-2xl font-bold mb-4">⚙️ 设置</h2>
+        <div class="flex items-center justify-between w-full max-w-xs py-3 border-b border-gray-700">
+            <span>🔊 音效</span><button id="toggle-sound" data-action='{"type":"TOGGLE_SOUND"}' class="btn-action btn-secondary px-4 py-2 text-sm">开</button>
+        </div>
+        <div class="flex items-center justify-between w-full max-w-xs py-3 border-b border-gray-700">
+            <span>🎵 音乐</span><button id="toggle-music" data-action='{"type":"TOGGLE_MUSIC"}' class="btn-action btn-secondary px-4 py-2 text-sm">开</button>
+        </div>
+        <button data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary mt-6">← 返回</button>
+    </div>
+
+    <!-- SHOP -->
+    <div id="shop-screen" class="screen flex flex-col items-center gap-4 px-4 pt-8">
+        <h2 class="text-2xl font-bold mb-2">🛒 商店</h2>
+        <div class="grid grid-cols-2 gap-3 w-full max-w-xs" id="shop-items">
+            <div class="bg-[#1e1e3a] rounded-xl p-3 text-center"><div class="text-2xl">💣</div><div class="text-xs mt-1">炸弹</div><button data-action='{"type":"BUY_ITEM","item":"bomb"}' class="btn-action btn-accent text-xs mt-2 px-3 py-1">💰50</button></div>
+            <div class="bg-[#1e1e3a] rounded-xl p-3 text-center"><div class="text-2xl">🌈</div><div class="text-xs mt-1">彩虹</div><button data-action='{"type":"BUY_ITEM","item":"rainbow"}' class="btn-action btn-accent text-xs mt-2 px-3 py-1">💰100</button></div>
+            <div class="bg-[#1e1e3a] rounded-xl p-3 text-center"><div class="text-2xl">⏪</div><div class="text-xs mt-1">回退</div><button data-action='{"type":"BUY_ITEM","item":"undo"}' class="btn-action btn-accent text-xs mt-2 px-3 py-1">💰30</button></div>
+            <div class="bg-[#1e1e3a] rounded-xl p-3 text-center"><div class="text-2xl">➕5</div><div class="text-xs mt-1">加步数</div><button data-action='{"type":"BUY_ITEM","item":"extra_moves"}' class="btn-action btn-accent text-xs mt-2 px-3 py-1">💰75</button></div>
+        </div>
+        <button data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary mt-3">← 返回</button>
+    </div>
+
+    <!-- GAME RESULT -->
+    <div id="game_result-screen" class="screen flex flex-col items-center justify-center gap-4 px-6">
+        <div class="text-4xl font-extrabold" id="result-title"></div>
+        <div class="flex gap-1" id="result-stars"></div>
+        <div class="text-xl">得分: <span id="result-score" class="font-bold"></span></div>
+        <div class="flex flex-col gap-3 w-full max-w-xs mt-4">
+            <button data-action='{"type":"NEXT_LEVEL"}' id="btn-next-level" class="btn-action btn-primary text-lg py-3">▶ 下一关</button>
+            <button data-action='{"type":"RESTART"}' class="btn-action btn-secondary">🔄 重试</button>
+            <button data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary">🏠 返回首页</button>
+        </div>
+    </div>
+
+    <!-- HIGH SCORES -->
+    <div id="high_scores-screen" class="screen flex flex-col items-center gap-3 px-4 pt-8">
+        <h2 class="text-2xl font-bold mb-2">🏆 排行榜</h2>
+        <div class="w-full max-w-xs space-y-2" id="high-scores-list">
+            <!-- render() fills score rows -->
+        </div>
+        <button data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary mt-4">← 返回</button>
+    </div>
+
+    <!-- ─────────────── FIXED BOTTOM ACTION BAR ─────────────── -->
+    <div id="bottom-bar" class="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center gap-3">
+        <button id="btn-bottom-home" data-action='{"type":"NAVIGATE","screen":"home"}' class="btn-action btn-secondary px-4 py-2 text-sm hidden">🏠</button>
+        <button id="btn-bottom-pause" data-action='{"type":"PAUSE"}' class="btn-action btn-secondary px-4 py-2 text-sm hidden">⏸️</button>
+        <button id="btn-bottom-back" data-action='{"type":"NAVIGATE_BACK"}' class="btn-action btn-secondary px-4 py-2 text-sm hidden">← 返回</button>
+    </div>
+
+    <!-- ─────────────── SINGLE SCRIPT ─────────────── -->
+    <script>
+        /* ─── CONSTANTS ─── */
+        const ROWS = 8;
+        const COLS = 8;
+        const TILE_TYPES = 6;
+        const MIN_MATCH = 3;
+
+        /** @type {object} Global game state reference, updated by handleAction */
+        let gameState;
+
+        /* ──────────────────────────────────────────────
+           CORE FUNCTIONS
+           ────────────────────────────────────────────── */
+
+        /**
+         * Initialize and return the default game state.
+         * @returns {object} Initial state object
+         */
+        function initState() {
+            let levels = [
+    { target: 1000, moves: 30 },
+    { target: 2000, moves: 28 },
+    { target: 3500, moves: 25 },
+    { target: 5000, moves: 25 },
+    { target: 7500, moves: 22 },
+    { target: 10000, moves: 20 },
+    { target: 15000, moves: 20 },
+    { target: 20000, moves: 18 },
+    { target: 30000, moves: 18 },
+    { target: 50000, moves: 15 }
+];
+let currentLevel = 1;
+let levelConfig = levels[currentLevel - 1];
+let board = generateBoard(ROWS, COLS);
+return {
+    screen: 'home',
+    board: board,
+    score: 0,
+    moves: levelConfig.moves,
+    level: currentLevel,
+    target: levelConfig.target,
+    selected: null,
+    combo: 0,
+    highScores: [],
+    settings: { sound: true, music: true },
+    coins: 200,
+    inventory: { bomb: 0, rainbow: 0, undo: 0, extra_moves: 0 },
+    levels: levels,
+    levelProgress: { unlocked: 1, completed: 0 },
+    gameResult: null,
+    screenHistory: [],
+    previousBoard: null,
+    previousScore: 0,
+    previousMoves: 0,
+    gamePhase: 'playing'
+};
+        }
+
+        /**
+         * Pure synchronous reducer: returns new state derived from current state + action.
+         * Action is a flat object: {type: string, ...otherProps}.
+         * @param {object} state - Current game state (plain object, no Set/Map/Date)
+         * @param {object} action - Flat action object
+         * @returns {object} New game state
+         */
+        function handleAction(state, action) {
+            // Create shallow copy of state for immutability
+    let newState = { ...state };
+    
+    switch (action.type) {
+        case 'NAVIGATE': {
+            newState.screen = action.screen;
+            newState.selectedTile = null;
+            newState.gameResult = null;
+            if (action.screen !== state.screen) {
+                newState.previousScreen = state.screen;
+            }
+            // If navigating to gameplay without a board, generate one
+            if (action.screen === 'gameplay' && (!state.board || state.board.length === 0)) {
+                newState.board = generateBoard(ROWS, COLS);
+                newState.score = 0;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+                newState.moves = 30;
+                newState.level = state.level || 1;
+                newState.target = 1000 + ((state.level || 1) - 1) * 500;
+                newState.combo = 1;
+            }
+            break;
+        }
+        
+        case 'NAVIGATE_BACK': {
+            if (state.previousScreen) {
+                newState.screen = state.previousScreen;
+                newState.previousScreen = null;
+            } else {
+                newState.screen = 'home';
+            }
+            newState.selectedTile = null;
+            newState.gameResult = null;
+            break;
+        }
+        
+        case 'PAUSE': {
+            newState.previousScreen = state.screen;
+            newState.screen = 'pause_menu';
+            break;
+        }
+        
+        case 'RESUME': {
+            if (state.previousScreen === 'gameplay') {
+                newState.screen = 'gameplay';
+            } else {
+                newState.screen = 'home';
+            }
+            newState.previousScreen = null;
+            break;
+        }
+        
+        case 'RESTART': {
+            let currentLevel = state.level || 1;
+            newState.board = generateBoard(ROWS, COLS);
+            newState.score = 0;
+            newState.moves = 30;
+            newState.level = currentLevel;
+            newState.target = 1000 + (currentLevel - 1) * 500;
+            newState.selectedTile = null;
+            newState.combo = 1;
+            newState.gameResult = null;
+            newState.stars = 0;
+            newState.previousBoard = null;
+            newState.previousScore = 0;
+            newState.previousMoves = 30;
+            newState.screen = 'gameplay';
+            break;
+        }
+        
+        case 'NEXT_LEVEL': {
+            let nextLevel = state.level + 1;
+            newState.level = nextLevel;
+            newState.board = generateBoard(ROWS, COLS);
+            newState.score = 0;
+            newState.moves = 30;
+            newState.target = 1000 + (nextLevel - 1) * 500;
+            newState.selectedTile = null;
+            newState.combo = 1;
+            newState.gameResult = null;
+            newState.stars = 0;
+            newState.previousBoard = null;
+            newState.previousScore = 0;
+            newState.previousMoves = 30;
+            newState.screen = 'gameplay';
+            break;
+        }
+        
+        case 'START_LEVEL': {
+            let lvl = action.level || 1;
+            newState.level = lvl;
+            newState.board = generateBoard(ROWS, COLS);
+            newState.score = 0;
+            newState.moves = 30;
+            newState.target = 1000 + (lvl - 1) * 500;
+            newState.selectedTile = null;
+            newState.combo = 1;
+            newState.gameResult = null;
+            newState.stars = 0;
+            newState.previousBoard = null;
+            newState.previousScore = 0;
+            newState.previousMoves = 30;
+            newState.screen = 'gameplay';
+            break;
+        }
+        
+        case 'TOGGLE_SOUND': {
+            newState.settings = { ...state.settings, sound: !state.settings.sound };
+            break;
+        }
+        
+        case 'TOGGLE_MUSIC': {
+            newState.settings = { ...state.settings, music: !state.settings.music };
+            break;
+        }
+        
+        case 'BUY_ITEM': {
+            let item = action.item;
+            let prices = { bomb: 50, rainbow: 100, undo: 30, extra_moves: 75 };
+            let price = prices[item];
+            if (price !== undefined && state.coins >= price) {
+                newState.coins = state.coins - price;
+                newState.inventory = { ...state.inventory };
+                newState.inventory[item] = (state.inventory[item] || 0) + 1;
+            }
+            break;
+        }
+        
+        case 'SELECT_TILE': {
+            if (state.screen !== 'gameplay' || state.gameResult) break;
+            
+            var { row, col } = action;
+            
+            if (state.selectedTile === null) {
+                newState.selectedTile = { row, col };
+            } else {
+                let sel = state.selectedTile;
+                if (sel.row === row && sel.col === col) {
+                    // Deselect same tile
+                    newState.selectedTile = null;
+                } else if (Math.abs(sel.row - row) + Math.abs(sel.col - col) === 1) {
+                    // Adjacent tile — attempt swap
+                    if (isValidSwap(state.board, sel.row, sel.col, row, col)) {
+                        // Save undo state
+                        newState.previousBoard = state.board.map(r => [...r]);
+                        newState.previousScore = state.score;
+                        newState.previousMoves = state.moves;
+                        
+                        // Perform swap
+                        let currentBoard = swapTiles(state.board, sel.row, sel.col, row, col);
+                        newState.selectedTile = null;
+                        newState.moves = state.moves - 1;
+                        
+                        // Process cascading matches
+                        let totalScore = state.score;
+                        let combo = 1;
+                        let hasMatches = true;
+                        
+                        while (hasMatches) {
+                            let matchGroups = checkMatches(currentBoard);
+                            if (matchGroups.length === 0) {
+                                hasMatches = false;
+                                break;
+                            }
+                            let points = calculateScore(matchGroups, combo);
+                            totalScore += points;
+                            let result = removeMatches(currentBoard, matchGroups);
+                            currentBoard = result.board;
+                            combo++;
+                        }
+                        
+                        newState.board = currentBoard;
+                        newState.score = totalScore;
+                        newState.combo = combo - 1;
+                        
+                        // Check win/lose conditions
+                        if (totalScore >= newState.target) {
+                            newState.gameResult = 'win';
+                            let ratio = totalScore / newState.target;
+                            if (ratio >= 2) newState.stars = 3;
+                            else if (ratio >= 1.5) newState.stars = 2;
+                            else newState.stars = 1;
+                            newState.screen = 'game_result';
+                            
+                            // Record high score
+                            let newEntry = { level: state.level, score: totalScore, stars: newState.stars };
+                            let newHighScores = [...(state.highScores || [])];
+                            newHighScores.push(newEntry);
+                            newHighScores.sort((a, b) => b.score - a.score);
+                            newHighScores = newHighScores.slice(0, 10);
+                            newState.highScores = newHighScores;
+                            
+                            // Update level progress
+                            newState.levelProgress = { ...(state.levelProgress || {}) };
+                            let prev = newState.levelProgress[state.level] || 0;
+                            newState.levelProgress[state.level] = Math.max(prev, newState.stars);
+                        } else if (newState.moves <= 0) {
+                            newState.gameResult = 'lose';
+                            newState.stars = 0;
+                            newState.screen = 'game_result';
+                        } else if (!hasPossibleMoves(currentBoard)) {
+                            // No moves left — shuffle board
+                            let shuffledBoard = shuffleBoard(currentBoard);
+                            currentBoard = shuffledBoard;
+                            
+                            // Resolve any matches created by shuffle (free, no move cost)
+                            let postCombo = 1;
+                            let postHasMatches = true;
+                            while (postHasMatches) {
+                                let mg = checkMatches(currentBoard);
+                                if (mg.length === 0) {
+                                    postHasMatches = false;
+                                    break;
+                                }
+                                let pts = calculateScore(mg, postCombo);
+                                totalScore += pts;
+                                let res = removeMatches(currentBoard, mg);
+                                currentBoard = res.board;
+                                postCombo++;
+                            }
+                            
+                            newState.board = currentBoard;
+                            newState.score = totalScore;
+                            
+                            // Re-check win condition after shuffle resolves
+                            if (totalScore >= newState.target) {
+                                newState.gameResult = 'win';
+                                let ratio = totalScore / newState.target;
+                                if (ratio >= 2) newState.stars = 3;
+                                else if (ratio >= 1.5) newState.stars = 2;
+                                else newState.stars = 1;
+                                newState.screen = 'game_result';
+                                
+                                let newEntry2 = { level: state.level, score: totalScore, stars: newState.stars };
+                                let newHighScores2 = [...(state.highScores || [])];
+                                newHighScores2.push(newEntry2);
+                                newHighScores2.sort((a, b) => b.score - a.score);
+                                newHighScores2 = newHighScores2.slice(0, 10);
+                                newState.highScores = newHighScores2;
+                                
+                                newState.levelProgress = { ...(state.levelProgress || {}) };
+                                let prev2 = newState.levelProgress[state.level] || 0;
+                                newState.levelProgress[state.level] = Math.max(prev2, newState.stars);
+                            }
+                        }
+                    } else {
+                        // Invalid swap — select the new tile instead
+                        newState.selectedTile = { row, col };
+                    }
+                } else {
+                    // Not adjacent — select the new tile
+                    newState.selectedTile = { row, col };
+                }
+            }
+            break;
+        }
+        
+        case 'USE_BOMB': {
+            if (state.screen !== 'gameplay' || state.gameResult) break;
+            if (state.inventory && state.inventory.bomb > 0) {
+                var { row, col } = action;
+                let board = state.board.map(r => [...r]);
+                // Clear 3×3 area
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        let rr = row + dr;
+                        let cc = col + dc;
+                        if (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS) {
+                            board[rr][cc] = -1;
+                        }
+                    }
+                }
+                board = applyGravity(board);
+                board = fillEmptyTiles(board);
+                newState.board = board;
+                newState.inventory = { ...state.inventory, bomb: state.inventory.bomb - 1 };
+                newState.selectedTile = null;
+                
+                // Resolve cascading matches
+                let currentBoard = board;
+                let totalScore = state.score;
+                let hasMatches = true;
+                while (hasMatches) {
+                    let mg = checkMatches(currentBoard);
+                    if (mg.length === 0) { hasMatches = false; break; }
+                    totalScore += calculateScore(mg, 1);
+                    let res = removeMatches(currentBoard, mg);
+                    currentBoard = res.board;
+                }
+                newState.board = currentBoard;
+                newState.score = totalScore;
+                
+                if (totalScore >= state.target) {
+                    newState.gameResult = 'win';
+                    let ratio = totalScore / state.target;
+                    newState.stars = ratio >= 2 ? 3 : ratio >= 1.5 ? 2 : 1;
+                    newState.screen = 'game_result';
+                } else if (!hasPossibleMoves(currentBoard)) {
+                    newState.board = shuffleBoard(currentBoard);
+                }
+            }
+            break;
+        }
+        
+        case 'USE_RAINBOW': {
+            if (state.screen !== 'gameplay' || state.gameResult) break;
+            if (state.inventory && state.inventory.rainbow > 0) {
+                var { row, col } = action;
+                let targetType = state.board[row][col];
+                if (targetType < 0) break;
+                let board = state.board.map(r => [...r]);
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (board[r][c] === targetType) {
+                            board[r][c] = -1;
+                        }
+                    }
+                }
+                board = applyGravity(board);
+                board = fillEmptyTiles(board);
+                newState.board = board;
+                newState.inventory = { ...state.inventory, rainbow: state.inventory.rainbow - 1 };
+                newState.selectedTile = null;
+                
+                let currentBoard = board;
+                let totalScore = state.score;
+                let hasMatches = true;
+                while (hasMatches) {
+                    let mg = checkMatches(currentBoard);
+                    if (mg.length === 0) { hasMatches = false; break; }
+                    totalScore += calculateScore(mg, 1);
+                    let res = removeMatches(currentBoard, mg);
+                    currentBoard = res.board;
+                }
+                newState.board = currentBoard;
+                newState.score = totalScore;
+                
+                if (totalScore >= state.target) {
+                    newState.gameResult = 'win';
+                    let ratio = totalScore / state.target;
+                    newState.stars = ratio >= 2 ? 3 : ratio >= 1.5 ? 2 : 1;
+                    newState.screen = 'game_result';
+                } else if (!hasPossibleMoves(currentBoard)) {
+                    newState.board = shuffleBoard(currentBoard);
+                }
+            }
+            break;
+        }
+        
+        case 'USE_UNDO': {
+            if (state.screen !== 'gameplay' || state.gameResult) break;
+            if (state.inventory && state.inventory.undo > 0 && state.previousBoard !== null) {
+                newState.board = state.previousBoard.map(r => [...r]);
+                newState.score = state.previousScore;
+                newState.moves = state.previousMoves;
+                newState.inventory = { ...state.inventory, undo: state.inventory.undo - 1 };
+                newState.selectedTile = null;
+                newState.previousBoard = null;
+                newState.previousScore = 0;
+                newState.previousMoves = 30;
+            }
+            break;
+        }
+        
+        case 'USE_EXTRA_MOVES': {
+            if (state.screen !== 'gameplay' || state.gameResult) break;
+            if (state.inventory && state.inventory.extra_moves > 0) {
+                newState.moves = state.moves + 5;
+                newState.inventory = { ...state.inventory, extra_moves: state.inventory.extra_moves - 1 };
+            }
+            break;
+        }
+        
+        default:
+            break;
+    }
+    
+    return newState;
+        }
+
+        /**
+         * Full DOM update from state. Calls showScreen(state.screen) and populates
+         * all visible screen elements.
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function render(state) {
+            let screen = state.screen;
+showScreen(screen);
+
+if (screen === 'level_select') {
+    renderLevelSelect(state);
+} else if (screen === 'gameplay') {
+    renderBoard(state);
+    document.getElementById('score-display').textContent = state.score;
+    document.getElementById('moves-display').textContent = state.moves;
+    document.getElementById('level-display').textContent = state.level;
+    document.getElementById('target-display').textContent = state.targetScore;
+    let comboText = '';
+    if (state.combo && state.combo > 1) {
+        comboText = `🔥 ${state.combo}x 连击!`;
+    }
+    document.getElementById('combo-display').textContent = comboText;
+    if (state.selectedTile) {
+        var { row, col } = state.selectedTile;
+        let tile = document.querySelector(`#game-board .tile[data-row="${row}"][data-col="${col}"]`);
+        if (tile) tile.classList.add('selected');
+    }
+} else if (screen === 'game_result') {
+    renderGameResult(state);
+} else if (screen === 'high_scores') {
+    renderHighScores(state);
+} else if (screen === 'settings') {
+    renderSettings(state);
+} else if (screen === 'shop') {
+    renderShop(state);
+}
+
+updateBottomBar(screen);
+        }
+
+        /**
+         * Shows the screen with given base ID (e.g. 'home', 'gameplay').
+         * Appends '-screen' suffix internally. Hides all other screens.
+         * @param {string} screenId - Base screen name WITHOUT '-screen' suffix
+         * @returns {void}
+         */
+        function showScreen(screenId) {
+            let allScreens = document.querySelectorAll('.screen');
+let targetId = screenId + '-screen';
+for (let i = 0; i < allScreens.length; i++) {
+    let screen = allScreens[i];
+    if (screen.id === targetId) {
+        screen.classList.remove('hidden');
+    } else {
+        screen.classList.add('hidden');
+    }
+}
+        }
+
+        /**
+         * Bootstrap: creates initial state via initState(), wires ALL button
+         * event listeners, calls render() for the initial screen.
+         * Called once on DOMContentLoaded.
+         * @returns {void}
+         */
+        function startGame() {
+            gameState = initState();
+render(gameState);
+let boardEl = document.getElementById('game-board');
+if (boardEl) {
+    boardEl.addEventListener('click', handleBoardClick);
+}
+let actionButtons = document.querySelectorAll('[data-action]');
+for (let i = 0; i < actionButtons.length; i++) {
+    let btn = actionButtons[i];
+    btn.addEventListener('click', function(e) {
+        try {
+            let actionData = JSON.parse(btn.getAttribute('data-action'));
+            gameState = handleAction(gameState, actionData);
+            render(gameState);
+        } catch (err) {
+            console.error('Action parse error', err);
+        }
+    });
+}
+render(gameState);
+        }
+
+        /* ──────────────────────────────────────────────
+           MATCH-3 BOARD HELPERS
+           ────────────────────────────────────────────── */
+
+        /**
+         * Generates a fresh ROWS×COLS board with no pre-existing matches.
+         * @param {number} rows - Number of rows
+         * @param {number} cols - Number of columns
+         * @returns {number[][]} 2D array of tile type integers (0–TILE_TYPES-1)
+         */
+        function generateBoard(rows, cols) {
+            let board = [];
+for (let r = 0; r < rows; r++) {
+    board[r] = [];
+    for (let c = 0; c < cols; c++) {
+        let validTypes = [];
+        for (let t = 0; t < TILE_TYPES; t++) {
+            if (c >= 2 && board[r][c - 1] === t && board[r][c - 2] === t) continue;
+            if (r >= 2 && board[r - 1][c] === t && board[r - 2][c] === t) continue;
+            validTypes.push(t);
+        }
+        board[r][c] = validTypes[Math.floor(Math.random() * validTypes.length)];
+    }
+}
+return board;
+        }
+
+        /**
+         * Returns a random tile type integer.
+         * @returns {number} Tile type (0–TILE_TYPES-1)
+         */
+        function generateTile() {
+            return Math.floor(Math.random() * TILE_TYPES);
+        }
+
+        /**
+         * Builds the DOM grid inside #game-board from state.board.
+         * Each tile div gets class 'tile tile-X' and data-row/data-col attrs.
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function renderBoard(state) {
+            let boardEl = document.getElementById('game-board');
+boardEl.innerHTML = '';
+let board = state.board;
+let selectedTile = state.selectedTile;
+let highlightedTiles = state.highlightedTiles || [];
+
+for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+        let tileType = board[r][c];
+        let tileDiv = document.createElement('div');
+        let classes = ['tile', getTileClass(tileType)];
+
+        if (selectedTile && selectedTile.row === r && selectedTile.col === c) {
+            classes.push('selected');
+        }
+
+        for (let i = 0; i < highlightedTiles.length; i++) {
+            let h = highlightedTiles[i];
+            if (h.row === r && h.col === c) {
+                classes.push('highlight');
+                break;
+            }
+        }
+
+        tileDiv.className = classes.join(' ');
+        tileDiv.setAttribute('data-row', r);
+        tileDiv.setAttribute('data-col', c);
+        boardEl.appendChild(tileDiv);
+    }
+}
+        }
+
+        /**
+         * Event delegation handler for clicks on #game-board.
+         * Determines which tile was clicked from event target data attrs.
+         * @param {MouseEvent|TouchEvent} event - The click/tap event
+         * @returns {void}
+         */
+        function handleBoardClick(event) {
+            let tile = event.target.closest('.tile');
+if (!tile) return {};
+if (gameState.screen !== 'gameplay') return {};
+
+let row = parseInt(tile.dataset.row, 10);
+let col = parseInt(tile.dataset.col, 10);
+
+if (!gameState.selectedTile) {
+    gameState = handleAction(gameState, {type: 'SELECT_TILE', row: row, col: col});
+    render(gameState);
+} else {
+    let selRow = gameState.selectedTile.row;
+    let selCol = gameState.selectedTile.col;
+
+    if (selRow === row && selCol === col) {
+        gameState = handleAction(gameState, {type: 'DESELECT_TILE'});
+        render(gameState);
+    } else if (Math.abs(selRow - row) + Math.abs(selCol - col) === 1) {
+        gameState = handleAction(gameState, {type: 'SWAP_TILES', row1: selRow, col1: selCol, row2: row, col2: col});
+        render(gameState);
+    } else {
+        gameState = handleAction(gameState, {type: 'SELECT_TILE', row: row, col: col});
+        render(gameState);
+    }
+}
+        }
+
+        /**
+         * Scans the entire board for all horizontal and vertical match groups.
+         * @param {number[][]} board - 2D tile array
+         * @returns {Array<{row:number,col:number}[]>} Array of match groups, each group is an array of {row,col}
+         */
+        function checkMatches(board) {
+            let groups = [];
+let rows = board.length;
+let cols = board[0].length;
+
+// Horizontal matches
+for (let r = 0; r < rows; r++) {
+  let c = 0;
+  while (c < cols) {
+    let start = c;
+    let type = board[r][c];
+    if (type === -1) {
+      c++;
+      continue;
+    }
+    while (c < cols && board[r][c] === type) {
+      c++;
+    }
+    let length = c - start;
+    if (length >= MIN_MATCH) {
+      let group = [];
+      for (let i = start; i < c; i++) {
+        group.push({row: r, col: i});
+      }
+      groups.push(group);
+    }
+  }
+}
+
+// Vertical matches
+for (let c = 0; c < cols; c++) {
+  let r = 0;
+  while (r < rows) {
+    let start = r;
+    let type = board[r][c];
+    if (type === -1) {
+      r++;
+      continue;
+    }
+    while (r < rows && board[r][c] === type) {
+      r++;
+    }
+    let length = r - start;
+    if (length >= MIN_MATCH) {
+      let group = [];
+      for (let i = start; i < r; i++) {
+        group.push({row: i, col: c});
+      }
+      groups.push(group);
+    }
+  }
+}
+
+return groups;
+        }
+
+        /**
+         * Removes matched tiles (sets to -1), applies gravity, fills empties.
+         * Returns new board. Pure — does not mutate input.
+         * @param {number[][]} board - 2D tile array
+         * @param {Array<{row:number,col:number}[]>} matchGroups - Matched positions to remove
+         * @returns {{board:number[][], removedCount:number}} New board and count of tiles removed
+         */
+        function removeMatches(board, matchGroups) {
+            let newBoard = board.map(row => [...row]);
+let removedCount = 0;
+for (let group of matchGroups) {
+    for (let pos of group) {
+        let r = pos.row;
+        let c = pos.col;
+        if (newBoard[r][c] !== -1) {
+            newBoard[r][c] = -1;
+            removedCount++;
+        }
+    }
+}
+newBoard = applyGravity(newBoard);
+newBoard = fillEmptyTiles(newBoard);
+return { board: newBoard, removedCount };
+        }
+
+        /**
+         * Drops tiles downward to fill -1 gaps (gravity). Pure.
+         * @param {number[][]} board - 2D tile array with -1 gaps
+         * @returns {number[][]} New board after gravity
+         */
+        function applyGravity(board) {
+            let rows = board.length;
+let cols = board[0].length;
+let newBoard = [];
+for (let r = 0; r < rows; r++) {
+    newBoard.push(new Array(cols).fill(-1));
+}
+for (let c = 0; c < cols; c++) {
+    let tiles = [];
+    for (let r = 0; r < rows; r++) {
+        if (board[r][c] !== -1) {
+            tiles.push(board[r][c]);
+        }
+    }
+    for (let i = 0; i < tiles.length; i++) {
+        let rowIdx = rows - 1 - i;
+        newBoard[rowIdx][c] = tiles[tiles.length - 1 - i];
+    }
+}
+return newBoard;
+        }
+
+        /**
+         * Fills all -1 (empty) cells with new random tiles that don't create instant matches.
+         * @param {number[][]} board - 2D tile array with -1 empties
+         * @returns {number[][]} New fully-filled board
+         */
+        function fillEmptyTiles(board) {
+            let newBoard = board.map(row => [...row]);
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    if (newBoard[r][c] === -1) {
+      let forbidden = new Set();
+      // Avoid horizontal match: two same on the left
+      if (c >= 2) {
+        if (newBoard[r][c - 1] !== -1 && newBoard[r][c - 1] === newBoard[r][c - 2]) {
+          forbidden.add(newBoard[r][c - 1]);
+        }
+      }
+      // Avoid horizontal match: two same on the right (both non-empty)
+      if (c + 2 < COLS) {
+        if (newBoard[r][c + 1] !== -1 && newBoard[r][c + 2] !== -1 && newBoard[r][c + 1] === newBoard[r][c + 2]) {
+          forbidden.add(newBoard[r][c + 1]);
+        }
+      }
+      // Avoid horizontal match: being the middle of two same non-empty tiles
+      if (c > 0 && c < COLS - 1) {
+        if (newBoard[r][c - 1] !== -1 && newBoard[r][c + 1] !== -1 && newBoard[r][c - 1] === newBoard[r][c + 1]) {
+          forbidden.add(newBoard[r][c - 1]);
+        }
+      }
+      // Avoid vertical match: two same above
+      if (r >= 2) {
+        if (newBoard[r - 1][c] !== -1 && newBoard[r - 1][c] === newBoard[r - 2][c]) {
+          forbidden.add(newBoard[r - 1][c]);
+        }
+      }
+      // Avoid vertical match: two same below (both non-empty)
+      if (r + 2 < ROWS) {
+        if (newBoard[r + 1][c] !== -1 && newBoard[r + 2][c] !== -1 && newBoard[r + 1][c] === newBoard[r + 2][c]) {
+          forbidden.add(newBoard[r + 1][c]);
+        }
+      }
+      // Avoid vertical match: being the middle of two same non-empty tiles
+      if (r > 0 && r < ROWS - 1) {
+        if (newBoard[r - 1][c] !== -1 && newBoard[r + 1][c] !== -1 && newBoard[r - 1][c] === newBoard[r + 1][c]) {
+          forbidden.add(newBoard[r - 1][c]);
+        }
+      }
+      let allowed = [];
+      for (let t = 0; t < TILE_TYPES; t++) {
+        if (!forbidden.has(t)) allowed.push(t);
+      }
+      let tileType;
+      if (allowed.length > 0) {
+        tileType = allowed[Math.floor(Math.random() * allowed.length)];
+      } else {
+        tileType = Math.floor(Math.random() * TILE_TYPES);
+      }
+      newBoard[r][c] = tileType;
+    }
+  }
+}
+return newBoard;
+        }
+
+        /**
+         * Swaps two tile positions. Returns new board (pure).
+         * @param {number[][]} board - 2D tile array
+         * @param {number} r1 - Row of first tile
+         * @param {number} c1 - Col of first tile
+         * @param {number} r2 - Row of second tile
+         * @param {number} c2 - Col of second tile
+         * @returns {number[][]} New board with tiles swapped
+         */
+        function swapTiles(board, r1, c1, r2, c2) {
+            let newBoard = board.map(row => [...row]);
+let temp = newBoard[r1][c1];
+newBoard[r1][c1] = newBoard[r2][c2];
+newBoard[r2][c2] = temp;
+return newBoard;
+        }
+
+        /**
+         * Checks if swapping (r1,c1) with (r2,c2) is a valid move:
+         * positions must be adjacent (Manhattan distance 1) and must create at least one match.
+         * @param {number[][]} board - 2D tile array
+         * @param {number} r1 - Row of first tile
+         * @param {number} c1 - Col of first tile
+         * @param {number} r2 - Row of second tile
+         * @param {number} c2 - Col of second tile
+         * @returns {boolean} True if the swap is valid
+         */
+        function isValidSwap(board, r1, c1, r2, c2) {
+            // Check adjacency: Manhattan distance must be exactly 1
+if (Math.abs(r1 - r2) + Math.abs(c1 - c2) !== 1) {
+    return false;
+}
+// Ensure coordinates are within board bounds
+if (r1 < 0 || r1 >= ROWS || c1 < 0 || c1 >= COLS || r2 < 0 || r2 >= ROWS || c2 < 0 || c2 >= COLS) {
+    return false;
+}
+// Simulate swap and test for matches
+let swapped = swapTiles(board, r1, c1, r2, c2);
+let matches = checkMatches(swapped);
+return matches.length > 0;
+        }
+
+        /**
+         * Checks whether the board has any possible valid move remaining.
+         * @param {number[][]} board - 2D tile array
+         * @returns {boolean} True if at least one valid move exists
+         */
+        function hasPossibleMoves(board) {
+            for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+        if (c + 1 < COLS && isValidSwap(board, r, c, r, c + 1)) return true;
+        if (r + 1 < ROWS && isValidSwap(board, r, c, r + 1, c)) return true;
+    }
+}
+return false;
+        }
+
+        /**
+         * Calculates score earned from a set of match groups.
+         * @param {Array<{row:number,col:number}[]>} matchGroups - All match groups
+         * @param {number} comboMultiplier - Current combo chain multiplier
+         * @returns {number} Points earned
+         */
+        function calculateScore(matchGroups, comboMultiplier) {
+            let totalTiles = 0;
+for (let i = 0; i < matchGroups.length; i++) {
+    totalTiles += matchGroups[i].length;
+}
+return totalTiles * 10 * comboMultiplier;
+        }
+
+        /**
+         * Returns CSS class name string for a given tile type.
+         * @param {number} type - Tile type integer (0–5, or -1 for empty)
+         * @returns {string} CSS class name
+         */
+        function getTileClass(type) {
+            return type === -1 ? 'tile tile-empty' : 'tile tile-' + type;
+        }
+
+        /**
+         * Shuffles the board when no moves are available, preserving current tile distribution.
+         * @param {number[][]} board - 2D tile array
+         * @returns {number[][]} Shuffled board
+         */
+        function shuffleBoard(board) {
+            let rows = board.length;
+let cols = board[0].length;
+let freq = {};
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        let t = board[r][c];
+        freq[t] = (freq[t] || 0) + 1;
+    }
+}
+let types = Object.keys(freq).map(Number);
+let newBoard = new Array(rows);
+for (let r = 0; r < rows; r++) {
+    newBoard[r] = new Array(cols);
+}
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        let forbidden = new Set();
+        if (c >= 2 && newBoard[r][c - 1] === newBoard[r][c - 2]) {
+            forbidden.add(newBoard[r][c - 1]);
+        }
+        if (r >= 2 && newBoard[r - 1][c] === newBoard[r - 2][c]) {
+            forbidden.add(newBoard[r - 1][c]);
+        }
+        let allowed = types.filter(t => freq[t] > 0 && !forbidden.has(t));
+        let selected;
+        if (allowed.length > 0) {
+            let idx = Math.floor(Math.random() * allowed.length);
+            selected = allowed[idx];
+        } else {
+            let available = types.filter(t => freq[t] > 0);
+            let idx = Math.floor(Math.random() * available.length);
+            selected = available[idx];
+        }
+        newBoard[r][c] = selected;
+        freq[selected]--;
+    }
+}
+return newBoard;
+        }
+
+        /* ──────────────────────────────────────────────
+           SCREEN-SPECIFIC RENDER HELPERS
+           ────────────────────────────────────────────── */
+
+        /**
+         * Populates the level select grid with level buttons based on state.
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function renderLevelSelect(state) {
+            let grid = document.getElementById('level-grid');
+grid.innerHTML = '';
+let levels = state.levels || [];
+levels.forEach(level => {
+  let btn = document.createElement('button');
+  btn.className = 'flex flex-col items-center justify-center bg-[#1e1e3a] rounded-lg p-2 w-full aspect-square transition transform active:scale-95';
+  if (!level.unlocked) {
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+  } else {
+    btn.classList.add('cursor-pointer');
+  }
+  let numSpan = document.createElement('span');
+  numSpan.textContent = level.number;
+  numSpan.className = 'text-sm font-bold';
+  btn.appendChild(numSpan);
+  let starsDiv = document.createElement('div');
+  starsDiv.className = 'flex gap-0.5 mt-1';
+  for (let i = 1; i <= 3; i++) {
+    let star = document.createElement('span');
+    if (level.stars >= i) {
+      star.className = 'star';
+      star.textContent = '★';
+    } else {
+      star.className = 'star empty';
+      star.textContent = '☆';
+    }
+    starsDiv.appendChild(star);
+  }
+  btn.appendChild(starsDiv);
+  if (level.unlocked) {
+    btn.addEventListener('click', function() {
+      gameState = handleAction(gameState, { type: 'SELECT_LEVEL', level: level.number });
+      render(gameState);
+    });
+  }
+  grid.appendChild(btn);
+});
+        }
+
+        /**
+         * Populates the high scores list from state.highScores.
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function renderHighScores(state) {
+            let container = document.getElementById('high-scores-list');
+if (!container) return {};
+container.innerHTML = '';
+let scores = state.highScores || [];
+if (scores.length === 0) {
+  container.innerHTML = '<div class="text-center text-gray-400 py-4">暂无记录</div>';
+  return {};
+}
+for (let i = 0; i < scores.length; i++) {
+  let entry = scores[i];
+  let score = entry?.score ?? (typeof entry === 'number' ? entry : 0);
+  let level = entry?.level;
+  let div = document.createElement('div');
+  div.className = 'flex items-center gap-3 bg-[#1e1e3a] rounded-lg p-3';
+  let rankSpan = document.createElement('span');
+  rankSpan.className = 'text-xl font-bold text-yellow-400';
+  rankSpan.textContent = '#' + (i + 1);
+  let scoreSpan = document.createElement('span');
+  scoreSpan.className = 'flex-1';
+  scoreSpan.textContent = score + ' 分';
+  div.appendChild(rankSpan);
+  div.appendChild(scoreSpan);
+  if (level !== undefined && level !== null) {
+    let levelSpan = document.createElement('span');
+    levelSpan.className = 'text-xs text-gray-400';
+    levelSpan.textContent = 'Lv.' + level;
+    div.appendChild(levelSpan);
+  }
+  container.appendChild(div);
+}
+        }
+
+        /**
+         * Updates the game result screen (win/lose, stars, score).
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function renderGameResult(state) {
+            let resultTitle = document.getElementById('result-title');
+let resultStars = document.getElementById('result-stars');
+let resultScore = document.getElementById('result-score');
+let btnNextLevel = document.getElementById('btn-next-level');
+let gameResult = state.gameResult;
+if (!gameResult) { gameResult = { win: false, score: 0, stars: 0 }; }
+resultTitle.textContent = gameResult.win ? '恭喜过关！' : '挑战失败';
+resultTitle.className = gameResult.win ? 'text-4xl font-extrabold text-green-400' : 'text-4xl font-extrabold text-red-400';
+resultScore.textContent = gameResult.score;
+resultStars.innerHTML = '';
+for (let i = 0; i < 3; i++) {
+    let starSpan = document.createElement('span');
+    starSpan.textContent = '★';
+    starSpan.classList.add('star');
+    if (i >= gameResult.stars) { starSpan.classList.add('empty'); }
+    resultStars.appendChild(starSpan);
+}
+btnNextLevel.classList.toggle('hidden', !gameResult.win);
+        }
+
+        /**
+         * Updates shop screen with current coin balance and item availability.
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function renderShop(state) {
+            let shopScreen = document.getElementById('shop-screen');
+let coinDisplay = document.getElementById('coin-balance');
+if (!coinDisplay) {
+    coinDisplay = document.createElement('div');
+    coinDisplay.id = 'coin-balance';
+    coinDisplay.className = 'text-lg font-bold mb-2';
+    let h2 = shopScreen.querySelector('h2');
+    if (h2 && h2.nextSibling) {
+        h2.parentNode.insertBefore(coinDisplay, h2.nextSibling);
+    } else {
+        shopScreen.insertBefore(coinDisplay, shopScreen.firstChild);
+    }
+}
+coinDisplay.textContent = `💰 金币: ${state.coins}`;
+
+let prices = { bomb: 50, rainbow: 100, undo: 30, extra_moves: 75 };
+let buttons = shopScreen.querySelectorAll('.btn-accent');
+buttons.forEach(button => {
+    let actionAttr = button.getAttribute('data-action');
+    if (actionAttr) {
+        try {
+            let action = JSON.parse(actionAttr);
+            if (action.type === 'BUY_ITEM' && action.item) {
+                let item = action.item;
+                let price = prices[item];
+                if (price != null) {
+                    if (state.coins < price) {
+                        button.disabled = true;
+                        button.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        button.disabled = false;
+                        button.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+});
+        }
+
+        /**
+         * Updates settings screen toggle button labels from state.settings.
+         * @param {object} state - Current game state
+         * @returns {void}
+         */
+        function renderSettings(state) {
+            let soundBtn = document.getElementById('toggle-sound');
+let musicBtn = document.getElementById('toggle-music');
+if (soundBtn) {
+    soundBtn.textContent = state.settings.sound ? '开' : '关';
+}
+if (musicBtn) {
+    musicBtn.textContent = state.settings.music ? '开' : '关';
+}
+        }
+
+        /**
+         * Shows/hides bottom bar buttons based on current screen.
+         * @param {string} screenId - Base screen name
+         * @returns {void}
+         */
+        function updateBottomBar(screenId) {
+            let homeBtn = document.getElementById('btn-bottom-home');
+let pauseBtn = document.getElementById('btn-bottom-pause');
+let backBtn = document.getElementById('btn-bottom-back');
+
+if (screenId === 'home') {
+    homeBtn.classList.add('hidden');
+    pauseBtn.classList.add('hidden');
+    backBtn.classList.add('hidden');
+} else if (screenId === 'gameplay') {
+    homeBtn.classList.add('hidden');
+    pauseBtn.classList.remove('hidden');
+    backBtn.classList.add('hidden');
+} else {
+    homeBtn.classList.remove('hidden');
+    pauseBtn.classList.add('hidden');
+    backBtn.classList.remove('hidden');
+}
+        }
+
+        /* ──────────────────────────────────────────────
+           ANIMATION UTILITIES
+           ────────────────────────────────────────────── */
+
+        /**
+         * Applies matched-tile pop animation, then after delay triggers gravity + fill + re-render.
+         * @param {Array<{row:number,col:number}[]>} matchGroups - Matched positions
+         * @param {function} callback - Called after animation completes
+         * @returns {void}
+         */
+        function animateMatches(matchGroups, callback) {
+            // Collect unique matched positions and add 'matched' class
+let seen = {};
+for (let group of matchGroups) {
+    for (let pos of group) {
+        let key = pos.row + ',' + pos.col;
+        if (!seen[key]) {
+            seen[key] = true;
+            let tile = document.querySelector(`.tile[data-row="${pos.row}"][data-col="${pos.col}"]`);
+            if (tile) {
+                tile.classList.add('matched');
+            }
+        }
+    }
+}
+// After pop animation completes (0.3s), invoke callback
+setTimeout(() => {
+    callback();
+}, 300);
+        }
+
+        /**
+         * Applies drop animation to newly filled tiles.
+         * @param {number[]} affectedCols - Columns that received new tiles
+         * @param {function} callback - Called after animation completes
+         * @returns {void}
+         */
+        function animateDrop(affectedCols, callback) {
+            let boardEl = document.getElementById('game-board');
+if (!boardEl || !affectedCols || affectedCols.length === 0) {
+    callback();
+    return {};
+}
+let animatedTiles = new Set();
+affectedCols.forEach(col => {
+    let tiles = boardEl.querySelectorAll(`.tile[data-col="${col}"]`);
+    tiles.forEach(tile => animatedTiles.add(tile));
+});
+animatedTiles.forEach(tile => tile.classList.add('drop'));
+setTimeout(() => {
+    animatedTiles.forEach(tile => tile.classList.remove('drop'));
+    callback();
+}, 250);
+        }
+
+        /* ──────────────────────────────────────────────
+           BOOTSTRAP
+           ────────────────────────────────────────────── */
+        document.addEventListener('DOMContentLoaded', startGame);
+    
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

@@ -313,6 +313,14 @@ def create_app() -> FastAPI:
         tags=["partnerships"],
     )
 
+    # ── Reservations / Bookings: future-dated commitments + no-show ────
+    from app.routers import reservations
+    app.include_router(
+        reservations.router,
+        prefix="/api/v1/reservations",
+        tags=["reservations"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():

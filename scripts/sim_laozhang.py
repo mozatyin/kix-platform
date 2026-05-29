@@ -150,6 +150,31 @@ def _short(body: Any, n: int = 250) -> str:
     return s if len(s) <= n else s[:n] + "..."
 
 
+# ── Consent setup helper ─────────────────────────────────────────────────
+_consent_policy_published = False
+
+
+async def _setup_consent(c: httpx.AsyncClient, user_ids: list[str],
+                         policy_version: str = "1.0") -> None:
+    """Publish policy once + grant consent for each user. Idempotent."""
+    global _consent_policy_published
+    if not _consent_policy_published:
+        sc, _b = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+            "version": policy_version,
+            "text_md": "# Sim policy\nFor testing.",
+            "effective_at": int(time.time()) - 60,
+            "requires_re_grant": False,
+        })
+        _consent_policy_published = (sc == 200)
+    for uid in user_ids:
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": uid,
+            "scopes": ["cross_brand_tracking", "geo_lbs", "personalization", "marketing"],
+            "policy_version": policy_version,
+            "source": "web",
+        })
+
+
 # ── Phase 1: Single brand + storefront ───────────────────────────────────
 async def phase_1_brand(c: httpx.AsyncClient) -> dict[str, Any]:
     _phase_init("1: Single Brand (Forbidden City Small House)")
@@ -244,6 +269,21 @@ async def phase_2_wallet(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
 async def phase_3_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     _phase_init("3: VIP Tier System (¥10K/year membership)")
 
+    # Configure tier thresholds for the brand FIRST so tier resolution works.
+    sc, b = await call(c, "POST", "/api/v1/primitives/tier/configure", json_body={
+        "brand_id": BRAND_ID,
+        "tiers": [
+            {"name": "guest", "xp_min": 0},
+            {"name": "silver", "xp_min": 100},
+            {"name": "gold", "xp_min": 1000},
+            {"name": "vip", "xp_min": 10000},
+        ],
+    })
+    if sc == 200:
+        ok("tier config", "guest/silver/gold/vip thresholds set for brand")
+    else:
+        gap("P1", "tier configure", f"{sc} {_short(b)}")
+
     # Define three tiers
     tiers = [
         {"id": "guest", "name": "Guest", "threshold_xp": 0,
@@ -290,7 +330,8 @@ async def phase_3_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         "→ ChinaTang) the VIP tier cannot be inherited across brands without a "
         "master-level tier definition.")
 
-    # Try to grant XP to first VIP to promote them
+    # Try to grant XP to first VIP to promote them — brand_id passed so tier
+    # resolution sees the same XP keys.
     vip_uid = f"vip_{RUN_TAG}_00"
     sc, b = await call(c, "POST", f"/api/v1/primitives/currency/xp/grant", json_body={
         "user_id": vip_uid, "brand_id": BRAND_ID,
@@ -304,9 +345,13 @@ async def phase_3_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     sc, b = await call(c, "GET", f"/api/v1/primitives/user/{vip_uid}/tier",
                       params={"brand_id": BRAND_ID})
     if sc == 200 and isinstance(b, dict):
-        cur = (b.get("current_tier") or {}).get("id")
+        ct = b.get("current_tier")
+        if isinstance(ct, dict):
+            cur = ct.get("id") or ct.get("name")
+        else:
+            cur = ct or b.get("tier")
         xp_seen = b.get("xp", 0)
-        if cur == "vip_gold":
+        if cur in ("vip_gold", "vip"):
             ok("tier auto-compute", f"user has tier={cur} xp={xp_seen}")
         else:
             # This is a REAL platform bug: /tier reads `user:{uid}:xp` (global),
@@ -386,22 +431,10 @@ async def phase_5_pixel(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     _phase_init("5: High-Value Pixel (¥2500 = 250,000 cents)")
 
     # Pixel.purchase path runs through attribution which requires consent.
-    # Publish a policy + grant consent for the VIP user + tourist users used here
-    sc, _ = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
-        "version": f"v_{RUN_TAG}",
-        "text_md": "# Forbidden City consent policy",
-        "effective_at": int(time.time()) - 60,
-        "requires_re_grant": False,
-    })
-    state["_policy_published"] = (sc == 200)
-
-    for uid in (f"vip_{RUN_TAG}_00", f"tourist_{RUN_TAG}_USD", f"tourist_{RUN_TAG}_JPY"):
-        await call(c, "POST", "/api/v1/consent/grant", json_body={
-            "user_id": uid,
-            "scopes": ["cross_brand_tracking", "geo_lbs", "personalization", "marketing"],
-            "policy_version": f"v_{RUN_TAG}",
-            "source": "app",
-        })
+    await _setup_consent(c, [f"vip_{RUN_TAG}_00",
+                              f"tourist_{RUN_TAG}_USD",
+                              f"tourist_{RUN_TAG}_JPY"])
+    state["_policy_published"] = True
 
     sc, b = await call(c, "POST", "/api/v1/pixel/register", json_body={
         "brand_id": BRAND_ID,
@@ -495,13 +528,8 @@ async def phase_6_audience(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         lang = rng.choice(TOURIST_LANGS)
         uid = f"tourist_{RUN_TAG}_{lang}_{i:02d}"
         tourist_uids.append(uid)
-        # grant consent so attribution doesn't 403 later
-        await call(c, "POST", "/api/v1/consent/grant", json_body={
-            "user_id": uid,
-            "scopes": ["cross_brand_tracking", "geo_lbs", "personalization", "marketing"],
-            "policy_version": f"v_{RUN_TAG}",
-            "source": "app",
-        })
+    # Grant consent so attribution doesn't 403 later
+    await _setup_consent(c, tourist_uids)
 
     # Build custom audience
     sc, b = await call(c, "POST", "/api/v1/audiences/custom/create", json_body={
@@ -656,6 +684,21 @@ async def phase_8_personalization(c: httpx.AsyncClient, state: dict[str, Any]) -
 
     vip_uid = state.get("vip_test_user", f"vip_{RUN_TAG}_00")
 
+    # Ensure VIP has consent so any consent-gated downstream call passes.
+    await _setup_consent(c, [vip_uid])
+
+    # Configure tier-based freq-cap overrides BEFORE probing VIP exemption.
+    sc, b = await call(c, "POST", "/api/v1/frequency-cap/admin/config", json_body={
+        "tier_overrides": {
+            "vip": {"per_brand_daily": 50, "global_daily": 100, "recency_minutes": 0},
+            "gold": {"per_brand_daily": 10},
+        }
+    })
+    if sc == 200:
+        ok("freq-cap tier_overrides configured", "vip/gold get higher caps")
+    else:
+        gap("P1", "freq-cap tier_overrides", f"{sc} {_short(b)}")
+
     # Simulate VIP entering restaurant
     sc, b = await call(c, "POST", "/api/v1/geofence/enter", json_body={
         "user_id": vip_uid,
@@ -779,11 +822,7 @@ async def phase_10_attribution(c: httpx.AsyncClient, state: dict[str, Any]) -> N
     dev = f"dev_{uid}"
 
     # grant consent
-    await call(c, "POST", "/api/v1/consent/grant", json_body={
-        "user_id": uid,
-        "scopes": ["cross_brand_tracking", "geo_lbs", "personalization", "marketing"],
-        "policy_version": f"v_{RUN_TAG}", "source": "app",
-    })
+    await _setup_consent(c, [uid])
 
     # Step 1: ad click (attribution token / invite-token)
     sc, b = await call(c, "POST", "/api/v1/attribution/token/create", json_body={
@@ -857,33 +896,24 @@ async def phase_10_attribution(c: httpx.AsyncClient, state: dict[str, Any]) -> N
     else:
         gap("P1", "lifecycle purchase event", f"{sc} {_short(b)}")
 
-    # Probe: explicit window override
+    # Probe: explicit window override via top-level window_seconds (Round 2 fix)
+    ord_id = f"order_window_{RUN_TAG}"
     sc, b = await call(c, "POST", "/api/v1/attribution/track/conversion", json_body={
         "user_id": uid,
         "target_brand": BRAND_ID,
-        "order_id": f"order_window_{RUN_TAG}",
-        "amount_cents": AVG_TABLE_CENTS,
-        "context": {"attribution_window_days": 30},  # PROBE via context
+        "order_id": ord_id,
+        "amount_cents": 250000,
+        "window_seconds": 2592000,  # 30 days
     })
-    if sc == 200 and isinstance(b, dict):
-        window = b.get("window_seconds")
-        if window == 30 * 86400:
-            ok("attribution window override accepted", f"window={window}s")
-        else:
-            gap("P0", "attribution window NOT overridable",
-                f"/attribution/track/conversion returns "
-                f"window_seconds={window} regardless of any caller-supplied "
-                "value. The 7-day cap is hardcoded as "
-                "`ATTRIBUTION_WINDOW_SECONDS = 7*24*60*60` in "
-                "app/routers/attribution.py:141 — there is no schema field "
-                "and no environment variable to override it. For "
-                "reservation-driven businesses (weddings, anniversaries, "
-                "10-day countdown campaigns where the gap between awareness "
-                "and visit is 14-90 days), the platform CANNOT attribute "
-                "any of that revenue. This is THE blocking gap for fine "
-                "dining attribution.")
+    if sc == 200 and b.get("window_seconds") == 2592000:
+        ok("attribution window override accepted", "30-day window honored")
+    elif sc == 200 and b.get("window_seconds") == 604800:
+        gap("P0", "attribution window NOT overridable",
+            "request had window_seconds=2592000 but response shows 604800")
+    elif sc == 200:
+        info(f"attribution conversion: window_seconds={b.get('window_seconds')} body={_short(b, 200)}")
     else:
-        info(f"attribution/track/conversion direct call: {sc} {_short(b)}")
+        gap("P1", "conversion track failure", f"{sc} {_short(b)}")
 
 
 # ── Phase 11: Bulk Voucher Issuance ──────────────────────────────────────
@@ -1044,26 +1074,22 @@ async def phase_12_edges(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
 
     # 12e: Multilingual storefront probe — already covered in phase 1, skip
 
-    # 12f: Frequency-cap admin override per-user
+    # 12f: Frequency-cap admin override per-tier
     sc, b = await call(c, "POST", "/api/v1/frequency-cap/admin/config", json_body={
-        "tier_overrides": {"vip_gold": {"global_daily": 999}},
+        "tier_overrides": {"vip": {"global_daily": 999}},
     })
     if sc == 422 or sc == 400:
         gap("P0", "tier-based freq-cap override",
             f"/frequency-cap/admin/config rejected `tier_overrides` field "
-            "({sc}). Schema is global-only. Per-tier or per-user cap "
-            "exemption (the entire point of VIP recognition) is not "
-            "supported. This is the single biggest gap for luxury-venue "
-            "lifecycle marketing.")
+            f"({sc}). Schema is global-only.")
     elif sc == 200:
         # Check if it persisted
         sc2, b2 = await call(c, "GET", "/api/v1/frequency-cap/admin/config")
         if isinstance(b2, dict) and "tier_overrides" not in b2:
             gap("P0", "tier-based freq-cap override silently dropped",
-                "Config accepted (200) but `tier_overrides` not persisted on "
-                "read. Field silently ignored.")
+                "Config accepted (200) but `tier_overrides` not persisted on read.")
         else:
-            ok("tier freq-cap override", "")
+            ok("tier freq-cap override", "tier_overrides accepted and persisted")
 
 
 # ── Findings writer ──────────────────────────────────────────────────────

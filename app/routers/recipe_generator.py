@@ -735,12 +735,183 @@ async def _load_generated(
 # ── Endpoints ──────────────────────────────────────────────────────────────
 
 
+# ── Library matcher (prefer seeded recipes over LLM generation) ───────────
+
+
+# Industry-keyword index used to map free-text descriptions back to an
+# industry tag when the merchant didn't pass one explicitly. Conservative —
+# we only fire on unambiguous phrases.
+_INDUSTRY_KEYWORDS: dict[str, list[str]] = {
+    "book_club": ["book club", "读书会", "读书俱乐部", "book group", "reading club"],
+    "education": ["course", "lesson", "tutor", "学习", "课程", "education", "quiz",
+                  "知识", "trivia"],
+    "fitness": ["gym", "class", "workout", "健身", "fitness", "yoga", "运动"],
+    "kids_education": ["kids", "child", "parent", "family", "亲子", "儿童", "孩子"],
+    "wellness": ["wellness", "health", "meditation", "sleep", "habit", "健康",
+                 "冥想", "睡眠"],
+    "events": ["event", "meetup", "rsvp", "活动", "社群活动"],
+    "community": ["subscription", "renewal", "membership", "订阅", "会员",
+                  "community", "社区"],
+}
+
+
+def _infer_industry(description: str) -> str | None:
+    """Best-effort industry inference from a free-text description."""
+    d = description.lower()
+    for ind, kws in _INDUSTRY_KEYWORDS.items():
+        if any(k in d for k in kws):
+            return ind
+    return None
+
+
+async def find_matching_recipes(
+    industry: str | None,
+    intent: str,
+    r: aioredis.Redis,
+    *,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Search seeded recipes that match industry + intent keywords.
+
+    Returns a ranked list of {recipe, score, reason}. Scoring is simple
+    additive:
+      +5  industry exact match
+      +1  per matched keyword (description / tag / name)
+    A merchant UI can show the top hits and let the merchant either pick
+    one or fall through to LLM generation.
+    """
+    raw = await r.hgetall("recipes:catalog")
+    candidates: list[dict[str, Any]] = []
+    intent_lc = (intent or "").lower()
+    # Light keyword set built from the intent — at least 3 chars, deduped.
+    tokens = {
+        t.strip(".,!?;:'\"")
+        for t in re.split(r"\s+", intent_lc)
+        if len(t.strip(".,!?;:'\"")) >= 3
+    }
+
+    for _rid, payload in raw.items():
+        try:
+            rec = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        score = 0
+        reasons: list[str] = []
+
+        rec_industry = rec.get("industry")
+        if industry and rec_industry == industry:
+            score += 5
+            reasons.append(f"industry={industry}")
+
+        # haystack = name + descriptions + tags
+        hay_parts = [
+            rec.get("name", ""), rec.get("name_cn", ""),
+            rec.get("description_en", ""), rec.get("description_cn", ""),
+        ]
+        hay_parts.extend(rec.get("tags") or [])
+        haystack = " ".join(hay_parts).lower()
+        hit_kws = [t for t in tokens if t and t in haystack]
+        if hit_kws:
+            score += len(hit_kws)
+            reasons.append(f"keywords={hit_kws[:5]}")
+
+        if score > 0:
+            candidates.append({
+                "recipe_id": rec.get("id"),
+                "name": rec.get("name"),
+                "industry": rec_industry,
+                "score": score,
+                "reasons": reasons,
+                "recipe": rec,
+            })
+
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+    return candidates[:limit]
+
+
+class MatchLibraryRequest(BaseModel):
+    description: str = Field(..., min_length=3, max_length=4000)
+    industry: Industry | None = None
+    limit: int = 5
+
+
+@router.post("/match-library")
+async def match_library(
+    body: MatchLibraryRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Search the seeded recipe catalog for matches against an NL intent.
+
+    Returns ranked hits with score + reasons. Useful BEFORE calling
+    /from-description so the merchant UI can suggest a 1-click apply
+    instead of forcing LLM generation. Falls back to inferring industry
+    from the description when one is not supplied.
+    """
+    industry = body.industry or _infer_industry(body.description)
+    hits = await find_matching_recipes(industry, body.description, r, limit=body.limit)
+    return {
+        "industry_used": industry,
+        "industry_inferred": body.industry is None,
+        "count": len(hits),
+        "matches": hits,
+    }
+
+
 @router.post("/from-description", response_model=RecipeResponse)
 async def from_description(
     body: FromDescriptionRequest,
     r: aioredis.Redis = Depends(get_redis),
 ) -> RecipeResponse:
-    """Map a natural-language description to a Recipe (preview, not applied)."""
+    """Map a natural-language description to a Recipe (preview, not applied).
+
+    Library-first strategy: if a seeded recipe scores >= 6 (industry match
+    + at least 1 keyword hit), we return it as the candidate instead of
+    generating from scratch. The merchant can still call /refine to tweak.
+    """
+    # 1) Library hit?
+    industry_for_match = body.industry or _infer_industry(body.description)
+    if industry_for_match:
+        hits = await find_matching_recipes(
+            industry_for_match, body.description, r, limit=1
+        )
+        if hits and hits[0]["score"] >= 6:
+            chosen = hits[0]["recipe"]
+            modules_used = [m["id"] for m in chosen.get("modules", [])]
+            cn = (
+                f"已从配方库匹配现成方案 '{chosen.get('name_cn') or chosen.get('name')}'。"
+                f"匹配分数 {hits[0]['score']}，原因：{', '.join(hits[0]['reasons'])}。"
+            )
+            en = (
+                f"Matched seeded recipe '{chosen.get('name')}' from library "
+                f"(score={hits[0]['score']}). Reasons: {', '.join(hits[0]['reasons'])}."
+            )
+            payload = {
+                "recipe": chosen,
+                "confidence": 0.95,
+                "modules_used": modules_used,
+                "explanation_cn": cn,
+                "explanation_en": en,
+                "estimated_complexity": _complexity(chosen),
+                "warnings": [],
+                "source_description": body.description,
+                "industry": industry_for_match,
+                "style": body.style,
+                "matched_from_library": True,
+                "library_match_score": hits[0]["score"],
+            }
+            recipe_id = await _store_generated(r, body.brand_id, payload)
+            return RecipeResponse(
+                recipe_id=recipe_id,
+                recipe=chosen,
+                confidence=0.95,
+                modules_used=modules_used,
+                explanation_cn=cn,
+                explanation_en=en,
+                estimated_complexity=_complexity(chosen),
+                warnings=[],
+            )
+
+    # 2) No strong library hit → LLM (or heuristic fallback)
     recipe, cn, en, warnings = await _generate(
         body.description, body.industry, body.style
     )

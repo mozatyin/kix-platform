@@ -401,5 +401,526 @@
       "key_metric": "wechat_pay_signup_lift",
       "key_metric_value": "+200M users in 2 days"
     }
+  },
+  {
+    "id": "book_club_streak",
+    "name": "Book Club Reading Streak",
+    "name_cn": "读书会·连续阅读",
+    "description_en": "XP per finished book + 5-book streak voucher + weekly meeting bonus + reading leaderboard. Designed for community book clubs (老李 Guangzhou style).",
+    "description_cn": "每本完读得XP + 5本连击免费一月会籍券 + 每周线下读书会签到额外XP + 阅读进度排行榜。专为社区读书会设计。",
+    "icon": "📚",
+    "category": "engagement",
+    "industry": "book_club",
+    "tags": ["streak", "voucher", "leaderboard", "quest", "community"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 5, 10, 25, 50], "action": "book_complete"}},
+      {"id": "progression", "params": {"xp_per_action": {"book_complete": 100, "meeting_attended": 50, "review_written": 30}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "free_month_member", "value": {"type": "free_subscription", "duration_days": 30}, "conditions": {"trigger": "5_book_streak"}},
+        {"id": "anniversary_book", "value": {"type": "free_item", "amount": 1, "label": "year_one_gift_book"}, "conditions": {"trigger": "365_days_active"}}
+      ]}},
+      {"id": "leaderboard", "params": {"scopes": ["brand", "friends"], "cycles": ["monthly", "all_time"], "metric": "books_read"}},
+      {"id": "smartquests", "params": {"refresh_weekly": true, "weekly_count": 2, "templates": ["attend_meeting", "finish_book", "review_post"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on book complete",
+        "trigger_event": "book_complete",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 100}},
+          {"module": "streak", "method": "check", "params": {"key": "book_complete"}}
+        ]
+      },
+      {
+        "name": "Free month voucher at 5-book streak",
+        "trigger_event": "streak_milestone",
+        "conditions": {"type": "value", "metric": "streak_count", "op": ">=", "value": 5},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "free_month_member"}}]
+      },
+      {
+        "name": "Bonus XP on weekly meeting attendance",
+        "trigger_event": "meeting_attended",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 50}}]
+      }
+    ],
+    "wireframe_hint": "Shows reading progress bar + recent book covers grid + member leaderboard with avatars",
+    "metadata": {
+      "source": "老李 Guangzhou book club retention pattern",
+      "key_metric": "monthly_active_members",
+      "key_metric_value": "+45% target",
+      "primary_outcome": "membership_retention",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "course_completion_education",
+    "name": "Course Completion Engine",
+    "name_cn": "课程完成驱动引擎",
+    "description_en": "Lesson-by-lesson XP + daily learning streak + course-end certificate + parent-shareable dashboard. Built for online education / tutoring.",
+    "description_cn": "逐课XP + 每日学习连击 + 课程结业证书 + 家长可分享进度面板。在线教育/培训机构通用。",
+    "icon": "🎓",
+    "category": "engagement",
+    "industry": "education",
+    "tags": ["streak", "achievement", "quest", "share"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 7, 30, 100], "action": "lesson_complete"}},
+      {"id": "progression", "params": {"xp_per_action": {"lesson_complete": 25, "quiz_passed": 50, "course_complete": 500}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_lesson", "name": "First Step", "trigger": "lesson_count>=1"},
+        {"id": "ten_lessons", "name": "Decathlon", "trigger": "lesson_count>=10"},
+        {"id": "certificate", "name": "Certificate of Completion", "trigger": "course_complete"}
+      ]}},
+      {"id": "auto_share", "params": {"channels": ["wechat", "instagram"], "default_on": false, "templates": ["certificate_share", "milestone_share"]}},
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 1, "templates": ["finish_one_lesson_today"]}}
+    ],
+    "rules": [
+      {
+        "name": "Daily streak on lesson complete",
+        "trigger_event": "lesson_complete",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 25}},
+          {"module": "streak", "method": "check", "params": {"key": "lesson_complete"}}
+        ]
+      },
+      {
+        "name": "Issue certificate on course finish",
+        "trigger_event": "course_complete",
+        "actions": [
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "certificate"}},
+          {"module": "network_effect", "method": "auto_share", "params": {"template": "certificate_share"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Progress ring per course + streak flame + parent-view toggle + share certificate button",
+    "metadata": {
+      "source": "Duolingo + Coursera hybrid",
+      "key_metric": "course_completion_rate",
+      "key_metric_value": "+30% vs baseline",
+      "primary_outcome": "course_completion",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "gym_class_streak",
+    "name": "Gym Class Attendance Streak",
+    "name_cn": "健身房课程连击",
+    "description_en": "Check-in per class + 10-class streak free week + body-progress milestones + buddy referral bonus. Fitness-studio retention.",
+    "description_cn": "每节课签到 + 10节课连击送一周高级会员 + 体测里程碑徽章 + 邀请朋友双方得XP。健身房留存通用配方。",
+    "icon": "💪",
+    "category": "engagement",
+    "industry": "fitness",
+    "tags": ["streak", "voucher", "achievement", "referral"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 2, "milestones": [3, 5, 10, 30, 100], "action": "class_attended"}},
+      {"id": "progression", "params": {"xp_per_action": {"class_attended": 50, "body_measure": 100, "buddy_signup": 200}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "free_premium_week", "value": {"type": "free_subscription", "duration_days": 7}, "conditions": {"trigger": "10_class_streak"}}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "weight_milestone", "name": "Body Goal", "trigger": "weight_change>=target"},
+        {"id": "strength_milestone", "name": "Strength Up", "trigger": "lift_pr"}
+      ]}},
+      {"id": "share_to_win", "params": {"reward_currency": "xp", "reward_amount": 200, "buddy_bonus": true}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP + streak on class check-in",
+        "trigger_event": "class_attended",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 50}},
+          {"module": "streak", "method": "check", "params": {"key": "class_attended"}}
+        ]
+      },
+      {
+        "name": "Free premium week at 10-class streak",
+        "trigger_event": "streak_milestone",
+        "conditions": {"type": "value", "metric": "streak_count", "op": ">=", "value": 10},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "free_premium_week"}}]
+      },
+      {
+        "name": "Buddy referral both get XP",
+        "trigger_event": "referral_completed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 200, "recipient": "referrer"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 200, "recipient": "referee"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Calendar grid of attended classes + body-progress chart + buddy invite card",
+    "metadata": {
+      "source": "ClassPass + Strava hybrid",
+      "key_metric": "monthly_class_visits",
+      "key_metric_value": "+40% vs no-program",
+      "primary_outcome": "class_attendance",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "subscription_loyalty",
+    "name": "Subscription Anniversary Loyalty",
+    "name_cn": "订阅服务周年忠诚度",
+    "description_en": "Monthly renewal level-up + 3/6/12/24-month anniversary milestones + refer-a-friend extends both 1 month + churn-prevention rescue trigger. Subscription-business retention.",
+    "description_cn": "每月续费升一级 + 3/6/12/24个月周年里程碑 + 邀请朋友双方延期一月 + 流失预警挽留触发。订阅业务通用挽留配方。",
+    "icon": "🎟️",
+    "category": "loyalty",
+    "industry": "community",
+    "tags": ["tier", "voucher", "referral", "retention", "milestone"],
+    "modules": [
+      {"id": "tier", "params": {"tiers": [
+        {"id": "new", "name": "New Member", "threshold_xp": 0, "perks": []},
+        {"id": "regular", "name": "Regular", "threshold_xp": 3, "perks": ["3mo_badge"]},
+        {"id": "loyal", "name": "Loyal", "threshold_xp": 6, "perks": ["6mo_voucher"]},
+        {"id": "veteran", "name": "Veteran", "threshold_xp": 12, "perks": ["1yr_gift", "priority_support"]},
+        {"id": "legend", "name": "Legend", "threshold_xp": 24, "perks": ["2yr_gift", "private_event_invite"]}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"monthly_renewal": 1}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "anniversary_3mo", "value": {"type": "discount_pct", "amount": 10}, "conditions": {"tier_required": "regular"}},
+        {"id": "anniversary_6mo", "value": {"type": "free_item", "amount": 1, "label": "loyalty_gift"}, "conditions": {"tier_required": "loyal"}},
+        {"id": "anniversary_1yr", "value": {"type": "discount_pct", "amount": 25}, "conditions": {"tier_required": "veteran"}},
+        {"id": "anniversary_2yr", "value": {"type": "free_subscription", "duration_days": 30}, "conditions": {"tier_required": "legend"}}
+      ]}},
+      {"id": "share_to_win", "params": {"reward_currency": "subscription_days", "reward_amount": 30, "buddy_bonus": true}},
+      {"id": "triggers", "params": {"churn_signal": {"inactive_days_threshold": 14, "action": "save_offer"}}}
+    ],
+    "rules": [
+      {
+        "name": "Level up on monthly renewal",
+        "trigger_event": "subscription_renewed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 1}},
+          {"module": "tier", "method": "recompute", "params": {}}
+        ]
+      },
+      {
+        "name": "Anniversary milestone reward",
+        "trigger_event": "tier_promoted",
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_by_tier": true}}]
+      },
+      {
+        "name": "Referral extends both subscriptions",
+        "trigger_event": "referral_completed",
+        "actions": [
+          {"module": "progression", "method": "award_currency", "params": {"currency": "subscription_days", "amount": 30, "recipient": "referrer"}},
+          {"module": "progression", "method": "award_currency", "params": {"currency": "subscription_days", "amount": 30, "recipient": "referee"}}
+        ]
+      },
+      {
+        "name": "Churn rescue at 14 days inactive",
+        "trigger_event": "user_inactive_14d",
+        "actions": [{"module": "network_effect", "method": "save_offer", "params": {"template": "we_miss_you"}}]
+      }
+    ],
+    "wireframe_hint": "Anniversary timeline (months as gems) + tier badge + churn rescue toast + referral progress bar",
+    "metadata": {
+      "source": "Netflix + Spotify loyalty patterns",
+      "key_metric": "12mo_retention",
+      "key_metric_value": "+18% target",
+      "primary_outcome": "subscription_retention",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "parent_engagement_kids",
+    "name": "Parent-Child Learning Engagement",
+    "name_cn": "亲子学习共成长",
+    "description_en": "Parent earns XP from child's progress + multi-child support + private family leaderboard + quarterly milestone voucher. Kids-education engagement loop.",
+    "description_cn": "孩子进步家长得XP + 多孩兄弟姐妹支持 + 私密家庭排行榜 + 季度里程碑¥50券。儿童教育亲子绑定。",
+    "icon": "👨‍👩‍👧",
+    "category": "engagement",
+    "industry": "kids_education",
+    "tags": ["progression", "voucher", "leaderboard", "family"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"child_lesson_complete": 10, "child_quiz_passed": 25, "parent_review": 15}, "shared_pool": "family"}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_milestone", "name": "First 100 Lessons", "trigger": "family_lessons>=100"},
+        {"id": "sibling_team", "name": "Sibling Team", "trigger": "children_count>=2"}
+      ]}},
+      {"id": "leaderboard", "params": {"scopes": ["family"], "cycles": ["weekly", "monthly"], "private": true, "metric": "family_xp"}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "quarterly_50", "value": {"type": "voucher", "value_cents": 5000}, "conditions": {"trigger": "quarter_milestone"}},
+        {"id": "sibling_discount", "value": {"type": "discount_pct", "amount": 20}, "conditions": {"children_count": ">=2"}}
+      ]}},
+      {"id": "smartquests", "params": {"refresh_weekly": true, "weekly_count": 1, "templates": ["family_goal_this_week"]}}
+    ],
+    "rules": [
+      {
+        "name": "Family pool XP on child progress",
+        "trigger_event": "child_lesson_complete",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 10, "pool": "family"}}]
+      },
+      {
+        "name": "Quarterly milestone voucher",
+        "trigger_event": "quarter_milestone",
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "quarterly_50"}}]
+      },
+      {
+        "name": "Auto-apply sibling discount on 2nd child",
+        "trigger_event": "child_added",
+        "conditions": {"type": "value", "metric": "children_count", "op": ">=", "value": 2},
+        "actions": [{"module": "voucher_builder", "method": "grant", "params": {"template_id": "sibling_discount"}}]
+      }
+    ],
+    "wireframe_hint": "Family avatar group + each child progress card + shared family XP bar + quarterly voucher card",
+    "metadata": {
+      "source": "VIPKid + Khan Academy Kids hybrid",
+      "key_metric": "parent_app_DAU",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "family_retention",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "retention_rescue",
+    "name": "Inactive User Rescue Campaign",
+    "name_cn": "流失用户挽回campaign",
+    "description_en": "Fires at 14+ days inactive: personalized push + one-time ¥50 return voucher + 30-day re-engagement quest chain. Generic churn-killer.",
+    "description_cn": "14天未活跃自动触发：个性化推送 + 一次性¥50回归券 + 30天重新参与任务链。通用流失挽回配方。",
+    "icon": "🆘",
+    "category": "engagement",
+    "industry": "community",
+    "tags": ["retention", "voucher", "quest", "trigger"],
+    "modules": [
+      {"id": "triggers", "params": {"churn_signal": {"inactive_days_threshold": 14, "action": "rescue_push"}, "win_back_window_days": 30}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "return_50", "value": {"type": "voucher", "value_cents": 5000}, "conditions": {"one_time_only": true, "trigger": "user_returned"}}
+      ]}},
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 1, "templates": ["return_engage_3_days", "return_complete_action"], "expires_in_days": 30}},
+      {"id": "progression", "params": {"xp_per_action": {"return_visit": 100, "return_action_completed": 50}}},
+      {"id": "network_effect", "params": {"push_channels": ["push", "email", "sms"], "personalization": true}}
+    ],
+    "rules": [
+      {
+        "name": "Fire rescue push at 14d inactive",
+        "trigger_event": "user_inactive_14d",
+        "actions": [{"module": "network_effect", "method": "personalized_push", "params": {"template": "we_miss_you"}}]
+      },
+      {
+        "name": "Grant return voucher on first re-open",
+        "trigger_event": "user_returned",
+        "conditions": {"type": "value", "metric": "days_since_last_active", "op": ">=", "value": 14},
+        "actions": [
+          {"module": "voucher_builder", "method": "grant", "params": {"template_id": "return_50"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 100}}
+        ]
+      },
+      {
+        "name": "Activate 30-day re-engagement quests",
+        "trigger_event": "user_returned",
+        "actions": [{"module": "smartquests", "method": "generate", "params": {"chain": "rescue_30d"}}]
+      }
+    ],
+    "wireframe_hint": "Welcome-back hero card + ¥50 voucher countdown + 30-day quest checklist",
+    "metadata": {
+      "source": "Generic SaaS churn-rescue best practice",
+      "key_metric": "win_back_rate",
+      "key_metric_value": "12-18% typical",
+      "primary_outcome": "user_return",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "book_review_social",
+    "name": "Book Review Social Layer",
+    "name_cn": "图书评论社交层",
+    "description_en": "XP for posting reviews + XP for liking peers + monthly top-reviewer spotlight + cross-member kudos. Community engagement on top of any reading product.",
+    "description_cn": "发评论得XP + 点赞别人评论得XP + 每月最佳评论者高亮+奖励 + 跨成员鼓励互动。读书产品社交层。",
+    "icon": "📝",
+    "category": "viral",
+    "industry": "book_club",
+    "tags": ["social", "feed", "kudos", "leaderboard"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"review_written": 50, "review_liked_by_others": 5, "review_liked_outgoing": 2}}},
+      {"id": "social_graph", "params": {"follow_model": "mutual_optional"}},
+      {"id": "social_feed", "params": {"sources": ["follows", "club_recent"], "ttl_days": 30}},
+      {"id": "leaderboard", "params": {"scopes": ["brand"], "cycles": ["monthly"], "metric": "review_likes", "spotlight_top": 3}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "top_reviewer_gift", "value": {"type": "free_item", "amount": 1, "label": "spotlight_book"}, "conditions": {"trigger": "monthly_top_reviewer"}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on review post",
+        "trigger_event": "review_written",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 50}}]
+      },
+      {
+        "name": "Award XP when peer likes your review",
+        "trigger_event": "review_liked",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 5, "recipient": "review_author"}}]
+      },
+      {
+        "name": "Monthly top reviewer spotlight + gift",
+        "trigger_event": "monthly_cycle_end",
+        "actions": [{"module": "voucher_builder", "method": "grant_to_top", "params": {"leaderboard": "review_likes", "top_n": 3, "template_id": "top_reviewer_gift"}}]
+      }
+    ],
+    "wireframe_hint": "Review feed cards + like button + monthly top-3 spotlight bar + author avatars",
+    "metadata": {
+      "source": "Goodreads + Strava kudos hybrid",
+      "key_metric": "review_post_rate",
+      "key_metric_value": "+3x vs no-program",
+      "primary_outcome": "community_engagement",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "event_attendance",
+    "name": "Community Event Attendance",
+    "name_cn": "社群活动签到链",
+    "description_en": "RSVP + on-site check-in XP + 3-events-in-a-month chain badge + anniversary invite for loyal members. Built for offline community organizers.",
+    "description_cn": "活动报名 + 现场签到XP + 月内3场参与解锁徽章 + 周年邀请忠诚老成员。线下社群组织者通用。",
+    "icon": "🎉",
+    "category": "engagement",
+    "industry": "events",
+    "tags": ["quest", "achievement", "tier", "chain"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"event_rsvp": 10, "event_checkin": 50}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "event_chain_3", "name": "Triple Threat", "trigger": "events_in_month>=3"},
+        {"id": "event_chain_10", "name": "Regular", "trigger": "lifetime_events>=10"},
+        {"id": "event_chain_50", "name": "Pillar", "trigger": "lifetime_events>=50"}
+      ]}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "guest", "name": "Guest", "threshold_xp": 0, "perks": []},
+        {"id": "regular", "name": "Regular", "threshold_xp": 500, "perks": ["early_rsvp"]},
+        {"id": "vip", "name": "VIP", "threshold_xp": 2500, "perks": ["anniversary_invite", "guest_plus_one"]}
+      ]}},
+      {"id": "event", "params": {"track_rsvp": true, "track_checkin": true}},
+      {"id": "limited_drop", "params": {"window_days": 30, "type": "anniversary_event"}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on event check-in",
+        "trigger_event": "event_checkin",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 50}}]
+      },
+      {
+        "name": "Grant 3-in-month chain badge",
+        "trigger_event": "event_checkin",
+        "conditions": {"type": "count", "metric": "events_attended_this_month", "op": ">=", "value": 3},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "event_chain_3"}}]
+      },
+      {
+        "name": "Anniversary invite for VIP tier",
+        "trigger_event": "user_anniversary",
+        "conditions": {"type": "tier", "op": ">=", "value": "vip"},
+        "actions": [{"module": "limited_drop", "method": "issue_invite", "params": {"event_type": "anniversary"}}]
+      }
+    ],
+    "wireframe_hint": "Upcoming events list + check-in QR + month-attendance ring + tier badge",
+    "metadata": {
+      "source": "Meetup + Eventbrite community patterns",
+      "key_metric": "events_per_member_per_quarter",
+      "key_metric_value": "+60% target",
+      "primary_outcome": "event_attendance",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "knowledge_quiz",
+    "name": "Daily Knowledge Quiz",
+    "name_cn": "每日知识问答",
+    "description_en": "Daily/weekly trivia + streak rewards + topic-mastery badges + tournament mode for peers. Education-meets-game loop.",
+    "description_cn": "每日/每周问答 + 连击奖励 + 主题掌握度徽章 + 锦标赛模式与同伴竞赛。教育游戏化通用。",
+    "icon": "🧠",
+    "category": "engagement",
+    "industry": "education",
+    "tags": ["streak", "achievement", "quest", "tournament"],
+    "modules": [
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 1, "templates": ["daily_quiz"], "refresh_weekly": true, "weekly_count": 1}},
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 7, 30, 100], "action": "quiz_passed"}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "topic_history", "name": "History Buff", "trigger": "topic_history_correct>=50"},
+        {"id": "topic_science", "name": "Science Whiz", "trigger": "topic_science_correct>=50"},
+        {"id": "topic_lit", "name": "Lit Master", "trigger": "topic_lit_correct>=50"}
+      ]}},
+      {"id": "tourney", "params": {"cycle_days": 7, "bracket_size": 16, "rewards": [{"rank": 1, "currency": "coins", "amount": 1000}]}},
+      {"id": "progression", "params": {"xp_per_action": {"quiz_passed": 20, "quiz_perfect": 50, "tournament_win": 200}}},
+      {"id": "leaderboard", "params": {"scopes": ["brand", "friends"], "cycles": ["weekly"], "metric": "quiz_score"}}
+    ],
+    "rules": [
+      {
+        "name": "Daily streak on quiz pass",
+        "trigger_event": "quiz_passed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 20}},
+          {"module": "streak", "method": "check", "params": {"key": "quiz_passed"}}
+        ]
+      },
+      {
+        "name": "Mastery badge on topic threshold",
+        "trigger_event": "quiz_passed",
+        "conditions": {"type": "count", "metric": "topic_correct_count", "op": ">=", "value": 50},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_by_topic": true}}]
+      },
+      {
+        "name": "Weekly tournament cycle",
+        "trigger_event": "weekly_cycle_end",
+        "actions": [{"module": "tourney", "method": "cycle", "params": {}}]
+      }
+    ],
+    "wireframe_hint": "Today's quiz card + streak flame + topic mastery wheel + this-week tournament bracket",
+    "metadata": {
+      "source": "Duolingo + Kahoot hybrid",
+      "key_metric": "DAU",
+      "key_metric_value": "+35% target",
+      "primary_outcome": "daily_engagement",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "wellness_journey",
+    "name": "Personal Wellness Journey",
+    "name_cn": "个人健康养成之旅",
+    "description_en": "Habit tracking (sleep, exercise, meditation) + personal goal milestones + community challenge mode + health-score progression. Wellness app retention.",
+    "description_cn": "习惯追踪（睡眠、运动、冥想） + 个人目标里程碑 + 社群共同挑战 + 健康分进阶。健康类App通用留存。",
+    "icon": "🧘",
+    "category": "engagement",
+    "industry": "wellness",
+    "tags": ["streak", "achievement", "coop", "progression"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 7, 21, 90, 365], "actions": ["sleep_logged", "exercise_logged", "meditation_logged"]}},
+      {"id": "progression", "params": {"xp_per_action": {"sleep_logged": 10, "exercise_logged": 20, "meditation_logged": 15, "goal_achieved": 100}, "compound_metric": "health_score"}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "sleep_streak_7", "name": "Rested", "trigger": "sleep_streak>=7"},
+        {"id": "meditation_21", "name": "Mindful", "trigger": "meditation_streak>=21"},
+        {"id": "exercise_90", "name": "Athlete", "trigger": "exercise_streak>=90"}
+      ]}},
+      {"id": "coop_quest", "params": {"shared_goal_examples": ["community_10000_meditation_minutes", "community_1M_steps"], "rotate_weekly": true}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "seedling", "name": "Seedling", "threshold_xp": 0, "perks": []},
+        {"id": "sprout", "name": "Sprout", "threshold_xp": 500, "perks": ["weekly_insight"]},
+        {"id": "tree", "name": "Tree", "threshold_xp": 5000, "perks": ["personalized_coach_tips", "private_challenges"]}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Update health score on habit log",
+        "trigger_event": "habit_logged",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount_by_habit": true}},
+          {"module": "streak", "method": "check", "params": {"key_by_habit": true}}
+        ]
+      },
+      {
+        "name": "Personal goal milestone reward",
+        "trigger_event": "goal_achieved",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 100}}]
+      },
+      {
+        "name": "Contribute to weekly community challenge",
+        "trigger_event": "habit_logged",
+        "actions": [{"module": "coop_quest", "method": "contribute", "params": {"amount_by_habit": true}}]
+      }
+    ],
+    "wireframe_hint": "Health score ring + 3 habit cards (sleep/exercise/meditation) + community challenge progress + tier badge",
+    "metadata": {
+      "source": "Calm + Strava + Headspace hybrid",
+      "key_metric": "habit_logging_DAU",
+      "key_metric_value": "+45% target",
+      "primary_outcome": "health_engagement",
+      "objective": "engagement"
+    }
   }
 ]

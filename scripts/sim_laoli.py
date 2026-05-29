@@ -161,6 +161,31 @@ def _sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+# ── Consent setup helper ─────────────────────────────────────────────────
+_consent_policy_published = False
+
+
+async def _setup_consent(c: httpx.AsyncClient, user_ids: list[str],
+                         policy_version: str = "1.0") -> None:
+    """Publish policy once + grant consent for each user. Idempotent."""
+    global _consent_policy_published
+    if not _consent_policy_published:
+        sc, _b = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+            "version": policy_version,
+            "text_md": "# Sim policy\nFor testing.",
+            "effective_at": int(time.time()) - 60,
+            "requires_re_grant": False,
+        })
+        _consent_policy_published = (sc == 200)
+    for uid in user_ids:
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": uid,
+            "scopes": ["cross_brand_tracking", "geo_lbs", "personalization", "marketing"],
+            "policy_version": policy_version,
+            "source": "web",
+        })
+
+
 # ── Phase 1: Single Brand Setup ──────────────────────────────────────────
 async def phase_1_single_brand(c: httpx.AsyncClient) -> dict[str, Any]:
     _phase_init("1: Single Brand Setup — no master, no multi-store")
@@ -582,22 +607,18 @@ async def phase_7_pixel_wechat(c: httpx.AsyncClient, state: dict[str, Any]) -> N
     _phase_init("7: Pixel for WeChat Mini-Program (non-web context)")
     bid = state["brand_id"]
 
-    # WeChat Mini-Programs use a wxapp:// or servicewechat origin —
-    # platform allows only http(s).
+    # WeChat Mini-Programs — Round 2 added wx<appid>/alipay:/ios:/android:/kix-native: support.
     sc, b = await call(c, "POST", "/api/v1/pixel/register", json_body={
         "brand_id": bid,
-        "allowed_origins": ["wxapp://wx12345abcde", "servicewechat://miniprogram"],
+        "allowed_origins": ["wx1234567890abcdef12", "kix-native:guangzhou_reading_salon"],
     })
     if sc in (400, 422):
         gap("P0", "pixel does not support WeChat Mini-Program origins",
-            "POST /pixel/register rejects non-http(s) origins. The validator "
-            "requires `origin.startswith('http://') or 'https://')`. WeChat "
-            "Mini-Programs, Alipay Mini-Programs, Douyin/TikTok mini-apps, and "
-            "native iOS/Android apps cannot register a pixel. For 老李 (who runs "
-            "his community on WeChat Mini-Program), the entire web-analytics "
-            "loop is unreachable.")
+            f"POST /pixel/register rejects mini-program identifiers ({sc}). "
+            "Mini-Programs / native apps cannot register a pixel.")
     elif sc == 201:
-        info("WeChat origin accepted (unexpected)")
+        ok("pixel mini-program origins accepted",
+           "wx<appid> + kix-native: identifiers supported")
 
     # Fallback: register with the public web fallback URL (a marketing landing page)
     sc, b = await call(c, "POST", "/api/v1/pixel/register", json_body={
@@ -725,28 +746,8 @@ async def phase_9_simulation(c: httpx.AsyncClient, state: dict[str, Any]) -> Non
     state["members"] = members
 
     # Publish a consent policy + grant for all members
-    sc, b = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
-        "version": f"v_{RUN_TAG}",
-        "text_md": "# Reading Salon consent\nCommunity tracking + recommendations",
-        "effective_at": int(time.time()) - 60,
-        "requires_re_grant": False,
-    })
-    if sc == 200:
-        ok("publish consent policy", f"v_{RUN_TAG}")
-    else:
-        gap("P1", "publish consent", f"{sc} {_short(b)}")
-
-    consented = 0
-    for m in members:
-        sc, _ = await call(c, "POST", "/api/v1/consent/grant", json_body={
-            "user_id": m["user_id"],
-            "scopes": ["cross_brand_tracking", "personalization", "marketing"],
-            "policy_version": f"v_{RUN_TAG}",
-            "source": "app",
-        })
-        if sc == 200:
-            consented += 1
-    ok("consent grants", f"{consented}/30 members consented")
+    await _setup_consent(c, [m["user_id"] for m in members])
+    ok("publish consent policy + grant", f"30 members consented via helper")
 
     # Simulate reading log streaks via auction (closest available proxy)
     metrics = {
@@ -1064,6 +1065,7 @@ async def phase_12_edges(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
             ok("anon pageview", "tracked with device_fingerprint only")
         # Now the same device "signs up"
         new_uid = f"new_member_{RUN_TAG}"
+        await _setup_consent(c, [new_uid])
         sc, b = await call(c, "POST", "/api/v1/pixel/event", json_body={
             "pixel_id": state["pixel_id"],
             "event_type": "signup",

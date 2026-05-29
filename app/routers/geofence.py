@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from datetime import datetime
 from typing import Any, Literal
@@ -173,6 +174,19 @@ class RecentVisitsResponse(BaseModel):
     visits: list[RecentVisit]
 
 
+class TestInterpolationRequest(BaseModel):
+    template: str
+    user_id: str | None = None
+    brand_id: str
+    store_id: str | None = None
+
+
+class TestInterpolationResponse(BaseModel):
+    interpolated: str
+    placeholders: list[str]
+    missing_placeholders: list[str]
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────
 
 
@@ -247,6 +261,171 @@ async def _campaign_is_active(r: aioredis.Redis, campaign_id: str) -> bool:
     if not c:
         return False
     return c.get("status") == "active"
+
+
+# ── Template interpolation ────────────────────────────────────────────────
+
+
+_PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_.]*)\}")
+
+
+async def _interpolate_template(
+    r: aioredis.Redis,
+    template: str,
+    *,
+    user_id: str | None,
+    device_fp: str | None,
+    brand_id: str,
+    store_id: str | None,
+) -> str:
+    """Replace ``{placeholder}`` tokens in template with user/brand data.
+
+    Supported placeholders:
+      {name}, {first_name}, {tier}, {brand_name}, {store_name},
+      {last_visit}, {xp}, {streak}, {visit_count}, {member_since},
+      {custom.<key>} — from user:{uid}:attributes[:brand]
+
+    Unknown placeholders are left untouched (rendered literally as ``{foo}``)
+    so a merchant can spot typos. Missing/empty data renders as an empty
+    string (except {name}/{first_name} which default to "贵宾").
+    """
+    if not template or "{" not in template:
+        return template
+
+    ctx: dict[str, str] = {
+        "brand_name": "",
+        "store_name": "",
+        "name": "贵宾",
+        "first_name": "贵宾",
+        "tier": "",
+        "last_visit": "",
+        "xp": "0",
+        "streak": "0",
+        "visit_count": "0",
+        "member_since": "",
+    }
+
+    # Brand name: storefront → brand_config
+    try:
+        bn = await r.hget(f"storefront:{brand_id}", "display_name")
+        if not bn:
+            bn = await r.hget(f"brand_config:{brand_id}", "brand_name")
+        if bn:
+            ctx["brand_name"] = bn
+    except aioredis.RedisError:
+        pass
+
+    # Store name
+    if store_id:
+        try:
+            sn = await r.hget(_store_key(store_id), "name")
+            if sn:
+                ctx["store_name"] = sn
+        except aioredis.RedisError:
+            pass
+
+    if user_id:
+        # name + first_name
+        try:
+            name = await r.hget(f"user:{user_id}:profile", "name")
+            if name:
+                ctx["name"] = name
+                # First word: split on whitespace OR for CJK names just keep
+                # whole thing (no whitespace) — that's the desired behaviour.
+                parts = name.split()
+                ctx["first_name"] = parts[0] if parts else name
+        except aioredis.RedisError:
+            pass
+
+        # tier + xp via primitives helpers
+        try:
+            from app.routers.primitives import (  # noqa: PLC0415
+                _read_tier_config,
+                _read_user_xp,
+            )
+            xp, _resolved = await _read_user_xp(r, user_id, brand_id)
+            ctx["xp"] = str(xp)
+            tier_cfg = await _read_tier_config(r, brand_id)
+            if tier_cfg:
+                current_tier: str | None = None
+                for t in sorted(tier_cfg, key=lambda x: x.get("xp_min", 0)):
+                    try:
+                        if xp >= int(t.get("xp_min", 0)):
+                            current_tier = t.get("name")
+                    except (TypeError, ValueError):
+                        continue
+                if current_tier:
+                    ctx["tier"] = current_tier
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("tier/xp lookup failed for %s: %s", user_id, exc)
+
+        # streak
+        try:
+            streak = await r.get(f"user:{user_id}:streak:{brand_id}")
+            if streak is not None:
+                ctx["streak"] = str(streak)
+        except aioredis.RedisError:
+            pass
+
+        # visit_count (all-brand across user's visits zset)
+        try:
+            vc = await r.zcard(f"user:{user_id}:visits")
+            ctx["visit_count"] = str(vc or 0)
+        except aioredis.RedisError:
+            pass
+
+        # last_visit
+        try:
+            last_visits = await r.zrevrange(
+                f"user:{user_id}:visits", 0, 0, withscores=True,
+            )
+            if last_visits:
+                _vid, score = last_visits[0]
+                days_ago = int((time.time() - float(score)) / 86400)
+                ctx["last_visit"] = (
+                    f"{days_ago} 天前" if days_ago > 0 else "今天"
+                )
+        except (aioredis.RedisError, TypeError, ValueError, IndexError):
+            pass
+
+        # member_since
+        try:
+            first_touch_ts = await r.get(
+                f"user:{user_id}:first_brand_touch:{brand_id}"
+            )
+            if first_touch_ts:
+                days = int((time.time() - float(first_touch_ts)) / 86400)
+                if days < 30:
+                    ctx["member_since"] = f"{days} 天"
+                elif days < 365:
+                    ctx["member_since"] = f"{days // 30} 个月"
+                else:
+                    ctx["member_since"] = f"{days // 365} 年"
+        except (aioredis.RedisError, TypeError, ValueError):
+            pass
+
+        # custom.* attributes — global hash first, then brand-scoped override
+        try:
+            attrs = await r.hgetall(f"user:{user_id}:attributes")
+            for k, v in (attrs or {}).items():
+                ctx[f"custom.{k}"] = v
+            battrs = await r.hgetall(f"user:{user_id}:attributes:{brand_id}")
+            for k, v in (battrs or {}).items():
+                ctx[f"custom.{k}"] = v
+        except aioredis.RedisError:
+            pass
+
+    def _repl(m: re.Match[str]) -> str:
+        key = m.group(1)
+        if key in ctx:
+            return str(ctx[key])
+        return m.group(0)  # leave unknown placeholder untouched
+
+    return _PLACEHOLDER_RE.sub(_repl, template)
+
+
+def _list_template_placeholders(template: str) -> list[str]:
+    return sorted(set(_PLACEHOLDER_RE.findall(template or "")))
 
 
 # ── Endpoints: store registration ─────────────────────────────────────────
@@ -514,16 +693,31 @@ async def _handle_geofence_enter(
         {impression_token: time.time()},
     )
 
-    # Build payload
-    brand_name = raw.get("brand_name") or brand_id
+    # Build payload — interpolate {name}/{tier}/{brand_name}/... at push time
+    # so per-user personalisation (chef recognition, VIP welcome) renders
+    # correctly instead of being sent literally.
     store_name = raw.get("name", "")
-    msg_tmpl = push_cfg.get(
-        "message_template", "玩个游戏拿优惠券！"
-    )
+    raw_msg_tmpl = push_cfg.get("message_template", "玩个游戏拿优惠券！")
+    raw_title_tmpl = push_cfg.get("title_template") or f"你在 {store_name} 附近"
     try:
-        msg = msg_tmpl.format(brand_name=brand_name, store_name=store_name)
-    except (KeyError, IndexError):
-        msg = msg_tmpl
+        msg = await _interpolate_template(
+            r, raw_msg_tmpl,
+            user_id=user_id, device_fp=device_fp,
+            brand_id=brand_id, store_id=store_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("template interpolation failed (msg): %s", exc)
+        msg = raw_msg_tmpl
+    try:
+        title = await _interpolate_template(
+            r, raw_title_tmpl,
+            user_id=user_id, device_fp=device_fp,
+            brand_id=brand_id, store_id=store_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("template interpolation failed (title): %s", exc)
+        title = raw_title_tmpl
+
     game_slug = raw.get("associated_game_slug") or None
     deep_link = (
         f"/landing/play.html?brand={brand_id}&store={store_id}"
@@ -535,7 +729,7 @@ async def _handle_geofence_enter(
     return GeofenceEnterResponse(
         push_eligible=True,
         payload=PushPayload(
-            title=f"你在 {store_name} 附近",
+            title=title,
             message=msg,
             game_slug=game_slug,
             deep_link=deep_link,
@@ -770,3 +964,44 @@ async def user_recent_visits(
         except (TypeError, ValueError):
             continue
     return RecentVisitsResponse(user_id=user_id, visits=out)
+
+
+# ── Endpoints: admin / preview ────────────────────────────────────────────
+
+
+@router.post(
+    "/admin/test-interpolation",
+    response_model=TestInterpolationResponse,
+)
+async def test_interpolation(
+    payload: TestInterpolationRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> TestInterpolationResponse:
+    """Preview how a push template will render for a given user/brand/store.
+
+    Useful for merchants to validate ``{name}``/``{tier}``/``{custom.X}``
+    expansion *before* saving the template to a store's ``push_config``.
+
+    ``missing_placeholders`` lists tokens whose data could not be resolved
+    (so they would render as the literal ``{token}``) — i.e. anything that
+    survives ``_interpolate_template`` unchanged in the output.
+    """
+    placeholders = _list_template_placeholders(payload.template)
+    interpolated = await _interpolate_template(
+        r,
+        payload.template,
+        user_id=payload.user_id,
+        device_fp=None,
+        brand_id=payload.brand_id,
+        store_id=payload.store_id,
+    )
+    # Anything still wrapped in {…} in the output is "missing" (unknown key
+    # OR an empty-string resolution where the merchant probably expected a
+    # value). We treat only literally-surviving placeholders as missing.
+    surviving = set(_PLACEHOLDER_RE.findall(interpolated))
+    missing = sorted(p for p in placeholders if p in surviving)
+    return TestInterpolationResponse(
+        interpolated=interpolated,
+        placeholders=placeholders,
+        missing_placeholders=missing,
+    )
