@@ -1778,12 +1778,25 @@ async def consolidated_funnel(
 # is a strictly additive layer that callers consult FIRST.
 # ─────────────────────────────────────────────────────────────────────────
 
-VALID_TIER_AGGREGATIONS: set[str] = {"sum", "max", "avg"}
+VALID_TIER_AGGREGATIONS: set[str] = {"sum", "max", "avg", "weighted"}
 VALID_PROMOTION_RULES: set[str] = {
     "max_of_brand_tier",
     "sum_xp_then_tier",
     "weighted_brand_xp",
 }
+
+# ── Tier scope (Round 5) ─────────────────────────────────────────────────
+# Tiers can be configured at multiple scopes:
+#   * brand   — per-store XP (老张 single venue)
+#   * region  — per-city XP (老梁 destination region)
+#   * master  — across all brands in master (老周 5 gyms)
+#   * global  — across entire master organization including sub-masters
+#
+# The scope dimension is independent of the aggregation/promotion-rule
+# axes — a region-scoped ladder may still use "sum" aggregation and the
+# "sum_xp_then_tier" promotion rule, just over a different brand subset.
+VALID_TIER_SCOPES: set[str] = {"brand", "region", "master", "global"}
+VALID_TIER_AXES: set[str] = {"region", "category", "default"}
 
 
 class MasterTierEntry(BaseModel):
@@ -1793,7 +1806,22 @@ class MasterTierEntry(BaseModel):
 
 class ConfigureMasterTiersBody(BaseModel):
     tiers: list[MasterTierEntry]
-    aggregation: Literal["sum", "max", "avg"] = "sum"
+    aggregation: Literal["sum", "max", "avg", "weighted"] = "sum"
+    # Round 5: tier scope dimension.
+    #   * brand   — ladder applies to a single attached brand_id
+    #   * region  — ladder applies to a named region_id (group of brands)
+    #   * master  — ladder spans all brands in the master (legacy default)
+    #   * global  — ladder spans the entire master + any sub-masters
+    scope: Literal["brand", "region", "master", "global"] = "master"
+    # When scope=region this identifies WHICH region the ladder belongs to.
+    # When scope=brand this identifies WHICH brand the ladder belongs to.
+    target_id: str | None = Field(default=None, max_length=128)
+    # Optional multi-axis hierarchy hint (region | category | default).
+    # The axis is informational metadata — region scope already implies
+    # tier_axis=region, but a master may run parallel category-axis ladders
+    # (e.g. "fitness" vs "spa") in addition.
+    tier_axis: Literal["region", "category", "default"] = "default"
+    promotion_rule: dict[str, Any] | None = None
 
     @field_validator("tiers")
     @classmethod
@@ -1833,6 +1861,43 @@ def _k_master_tier_aggregation(mid: str) -> str:
 
 def _k_master_tier_promotion(mid: str) -> str:
     return f"master:{mid}:tier_promotion"
+
+
+# ── Region & scoped-tier key helpers (Round 5) ───────────────────────────
+# Region grouping lets a master split its brands into named "buckets"
+# (e.g. cities). Each region carries its own optional tier ladder; if a
+# region has no ladder, region-scope lookups fall back to the master
+# ladder so the API is always answerable.
+def _k_master_regions(mid: str) -> str:
+    return f"master:{mid}:regions"
+
+
+def _k_master_region_meta(mid: str, region_id: str) -> str:
+    return f"master:{mid}:region:{region_id}:meta"
+
+
+def _k_master_region_brands(mid: str, region_id: str) -> str:
+    return f"master:{mid}:region:{region_id}:brands"
+
+
+def _k_master_region_tier_config(mid: str, region_id: str) -> str:
+    return f"master:{mid}:region:{region_id}:tier_config"
+
+
+def _k_brand_tier_config(brand_id: str) -> str:
+    # Brand-scoped tier ladder set via primitives /tier/configure.
+    return f"tier_config:{brand_id}"
+
+
+def _k_master_global_chain(mid: str) -> str:
+    # Optional sub-master chain — every master_id listed here is treated as
+    # part of the same "global" portability cohort. Master is implicitly
+    # a member of its own chain.
+    return f"master:{mid}:global_chain"
+
+
+def _k_master_tier_axis(mid: str) -> str:
+    return f"master:{mid}:tier_axis"
 
 
 async def _read_master_tier_config(
@@ -1907,7 +1972,17 @@ async def configure_master_tier(
     body: ConfigureMasterTiersBody,
     r: aioredis.Redis = Depends(get_redis),
 ):
-    """Install (or replace) the master-wide tier ladder.
+    """Install (or replace) a tier ladder at a configurable scope.
+
+    Round 5: ``scope`` selects WHERE the ladder lives.
+      * brand  — writes to ``tier_config:{target_id}`` (primitives layout)
+      * region — writes to ``master:{mid}:region:{target_id}:tier_config``
+                 and requires the region to be defined first via
+                 ``/regions/define``
+      * master — writes to ``master:{mid}:tier_config`` (legacy default)
+      * global — writes to ``master:{mid}:tier_config`` AND fans the
+                 same ladder out to every master in the global_chain so
+                 sub-masters inherit consistently
 
     Tiers are stored as a Redis LIST of JSON blobs so order is explicit
     (we sort at read time anyway, but writing pre-sorted is friendlier
@@ -1920,23 +1995,222 @@ async def configure_master_tier(
     sorted_tiers = sorted(body.tiers, key=lambda t: t.xp_min)
     serialized = [json.dumps({"name": t.name, "xp_min": t.xp_min}) for t in sorted_tiers]
 
+    scope = body.scope
+    target_id = body.target_id
+
+    # Validation per scope.
+    if scope == "brand":
+        if not target_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="scope=brand requires target_id (brand_id)",
+            )
+        attached = await r.smembers(_k_master_brands(master_id))
+        if target_id not in attached:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"brand_id={target_id} not attached to master={master_id}",
+            )
+    if scope == "region":
+        if not target_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="scope=region requires target_id (region_id)",
+            )
+        known_regions = await r.smembers(_k_master_regions(master_id))
+        if target_id not in known_regions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"region_id={target_id} not defined; call /regions/define first",
+            )
+
     pipe = r.pipeline()
-    pipe.delete(_k_master_tier_config(master_id))
-    pipe.rpush(_k_master_tier_config(master_id), *serialized)
+    if scope == "brand":
+        # Match primitives.py contract (HASH keyed by tier name).
+        pipe.delete(_k_brand_tier_config(target_id))
+        mapping = {
+            t.name: json.dumps({"name": t.name, "xp_min": t.xp_min, "perks": []})
+            for t in sorted_tiers
+        }
+        pipe.hset(_k_brand_tier_config(target_id), mapping=mapping)
+    elif scope == "region":
+        pipe.delete(_k_master_region_tier_config(master_id, target_id))
+        pipe.rpush(
+            _k_master_region_tier_config(master_id, target_id), *serialized
+        )
+    else:
+        # master | global both populate the master-level ladder.
+        pipe.delete(_k_master_tier_config(master_id))
+        pipe.rpush(_k_master_tier_config(master_id), *serialized)
+
     pipe.set(_k_master_tier_aggregation(master_id), body.aggregation)
+    pipe.set(_k_master_tier_axis(master_id), body.tier_axis)
     await pipe.execute()
 
+    # Global scope: fan out to every chained master so portability is
+    # consistent. Each chained master gets its OWN tier_config list — that
+    # way reads from any sub-master answer locally without an extra hop.
+    fanned: list[str] = []
+    if scope == "global":
+        chain = await r.smembers(_k_master_global_chain(master_id))
+        for sub_mid in chain:
+            if sub_mid == master_id:
+                continue
+            try:
+                sub_exists = await r.hgetall(_k_master(sub_mid))
+                if not sub_exists:
+                    continue
+            except Exception:  # noqa: BLE001
+                continue
+            pipe2 = r.pipeline()
+            pipe2.delete(_k_master_tier_config(sub_mid))
+            pipe2.rpush(_k_master_tier_config(sub_mid), *serialized)
+            pipe2.set(_k_master_tier_aggregation(sub_mid), body.aggregation)
+            await pipe2.execute()
+            fanned.append(sub_mid)
+
+    # Optional promotion_rule shorthand (lets callers configure ladder +
+    # promotion in one shot rather than two endpoint calls).
+    promo_applied = None
+    if body.promotion_rule:
+        rule = body.promotion_rule.get("rule")
+        if rule in VALID_PROMOTION_RULES:
+            weights = body.promotion_rule.get("weights") or {}
+            payload = {
+                "rule": rule,
+                "weights_json": json.dumps(
+                    {str(k): float(v) for k, v in weights.items()}
+                ),
+            }
+            await r.delete(_k_master_tier_promotion(master_id))
+            await r.hset(_k_master_tier_promotion(master_id), mapping=payload)
+            promo_applied = rule
+
     logger.info(
-        "master_tier_configured master_id=%s tiers=%d aggregation=%s",
+        "master_tier_configured master_id=%s scope=%s target=%s tiers=%d "
+        "aggregation=%s axis=%s fanned=%d",
         master_id,
+        scope,
+        target_id,
         len(sorted_tiers),
         body.aggregation,
+        body.tier_axis,
+        len(fanned),
     )
     return {
         "master_id": master_id,
+        "scope": scope,
+        "target_id": target_id,
+        "tier_axis": body.tier_axis,
         "tiers": [{"name": t.name, "xp_min": t.xp_min} for t in sorted_tiers],
         "aggregation": body.aggregation,
+        "promotion_rule": promo_applied,
+        "fanned_to": fanned,
     }
+
+
+# ── Region definition ────────────────────────────────────────────────────
+class RegionEntry(BaseModel):
+    region_id: str = Field(..., min_length=1, max_length=128)
+    brand_ids: list[str] = Field(default_factory=list)
+    display_name: str | None = Field(default=None, max_length=200)
+
+
+class DefineRegionsBody(BaseModel):
+    regions: list[RegionEntry]
+
+    @field_validator("regions")
+    @classmethod
+    def _non_empty(cls, v):
+        if not v:
+            raise ValueError("regions must include at least one entry")
+        ids = [r.region_id for r in v]
+        if len(set(ids)) != len(ids):
+            raise ValueError("region_ids must be unique")
+        return v
+
+
+@router.post("/{master_id}/regions/define")
+async def define_regions(
+    master_id: str,
+    body: DefineRegionsBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Group attached brands into named regions for tier aggregation.
+
+    A region is a labelled subset of the master's attached brand_ids. The
+    same brand_id MAY appear in multiple regions (e.g. a flagship store
+    that contributes XP both to "jakarta" and to "indonesia") — we don't
+    enforce disjoint partitions. Brand membership is replaced wholesale
+    per region on each call; pass the full membership list to update.
+
+    Validation:
+      * every brand_id referenced must be attached to this master.
+    """
+    await _require_master(r, master_id)
+    attached = await r.smembers(_k_master_brands(master_id))
+
+    unknown: set[str] = set()
+    for region in body.regions:
+        unknown |= set(region.brand_ids) - set(attached)
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"unknown brand_ids: {sorted(unknown)}",
+        )
+
+    now = _now_iso()
+    out: list[dict] = []
+    for region in body.regions:
+        pipe = r.pipeline()
+        pipe.sadd(_k_master_regions(master_id), region.region_id)
+        pipe.hset(
+            _k_master_region_meta(master_id, region.region_id),
+            mapping={
+                "region_id": region.region_id,
+                "display_name": region.display_name or region.region_id,
+                "updated_at": now,
+            },
+        )
+        # Replace brand-membership wholesale.
+        pipe.delete(_k_master_region_brands(master_id, region.region_id))
+        if region.brand_ids:
+            pipe.sadd(
+                _k_master_region_brands(master_id, region.region_id),
+                *region.brand_ids,
+            )
+        await pipe.execute()
+        out.append(
+            {
+                "region_id": region.region_id,
+                "display_name": region.display_name or region.region_id,
+                "brand_ids": sorted(region.brand_ids),
+            }
+        )
+
+    logger.info(
+        "regions_defined master_id=%s regions=%d", master_id, len(out)
+    )
+    return {"master_id": master_id, "regions": out}
+
+
+@router.get("/{master_id}/regions")
+async def list_regions(master_id: str, r: aioredis.Redis = Depends(get_redis)):
+    """List all regions defined for a master, with their brand memberships."""
+    await _require_master(r, master_id)
+    region_ids = sorted(await r.smembers(_k_master_regions(master_id)))
+    out: list[dict] = []
+    for rid in region_ids:
+        meta = await r.hgetall(_k_master_region_meta(master_id, rid))
+        brand_ids = sorted(await r.smembers(_k_master_region_brands(master_id, rid)))
+        out.append(
+            {
+                "region_id": rid,
+                "display_name": meta.get("display_name", rid),
+                "brand_ids": brand_ids,
+            }
+        )
+    return {"master_id": master_id, "regions": out, "count": len(out)}
 
 
 @router.post("/{master_id}/tier/promotion-rule")
@@ -2139,6 +2413,321 @@ async def resolve_master_tier(
     return out.get("current_master_tier")
 
 
+# ── Scope-aware tier resolution (Round 5) ────────────────────────────────
+async def _read_region_tier_config(
+    r: aioredis.Redis, master_id: str, region_id: str
+) -> list[dict]:
+    """Read region-scoped tier ladder. Empty list means none configured."""
+    raw = await r.lrange(_k_master_region_tier_config(master_id, region_id), 0, -1)
+    out: list[dict] = []
+    for item in raw or []:
+        try:
+            d = json.loads(item)
+            out.append({"name": str(d["name"]), "xp_min": int(d["xp_min"])})
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            continue
+    out.sort(key=lambda d: d["xp_min"])
+    return out
+
+
+async def _resolve_brand_tier(
+    r: aioredis.Redis, user_id: str, brand_id: str | None
+) -> dict[str, Any]:
+    """Brand-scoped resolution — reads brand XP + brand tier ladder."""
+    if not brand_id:
+        return {
+            "scope": "brand",
+            "tier": None,
+            "xp": 0,
+            "reason": "missing_brand_id",
+        }
+    raw = await r.get(f"user:{user_id}:currency:{brand_id}:xp")
+    xp = int(raw) if raw else 0
+    raw_cfg = await r.hgetall(_k_brand_tier_config(brand_id))
+    tiers: list[dict] = []
+    for v in (raw_cfg or {}).values():
+        try:
+            d = json.loads(v)
+            tiers.append({"name": d.get("name", ""), "xp_min": int(d.get("xp_min", 0))})
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+    tiers.sort(key=lambda d: d["xp_min"])
+    current, nxt = _resolve_tier_name(tiers, xp)
+    return {
+        "scope": "brand",
+        "brand_id": brand_id,
+        "xp": xp,
+        "tier": current,
+        "next_threshold": nxt,
+        "tiers_configured": bool(tiers),
+    }
+
+
+async def _resolve_region_tier(
+    r: aioredis.Redis,
+    user_id: str,
+    master_id: str | None,
+    region_id: str | None,
+) -> dict[str, Any]:
+    """Region-scoped resolution.
+
+    Sums XP across every brand in the region (configured via /regions/define)
+    then walks the region's own ladder. Falls back to the master ladder if
+    no region-specific ladder is configured — region scope must always
+    answer something useful even before per-region tiering is opted in.
+    """
+    if not master_id or not region_id:
+        return {
+            "scope": "region",
+            "tier": None,
+            "xp": 0,
+            "reason": "missing_master_or_region_id",
+        }
+    brand_ids = sorted(await r.smembers(_k_master_region_brands(master_id, region_id)))
+    if not brand_ids:
+        return {
+            "scope": "region",
+            "region_id": region_id,
+            "tier": None,
+            "xp": 0,
+            "reason": "region_has_no_brands",
+        }
+    per_brand_xp = await _gather_per_brand_xp(r, user_id, brand_ids)
+    total_xp = sum(per_brand_xp.values())
+
+    tiers = await _read_region_tier_config(r, master_id, region_id)
+    fell_back = False
+    if not tiers:
+        # Fall back to master ladder.
+        tiers = await _read_master_tier_config(r, master_id)
+        fell_back = True
+
+    current, nxt = _resolve_tier_name(tiers, total_xp)
+    return {
+        "scope": "region",
+        "region_id": region_id,
+        "brand_ids": brand_ids,
+        "per_brand_xp": per_brand_xp,
+        "xp": total_xp,
+        "tier": current,
+        "next_threshold": nxt,
+        "tiers_configured": bool(tiers),
+        "fell_back_to_master": fell_back,
+    }
+
+
+async def _resolve_master_tier_payload(
+    r: aioredis.Redis, user_id: str, master_id: str | None
+) -> dict[str, Any]:
+    """Master-scoped resolution — thin wrapper over the legacy helper."""
+    if not master_id:
+        return {
+            "scope": "master",
+            "tier": None,
+            "xp": 0,
+            "reason": "missing_master_id",
+        }
+    inner = await _resolve_master_tier_internal(r, master_id, user_id)
+    return {
+        "scope": "master",
+        "master_id": master_id,
+        "xp": inner.get("aggregated_xp", 0),
+        "tier": inner.get("current_master_tier"),
+        "next_threshold": inner.get("next_master_tier_threshold"),
+        "tiers_configured": bool(inner.get("tiers")),
+        "per_brand_xp": inner.get("per_brand_xp", {}),
+        "rule": inner.get("rule"),
+        "aggregation": inner.get("aggregation"),
+    }
+
+
+async def _resolve_global_tier(
+    r: aioredis.Redis, user_id: str, master_id: str | None
+) -> dict[str, Any]:
+    """Global-scoped resolution — picks the most generous tier across the
+    master's global_chain (the master itself plus any chained sub-masters).
+
+    "Most generous" = highest tier index in each ladder; we compare by
+    xp_min of the resolved tier so ladders with different naming still
+    rank coherently.
+    """
+    if not master_id:
+        return {
+            "scope": "global",
+            "tier": None,
+            "xp": 0,
+            "reason": "missing_master_id",
+        }
+    chain = set(await r.smembers(_k_master_global_chain(master_id))) | {master_id}
+    best_tier: str | None = None
+    best_xp_min = -1
+    best_master: str | None = None
+    per_master: dict[str, dict] = {}
+    for mid in sorted(chain):
+        payload = await _resolve_master_tier_payload(r, user_id, mid)
+        per_master[mid] = payload
+        tier_name = payload.get("tier")
+        if not tier_name:
+            continue
+        tiers = await _read_master_tier_config(r, mid)
+        xp_min_for_tier = 0
+        for t in tiers:
+            if t["name"] == tier_name:
+                xp_min_for_tier = t["xp_min"]
+                break
+        if xp_min_for_tier > best_xp_min:
+            best_xp_min = xp_min_for_tier
+            best_tier = tier_name
+            best_master = mid
+
+    return {
+        "scope": "global",
+        "master_id": master_id,
+        "chain": sorted(chain),
+        "tier": best_tier,
+        "xp": best_xp_min if best_xp_min >= 0 else 0,
+        "tiers_configured": best_tier is not None,
+        "best_via_master_id": best_master,
+        "per_master": per_master,
+    }
+
+
+async def resolve_tier_for_scope(
+    r: aioredis.Redis,
+    user_id: str,
+    *,
+    scope: str,
+    brand_id: str | None = None,
+    region_id: str | None = None,
+    master_id: str | None = None,
+) -> dict[str, Any]:
+    """Exported helper — single entry point for any scope.
+
+    Other modules (frequency_cap, vouchers, recommenders) should call this
+    rather than reaching for the per-scope helpers directly so the routing
+    rules stay in one place.
+    """
+    if scope not in VALID_TIER_SCOPES:
+        return {"scope": scope, "tier": None, "reason": "invalid_scope"}
+    # Best-effort: if master_id wasn't supplied but brand_id was, resolve
+    # the brand's owning master so region/master/global scopes still work.
+    if not master_id and brand_id:
+        try:
+            master_id = await r.get(_k_brand_master(brand_id))
+        except Exception:  # noqa: BLE001
+            master_id = None
+    if scope == "brand":
+        return await _resolve_brand_tier(r, user_id, brand_id)
+    if scope == "region":
+        return await _resolve_region_tier(r, user_id, master_id, region_id)
+    if scope == "master":
+        return await _resolve_master_tier_payload(r, user_id, master_id)
+    return await _resolve_global_tier(r, user_id, master_id)
+
+
+@router.get("/{master_id}/user/{user_id}/tier-by-scope")
+async def get_tier_by_scope(
+    master_id: str,
+    user_id: str,
+    scope: Literal["brand", "region", "master", "global"] = "master",
+    brand_id: str | None = None,
+    region_id: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Resolve a user's tier at the requested scope.
+
+    Convenience endpoint over ``resolve_tier_for_scope`` — same result, but
+    exposed as a stable HTTP surface that ops dashboards can hit without
+    importing the Python helper.
+    """
+    await _require_master(r, master_id)
+    payload = await resolve_tier_for_scope(
+        r,
+        user_id,
+        scope=scope,
+        brand_id=brand_id,
+        region_id=region_id,
+        master_id=master_id,
+    )
+    payload["user_id"] = user_id
+    return payload
+
+
+@router.get("/{master_id}/user/{user_id}/tier-portability")
+async def get_tier_portability(
+    master_id: str,
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Return every scope a user qualifies for + the thresholds met.
+
+    Output shape:
+      {
+        brand_tiers: {brand_id: tier_name},
+        region_tiers: {region_id: tier_name},
+        master_tier: tier_name | None,
+        global_tier: tier_name | None,
+        portability_map: {
+          "gold@brand_a": ["jakarta_elite", "platinum", "global_platinum"]
+        }
+      }
+
+    The portability_map answers the "which other scopes does this brand
+    tier unlock?" question — drives the UX that surfaces "you're Gold at
+    gym Jakarta which means Elite anywhere in Indonesia" messaging.
+    """
+    await _require_master(r, master_id)
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    region_ids = sorted(await r.smembers(_k_master_regions(master_id)))
+
+    brand_tiers: dict[str, str] = {}
+    for bid in brand_ids:
+        result = await _resolve_brand_tier(r, user_id, bid)
+        if result.get("tier"):
+            brand_tiers[bid] = result["tier"]
+
+    region_tiers: dict[str, str] = {}
+    for rid in region_ids:
+        result = await _resolve_region_tier(r, user_id, master_id, rid)
+        if result.get("tier"):
+            region_tiers[rid] = result["tier"]
+
+    master_payload = await _resolve_master_tier_payload(r, user_id, master_id)
+    master_tier = master_payload.get("tier")
+
+    global_payload = await _resolve_global_tier(r, user_id, master_id)
+    global_tier = global_payload.get("tier")
+
+    # Build the portability_map by walking each brand-tier the user has
+    # achieved and listing every region/master/global tier they also
+    # currently qualify for. Cheap O(brand * (region + 2)) join.
+    portability_map: dict[str, list[str]] = {}
+    for bid, btier in brand_tiers.items():
+        key = f"{btier}@{bid}"
+        unlocks: list[str] = []
+        for rid, rtier in region_tiers.items():
+            # Only mention regions that actually contain this brand.
+            members = await r.smembers(_k_master_region_brands(master_id, rid))
+            if bid in members:
+                unlocks.append(f"{rid}_{rtier}")
+        if master_tier:
+            unlocks.append(master_tier)
+        if global_tier and global_tier != master_tier:
+            unlocks.append(f"global_{global_tier}")
+        portability_map[key] = unlocks
+
+    return {
+        "master_id": master_id,
+        "user_id": user_id,
+        "brand_tiers": brand_tiers,
+        "region_tiers": region_tiers,
+        "master_tier": master_tier,
+        "global_tier": global_tier,
+        "portability_map": portability_map,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # FEATURE 3 — Master-level Health Dashboard
 # ─────────────────────────────────────────────────────────────────────────
@@ -2281,6 +2870,8 @@ __all__ = [
     "router",
     "check_permission",
     "resolve_master_tier",
+    "resolve_tier_for_scope",
     "VALID_ROLES",
+    "VALID_TIER_SCOPES",
     "DEFAULT_RBAC_MATRIX",
 ]

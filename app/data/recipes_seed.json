@@ -922,5 +922,1193 @@
       "primary_outcome": "health_engagement",
       "objective": "engagement"
     }
+  },
+  {
+    "id": "travel_pre_departure",
+    "name": "Pre-Departure Countdown",
+    "name_cn": "出行倒计时",
+    "description_en": "60-day countdown game with daily check-ins, visa/document reminders and a packing checklist that builds trip anticipation.",
+    "description_cn": "出发前60天倒计时打卡 + 签证证件提醒 + 行李清单，让用户期待出行。",
+    "icon": "✈️",
+    "category": "engagement",
+    "industry": "travel",
+    "tags": ["streak", "quest", "reminder"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 2, "milestones": [7, 30, 60], "actions": ["daily_checkin"]}},
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 3, "quest_pool": ["check_visa", "pack_item", "watch_destination_video"]}},
+      {"id": "triggers", "params": {"pre_departure_days": [60, 30, 14, 7, 1]}},
+      {"id": "progression", "params": {"xp_per_action": {"daily_checkin": 5, "checklist_item": 10, "visa_uploaded": 50}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "ready_to_fly", "value": {"type": "discount_pct", "amount": 10}, "conditions": {"checklist_complete": true}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on daily check-in",
+        "trigger_event": "daily_checkin",
+        "actions": [
+          {"module": "streak", "method": "check", "params": {"key": "pre_departure"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 5}}
+        ]
+      },
+      {
+        "name": "Fire visa reminder at T-30",
+        "trigger_event": "pre_departure_T30",
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "visa_reminder"}}]
+      },
+      {
+        "name": "Issue ready-to-fly voucher when packing list complete",
+        "trigger_event": "checklist_completed",
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "ready_to_fly"}}]
+      }
+    ],
+    "wireframe_hint": "Countdown clock at top + packing checklist + visa/passport reminder cards + flight info",
+    "metadata": {
+      "source": "TripIt + Hopper hybrid",
+      "key_metric": "pre_trip_DAU",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "trip_anticipation",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "travel_loyalty_globetrotter",
+    "name": "Globetrotter Loyalty",
+    "name_cn": "环球旅行家忠诚度",
+    "description_en": "XP per booked trip rolls up to master-level tiers spanning destinations, like Marriott Bonvoy meets airline status.",
+    "description_cn": "每次预订积累XP，跨目的地累计升级至大师等级，类似万豪+航司金卡。",
+    "icon": "🌍",
+    "category": "loyalty",
+    "industry": "travel",
+    "tags": ["tier", "progression", "achievement"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"trip_booked": 100, "trip_completed": 200, "review_submitted": 30}}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "explorer", "name": "Explorer", "threshold_xp": 0, "perks": []},
+        {"id": "voyager", "name": "Voyager", "threshold_xp": 1000, "perks": ["priority_support", "5%_off"]},
+        {"id": "globetrotter", "name": "Globetrotter", "threshold_xp": 5000, "perks": ["10%_off", "lounge_access", "free_upgrades"]},
+        {"id": "master", "name": "Master Globetrotter", "threshold_xp": 20000, "perks": ["concierge", "complimentary_nights"]}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "5_continents", "name": "5 Continents", "trigger": "continents_visited>=5"},
+        {"id": "100_cities", "name": "Centurion", "trigger": "cities_visited>=100"}
+      ]}},
+      {"id": "collection", "params": {"items": ["passport_stamp"], "set_completion_bonus": true}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on completed trip",
+        "trigger_event": "trip_completed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 200}},
+          {"module": "collection", "method": "add", "params": {"item": "passport_stamp"}}
+        ]
+      },
+      {
+        "name": "Grant continent badge",
+        "trigger_event": "trip_completed",
+        "conditions": {"type": "count", "metric": "continents_visited", "op": ">=", "value": 5},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "5_continents"}}]
+      }
+    ],
+    "wireframe_hint": "World map with visited stamps + tier badge + XP bar + recent achievements",
+    "metadata": {
+      "source": "Marriott Bonvoy + Star Alliance + Airbnb hybrid",
+      "key_metric": "repeat_bookings",
+      "key_metric_value": "+25% target",
+      "primary_outcome": "trip_loyalty",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "travel_group_cohesion",
+    "name": "Group Travel Cohesion",
+    "name_cn": "团队同行徽章",
+    "description_en": "Groups of N travelers earn shared badges at each itinerary milestone — boarding, arrival, daily activities — turning logistics into a coop quest.",
+    "description_cn": "N人成团，每个行程节点（登机/抵达/每日活动）共同解锁徽章，把行程变成合作任务。",
+    "icon": "👥",
+    "category": "social",
+    "industry": "travel",
+    "tags": ["coop", "group_actions", "achievement"],
+    "modules": [
+      {"id": "group_actions", "params": {"min_size": 2, "max_size": 12, "shared_itinerary": true}},
+      {"id": "coop_quest", "params": {"stages": ["boarding", "arrival", "day1", "day2", "day3", "farewell"], "all_must_check_in": false, "threshold_pct": 0.7}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "boarded_together", "name": "Squad Boarded", "trigger": "stage:boarding"},
+        {"id": "trip_complete", "name": "Mission Complete", "trigger": "stage:farewell"}
+      ]}},
+      {"id": "social_feed", "params": {"per_group_feed": true, "auto_post_milestones": true}}
+    ],
+    "rules": [
+      {
+        "name": "Advance group stage on majority check-in",
+        "trigger_event": "member_checkin",
+        "conditions": {"type": "fraction", "metric": "checked_in_pct", "op": ">=", "value": 0.7},
+        "actions": [
+          {"module": "coop_quest", "method": "advance_stage", "params": {}},
+          {"module": "achievement", "method": "grant_group", "params": {"by_stage": true}}
+        ]
+      },
+      {
+        "name": "Auto-post milestone to group feed",
+        "trigger_event": "stage_advanced",
+        "actions": [{"module": "social_feed", "method": "post", "params": {"template": "stage_milestone"}}]
+      }
+    ],
+    "wireframe_hint": "Group avatar bar + itinerary stages with check-in dots + shared badge wall + group chat feed",
+    "metadata": {
+      "source": "TourRadar + group-tour operators",
+      "key_metric": "group_completion_rate",
+      "key_metric_value": "+30% target",
+      "primary_outcome": "group_cohesion",
+      "objective": "social"
+    }
+  },
+  {
+    "id": "realestate_viewing_journey",
+    "name": "Property Viewing Journey",
+    "name_cn": "看房之旅",
+    "description_en": "Virtual tour mini-game + viewing booking flow + post-tour follow-up quests guide buyers from browse to offer.",
+    "description_cn": "虚拟看房游戏 + 预约看房 + 看房后跟进任务，把浏览者引导到下单。",
+    "icon": "🏠",
+    "category": "engagement",
+    "industry": "real_estate",
+    "tags": ["quest", "reservation", "progression"],
+    "modules": [
+      {"id": "smartquests", "params": {"refresh_daily": false, "quest_pool": ["virtual_tour", "book_viewing", "review_after_tour", "compare_3_properties"]}},
+      {"id": "progression", "params": {"xp_per_action": {"virtual_tour_completed": 20, "viewing_booked": 100, "viewing_attended": 200, "offer_submitted": 500}}},
+      {"id": "storyquest", "params": {"chapters": ["browse", "shortlist", "tour", "offer", "close"]}},
+      {"id": "triggers", "params": {"post_viewing_followup_hours": [24, 72, 168]}}
+    ],
+    "rules": [
+      {
+        "name": "Reward virtual tour completion",
+        "trigger_event": "virtual_tour_completed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 20}},
+          {"module": "storyquest", "method": "advance", "params": {"chapter": "browse"}}
+        ]
+      },
+      {
+        "name": "Trigger 24h post-tour follow-up",
+        "trigger_event": "viewing_attended",
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_hours": 24, "template": "post_viewing_followup"}}]
+      },
+      {
+        "name": "Advance storyquest on offer",
+        "trigger_event": "offer_submitted",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 500}},
+          {"module": "storyquest", "method": "advance", "params": {"chapter": "offer"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Property card with virtual-tour CTA + booking calendar + journey progress bar (browse→close) + follow-up reminders",
+    "metadata": {
+      "source": "Zillow + Beike (贝壳)",
+      "key_metric": "viewing_to_offer_conversion",
+      "key_metric_value": "+20% target",
+      "primary_outcome": "tour_to_offer",
+      "objective": "conversion"
+    }
+  },
+  {
+    "id": "realestate_agent_marketplace",
+    "name": "Agent Marketplace Matching",
+    "name_cn": "经纪人匹配市场",
+    "description_en": "Clients pick agents, agents pick properties — bidirectional matching with reputation scores and response-time tiers.",
+    "description_cn": "客户挑经纪人，经纪人挑房源，双向匹配 + 信誉分 + 响应速度等级。",
+    "icon": "🤝",
+    "category": "marketplace",
+    "industry": "real_estate",
+    "tags": ["tier", "leaderboard", "achievement"],
+    "modules": [
+      {"id": "tier", "params": {"actor": "agent", "tiers": [
+        {"id": "rising", "name": "Rising", "threshold_xp": 0, "perks": []},
+        {"id": "trusted", "name": "Trusted", "threshold_xp": 1000, "perks": ["featured_listing"]},
+        {"id": "elite", "name": "Elite", "threshold_xp": 10000, "perks": ["priority_match", "lower_commission_floor"]}
+      ]}},
+      {"id": "leaderboard", "params": {"metric": "client_rating_avg", "scope": "agents", "cycle_days": 30}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "fast_responder", "name": "Fast Responder", "trigger": "median_response_minutes<=10"},
+        {"id": "10_closes", "name": "10 Closes", "trigger": "closed_deals>=10"}
+      ]}},
+      {"id": "social_graph", "params": {"directed": true, "edge_type": "client_agent"}}
+    ],
+    "rules": [
+      {
+        "name": "Update agent rating on client review",
+        "trigger_event": "client_review_submitted",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount_by_stars": true, "actor": "agent"}},
+          {"module": "leaderboard", "method": "update", "params": {"actor": "agent"}}
+        ]
+      },
+      {
+        "name": "Grant fast responder badge",
+        "trigger_event": "agent_responded",
+        "conditions": {"type": "value", "metric": "response_minutes", "op": "<=", "value": 10},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "fast_responder", "actor": "agent"}}]
+      }
+    ],
+    "wireframe_hint": "Agent card with rating stars, response-time badge, tier crest + 'pick me' CTA + leaderboard sidebar",
+    "metadata": {
+      "source": "Beike Link + Compass agent dashboard",
+      "key_metric": "match_quality",
+      "key_metric_value": "+35% target",
+      "primary_outcome": "agent_client_match",
+      "objective": "marketplace_health"
+    }
+  },
+  {
+    "id": "realestate_buyer_education",
+    "name": "Buyer Education Series",
+    "name_cn": "购房知识系列",
+    "description_en": "Progressive content series + Q&A + ROI/risk calculators teach first-time buyers, with XP and 'qualified buyer' badge unlocks.",
+    "description_cn": "递进内容系列 + Q&A + 投资回报/风险测算，教育首次置业者，附XP和'合格买家'徽章解锁。",
+    "icon": "📚",
+    "category": "education",
+    "industry": "real_estate",
+    "tags": ["storyquest", "quest", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["budget", "loan", "neighborhood", "inspection", "negotiation", "closing"]}},
+      {"id": "smartquests", "params": {"refresh_daily": false, "quest_pool": ["read_article", "answer_quiz", "use_roi_calculator", "ask_question"]}},
+      {"id": "progression", "params": {"xp_per_action": {"article_read": 10, "quiz_passed": 30, "calculator_used": 20, "chapter_completed": 100}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "qualified_buyer", "name": "Qualified Buyer", "trigger": "chapters_completed>=6"},
+        {"id": "savvy_negotiator", "name": "Savvy Negotiator", "trigger": "chapter:negotiation_done"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on article read",
+        "trigger_event": "article_read",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 10}}]
+      },
+      {
+        "name": "Grant qualified buyer badge",
+        "trigger_event": "chapter_completed",
+        "conditions": {"type": "count", "metric": "chapters_completed", "op": ">=", "value": 6},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "qualified_buyer"}}]
+      }
+    ],
+    "wireframe_hint": "6-chapter storyquest map + article cards + ROI calculator widget + qualified-buyer badge progress",
+    "metadata": {
+      "source": "Bigger Pockets + Khan Academy hybrid",
+      "key_metric": "qualified_buyer_rate",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "buyer_readiness",
+      "objective": "education"
+    }
+  },
+  {
+    "id": "logistics_courier_rating",
+    "name": "Courier 5-Star Rating",
+    "name_cn": "快递员五星评分",
+    "description_en": "Customers rate couriers 1–5 stars after each delivery; courier tiers and bonus payouts derive from rolling rating.",
+    "description_cn": "每单送达后用户1-5星评价，骑手等级与奖金按滚动评分发放。",
+    "icon": "⭐",
+    "category": "loyalty",
+    "industry": "logistics",
+    "tags": ["tier", "leaderboard", "achievement"],
+    "modules": [
+      {"id": "tier", "params": {"actor": "courier", "tiers": [
+        {"id": "bronze_rider", "name": "Bronze Rider", "threshold_xp": 0, "perks": []},
+        {"id": "silver_rider", "name": "Silver Rider", "threshold_xp": 500, "perks": ["+5%_bonus"]},
+        {"id": "gold_rider", "name": "Gold Rider", "threshold_xp": 5000, "perks": ["+15%_bonus", "priority_orders"]}
+      ]}},
+      {"id": "leaderboard", "params": {"metric": "rating_avg_rolling_30d", "scope": "couriers", "cycle_days": 7}},
+      {"id": "progression", "params": {"xp_per_action": {"five_star": 20, "four_star": 5, "three_star": 0, "one_or_two_star": -20}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "100_five_stars", "name": "Centurion", "trigger": "five_star_count>=100"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on rating",
+        "trigger_event": "courier_rated",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount_by_stars": true, "actor": "courier"}},
+          {"module": "leaderboard", "method": "update", "params": {"actor": "courier"}}
+        ]
+      },
+      {
+        "name": "Grant centurion on 100 five-stars",
+        "trigger_event": "courier_rated",
+        "conditions": {"type": "count", "metric": "five_star_count", "op": ">=", "value": 100},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "100_five_stars", "actor": "courier"}}]
+      }
+    ],
+    "wireframe_hint": "Post-delivery 5-star prompt + courier profile with avg-stars + weekly leaderboard + tier crest",
+    "metadata": {
+      "source": "Meituan + DoorDash courier programs",
+      "key_metric": "avg_rating",
+      "key_metric_value": "+0.3 target",
+      "primary_outcome": "courier_quality",
+      "objective": "marketplace_health"
+    }
+  },
+  {
+    "id": "logistics_status_journey",
+    "name": "Shipment Status Journey",
+    "name_cn": "包裹状态旅程",
+    "description_en": "created → picked → in_transit → delivered notification chain with kid-side gamification (cartoon truck moving across map).",
+    "description_cn": "包裹下单→揽收→运输→送达通知链，附儿童端游戏化（卡通卡车地图位移）。",
+    "icon": "📦",
+    "category": "engagement",
+    "industry": "logistics",
+    "tags": ["storyquest", "triggers", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["created", "picked", "in_transit", "out_for_delivery", "delivered"]}},
+      {"id": "triggers", "params": {"events": ["status_changed"], "notify_on_change": true}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_delivery", "name": "First Delivery", "trigger": "deliveries>=1"},
+        {"id": "10_packages", "name": "Package Master", "trigger": "deliveries>=10"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"package_delivered": 20, "tracked_to_door": 5}}}
+    ],
+    "rules": [
+      {
+        "name": "Advance storyquest on status change",
+        "trigger_event": "status_changed",
+        "actions": [
+          {"module": "storyquest", "method": "advance", "params": {"chapter_from_status": true}},
+          {"module": "triggers", "method": "notify", "params": {"template": "status_update"}}
+        ]
+      },
+      {
+        "name": "Award XP on delivery",
+        "trigger_event": "package_delivered",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 20}},
+          {"module": "achievement", "method": "grant", "params": {"badge_if": "first_delivery"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Truck cartoon moving across stages (created→delivered) + push notification on each stage + child-mode toggle",
+    "metadata": {
+      "source": "SF Express + 17Track + kid-mode innovation",
+      "key_metric": "notification_open_rate",
+      "key_metric_value": "+60% target",
+      "primary_outcome": "shipment_engagement",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "logistics_sender_loyalty",
+    "name": "Recurring Sender Loyalty",
+    "name_cn": "寄件人忠诚",
+    "description_en": "Recurring shippers earn XP per parcel and unlock bulk-discount vouchers, classic B2B/SMB retention.",
+    "description_cn": "经常寄件的用户每单累积XP，解锁批量折扣券，经典B2B/小微留存。",
+    "icon": "🚚",
+    "category": "loyalty",
+    "industry": "logistics",
+    "tags": ["tier", "voucher", "progression"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"parcel_sent": 10, "monthly_volume_50": 200, "monthly_volume_500": 1500}}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "occasional", "name": "Occasional", "threshold_xp": 0, "perks": []},
+        {"id": "regular", "name": "Regular", "threshold_xp": 500, "perks": ["5%_off"]},
+        {"id": "bulk_shipper", "name": "Bulk Shipper", "threshold_xp": 5000, "perks": ["15%_off", "pickup_priority"]}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "bulk_10", "value": {"type": "discount_pct", "amount": 15}, "conditions": {"monthly_parcels>=": 50}}
+      ]}},
+      {"id": "streak", "params": {"max_freeze": 0, "milestones": [4, 12, 52], "actions": ["weekly_shipment"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP on parcel sent",
+        "trigger_event": "parcel_sent",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 10}},
+          {"module": "streak", "method": "check", "params": {"key": "weekly_shipment"}}
+        ]
+      },
+      {
+        "name": "Issue bulk voucher on 50/mo threshold",
+        "trigger_event": "monthly_volume_check",
+        "conditions": {"type": "count", "metric": "parcels_this_month", "op": ">=", "value": 50},
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "bulk_10"}}]
+      }
+    ],
+    "wireframe_hint": "Monthly shipment counter + tier badge + bulk voucher card + weekly-streak flame",
+    "metadata": {
+      "source": "FedEx Advantage + SF Bizapp",
+      "key_metric": "monthly_active_shippers",
+      "key_metric_value": "+25% target",
+      "primary_outcome": "shipper_retention",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "sharing_micro_loyalty",
+    "name": "Shared-Ride Micro Loyalty",
+    "name_cn": "共享出行小额忠诚",
+    "description_en": "Points per ride/rental compound into tier discounts — classic Mobike/Lime style retention on cheap unit-economics.",
+    "description_cn": "每次骑行/租用积分，累积升级换折扣，摩拜/Lime式的低客单价留存。",
+    "icon": "🚲",
+    "category": "loyalty",
+    "industry": "sharing_economy",
+    "tags": ["tier", "progression", "voucher"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"ride_completed": 5, "rental_completed": 10}}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "rider", "name": "Rider", "threshold_xp": 0, "perks": []},
+        {"id": "commuter", "name": "Commuter", "threshold_xp": 200, "perks": ["10%_off"]},
+        {"id": "veteran", "name": "Veteran", "threshold_xp": 2000, "perks": ["20%_off", "reserve_ahead"]}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "weekly_pass", "value": {"type": "free_rides", "amount": 7}, "conditions": {"tier_required": "commuter"}}
+      ]}},
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [7, 30], "actions": ["daily_ride"]}}
+    ],
+    "rules": [
+      {
+        "name": "Award XP per ride",
+        "trigger_event": "ride_completed",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 5}},
+          {"module": "streak", "method": "check", "params": {"key": "daily_ride"}}
+        ]
+      },
+      {
+        "name": "Issue weekly pass at commuter tier",
+        "trigger_event": "tier_promoted",
+        "conditions": {"type": "value", "metric": "tier_id", "op": "==", "value": "commuter"},
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "weekly_pass"}}]
+      }
+    ],
+    "wireframe_hint": "Ride counter + tier crest + weekly pass voucher + daily-ride streak flame",
+    "metadata": {
+      "source": "Mobike + Lime + Hello Bike",
+      "key_metric": "rides_per_user_month",
+      "key_metric_value": "+30% target",
+      "primary_outcome": "ride_frequency",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "sharing_deposit_recovery",
+    "name": "Deposit-as-Voucher Recovery",
+    "name_cn": "押金转代金券",
+    "description_en": "Converts the typical ¥99 deposit into a refundable wallet voucher, removing friction while keeping LTV.",
+    "description_cn": "把99元押金转为钱包内可退代金券，去除门槛同时锁定LTV。",
+    "icon": "💰",
+    "category": "monetization",
+    "industry": "sharing_economy",
+    "tags": ["voucher", "currency"],
+    "modules": [
+      {"id": "currency", "params": {"currencies": [{"id": "wallet_credit", "name": "Wallet Credit", "refundable": true}]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "deposit_99", "value": {"type": "wallet_credit", "amount": 99}, "conditions": {"refundable_after_first_ride": true}}
+      ]}},
+      {"id": "voucher", "params": {"refund_path": "wallet_to_bank", "refund_window_days": 30}},
+      {"id": "triggers", "params": {"events": ["deposit_paid", "first_ride_completed", "refund_requested"]}}
+    ],
+    "rules": [
+      {
+        "name": "Issue deposit voucher on payment",
+        "trigger_event": "deposit_paid",
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "deposit_99"}}]
+      },
+      {
+        "name": "Refund deposit voucher to bank on request",
+        "trigger_event": "refund_requested",
+        "actions": [{"module": "voucher", "method": "refund", "params": {"path": "wallet_to_bank"}}]
+      }
+    ],
+    "wireframe_hint": "Wallet card showing ¥99 voucher balance + 'use for ride' or 'refund to bank' buttons + history",
+    "metadata": {
+      "source": "Mobike + Hello deposit-free programs",
+      "key_metric": "deposit_conversion_to_ride",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "deposit_friction_removal",
+      "objective": "activation"
+    }
+  },
+  {
+    "id": "sharing_off_peak_incentive",
+    "name": "Off-Peak Bonus XP",
+    "name_cn": "错峰激励",
+    "description_en": "Bonus XP and discount vouchers for off-peak rides/rentals — supply rebalance via demand shaping.",
+    "description_cn": "错峰时段骑行/租用奖励额外XP和折扣券，通过需求端整形再平衡供给。",
+    "icon": "🌙",
+    "category": "monetization",
+    "industry": "sharing_economy",
+    "tags": ["triggers", "voucher", "progression"],
+    "modules": [
+      {"id": "triggers", "params": {"time_windows": [{"id": "off_peak_morning", "start": "10:00", "end": "16:00"}, {"id": "off_peak_late", "start": "22:00", "end": "06:00"}]}},
+      {"id": "progression", "params": {"xp_per_action": {"off_peak_ride": 15, "peak_ride": 5}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "off_peak_50pct", "value": {"type": "discount_pct", "amount": 50}, "conditions": {"window": "off_peak_morning"}}
+      ]}},
+      {"id": "rate_limit", "params": {"max_off_peak_bonuses_per_day": 2}}
+    ],
+    "rules": [
+      {
+        "name": "Award bonus XP off-peak",
+        "trigger_event": "ride_completed",
+        "conditions": {"type": "window", "metric": "ride_time", "op": "in", "value": "off_peak_morning"},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 15}}]
+      },
+      {
+        "name": "Issue off-peak voucher on first off-peak ride of day",
+        "trigger_event": "off_peak_ride_first_of_day",
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "off_peak_50pct"}}]
+      }
+    ],
+    "wireframe_hint": "Time-window banner ('off-peak active 10-16') + bonus XP highlight + 50% voucher card",
+    "metadata": {
+      "source": "Didi off-peak + Mobike supply-balance",
+      "key_metric": "off_peak_share",
+      "key_metric_value": "+15pp target",
+      "primary_outcome": "supply_rebalance",
+      "objective": "monetization"
+    }
+  },
+  {
+    "id": "fintech_kyc_onboarding",
+    "name": "KYC Onboarding Flow",
+    "name_cn": "实名开户流程",
+    "description_en": "Phone OTP + risk profile questionnaire + 双录 (audio/video) consent — compliant onboarding with progress quests.",
+    "description_cn": "手机OTP + 风险测评问卷 + 双录同意书，合规开户附进度任务。",
+    "icon": "🔐",
+    "category": "compliance",
+    "industry": "fintech",
+    "tags": ["storyquest", "quest", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["phone_otp", "id_upload", "risk_profile", "consent_recording", "account_active"]}},
+      {"id": "smartquests", "params": {"refresh_daily": false, "quest_pool": ["verify_phone", "upload_id", "complete_risk_quiz", "record_consent"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "kyc_complete", "name": "Verified", "trigger": "stage:account_active"}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"phone_verified": 10, "id_uploaded": 20, "risk_profile_done": 30, "consent_recorded": 50}}}
+    ],
+    "rules": [
+      {
+        "name": "Advance KYC storyquest",
+        "trigger_event": "kyc_step_completed",
+        "actions": [{"module": "storyquest", "method": "advance", "params": {"chapter_from_step": true}}]
+      },
+      {
+        "name": "Grant verified badge on account active",
+        "trigger_event": "account_active",
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "kyc_complete"}}]
+      }
+    ],
+    "wireframe_hint": "5-step progress bar (phone→ID→risk→consent→active) + per-step CTA + verified badge",
+    "metadata": {
+      "source": "Lufax + Ant Wealth onboarding",
+      "key_metric": "kyc_completion_rate",
+      "key_metric_value": "+25% target",
+      "primary_outcome": "kyc_completion",
+      "objective": "activation"
+    }
+  },
+  {
+    "id": "fintech_cross_product_unlock",
+    "name": "Cross-Product Unlock Path",
+    "name_cn": "跨产品解锁路径",
+    "description_en": "Hold a money-market fund → unlock wealth management → unlock insurance, with voucher rewards at each gate.",
+    "description_cn": "持有货币基金→解锁理财→解锁保险，每道门给代金券奖励。",
+    "icon": "🔓",
+    "category": "monetization",
+    "industry": "fintech",
+    "tags": ["storyquest", "voucher", "progression"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["money_market", "wealth_mgmt", "insurance", "trust"]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "wealth_unlock_50", "value": {"type": "cash", "amount": 50}, "conditions": {"chapter_unlocked": "wealth_mgmt"}},
+        {"id": "insurance_unlock_100", "value": {"type": "premium_credit", "amount": 100}, "conditions": {"chapter_unlocked": "insurance"}}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"product_held_30d": 100, "first_purchase": 200}}},
+      {"id": "upsell", "params": {"cross_sell_rules": [
+        {"from": "money_market", "to": "wealth_mgmt"},
+        {"from": "wealth_mgmt", "to": "insurance"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Unlock wealth mgmt after money market 30d",
+        "trigger_event": "product_held_30d",
+        "conditions": {"type": "value", "metric": "product_id", "op": "==", "value": "money_market"},
+        "actions": [
+          {"module": "storyquest", "method": "unlock", "params": {"chapter": "wealth_mgmt"}},
+          {"module": "voucher_builder", "method": "issue", "params": {"template_id": "wealth_unlock_50"}}
+        ]
+      },
+      {
+        "name": "Unlock insurance after wealth 30d",
+        "trigger_event": "product_held_30d",
+        "conditions": {"type": "value", "metric": "product_id", "op": "==", "value": "wealth_mgmt"},
+        "actions": [
+          {"module": "storyquest", "method": "unlock", "params": {"chapter": "insurance"}},
+          {"module": "voucher_builder", "method": "issue", "params": {"template_id": "insurance_unlock_100"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "4-stage product unlock ladder + voucher reward badge per gate + holding-period progress bar",
+    "metadata": {
+      "source": "Ant Wealth + Lufax cross-sell",
+      "key_metric": "products_per_user",
+      "key_metric_value": "+0.6 target",
+      "primary_outcome": "cross_sell",
+      "objective": "monetization"
+    }
+  },
+  {
+    "id": "fintech_suitability_gate",
+    "name": "Suitability Compliance Gate",
+    "name_cn": "适当性合规闸门",
+    "description_en": "Auto-block C2 risk-tolerance users from R5 high-risk products with banner explanation — mandatory CSRC rule wrapped as UX.",
+    "description_cn": "自动阻止C2低风险用户购买R5高风险产品，附说明条幅——把证监会合规要求包装为UX。",
+    "icon": "🛡️",
+    "category": "compliance",
+    "industry": "fintech",
+    "tags": ["triggers", "rate_limit"],
+    "modules": [
+      {"id": "triggers", "params": {"events": ["product_purchase_attempt"], "risk_check": true}},
+      {"id": "rate_limit", "params": {"block_when": "risk_mismatch", "block_message_cn": "您的风险等级为C2，无法购买R5产品"}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "informed_investor", "name": "Informed Investor", "trigger": "risk_education_completed"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Block C2 from R5",
+        "trigger_event": "product_purchase_attempt",
+        "conditions": {"type": "match", "metric": "user_risk_vs_product_risk", "op": "below", "value": 3},
+        "actions": [
+          {"module": "rate_limit", "method": "block", "params": {"reason": "suitability_mismatch"}},
+          {"module": "triggers", "method": "notify", "params": {"template": "suitability_explanation"}}
+        ]
+      },
+      {
+        "name": "Grant informed-investor badge after risk education",
+        "trigger_event": "risk_education_completed",
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "informed_investor"}}]
+      }
+    ],
+    "wireframe_hint": "Purchase modal with risk mismatch banner + 'learn about risk' CTA + informed-investor badge progress",
+    "metadata": {
+      "source": "CSRC 适当性管理办法 + product UX",
+      "key_metric": "suitability_violation_rate",
+      "key_metric_value": "→ 0 target",
+      "primary_outcome": "compliance_pass",
+      "objective": "compliance"
+    }
+  },
+  {
+    "id": "medaesthetic_treatment_cycle",
+    "name": "Treatment Cycle Reminders",
+    "name_cn": "疗程周期提醒",
+    "description_en": "Per-treatment recurring reminders — HA every 4–6 months, laser every 3 months, botox every 4 months — tied to per-customer next-visit calendar.",
+    "description_cn": "按项目周期复购提醒：玻尿酸4-6月/激光3月/肉毒4月，绑定客户下次到访日历。",
+    "icon": "💉",
+    "category": "loyalty",
+    "industry": "medical_aesthetics",
+    "tags": ["triggers", "reminder", "streak"],
+    "modules": [
+      {"id": "triggers", "params": {"per_treatment_intervals": {"hyaluronic_acid_days": 150, "laser_days": 90, "botox_days": 120}}},
+      {"id": "streak", "params": {"max_freeze": 0, "milestones": [2, 4, 8], "actions": ["treatment_completed_on_cycle"]}},
+      {"id": "progression", "params": {"xp_per_action": {"treatment_completed": 100, "on_cycle_bonus": 50}}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "loyalty_repeat_15", "value": {"type": "discount_pct", "amount": 15}, "conditions": {"on_cycle": true}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Schedule next-visit reminder per treatment",
+        "trigger_event": "treatment_completed",
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_days_by_treatment": true, "template": "next_visit_reminder"}}]
+      },
+      {
+        "name": "Award on-cycle bonus",
+        "trigger_event": "treatment_completed",
+        "conditions": {"type": "value", "metric": "within_cycle_window", "op": "==", "value": true},
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 150}},
+          {"module": "voucher_builder", "method": "issue", "params": {"template_id": "loyalty_repeat_15"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Per-treatment calendar dots (HA/laser/botox) + next-visit countdown + on-cycle streak flame + 15% voucher",
+    "metadata": {
+      "source": "SoYoung (新氧) + Galderma loyalty",
+      "key_metric": "on_cycle_repeat_rate",
+      "key_metric_value": "+30% target",
+      "primary_outcome": "treatment_repeat",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "medaesthetic_referral_chain",
+    "name": "Referral Chain Bonus",
+    "name_cn": "转介绍连锁奖励",
+    "description_en": "Refer a friend, friend completes first treatment → referrer gets ¥500 voucher. High-trust word-of-mouth in beauty vertical.",
+    "description_cn": "推荐好友，好友首次到院消费后推荐人获500元代金券。美业高信任口碑核心。",
+    "icon": "👯",
+    "category": "viral",
+    "industry": "medical_aesthetics",
+    "tags": ["share", "voucher", "network_effect"],
+    "modules": [
+      {"id": "share_to_win", "params": {"channel": "wechat", "tracking_param": "referrer_id"}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "referrer_500", "value": {"type": "cash", "amount": 500}, "conditions": {"friend_first_treatment_completed": true}},
+        {"id": "newcomer_200", "value": {"type": "discount_cash", "amount": 200}, "conditions": {"new_customer": true}}
+      ]}},
+      {"id": "network_effect", "params": {"viral_coefficient_target": 0.8}},
+      {"id": "social_graph", "params": {"edge_type": "referral"}}
+    ],
+    "rules": [
+      {
+        "name": "Issue referrer voucher on friend's first treatment",
+        "trigger_event": "friend_first_treatment_completed",
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "referrer_500", "to": "referrer"}}]
+      },
+      {
+        "name": "Issue newcomer voucher on signup via referral",
+        "trigger_event": "signup_via_referral",
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "newcomer_200", "to": "new_user"}}]
+      }
+    ],
+    "wireframe_hint": "Share-via-WeChat CTA + referral tree showing pending/completed friends + ¥500 voucher counter",
+    "metadata": {
+      "source": "SoYoung referral 2018+",
+      "key_metric": "referral_conversion",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "viral_acquisition",
+      "objective": "growth"
+    }
+  },
+  {
+    "id": "medaesthetic_before_after_album",
+    "name": "Before/After Photo Album",
+    "name_cn": "对比照相册",
+    "description_en": "Secure encrypted photo storage with consent gates + selective share-with-doctor permissions + opt-in social showcase.",
+    "description_cn": "加密存储术前/术后照片 + 同意书闸门 + 选择性授权给医生 + 自愿展示到社区。",
+    "icon": "📸",
+    "category": "engagement",
+    "industry": "medical_aesthetics",
+    "tags": ["collection", "social_feed", "achievement"],
+    "modules": [
+      {"id": "collection", "params": {"items": ["before_photo", "after_photo"], "encryption": true, "consent_required": true}},
+      {"id": "social_feed", "params": {"opt_in_sharing": true, "watermark": true, "blur_face_default": true}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "transformation", "name": "Transformation", "trigger": "before_after_pair_complete"}
+      ]}},
+      {"id": "triggers", "params": {"events": ["photo_uploaded", "consent_signed", "share_with_doctor"]}}
+    ],
+    "rules": [
+      {
+        "name": "Grant transformation badge on first before/after pair",
+        "trigger_event": "before_after_pair_complete",
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "transformation"}}]
+      },
+      {
+        "name": "Share with doctor (consent-gated)",
+        "trigger_event": "share_with_doctor",
+        "conditions": {"type": "value", "metric": "consent_signed", "op": "==", "value": true},
+        "actions": [{"module": "collection", "method": "share", "params": {"to_role": "doctor"}}]
+      }
+    ],
+    "wireframe_hint": "Side-by-side before/after slider + privacy padlock + 'share with doctor' toggle + opt-in community showcase",
+    "metadata": {
+      "source": "SoYoung diary + Galderma photo tools",
+      "key_metric": "photo_uploads_per_user",
+      "key_metric_value": "+50% target",
+      "primary_outcome": "before_after_engagement",
+      "objective": "engagement"
+    }
+  },
+  {
+    "id": "medical_follow_up_care",
+    "name": "Follow-Up Care Reminders",
+    "name_cn": "随访关怀提醒",
+    "description_en": "Vaccination boosters + annual checkup reminders within a 365-day window, with per-condition recurring schedules.",
+    "description_cn": "疫苗加强针 + 年检提醒（365天周期），按病种循环排程。",
+    "icon": "💊",
+    "category": "engagement",
+    "industry": "medical",
+    "tags": ["triggers", "streak", "reminder"],
+    "modules": [
+      {"id": "triggers", "params": {"per_condition_intervals_days": {"annual_checkup": 365, "flu_shot": 365, "hpv_dose": 60, "tetanus_booster": 3650}}},
+      {"id": "streak", "params": {"max_freeze": 0, "milestones": [1, 3, 5, 10], "actions": ["checkup_completed_yearly"]}},
+      {"id": "progression", "params": {"xp_per_action": {"appointment_attended": 100, "preventive_care_on_time": 200}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "on_time_carer", "name": "On-Time Carer", "trigger": "preventive_streak>=3"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Schedule next yearly checkup",
+        "trigger_event": "appointment_attended",
+        "conditions": {"type": "value", "metric": "visit_type", "op": "==", "value": "annual_checkup"},
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_days": 365, "template": "annual_reminder"}}]
+      },
+      {
+        "name": "Award preventive-care XP",
+        "trigger_event": "preventive_care_on_time",
+        "actions": [
+          {"module": "progression", "method": "award_xp", "params": {"amount": 200}},
+          {"module": "streak", "method": "check", "params": {"key": "preventive"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Care calendar with next checkup/booster dots + yearly streak flame + on-time-carer badge",
+    "metadata": {
+      "source": "Ping An Good Doctor + 微医 (WeDoctor)",
+      "key_metric": "preventive_attendance_rate",
+      "key_metric_value": "+35% target",
+      "primary_outcome": "follow_up_compliance",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "medical_specialist_pick",
+    "name": "Specialist Pick & Book",
+    "name_cn": "专科医生挑选预约",
+    "description_en": "Doctor profile cards + booking flow + post-visit feedback closes the loop on physician selection.",
+    "description_cn": "医生资料卡 + 预约流程 + 就诊后评价，闭环专科医生选择。",
+    "icon": "👨‍⚕️",
+    "category": "marketplace",
+    "industry": "medical",
+    "tags": ["reservation", "leaderboard", "achievement"],
+    "modules": [
+      {"id": "leaderboard", "params": {"metric": "patient_rating_avg", "scope": "doctors", "cycle_days": 30, "by_specialty": true}},
+      {"id": "tier", "params": {"actor": "doctor", "tiers": [
+        {"id": "attending", "name": "Attending", "threshold_xp": 0, "perks": []},
+        {"id": "senior", "name": "Senior", "threshold_xp": 5000, "perks": ["highlighted_listing"]},
+        {"id": "chief", "name": "Chief", "threshold_xp": 30000, "perks": ["priority_match", "expert_badge"]}
+      ]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "patient_favourite", "name": "Patient Favourite", "trigger": "rating_avg>=4.8 AND reviews>=50"}
+      ]}},
+      {"id": "triggers", "params": {"events": ["appointment_booked", "appointment_attended", "review_window_open"]}}
+    ],
+    "rules": [
+      {
+        "name": "Open review window post-visit",
+        "trigger_event": "appointment_attended",
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_hours": 24, "template": "doctor_review_prompt"}}]
+      },
+      {
+        "name": "Update doctor leaderboard on review",
+        "trigger_event": "doctor_review_submitted",
+        "actions": [
+          {"module": "leaderboard", "method": "update", "params": {"actor": "doctor"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount_by_stars": true, "actor": "doctor"}}
+        ]
+      }
+    ],
+    "wireframe_hint": "Doctor card with avatar/rating/specialty + booking calendar + post-visit review modal + specialty leaderboard",
+    "metadata": {
+      "source": "Haodaifu (好大夫在线) + Ping An",
+      "key_metric": "booking_conversion",
+      "key_metric_value": "+30% target",
+      "primary_outcome": "specialist_match",
+      "objective": "marketplace_health"
+    }
+  },
+  {
+    "id": "medical_family_account",
+    "name": "Family Proxy Account",
+    "name_cn": "家庭代办账户",
+    "description_en": "Guardian books for child/elderly with proxy consent — multi-profile under one master account with role-based permissions.",
+    "description_cn": "监护人代订儿童/老人就诊，附代办同意书；一个主账户下多档案，按角色授权。",
+    "icon": "👨‍👩‍👧",
+    "category": "social",
+    "industry": "medical",
+    "tags": ["group_actions", "consent", "achievement"],
+    "modules": [
+      {"id": "group_actions", "params": {"type": "family", "max_size": 6, "roles": ["guardian", "child", "elderly"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "family_caregiver", "name": "Family Caregiver", "trigger": "managed_profiles>=2"}
+      ]}},
+      {"id": "triggers", "params": {"events": ["proxy_consent_signed", "appointment_for_dependent"]}},
+      {"id": "progression", "params": {"xp_per_action": {"dependent_visit_completed": 150, "consent_signed": 30}}}
+    ],
+    "rules": [
+      {
+        "name": "Require proxy consent before booking dependent",
+        "trigger_event": "appointment_for_dependent",
+        "conditions": {"type": "value", "metric": "proxy_consent_active", "op": "==", "value": false},
+        "actions": [{"module": "triggers", "method": "notify", "params": {"template": "consent_required"}}]
+      },
+      {
+        "name": "Grant caregiver badge",
+        "trigger_event": "dependent_visit_completed",
+        "conditions": {"type": "count", "metric": "managed_profiles", "op": ">=", "value": 2},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "family_caregiver"}}]
+      }
+    ],
+    "wireframe_hint": "Family profile picker (parent/child/elder avatars) + proxy-consent banner + per-profile appointment list",
+    "metadata": {
+      "source": "Ping An Family + Haodaifu family accounts",
+      "key_metric": "dependents_per_account",
+      "key_metric_value": "+1.5 target",
+      "primary_outcome": "family_coverage",
+      "objective": "expansion"
+    }
+  },
+  {
+    "id": "pet_vaccination_calendar",
+    "name": "Pet Vaccination Calendar",
+    "name_cn": "宠物疫苗日历",
+    "description_en": "Recurring vaccination reminders per pet, multi-pet support, with annual booster cadence.",
+    "description_cn": "每只宠物独立疫苗提醒，支持多宠家庭，年度加强针节律。",
+    "icon": "🐶",
+    "category": "engagement",
+    "industry": "pet",
+    "tags": ["triggers", "streak", "achievement"],
+    "modules": [
+      {"id": "triggers", "params": {"per_vaccine_intervals_days": {"rabies": 365, "dhpp": 365, "feline_3in1": 365, "deworming": 90}}},
+      {"id": "streak", "params": {"max_freeze": 0, "milestones": [1, 3, 7], "actions": ["yearly_vaccination_on_time"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "healthy_pet", "name": "Healthy Pet", "trigger": "vaccinations_on_time>=3"}
+      ]}},
+      {"id": "collection", "params": {"items": ["pet_profile"], "max_items": 10}}
+    ],
+    "rules": [
+      {
+        "name": "Schedule next vaccine per type",
+        "trigger_event": "vaccine_administered",
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_days_by_vaccine": true, "template": "vaccine_due"}}]
+      },
+      {
+        "name": "Grant healthy-pet badge",
+        "trigger_event": "vaccine_administered",
+        "conditions": {"type": "count", "metric": "on_time_vaccinations", "op": ">=", "value": 3},
+        "actions": [{"module": "achievement", "method": "grant", "params": {"badge_id": "healthy_pet"}}]
+      }
+    ],
+    "wireframe_hint": "Pet selector + calendar with vaccine dots + 'next due' countdown + healthy-pet badge",
+    "metadata": {
+      "source": "Boqii (波奇) + Chewy reminder system",
+      "key_metric": "on_time_vaccine_rate",
+      "key_metric_value": "+40% target",
+      "primary_outcome": "pet_preventive_care",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "pet_grooming_streak",
+    "name": "Grooming Streak",
+    "name_cn": "美容打卡连击",
+    "description_en": "Every 4 weeks grooming visit = streak + tier upgrade, classic loyalty in pet salon vertical.",
+    "description_cn": "每4周一次美容形成连击，升级会员等级；宠物美容店经典留存。",
+    "icon": "✂️",
+    "category": "loyalty",
+    "industry": "pet",
+    "tags": ["streak", "tier", "voucher"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 6, 12, 24], "actions": ["grooming_visit"], "window_days": 28}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "pup", "name": "Pup", "threshold_xp": 0, "perks": []},
+        {"id": "regular", "name": "Regular", "threshold_xp": 600, "perks": ["10%_off"]},
+        {"id": "vip_paw", "name": "VIP Paw", "threshold_xp": 5000, "perks": ["20%_off", "priority_booking"]}
+      ]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "free_groom_12th", "value": {"type": "free_service", "amount": 1}, "conditions": {"visits>=": 12}}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"grooming_visit": 100}}}
+    ],
+    "rules": [
+      {
+        "name": "Check streak on grooming visit",
+        "trigger_event": "grooming_visit",
+        "actions": [
+          {"module": "streak", "method": "check", "params": {"key": "grooming", "window_days": 28}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 100}}
+        ]
+      },
+      {
+        "name": "Issue 12th visit free voucher",
+        "trigger_event": "grooming_visit",
+        "conditions": {"type": "count", "metric": "grooming_visits", "op": ">=", "value": 12},
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "free_groom_12th"}}]
+      }
+    ],
+    "wireframe_hint": "4-week countdown + grooming streak flame + VIP-paw tier crest + free-groom voucher progress (12 stamps)",
+    "metadata": {
+      "source": "PetSmart Grooming + 喵到家 loyalty",
+      "key_metric": "monthly_grooming_visits",
+      "key_metric_value": "+25% target",
+      "primary_outcome": "grooming_repeat",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "pet_health_records",
+    "name": "Cross-Clinic Health Records",
+    "name_cn": "跨诊所健康档案",
+    "description_en": "Pet medical record continuity across multiple clinics within a master account, with consent-based share between vets.",
+    "description_cn": "宠物在不同诊所的就诊记录通过主账户打通，附兽医间授权共享。",
+    "icon": "📋",
+    "category": "engagement",
+    "industry": "pet",
+    "tags": ["collection", "consent", "achievement"],
+    "modules": [
+      {"id": "collection", "params": {"items": ["vet_visit", "lab_result", "prescription", "xray"], "encryption": true}},
+      {"id": "social_graph", "params": {"edge_type": "vet_authorization", "directed": true}},
+      {"id": "triggers", "params": {"events": ["record_added", "record_shared", "lab_uploaded"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "complete_history", "name": "Complete History", "trigger": "records>=10"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Add record on vet visit",
+        "trigger_event": "vet_visit_completed",
+        "actions": [{"module": "collection", "method": "add", "params": {"item": "vet_visit"}}]
+      },
+      {
+        "name": "Share records with new vet via consent",
+        "trigger_event": "vet_authorization_granted",
+        "actions": [{"module": "collection", "method": "share", "params": {"to_role": "vet", "scope": "authorized_records"}}]
+      }
+    ],
+    "wireframe_hint": "Timeline view of vet visits + record-type icons + 'share with vet' QR/code + complete-history badge",
+    "metadata": {
+      "source": "Boqii Health + Chewy PetMD",
+      "key_metric": "records_per_pet",
+      "key_metric_value": "+5 target",
+      "primary_outcome": "health_record_continuity",
+      "objective": "retention"
+    }
+  },
+  {
+    "id": "marketplace_seller_journey",
+    "name": "Seller Onboarding Journey",
+    "name_cn": "卖家启程之旅",
+    "description_en": "Listing creation streak + photo quality bonus + first-sale celebration onboards new sellers like Etsy/Taobao.",
+    "description_cn": "上架连击 + 照片质量奖 + 首单庆祝，像Etsy/淘宝那样启程新卖家。",
+    "icon": "🏪",
+    "category": "marketplace",
+    "industry": "marketplace",
+    "tags": ["storyquest", "streak", "achievement"],
+    "modules": [
+      {"id": "storyquest", "params": {"chapters": ["first_listing", "first_view", "first_inquiry", "first_sale", "10th_sale"]}},
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 7, 30], "actions": ["listing_created"]}},
+      {"id": "progression", "params": {"xp_per_action": {"listing_created": 20, "photo_quality_high": 30, "first_sale": 500}}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_sale", "name": "First Sale", "trigger": "sales>=1"},
+        {"id": "10_sales", "name": "Established", "trigger": "sales>=10"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Advance storyquest on first sale",
+        "trigger_event": "sale_completed",
+        "conditions": {"type": "count", "metric": "sales", "op": "==", "value": 1},
+        "actions": [
+          {"module": "storyquest", "method": "advance", "params": {"chapter": "first_sale"}},
+          {"module": "achievement", "method": "grant", "params": {"badge_id": "first_sale"}},
+          {"module": "progression", "method": "award_xp", "params": {"amount": 500}}
+        ]
+      },
+      {
+        "name": "Bonus XP for high-quality photos",
+        "trigger_event": "listing_created",
+        "conditions": {"type": "value", "metric": "photo_quality_score", "op": ">=", "value": 0.8},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 30}}]
+      }
+    ],
+    "wireframe_hint": "5-stage seller journey (listing→view→inquiry→sale→10th) + listing streak flame + photo-quality meter",
+    "metadata": {
+      "source": "Etsy seller onboarding + Taobao 新店扶持",
+      "key_metric": "time_to_first_sale",
+      "key_metric_value": "-40% target",
+      "primary_outcome": "seller_activation",
+      "objective": "activation"
+    }
+  },
+  {
+    "id": "marketplace_buyer_protection",
+    "name": "Buyer Protection & Trust",
+    "name_cn": "买家保障与信任",
+    "description_en": "Review-after-purchase XP + dispute trust score keeps buyers reviewing and sellers honest, classic two-sided trust.",
+    "description_cn": "购物后评价奖XP + 纠纷信任分，保持买家评价和卖家诚信，双边市场经典信任体系。",
+    "icon": "🛡️",
+    "category": "marketplace",
+    "industry": "marketplace",
+    "tags": ["progression", "leaderboard", "triggers"],
+    "modules": [
+      {"id": "progression", "params": {"xp_per_action": {"review_submitted": 20, "photo_review": 50, "video_review": 100}}},
+      {"id": "leaderboard", "params": {"metric": "trust_score", "scope": "buyers_and_sellers", "cycle_days": 90}},
+      {"id": "triggers", "params": {"events": ["review_window_open", "dispute_opened", "dispute_resolved"]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "trusted_reviewer", "name": "Trusted Reviewer", "trigger": "reviews>=20 AND review_helpfulness>=0.7"}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Open review window post-purchase",
+        "trigger_event": "order_delivered",
+        "actions": [{"module": "triggers", "method": "schedule", "params": {"after_hours": 48, "template": "review_prompt"}}]
+      },
+      {
+        "name": "Award XP on review submitted",
+        "trigger_event": "review_submitted",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount_by_media_type": true}}]
+      },
+      {
+        "name": "Penalize trust score on dispute lost",
+        "trigger_event": "dispute_resolved",
+        "conditions": {"type": "value", "metric": "outcome", "op": "==", "value": "against_user"},
+        "actions": [{"module": "leaderboard", "method": "penalize", "params": {"score_delta": -50}}]
+      }
+    ],
+    "wireframe_hint": "Post-purchase review modal (text/photo/video tabs) + trust-score gauge + dispute resolution tracker",
+    "metadata": {
+      "source": "Taobao 信誉 + eBay feedback",
+      "key_metric": "review_submission_rate",
+      "key_metric_value": "+45% target",
+      "primary_outcome": "marketplace_trust",
+      "objective": "marketplace_health"
+    }
+  },
+  {
+    "id": "marketplace_listing_promote",
+    "name": "Listing Boost (Tui Yi Xia)",
+    "name_cn": "推一下",
+    "description_en": "Sellers spend wallet credit to '推一下' (boost) a listing to top of feed for N hours — Xianyu/Taobao Zhitongche micro-monetization.",
+    "description_cn": "卖家用钱包余额'推一下'，让宝贝在信息流置顶N小时；闲鱼/淘宝直通车式微变现。",
+    "icon": "🚀",
+    "category": "monetization",
+    "industry": "marketplace",
+    "tags": ["voucher", "currency", "rate_limit"],
+    "modules": [
+      {"id": "currency", "params": {"currencies": [{"id": "boost_credit", "name": "Boost Credit", "purchasable": true}]}},
+      {"id": "rate_limit", "params": {"max_boosts_per_listing_per_day": 3, "boost_duration_hours": 2}},
+      {"id": "triggers", "params": {"events": ["boost_purchased", "boost_expired"]}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "first_boost_free", "value": {"type": "free_boosts", "amount": 1}, "conditions": {"first_time_seller": true}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Charge wallet on boost purchase",
+        "trigger_event": "boost_purchased",
+        "actions": [
+          {"module": "currency", "method": "deduct", "params": {"currency": "boost_credit", "amount_by_duration": true}},
+          {"module": "rate_limit", "method": "consume", "params": {"key": "listing_boost"}}
+        ]
+      },
+      {
+        "name": "Gift first boost to new sellers",
+        "trigger_event": "first_listing_created",
+        "actions": [{"module": "voucher_builder", "method": "issue", "params": {"template_id": "first_boost_free"}}]
+      }
+    ],
+    "wireframe_hint": "Listing card with '推一下' CTA + boost duration picker (2h/8h/24h) + wallet balance + countdown when active",
+    "metadata": {
+      "source": "Xianyu 推一下 + Taobao Zhitongche",
+      "key_metric": "boost_conversion",
+      "key_metric_value": "+8% take rate target",
+      "primary_outcome": "seller_monetization",
+      "objective": "monetization"
+    }
   }
 ]

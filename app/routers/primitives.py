@@ -1044,6 +1044,9 @@ _DEFAULT_TIER_LADDER = [
 async def get_user_tier(
     user_id: str,
     brand_id: str | None = None,
+    region_id: str | None = None,
+    master_id: str | None = None,
+    scope: Literal["brand", "region", "master", "global"] | None = None,
     r: aioredis.Redis = Depends(get_redis),
 ):
     """Return current tier + next + progress.
@@ -1054,9 +1057,44 @@ async def get_user_tier(
     from ``tier_config:{brand_id}`` (or legacy ``brand:{bid}:tiers``); a
     sensible global default is used when neither is configured.
 
+    Round 5: an explicit ``scope`` parameter routes resolution through the
+    master_accounts helper so callers can ask for region/master/global
+    portability without juggling two endpoints. When ``scope`` is omitted
+    the legacy brand-only path is used (back-compat).
+
     Auto-promotes the stored ``user:{uid}:tier:{brand_id}`` pointer if the
     current XP qualifies for a higher tier than the last known one.
     """
+    # Scoped path — delegate to master_accounts.resolve_tier_for_scope.
+    if scope:
+        try:
+            from app.routers.master_accounts import resolve_tier_for_scope
+        except ImportError:
+            resolve_tier_for_scope = None  # type: ignore
+        if resolve_tier_for_scope is not None:
+            payload = await resolve_tier_for_scope(
+                r,
+                user_id,
+                scope=scope,
+                brand_id=brand_id,
+                region_id=region_id,
+                master_id=master_id,
+            )
+            xp = int(payload.get("xp") or 0)
+            current_name = payload.get("tier")
+            next_threshold = payload.get("next_threshold")
+            return {
+                "user_id": user_id,
+                "scope": scope,
+                "brand_id": brand_id,
+                "region_id": region_id,
+                "master_id": payload.get("master_id") or master_id,
+                "xp": xp,
+                "tier": current_name,
+                "next_tier_threshold": next_threshold,
+                "scoped_payload": payload,
+            }
+
     xp, resolved_brand = await _read_user_xp(r, user_id, brand_id)
 
     tiers: list[dict[str, Any]] = []

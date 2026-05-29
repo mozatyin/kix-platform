@@ -33,6 +33,10 @@ Key schema
     invoice:{invoice_id}               HASH  — invoice metadata
     brand:{bid}:invoices               LIST  — invoice_ids (newest first)
     brand:{bid}:payout_schedule        HASH  — frequency / min / auto / last_run_at
+    ledger:entry:{eid}                 HASH  — inter-brand double-entry record
+    brand:{bid}:ledger:outgoing        ZSET  — score=ts, member=entry_id
+    brand:{bid}:ledger:incoming        ZSET  — score=ts, member=entry_id
+    ledger:reference_idem:{ref_id}     STRING — entry_id (24h TTL)
 """
 
 from __future__ import annotations
@@ -1196,3 +1200,464 @@ async def payouts_health(r: aioredis.Redis = Depends(get_redis)):
         "eta_days": PAYOUT_ETA_DAYS,
         "frequencies": list(FREQ_SECONDS.keys()),
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Inter-brand payout ledger (老贾 / 老田 P0)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Brands often owe each other: supplier payments, affiliate commissions,
+# revenue shares, supplier refunds. We need a single ledger primitive that
+# (1) debits one brand wallet, (2) credits another, (3) records both legs
+# in a queryable history, all atomically and idempotently.
+#
+# This sits alongside the existing payouts pipe — payouts cash out to a
+# bank account (external); inter-brand transfers stay inside KiX.
+
+LEDGER_REASONS = {
+    "supplier_payment",
+    "affiliate_commission",
+    "revenue_share",
+    "refund_to_supplier",
+    "commission_reversal",
+    "joint_campaign_settlement",
+    "other",
+}
+
+
+def _k_ledger_entry(eid: str) -> str:
+    return f"ledger:entry:{eid}"
+
+
+def _k_brand_ledger_outgoing(b: str) -> str:
+    return f"brand:{b}:ledger:outgoing"
+
+
+def _k_brand_ledger_incoming(b: str) -> str:
+    return f"brand:{b}:ledger:incoming"
+
+
+def _k_ledger_idem(ref_id: str) -> str:
+    return f"ledger:reference_idem:{ref_id}"
+
+
+class InterBrandTransferRequest(BaseModel):
+    from_brand_id: str = Field(..., min_length=1, max_length=128)
+    to_brand_id: str = Field(..., min_length=1, max_length=128)
+    amount_cents: int = Field(..., gt=0, le=10**12)
+    reason: Literal[
+        "supplier_payment",
+        "affiliate_commission",
+        "revenue_share",
+        "refund_to_supplier",
+        "commission_reversal",
+        "joint_campaign_settlement",
+        "other",
+    ]
+    reference_id: str = Field(..., min_length=1, max_length=256)
+    ledger_entry_metadata: dict[str, Any] | None = None
+
+
+class LedgerEntry(BaseModel):
+    entry_id: str
+    from_brand_id: str
+    to_brand_id: str
+    amount_cents: int
+    currency: str
+    reason: str
+    reference_id: str
+    ts: float
+    metadata: dict[str, Any] | None = None
+    idempotent: bool = False
+
+
+class LedgerQueryResponse(BaseModel):
+    entries: list[LedgerEntry]
+    total: int
+
+
+class InterBrandSummaryResponse(BaseModel):
+    brand_id: str
+    period: str
+    period_start: float
+    period_end: float
+    paid_out: dict[str, int]
+    received: dict[str, int]
+    net_cents: int
+    currency: str
+
+
+async def _inter_brand_transfer_impl(
+    r: aioredis.Redis,
+    *,
+    from_brand_id: str,
+    to_brand_id: str,
+    amount_cents: int,
+    reason: str,
+    reference_id: str,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Atomic debit-from + credit-to + ledger persist.
+
+    Idempotency: ``ledger:reference_idem:{reference_id}`` is checked first.
+    On replay we return the existing entry payload (with ``idempotent=True``)
+    without touching balances. This is what makes commission_reversal safe
+    to invoke from disputes + pixel-refund + admin endpoints concurrently.
+
+    Atomicity: WATCH on the two wallet balances and the idempotency key.
+    The MULTI block performs both leg debits/credits, persists the entry
+    record, and writes both directional ZSET indexes in a single round-trip.
+    """
+    if from_brand_id == to_brand_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "self_transfer_not_allowed"},
+        )
+    if reason not in LEDGER_REASONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_reason", "reason": reason},
+        )
+
+    idem_key = _k_ledger_idem(reference_id)
+    from_balance_key = _k_wallet_balance(from_brand_id)
+    to_balance_key = _k_wallet_balance(to_brand_id)
+
+    # Pre-check idempotency outside the WATCH loop (faster fast-path).
+    existing_eid = await r.get(idem_key)
+    if existing_eid:
+        raw = await r.hgetall(_k_ledger_entry(existing_eid))
+        if raw:
+            try:
+                meta = json.loads(raw.get("metadata") or "null")
+            except (ValueError, TypeError):
+                meta = None
+            return {
+                "entry_id": existing_eid,
+                "from_brand_id": raw.get("from_brand_id", from_brand_id),
+                "to_brand_id": raw.get("to_brand_id", to_brand_id),
+                "amount_cents": int(raw.get("amount_cents") or 0),
+                "currency": raw.get("currency") or DEFAULT_CURRENCY,
+                "reason": raw.get("reason") or reason,
+                "reference_id": raw.get("reference_id") or reference_id,
+                "ts": float(raw.get("ts") or 0),
+                "metadata": meta,
+                "idempotent": True,
+            }
+
+    # Resolve currency from the source brand wallet (treasury POV).
+    currency = await _get_currency(from_brand_id, r)
+
+    for _ in range(MAX_WATCH_RETRIES):
+        try:
+            async with r.pipeline(transaction=True) as pipe:
+                await pipe.watch(from_balance_key, to_balance_key, idem_key)
+
+                # Re-check idempotency under WATCH to close the race.
+                claimed = await pipe.get(idem_key)
+                if claimed:
+                    await pipe.unwatch()
+                    raw = await r.hgetall(_k_ledger_entry(claimed))
+                    if raw:
+                        try:
+                            meta = json.loads(raw.get("metadata") or "null")
+                        except (ValueError, TypeError):
+                            meta = None
+                        return {
+                            "entry_id": claimed,
+                            "from_brand_id": raw.get("from_brand_id", from_brand_id),
+                            "to_brand_id": raw.get("to_brand_id", to_brand_id),
+                            "amount_cents": int(raw.get("amount_cents") or 0),
+                            "currency": raw.get("currency") or currency,
+                            "reason": raw.get("reason") or reason,
+                            "reference_id": raw.get("reference_id") or reference_id,
+                            "ts": float(raw.get("ts") or 0),
+                            "metadata": meta,
+                            "idempotent": True,
+                        }
+
+                from_balance = int(await pipe.get(from_balance_key) or 0)
+                if from_balance < amount_cents:
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                        detail={
+                            "error": "insufficient_funds",
+                            "from_brand_id": from_brand_id,
+                            "balance_cents": from_balance,
+                            "amount_cents": amount_cents,
+                        },
+                    )
+
+                entry_id = _new_id("le_")
+                now = _now()
+                meta_json = json.dumps(metadata, separators=(",", ":")) if metadata else ""
+
+                pipe.multi()
+                pipe.decrby(from_balance_key, amount_cents)
+                pipe.incrby(to_balance_key, amount_cents)
+                pipe.hset(
+                    _k_ledger_entry(entry_id),
+                    mapping={
+                        "entry_id": entry_id,
+                        "from_brand_id": from_brand_id,
+                        "to_brand_id": to_brand_id,
+                        "amount_cents": str(amount_cents),
+                        "currency": currency,
+                        "reason": reason,
+                        "reference_id": reference_id,
+                        "ts": f"{now:.6f}",
+                        "metadata": meta_json,
+                    },
+                )
+                pipe.zadd(_k_brand_ledger_outgoing(from_brand_id), {entry_id: now})
+                pipe.zadd(_k_brand_ledger_incoming(to_brand_id), {entry_id: now})
+                # 24h idempotency window.
+                pipe.set(idem_key, entry_id, ex=86400)
+                await pipe.execute()
+
+                logger.info(
+                    "ledger transfer from=%s to=%s amount=%s reason=%s ref=%s",
+                    from_brand_id, to_brand_id, amount_cents, reason, reference_id,
+                )
+                return {
+                    "entry_id": entry_id,
+                    "from_brand_id": from_brand_id,
+                    "to_brand_id": to_brand_id,
+                    "amount_cents": amount_cents,
+                    "currency": currency,
+                    "reason": reason,
+                    "reference_id": reference_id,
+                    "ts": now,
+                    "metadata": metadata,
+                    "idempotent": False,
+                }
+        except aioredis.WatchError:
+            continue
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={"error": "ledger_contention"},
+    )
+
+
+@router.post(
+    "/inter-brand-transfer",
+    response_model=LedgerEntry,
+    summary="Atomic debit-from-brand + credit-to-brand + double-entry ledger.",
+)
+async def inter_brand_transfer(
+    req: InterBrandTransferRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> LedgerEntry:
+    """Move money between brand wallets and write a double-entry ledger row.
+
+    Idempotent on ``reference_id`` for 24h — second call returns the same
+    entry without re-applying balance moves. Useful for retry-safe webhooks
+    (supplier billing, affiliate payouts) and for the commission reversal
+    leg invoked from disputes/pixel.
+    """
+    result = await _inter_brand_transfer_impl(
+        r,
+        from_brand_id=req.from_brand_id,
+        to_brand_id=req.to_brand_id,
+        amount_cents=req.amount_cents,
+        reason=req.reason,
+        reference_id=req.reference_id,
+        metadata=req.ledger_entry_metadata,
+    )
+    return LedgerEntry(**result)
+
+
+@router.get(
+    "/ledger",
+    response_model=LedgerQueryResponse,
+    summary="Query inter-brand ledger entries with filters.",
+)
+async def ledger_query(
+    brand_id: str | None = Query(default=None),
+    counterparty: str | None = Query(default=None),
+    direction: Literal["outgoing", "incoming", "both"] = Query(default="both"),
+    from_ts: float | None = Query(default=None, alias="from"),
+    to_ts: float | None = Query(default=None, alias="to"),
+    reason: str | None = Query(default=None, alias="type"),
+    limit: int = Query(default=100, ge=1, le=1000),
+    r: aioredis.Redis = Depends(get_redis),
+) -> LedgerQueryResponse:
+    """List ledger entries.
+
+    Without ``brand_id`` this falls back to a global SCAN (use sparingly).
+    With ``brand_id`` and a direction it walks the indexed ZSETs, which is
+    O(log n) per probe and bounds the response to the brand's involvement.
+    """
+    now = _now()
+    start_ts = from_ts if from_ts is not None else 0.0
+    end_ts = to_ts if to_ts is not None else now
+
+    entry_ids: list[str] = []
+    if brand_id:
+        if direction in ("outgoing", "both"):
+            ids = await r.zrevrangebyscore(
+                _k_brand_ledger_outgoing(brand_id),
+                end_ts, start_ts, start=0, num=limit,
+            )
+            entry_ids.extend(ids)
+        if direction in ("incoming", "both"):
+            ids = await r.zrevrangebyscore(
+                _k_brand_ledger_incoming(brand_id),
+                end_ts, start_ts, start=0, num=limit,
+            )
+            entry_ids.extend(ids)
+        # De-dupe while preserving order.
+        seen: set[str] = set()
+        unique: list[str] = []
+        for eid in entry_ids:
+            if eid in seen:
+                continue
+            seen.add(eid)
+            unique.append(eid)
+        entry_ids = unique
+    else:
+        # Global SCAN — cap aggressively.
+        cursor = 0
+        scanned = 0
+        global_cap = min(limit * 5, 5000)
+        async for key in r.scan_iter(match="ledger:entry:*", count=200):
+            entry_ids.append(key.split(":", 2)[2])
+            scanned += 1
+            if scanned >= global_cap:
+                break
+
+    entries: list[LedgerEntry] = []
+    for eid in entry_ids:
+        raw = await r.hgetall(_k_ledger_entry(eid))
+        if not raw:
+            continue
+        ts = float(raw.get("ts") or 0)
+        if ts < start_ts or ts > end_ts:
+            continue
+        if reason and raw.get("reason") != reason:
+            continue
+        if counterparty:
+            if raw.get("from_brand_id") != counterparty and raw.get("to_brand_id") != counterparty:
+                continue
+        try:
+            meta = json.loads(raw.get("metadata") or "null")
+        except (ValueError, TypeError):
+            meta = None
+        entries.append(
+            LedgerEntry(
+                entry_id=eid,
+                from_brand_id=raw.get("from_brand_id", ""),
+                to_brand_id=raw.get("to_brand_id", ""),
+                amount_cents=int(raw.get("amount_cents") or 0),
+                currency=raw.get("currency", DEFAULT_CURRENCY),
+                reason=raw.get("reason", "other"),
+                reference_id=raw.get("reference_id", ""),
+                ts=ts,
+                metadata=meta,
+            )
+        )
+        if len(entries) >= limit:
+            break
+
+    entries.sort(key=lambda e: e.ts, reverse=True)
+    return LedgerQueryResponse(entries=entries, total=len(entries))
+
+
+@router.get(
+    "/brand/{brand_id}/inter-brand-summary",
+    response_model=InterBrandSummaryResponse,
+    summary="Per-counterparty paid-out / received / net for the period.",
+)
+async def inter_brand_summary(
+    brand_id: str,
+    period: Literal["daily", "weekly", "monthly", "all"] = Query(default="monthly"),
+    r: aioredis.Redis = Depends(get_redis),
+) -> InterBrandSummaryResponse:
+    """Roll up ledger entries by counterparty for a brand.
+
+    Returns ``{paid_out: {counterparty: cents}, received: {...}, net}``.
+    ``net = total_received - total_paid_out`` (treasury POV; positive = money
+    came in net).
+    """
+    now = _now()
+    if period == "daily":
+        start = now - 86400
+    elif period == "weekly":
+        start = now - 7 * 86400
+    elif period == "monthly":
+        start = now - 30 * 86400
+    else:
+        start = 0.0
+
+    out_ids = await r.zrangebyscore(
+        _k_brand_ledger_outgoing(brand_id), start, now, start=0, num=10_000
+    )
+    in_ids = await r.zrangebyscore(
+        _k_brand_ledger_incoming(brand_id), start, now, start=0, num=10_000
+    )
+
+    paid_out: dict[str, int] = {}
+    received: dict[str, int] = {}
+
+    for eid in out_ids:
+        raw = await r.hgetall(_k_ledger_entry(eid))
+        if not raw:
+            continue
+        cp = raw.get("to_brand_id", "")
+        paid_out[cp] = paid_out.get(cp, 0) + int(raw.get("amount_cents") or 0)
+
+    for eid in in_ids:
+        raw = await r.hgetall(_k_ledger_entry(eid))
+        if not raw:
+            continue
+        cp = raw.get("from_brand_id", "")
+        received[cp] = received.get(cp, 0) + int(raw.get("amount_cents") or 0)
+
+    total_out = sum(paid_out.values())
+    total_in = sum(received.values())
+    currency = await _get_currency(brand_id, r)
+
+    return InterBrandSummaryResponse(
+        brand_id=brand_id,
+        period=period,
+        period_start=start,
+        period_end=now,
+        paid_out=paid_out,
+        received=received,
+        net_cents=total_in - total_out,
+        currency=currency,
+    )
+
+
+@router.get(
+    "/ledger/entry/{entry_id}",
+    response_model=LedgerEntry,
+    summary="Fetch a single ledger entry by id.",
+)
+async def ledger_get_entry(
+    entry_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> LedgerEntry:
+    raw = await r.hgetall(_k_ledger_entry(entry_id))
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "ledger_entry_not_found"},
+        )
+    try:
+        meta = json.loads(raw.get("metadata") or "null")
+    except (ValueError, TypeError):
+        meta = None
+    return LedgerEntry(
+        entry_id=entry_id,
+        from_brand_id=raw.get("from_brand_id", ""),
+        to_brand_id=raw.get("to_brand_id", ""),
+        amount_cents=int(raw.get("amount_cents") or 0),
+        currency=raw.get("currency", DEFAULT_CURRENCY),
+        reason=raw.get("reason", "other"),
+        reference_id=raw.get("reference_id", ""),
+        ts=float(raw.get("ts") or 0),
+        metadata=meta,
+    )

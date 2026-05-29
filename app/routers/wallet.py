@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import redis.asyncio as aioredis
@@ -1147,10 +1147,17 @@ def _k_user_tx_list(user_id: str) -> str:
     return f"wallet:user:{user_id}:transactions"
 
 
-class TakeRateConfigureRequest(BaseModel):
-    default_rate_bps: int = Field(_DEFAULT_TAKE_RATE_BPS, ge=0, le=_MAX_TAKE_RATE_BPS)
+class CurrencyTakeRate(BaseModel):
+    """Per-currency override for marketplace take-rate.
+
+    Lets 老胡 charge a different bps for USD listings vs CNY listings without
+    duplicating the whole config. When a charge's currency matches one of
+    these keys, the override wins over ``default_rate_bps`` and any matching
+    ``category_rates``.
+    """
+    default_rate_bps: int = Field(..., ge=0, le=_MAX_TAKE_RATE_BPS)
     category_rates: dict[str, int] = Field(default_factory=dict)
-    minimum_fee_cents: int = Field(_DEFAULT_MIN_FEE_CENTS, ge=0, le=10_000_000)
+    minimum_fee_cents: int | None = Field(default=None, ge=0, le=10_000_000)
 
     @field_validator("category_rates")
     @classmethod
@@ -1165,11 +1172,45 @@ class TakeRateConfigureRequest(BaseModel):
         return v
 
 
+class TakeRateConfigureRequest(BaseModel):
+    default_rate_bps: int = Field(_DEFAULT_TAKE_RATE_BPS, ge=0, le=_MAX_TAKE_RATE_BPS)
+    category_rates: dict[str, int] = Field(default_factory=dict)
+    minimum_fee_cents: int = Field(_DEFAULT_MIN_FEE_CENTS, ge=0, le=10_000_000)
+    # 老胡 P0 extension: per-currency overrides. Keys are 3-letter ISO codes
+    # ("USD", "EUR", ...). Each value is a full bps+category bundle that
+    # supersedes the default when a transaction lands in that currency.
+    currency_rates: dict[str, CurrencyTakeRate] = Field(default_factory=dict)
+
+    @field_validator("category_rates")
+    @classmethod
+    def _cat_rates(cls, v: dict[str, int]) -> dict[str, int]:
+        for cat, bps in v.items():
+            if not isinstance(bps, int) or bps < 0 or bps > _MAX_TAKE_RATE_BPS:
+                raise ValueError(
+                    f"category_rates[{cat}] must be int 0..{_MAX_TAKE_RATE_BPS}"
+                )
+            if not cat or len(cat) > 64:
+                raise ValueError("category names must be 1..64 chars")
+        return v
+
+    @field_validator("currency_rates")
+    @classmethod
+    def _cur_rates(cls, v: dict[str, CurrencyTakeRate]) -> dict[str, CurrencyTakeRate]:
+        normalized: dict[str, CurrencyTakeRate] = {}
+        for cur, cfg in v.items():
+            cur_u = (cur or "").strip().upper()
+            if len(cur_u) != 3 or not cur_u.isalpha():
+                raise ValueError(f"currency_rates key {cur!r} must be 3-letter ISO")
+            normalized[cur_u] = cfg
+        return normalized
+
+
 class TakeRateConfigResponse(BaseModel):
     brand_id: str
     default_rate_bps: int
     category_rates: dict[str, int]
     minimum_fee_cents: int
+    currency_rates: dict[str, CurrencyTakeRate] = Field(default_factory=dict)
 
 
 class MarketplaceChargeRequest(BaseModel):
@@ -1204,17 +1245,65 @@ async def _load_take_rate_config(
             "default_rate_bps": _DEFAULT_TAKE_RATE_BPS,
             "category_rates": {},
             "minimum_fee_cents": _DEFAULT_MIN_FEE_CENTS,
+            "currency_rates": {},
         }
     import json as _json
     try:
         cat_rates = _json.loads(raw.get("category_rates") or "{}")
     except (ValueError, TypeError):
         cat_rates = {}
+    try:
+        cur_rates = _json.loads(raw.get("currency_rates") or "{}")
+    except (ValueError, TypeError):
+        cur_rates = {}
     return {
         "default_rate_bps": int(raw.get("default_rate_bps") or _DEFAULT_TAKE_RATE_BPS),
         "category_rates": cat_rates,
         "minimum_fee_cents": int(raw.get("minimum_fee_cents") or _DEFAULT_MIN_FEE_CENTS),
+        "currency_rates": cur_rates if isinstance(cur_rates, dict) else {},
     }
+
+
+def _resolve_take_rate(
+    cfg: dict[str, Any],
+    *,
+    category: str | None,
+    currency: str | None,
+) -> tuple[int, int]:
+    """Pick the bps + minimum_fee that apply to this charge.
+
+    Resolution order (most specific wins):
+      1. ``currency_rates[CUR].category_rates[cat]``
+      2. ``currency_rates[CUR].default_rate_bps``
+      3. ``category_rates[cat]``
+      4. ``default_rate_bps``
+
+    minimum_fee_cents follows the same path with a fallback to the top-level
+    ``minimum_fee_cents``.
+    """
+    rate_bps = int(cfg["default_rate_bps"])
+    min_fee = int(cfg["minimum_fee_cents"])
+
+    cur_key = (currency or "").strip().upper()
+    cur_overrides = cfg.get("currency_rates") or {}
+    cur_cfg = cur_overrides.get(cur_key) if cur_key else None
+
+    if cur_cfg:
+        # currency_rates entry can be a dict (loaded from JSON) or a model.
+        if isinstance(cur_cfg, CurrencyTakeRate):
+            cur_cfg = cur_cfg.model_dump()
+        rate_bps = int(cur_cfg.get("default_rate_bps") or rate_bps)
+        cur_cat = cur_cfg.get("category_rates") or {}
+        if category and category in cur_cat:
+            rate_bps = int(cur_cat[category])
+        if cur_cfg.get("minimum_fee_cents") is not None:
+            min_fee = int(cur_cfg["minimum_fee_cents"])
+    else:
+        cat_rates = cfg.get("category_rates") or {}
+        if category and category in cat_rates:
+            rate_bps = int(cat_rates[category])
+
+    return rate_bps, min_fee
 
 
 @router.post(
@@ -1228,12 +1317,16 @@ async def configure_take_rate(
     r: aioredis.Redis = Depends(get_redis),
 ) -> TakeRateConfigResponse:
     import json as _json
+    currency_rates_serial = {
+        cur: cfg.model_dump() for cur, cfg in body.currency_rates.items()
+    }
     await r.hset(
         _k_take_rate_config(brand_id),
         mapping={
             "default_rate_bps": str(body.default_rate_bps),
             "category_rates": _json.dumps(body.category_rates),
             "minimum_fee_cents": str(body.minimum_fee_cents),
+            "currency_rates": _json.dumps(currency_rates_serial),
             "updated_at": str(time.time()),
         },
     )
@@ -1242,6 +1335,7 @@ async def configure_take_rate(
         default_rate_bps=body.default_rate_bps,
         category_rates=body.category_rates,
         minimum_fee_cents=body.minimum_fee_cents,
+        currency_rates=body.currency_rates,
     )
 
 
@@ -1255,11 +1349,22 @@ async def get_take_rate(
     r: aioredis.Redis = Depends(get_redis),
 ) -> TakeRateConfigResponse:
     cfg = await _load_take_rate_config(r, brand_id)
+    # Re-hydrate currency_rates dict-of-dicts back to CurrencyTakeRate models.
+    cur_rates_raw = cfg.get("currency_rates") or {}
+    cur_rates_models: dict[str, CurrencyTakeRate] = {}
+    for cur, sub in cur_rates_raw.items():
+        if not isinstance(sub, dict):
+            continue
+        try:
+            cur_rates_models[cur] = CurrencyTakeRate(**sub)
+        except Exception:
+            continue
     return TakeRateConfigResponse(
         brand_id=brand_id,
         default_rate_bps=cfg["default_rate_bps"],
         category_rates=cfg["category_rates"],
         minimum_fee_cents=cfg["minimum_fee_cents"],
+        currency_rates=cur_rates_models,
     )
 
 
@@ -1296,10 +1401,10 @@ async def marketplace_charge(
     charge (going negative is allowed for accounting) but emit a warning.
     """
     cfg = await _load_take_rate_config(r, brand_id)
-    rate_bps = cfg["default_rate_bps"]
-    if body.category and body.category in cfg["category_rates"]:
-        rate_bps = int(cfg["category_rates"][body.category])
-    minimum_fee = int(cfg["minimum_fee_cents"])
+    brand_currency = await _get_currency(brand_id, r)
+    rate_bps, minimum_fee = _resolve_take_rate(
+        cfg, category=body.category, currency=brand_currency
+    )
 
     raw_take = (body.gross_amount_cents * rate_bps) // 10_000
     take_amount = max(raw_take, minimum_fee)
@@ -1398,4 +1503,552 @@ async def marketplace_charge(
         idempotent=False,
         seller_balance_cents=seller_balance_after,
         marketplace_balance_cents=marketplace_balance_after,
+    )
+
+
+# ── Multi-currency: topup-with-fx (老田 P0) ───────────────────────────────
+#
+# When a merchant pays in USD but their wallet is denominated in CNY, we
+# convert through the FX engine and credit the wallet's base currency.
+# Both legs are persisted on the topup record for audit; the user-facing
+# `amount_cents` is always the wallet-currency figure.
+
+class TopupWithFxRequest(BaseModel):
+    amount_cents: int = Field(..., gt=0, le=100_000_000)
+    payment_method: Literal["alipay", "wechat", "stripe", "paypal"]
+    payment_token: str | None = None
+    payment_currency: str = Field(..., min_length=3, max_length=3)
+    # If omitted, defaults to wallet's existing base currency.
+    convert_to_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    allow_stale_rate: bool = False
+
+    @field_validator("payment_currency", "convert_to_currency")
+    @classmethod
+    def _cur(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if len(v) != 3 or not v.isalpha():
+            raise ValueError("currency must be a 3-letter ISO code")
+        return v
+
+
+class TopupWithFxResponse(BaseModel):
+    topup_id: str
+    status: Literal["pending", "confirmed"]
+    payment_amount_cents: int
+    payment_currency: str
+    credited_amount_cents: int
+    wallet_currency: str
+    fx_rate: str
+    fx_expires_at: float | None
+    fx_stale: bool
+    new_balance_cents: int
+
+
+@router.post(
+    "/{brand_id}/topup-with-fx",
+    response_model=TopupWithFxResponse,
+    summary="Top up across currencies. Converts payment_currency → wallet currency via FX engine.",
+)
+async def topup_with_fx(
+    brand_id: str,
+    body: TopupWithFxRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> TopupWithFxResponse:
+    """Multi-currency top-up.
+
+    Flow:
+      1. Resolve wallet base currency (lock on first topup if unset).
+      2. Convert ``payment_amount`` → wallet currency via :mod:`fx.convert_amount`.
+      3. Persist a pending topup with both legs annotated, then immediately
+         confirm (single-shot — caller's payment provider has already
+         settled in their own currency).
+
+    For two-phase flows where the payment-provider webhook drives confirm,
+    keep using `/topup` and pass the post-FX cents directly.
+    """
+    from app.routers.fx import convert_amount as _fx_convert
+
+    cur_existing = await r.get(_k_currency(brand_id))
+    target_currency = (
+        body.convert_to_currency or cur_existing or DEFAULT_CURRENCY
+    ).upper()
+
+    if cur_existing is None:
+        await r.set(_k_currency(brand_id), target_currency)
+    elif body.convert_to_currency and body.convert_to_currency != cur_existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "currency_mismatch",
+                "wallet_currency": cur_existing,
+                "requested": body.convert_to_currency,
+            },
+        )
+
+    conv = await _fx_convert(
+        r,
+        body.amount_cents,
+        body.payment_currency,
+        target_currency,
+        allow_stale=body.allow_stale_rate,
+    )
+    credited = int(conv["equivalent_cents"])
+
+    topup_id = uuid4().hex
+    now = time.time()
+
+    # Persist topup with both legs and commit credit atomically.
+    pipe = r.pipeline(transaction=True)
+    pipe.hset(
+        _k_topup(topup_id),
+        mapping={
+            "topup_id": topup_id,
+            "brand_id": brand_id,
+            "amount": credited,
+            "currency": target_currency,
+            "payment_amount": body.amount_cents,
+            "payment_currency": body.payment_currency,
+            "fx_rate": conv["rate"],
+            "fx_expires_at": str(conv["expires_at"] or ""),
+            "fx_stale": "1" if conv["stale"] else "0",
+            "payment_method": body.payment_method,
+            "payment_token": body.payment_token or "",
+            "status": "confirmed",
+            "created_at": now,
+            "confirmed_at": now,
+        },
+    )
+    pipe.incrby(_k_balance(brand_id), credited)
+    pipe.set(_k_last_topup(brand_id), now)
+    pipe.rpush(_k_tx_list(brand_id), topup_id)
+    pipe.ltrim(_k_tx_list(brand_id), -TX_LIST_MAX, -1)
+    results = await pipe.execute()
+    new_balance = int(results[1])
+
+    logger.info(
+        "topup_with_fx brand=%s pay=%s %s → credited=%s %s rate=%s",
+        brand_id, body.amount_cents, body.payment_currency,
+        credited, target_currency, conv["rate"],
+    )
+
+    return TopupWithFxResponse(
+        topup_id=topup_id,
+        status="confirmed",
+        payment_amount_cents=body.amount_cents,
+        payment_currency=body.payment_currency,
+        credited_amount_cents=credited,
+        wallet_currency=target_currency,
+        fx_rate=conv["rate"],
+        fx_expires_at=conv["expires_at"],
+        fx_stale=bool(conv["stale"]),
+        new_balance_cents=new_balance,
+    )
+
+
+# ── Multi-currency marketplace charge ────────────────────────────────────
+
+class MarketplaceChargeMultiCurrencyRequest(BaseModel):
+    transaction_id: str = Field(..., min_length=1, max_length=128)
+    listing_id: str = Field(..., min_length=1, max_length=128)
+    seller_user_id: str = Field(..., min_length=1, max_length=128)
+    buyer_user_id: str = Field(..., min_length=1, max_length=128)
+    gross_amount_cents: int = Field(..., ge=0, le=10_000_000_000)
+    gross_currency: str = Field(..., min_length=3, max_length=3)
+    category: str | None = Field(None, max_length=64)
+    allow_stale_rate: bool = False
+
+    @field_validator("gross_currency")
+    @classmethod
+    def _cur(cls, v: str) -> str:
+        v = v.strip().upper()
+        if len(v) != 3 or not v.isalpha():
+            raise ValueError("gross_currency must be a 3-letter ISO code")
+        return v
+
+
+class MarketplaceChargeMultiCurrencyResponse(BaseModel):
+    ok: bool
+    charge_id: str
+    transaction_id: str
+    listing_id: str
+    gross_amount_cents: int
+    gross_currency: str
+    gross_in_wallet_currency_cents: int
+    wallet_currency: str
+    take_amount_cents: int
+    take_amount_gross_currency_cents: int
+    seller_net_cents: int
+    take_rate_bps_applied: int
+    minimum_fee_applied: bool
+    fx_rate: str
+    fx_stale: bool
+    idempotent: bool = False
+    seller_balance_cents: int
+    marketplace_balance_cents: int
+
+
+@router.post(
+    "/{brand_id}/marketplace-charge-multi-currency",
+    response_model=MarketplaceChargeMultiCurrencyResponse,
+    summary="Marketplace take-rate charge with FX conversion to wallet currency.",
+)
+async def marketplace_charge_multi_currency(
+    brand_id: str,
+    body: MarketplaceChargeMultiCurrencyRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> MarketplaceChargeMultiCurrencyResponse:
+    """Like :func:`marketplace_charge` but accepts a foreign-currency gross.
+
+    Steps:
+      1. Look up wallet base currency.
+      2. Convert ``gross_amount_cents`` (in ``gross_currency``) → wallet currency.
+      3. Resolve take-rate (honors ``currency_rates`` override on
+         ``gross_currency`` if present).
+      4. Compute take on the converted wallet-currency amount.
+      5. Debit seller / credit marketplace in wallet currency; persist both
+         legs.
+
+    Idempotent on ``transaction_id`` like the single-currency variant.
+    """
+    from app.routers.fx import convert_amount as _fx_convert
+
+    wallet_currency = await _get_currency(brand_id, r)
+
+    if body.gross_currency == wallet_currency:
+        # No-op FX — synthesise the conversion record so accounting is uniform.
+        conv = {
+            "equivalent_cents": body.gross_amount_cents,
+            "rate": "1",
+            "expires_at": None,
+            "stale": False,
+        }
+    else:
+        conv = await _fx_convert(
+            r,
+            body.gross_amount_cents,
+            body.gross_currency,
+            wallet_currency,
+            allow_stale=body.allow_stale_rate,
+        )
+
+    gross_wallet_cents = int(conv["equivalent_cents"])
+
+    cfg = await _load_take_rate_config(r, brand_id)
+    # Resolve using the buyer's currency so 老胡's USD-listings override hits.
+    rate_bps, minimum_fee = _resolve_take_rate(
+        cfg, category=body.category, currency=body.gross_currency
+    )
+
+    raw_take_wallet = (gross_wallet_cents * rate_bps) // 10_000
+    take_wallet = max(raw_take_wallet, minimum_fee)
+    if take_wallet > gross_wallet_cents:
+        take_wallet = gross_wallet_cents
+    seller_net_wallet = gross_wallet_cents - take_wallet
+    min_fee_applied = take_wallet == minimum_fee and raw_take_wallet < minimum_fee
+
+    # Take in gross-currency terms (informational; gross_amount × bps / 10k)
+    raw_take_gross = (body.gross_amount_cents * rate_bps) // 10_000
+
+    # Idempotency on transaction_id (shares key with single-currency variant).
+    idem_key = f"wallet:{brand_id}:marketplace_idem:{body.transaction_id}"
+    existing_charge_id = await r.get(idem_key)
+    if existing_charge_id:
+        existing = await r.hgetall(_k_charge(existing_charge_id))
+        if existing:
+            seller_bal = int(await r.get(_k_user_balance(body.seller_user_id)) or 0)
+            mp_bal = int(await r.get(_k_balance(brand_id)) or 0)
+            return MarketplaceChargeMultiCurrencyResponse(
+                ok=True,
+                charge_id=existing_charge_id,
+                transaction_id=body.transaction_id,
+                listing_id=body.listing_id,
+                gross_amount_cents=body.gross_amount_cents,
+                gross_currency=body.gross_currency,
+                gross_in_wallet_currency_cents=gross_wallet_cents,
+                wallet_currency=wallet_currency,
+                take_amount_cents=int(existing.get("amount") or take_wallet),
+                take_amount_gross_currency_cents=raw_take_gross,
+                seller_net_cents=seller_net_wallet,
+                take_rate_bps_applied=rate_bps,
+                minimum_fee_applied=min_fee_applied,
+                fx_rate=str(conv["rate"]),
+                fx_stale=bool(conv["stale"]),
+                idempotent=True,
+                seller_balance_cents=seller_bal,
+                marketplace_balance_cents=mp_bal,
+            )
+
+    charge_id = uuid4().hex
+    now = time.time()
+
+    pipe = r.pipeline()
+    pipe.decrby(_k_user_balance(body.seller_user_id), take_wallet)
+    pipe.incrby(_k_balance(brand_id), take_wallet)
+    pipe.hset(
+        _k_charge(charge_id),
+        mapping={
+            "charge_id": charge_id,
+            "brand_id": brand_id,
+            "amount": take_wallet,
+            "currency": wallet_currency,
+            "reason": "marketplace_take_rate",
+            "category": "consumer_revenue",
+            "reference_id": body.transaction_id,
+            "listing_id": body.listing_id,
+            "seller_user_id": body.seller_user_id,
+            "buyer_user_id": body.buyer_user_id,
+            "gross_amount_cents": body.gross_amount_cents,
+            "gross_currency": body.gross_currency,
+            "gross_in_wallet_currency_cents": gross_wallet_cents,
+            "seller_net_cents": seller_net_wallet,
+            "take_rate_bps": rate_bps,
+            "minimum_fee_applied": "1" if min_fee_applied else "0",
+            "fx_rate": str(conv["rate"]),
+            "fx_stale": "1" if conv["stale"] else "0",
+            "ts": now,
+            "status": "completed",
+        },
+    )
+    pipe.rpush(_k_tx_list(brand_id), charge_id)
+    pipe.ltrim(_k_tx_list(brand_id), -TX_LIST_MAX, -1)
+    pipe.rpush(_k_user_tx_list(body.seller_user_id), charge_id)
+    pipe.ltrim(_k_user_tx_list(body.seller_user_id), -TX_LIST_MAX, -1)
+    results = await pipe.execute()
+    seller_balance_after = int(results[0])
+    marketplace_balance_after = int(results[1])
+
+    try:
+        await r.set(idem_key, charge_id, nx=True, ex=86400)
+    except Exception as exc:
+        logger.warning("marketplace_charge_mc idem claim failed: %s", exc)
+
+    if seller_balance_after < 0:
+        logger.warning(
+            "marketplace_charge_mc: seller wallet went negative seller=%s balance=%s",
+            body.seller_user_id, seller_balance_after,
+        )
+
+    logger.info(
+        "marketplace_charge_mc brand=%s tx=%s gross=%s %s → wallet=%s %s "
+        "take=%s rate_bps=%s",
+        brand_id, body.transaction_id, body.gross_amount_cents,
+        body.gross_currency, gross_wallet_cents, wallet_currency,
+        take_wallet, rate_bps,
+    )
+
+    return MarketplaceChargeMultiCurrencyResponse(
+        ok=True,
+        charge_id=charge_id,
+        transaction_id=body.transaction_id,
+        listing_id=body.listing_id,
+        gross_amount_cents=body.gross_amount_cents,
+        gross_currency=body.gross_currency,
+        gross_in_wallet_currency_cents=gross_wallet_cents,
+        wallet_currency=wallet_currency,
+        take_amount_cents=take_wallet,
+        take_amount_gross_currency_cents=raw_take_gross,
+        seller_net_cents=seller_net_wallet,
+        take_rate_bps_applied=rate_bps,
+        minimum_fee_applied=min_fee_applied,
+        fx_rate=str(conv["rate"]),
+        fx_stale=bool(conv["stale"]),
+        idempotent=False,
+        seller_balance_cents=seller_balance_after,
+        marketplace_balance_cents=marketplace_balance_after,
+    )
+
+
+# ── Internal: commission reversal helper ─────────────────────────────────
+#
+# Called by disputes / pixel-refund / admin endpoints. Refunds the wallet
+# charge then, if the charge accrued commission to a partner brand, claws
+# that commission back via the inter-brand ledger.
+
+async def _internal_refund_for_reversal(
+    r: aioredis.Redis,
+    brand_id: str,
+    charge_id: str,
+    amount_cents: int,
+    reason: str,
+) -> tuple[bool, str | None, str | None]:
+    """Best-effort refund + commission claw-back.
+
+    Returns ``(ok, refund_id, error)``. Idempotent on ``charge_id`` —
+    second call returns the existing refund.
+    """
+    ckey = _k_charge(charge_id)
+    balance_key = _k_balance(brand_id)
+    today = _today_str()
+    daily_key = _k_daily_spent(brand_id, today)
+    total_key = _k_total_spent(brand_id)
+
+    attempts = 0
+    while attempts < MAX_WATCH_RETRIES:
+        attempts += 1
+        try:
+            async with r.pipeline(transaction=True) as pipe:
+                await pipe.watch(ckey, balance_key, daily_key, total_key)
+                ch = await pipe.hgetall(ckey)
+                if not ch:
+                    await pipe.unwatch()
+                    return False, None, "charge_not_found"
+                if ch.get("brand_id") != brand_id:
+                    await pipe.unwatch()
+                    return False, None, "brand_mismatch"
+                ch_status = ch.get("status")
+                if ch_status == "refunded":
+                    await pipe.unwatch()
+                    return True, ch.get("last_refund_id") or ch.get("refund_id"), None
+                if ch_status not in ("completed", "disputed", "partially_refunded"):
+                    await pipe.unwatch()
+                    return False, None, f"charge_not_refundable:{ch_status}"
+
+                already = int(ch.get("refunded_amount") or 0)
+                ch_amount = int(ch.get("amount") or 0)
+                remaining = ch_amount - already
+                refund_amt = min(amount_cents, remaining)
+                if refund_amt <= 0:
+                    await pipe.unwatch()
+                    return False, None, "nothing_to_refund"
+
+                refund_id = uuid4().hex
+                now = time.time()
+                new_refunded = already + refund_amt
+                final_status = (
+                    "refunded" if new_refunded >= ch_amount else "partially_refunded"
+                )
+
+                pipe.multi()
+                pipe.incrby(balance_key, refund_amt)
+                pipe.decrby(daily_key, refund_amt)
+                pipe.decrby(total_key, refund_amt)
+                pipe.hset(
+                    ckey,
+                    mapping={
+                        "status": final_status,
+                        "refunded_amount": new_refunded,
+                        "last_refund_id": refund_id,
+                        "last_refunded_at": now,
+                    },
+                )
+                pipe.hset(
+                    _k_refund(refund_id),
+                    mapping={
+                        "refund_id": refund_id,
+                        "brand_id": brand_id,
+                        "charge_id": charge_id,
+                        "amount": refund_amt,
+                        "reason": reason,
+                        "ts": now,
+                        "status": "completed",
+                        "source": "reversal",
+                    },
+                )
+                pipe.rpush(_k_tx_list(brand_id), refund_id)
+                pipe.ltrim(_k_tx_list(brand_id), -TX_LIST_MAX, -1)
+                await pipe.execute()
+                return True, refund_id, None
+        except aioredis.WatchError:
+            continue
+
+    return False, None, "contention"
+
+
+class ReverseCommissionRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+    # Defaults to the full charge amount; pass to reverse a partial refund.
+    amount_cents: int | None = Field(default=None, ge=1)
+
+
+class ReverseCommissionResponse(BaseModel):
+    ok: bool
+    charge_id: str
+    refund_id: str | None
+    refunded_amount_cents: int
+    commission_clawback: dict | None = None
+    error: str | None = None
+
+
+@router.post(
+    "/internal/reverse-commission/{charge_id}",
+    response_model=ReverseCommissionResponse,
+    summary="Refund a charge AND claw back any commission paid to a partner brand.",
+)
+async def reverse_commission(
+    charge_id: str,
+    body: ReverseCommissionRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> ReverseCommissionResponse:
+    """Admin / internal: refund a charge + reverse paid commission.
+
+    Looks up ``wallet:charge:{charge_id}``. Refunds the brand wallet, and
+    if the charge has a ``commission_recipient_brand_id`` field, fires an
+    inter-brand transfer in the opposite direction to claw back the
+    commission. Idempotent: replays return the original refund_id.
+    """
+    ch = await r.hgetall(_k_charge(charge_id))
+    if not ch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "charge_not_found", "charge_id": charge_id},
+        )
+    brand_id = ch.get("brand_id", "")
+    if not brand_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "charge_missing_brand"},
+        )
+    ch_amount = int(ch.get("amount") or 0)
+    refund_amt = body.amount_cents or ch_amount
+
+    ok, refund_id, err = await _internal_refund_for_reversal(
+        r, brand_id, charge_id, refund_amt, reason=body.reason
+    )
+    if not ok:
+        return ReverseCommissionResponse(
+            ok=False,
+            charge_id=charge_id,
+            refund_id=None,
+            refunded_amount_cents=0,
+            error=err,
+        )
+
+    # Optional commission claw-back leg.
+    commission_clawback: dict | None = None
+    recipient_brand = ch.get("commission_recipient_brand_id") or ""
+    commission_paid = int(ch.get("commission_paid_cents") or 0)
+    if recipient_brand and commission_paid > 0:
+        # Pro-rate the commission claw-back when this is a partial refund.
+        if ch_amount > 0 and refund_amt < ch_amount:
+            clawback_amt = (commission_paid * refund_amt) // ch_amount
+        else:
+            clawback_amt = commission_paid
+
+        if clawback_amt > 0:
+            try:
+                from app.routers.payouts import _inter_brand_transfer_impl
+                ledger_entry = await _inter_brand_transfer_impl(
+                    r,
+                    from_brand_id=recipient_brand,
+                    to_brand_id=brand_id,
+                    amount_cents=clawback_amt,
+                    reason="commission_reversal",
+                    reference_id=f"reversal:{charge_id}",
+                    metadata={"original_charge_id": charge_id, "refund_id": refund_id},
+                )
+                commission_clawback = ledger_entry
+            except Exception as exc:
+                logger.warning(
+                    "commission clawback failed charge=%s err=%s", charge_id, exc
+                )
+                commission_clawback = {"error": str(exc)}
+
+    return ReverseCommissionResponse(
+        ok=True,
+        charge_id=charge_id,
+        refund_id=refund_id,
+        refunded_amount_cents=refund_amt,
+        commission_clawback=commission_clawback,
     )

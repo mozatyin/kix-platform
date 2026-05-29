@@ -73,12 +73,42 @@ _EVENT_STREAM = "events:reservation"
 _EVENT_STREAM_MAXLEN = 50_000  # approximate trim
 
 _RESERVATION_TYPES = (
+    # Core appointment-like
     "dining",
     "fitness_class",
     "appointment",
     "event",
     "tour",
     "service",
+    # Property / real-estate (老陆)
+    "property_viewing",
+    "legal",  # signing / legal consultations (老陆)
+    # Logistics (老贾)
+    "pickup",
+    "delivery",
+    # Vehicle / asset (老田)
+    "vehicle_rental",
+    "asset_hold",  # deposit / lock
+    # Group travel (老梁)
+    "group_tour",
+    # Healthcare (老蔡)
+    "specialist",
+    "gp",
+    "lab_test",
+    "vaccination",
+    "dental",
+    # Pet (老韩)
+    "pet_grooming",
+    "pet_medical",
+    "grooming",  # legacy alias used by series module
+    # Beauty (老钱)
+    "stylist",
+    # Generic consult (老沈)
+    "consultation",
+    # Education / fitness cohort (老周)
+    "group_class",
+    # Open fallback — pair with type_label for arbitrary domains
+    "custom",
 )
 _STATUSES = (
     "confirmed",
@@ -132,6 +162,21 @@ def _k_brand_res_by_resource(bid: str, resource_id: str) -> str:
     return f"brand:{bid}:reservation:by_resource:{resource_id}"
 
 
+def _k_user_res_as_fulfiller(uid: str) -> str:
+    """ZSET of reservations this user is the fulfiller for (courier/doctor/stylist)."""
+    return f"user:{uid}:reservations_as_fulfiller"
+
+
+def _k_user_res_as_beneficiary(uid: str) -> str:
+    """ZSET of reservations this user is the beneficiary/recipient for."""
+    return f"user:{uid}:reservations_as_beneficiary"
+
+
+def _k_res_travelers(rid: str) -> str:
+    """LIST of traveler manifest JSON entries for a (group) reservation."""
+    return f"reservation:{rid}:travelers"
+
+
 # ── Utils ─────────────────────────────────────────────────────────────────
 
 
@@ -156,6 +201,22 @@ def _safe_loads(raw: str | None, default: Any) -> Any:
         return default
 
 
+def _normalize_type(
+    raw_type: str | None, raw_label: str | None
+) -> tuple[str, str | None]:
+    """Coerce arbitrary type strings into (curated_type, type_label).
+
+    Unknown values fall back to ``"custom"`` with the original preserved in
+    ``type_label``. Empty input becomes ``("appointment", None)``.
+    """
+    t = (raw_type or "").strip() or "appointment"
+    label = (raw_label or "").strip() or None
+    if t in _RESERVATION_TYPES:
+        return t, label
+    # Unknown value: keep as custom + remember the raw label.
+    return "custom", label or t
+
+
 def _hash_to_dict(state: dict[str, str]) -> dict[str, Any]:
     """Convert raw Redis HASH (all-str) into a typed dict."""
     if not state:
@@ -164,9 +225,13 @@ def _hash_to_dict(state: dict[str, str]) -> dict[str, Any]:
         "reservation_id": state.get("reservation_id", ""),
         "brand_id": state.get("brand_id", ""),
         "user_id": state.get("user_id", ""),
+        "beneficiary_user_id": state.get("beneficiary_user_id") or None,
+        "fulfiller_user_id": state.get("fulfiller_user_id") or None,
+        "recipient_user_id": state.get("recipient_user_id") or None,
         "scheduled_at": int(state.get("scheduled_at") or 0),
         "party_size": int(state.get("party_size") or 1),
         "type": state.get("type", "appointment"),
+        "type_label": state.get("type_label") or None,
         "status": state.get("status", "confirmed"),
         "created_at": int(state.get("created_at") or 0),
         "updated_at": int(state.get("updated_at") or 0),
@@ -182,6 +247,9 @@ def _hash_to_dict(state: dict[str, str]) -> dict[str, Any]:
         "cancellation_reason": state.get("cancellation_reason") or None,
         "cancellation_by": state.get("cancellation_by") or None,
         "resource_id": state.get("resource_id") or None,
+        "duration_minutes": (
+            int(state.get("duration_minutes") or 0) or None
+        ),
     }
 
 
@@ -196,12 +264,58 @@ class CancellationPolicy(BaseModel):
 
 class CreateReservationRequest(BaseModel):
     brand_id: str = Field(..., min_length=1, max_length=128)
-    user_id: str = Field(..., min_length=1, max_length=128)
+    user_id: str = Field(
+        ..., min_length=1, max_length=128,
+        description="Who books / pays for the reservation.",
+    )
+    beneficiary_user_id: str | None = Field(
+        None,
+        max_length=128,
+        description=(
+            "Who receives the service (different from booker — e.g. parent books "
+            "for child, sender books delivery for recipient). Indexed for "
+            "cross-id lookup via /recipient/{user_id}."
+        ),
+    )
+    fulfiller_user_id: str | None = Field(
+        None,
+        max_length=128,
+        description=(
+            "Who performs the service (courier/doctor/stylist). Indexed for "
+            "fulfiller-side calendar via /fulfiller/{user_id}."
+        ),
+    )
+    recipient_user_id: str | None = Field(
+        None,
+        max_length=128,
+        description=(
+            "Explicit recipient for logistics flows (老贾). When supplied, "
+            "treated as the beneficiary if beneficiary_user_id is not set."
+        ),
+    )
     scheduled_at: int = Field(..., gt=0, description="Future epoch seconds (UTC)")
     party_size: int = Field(1, ge=1, le=1000)
-    type: Literal[
-        "dining", "fitness_class", "appointment", "event", "tour", "service"
-    ] = "appointment"
+    # Open type — accept the curated enum OR any string when type_label set.
+    # Validation happens at runtime: unknown type values are coerced to
+    # "custom" and the raw value is preserved in type_label.
+    type: str = Field(
+        "appointment",
+        min_length=1,
+        max_length=64,
+        description=(
+            "Reservation domain. Curated enum values are validated; unknown "
+            "values are coerced to 'custom' with the original preserved in "
+            "type_label."
+        ),
+    )
+    type_label: str | None = Field(
+        None,
+        max_length=128,
+        description=(
+            "Free-form label for arbitrary reservation types. When `type` is "
+            "'custom' or an unknown string, the original label is stored here."
+        ),
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
     recovery_voucher_template_id: str | None = Field(None, max_length=128)
     cancellation_policy: CancellationPolicy | None = None
@@ -550,6 +664,55 @@ async def create_reservation(
         or ""
     )
 
+    # Normalize the open type — unknown values are coerced to "custom" and
+    # the raw label is preserved on `type_label`.
+    norm_type, norm_label = _normalize_type(body.type, body.type_label)
+
+    # Resource availability check: refuse if an active reservation overlaps
+    # the requested window on the same brand resource. Uses the by_resource
+    # ZSET maintained on create/cancel/no_show/reschedule.
+    if body.resource_id:
+        dur_seconds = (body.duration_minutes or 30) * 60
+        window_lo = body.scheduled_at - 1800
+        window_hi = body.scheduled_at + dur_seconds
+        try:
+            conflict_rids = await r.zrangebyscore(
+                _k_brand_res_by_resource(body.brand_id, body.resource_id),
+                window_lo,
+                window_hi,
+            )
+        except Exception:  # pragma: no cover
+            conflict_rids = []
+        if conflict_rids:
+            # Only fail on *active* (confirmed/rescheduled) holds — the
+            # by_resource index already prunes cancelled/no_show, but verify
+            # defensively against stale entries.
+            active_conflict_rid: str | None = None
+            for c_rid in conflict_rids:
+                try:
+                    c_state = await r.hgetall(_k_res(c_rid))
+                except Exception:  # pragma: no cover
+                    c_state = {}
+                if not c_state:
+                    continue
+                if c_state.get("status") in ("confirmed", "rescheduled"):
+                    active_conflict_rid = c_state.get("reservation_id") or c_rid
+                    break
+            if active_conflict_rid:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "resource_conflict",
+                        "resource_id": body.resource_id,
+                        "conflict_rid": active_conflict_rid,
+                        "window": [window_lo, window_hi],
+                    },
+                )
+
+    # Resolve beneficiary: explicit beneficiary wins, otherwise fall back
+    # to the recipient field (老贾 delivery flow).
+    beneficiary_uid = body.beneficiary_user_id or body.recipient_user_id
+
     rid = _new_rid()
     state: dict[str, str] = {
         "reservation_id": rid,
@@ -557,7 +720,7 @@ async def create_reservation(
         "user_id": body.user_id,
         "scheduled_at": str(body.scheduled_at),
         "party_size": str(body.party_size),
-        "type": body.type,
+        "type": norm_type,
         "status": "confirmed",
         "created_at": str(now),
         "updated_at": str(now),
@@ -566,6 +729,14 @@ async def create_reservation(
         "cancellation_policy": _dumps(cancellation_policy),
         "recovery_voucher_template_id": recovery_template,
     }
+    if norm_label:
+        state["type_label"] = norm_label
+    if beneficiary_uid:
+        state["beneficiary_user_id"] = beneficiary_uid
+    if body.recipient_user_id:
+        state["recipient_user_id"] = body.recipient_user_id
+    if body.fulfiller_user_id:
+        state["fulfiller_user_id"] = body.fulfiller_user_id
     if body.resource_id:
         state["resource_id"] = body.resource_id
     if body.duration_minutes is not None:
@@ -575,6 +746,16 @@ async def create_reservation(
     pipe.hset(_k_res(rid), mapping=state)
     pipe.zadd(_k_brand_res(body.brand_id), {rid: body.scheduled_at})
     pipe.zadd(_k_user_res(body.user_id), {rid: body.scheduled_at})
+    if beneficiary_uid and beneficiary_uid != body.user_id:
+        pipe.zadd(
+            _k_user_res_as_beneficiary(beneficiary_uid),
+            {rid: body.scheduled_at},
+        )
+    if body.fulfiller_user_id:
+        pipe.zadd(
+            _k_user_res_as_fulfiller(body.fulfiller_user_id),
+            {rid: body.scheduled_at},
+        )
     if body.resource_id:
         pipe.zadd(
             _k_brand_res_by_resource(body.brand_id, body.resource_id),
@@ -593,8 +774,11 @@ async def create_reservation(
         user_id=body.user_id,
         extra={
             "scheduled_at": body.scheduled_at,
-            "type": body.type,
+            "type": norm_type,
+            "type_label": norm_label,
             "party_size": body.party_size,
+            "beneficiary_user_id": beneficiary_uid,
+            "fulfiller_user_id": body.fulfiller_user_id,
         },
     )
     # Distinct "confirmed" event for downstream subscribers that only react
@@ -609,8 +793,8 @@ async def create_reservation(
     )
 
     logger.info(
-        "reservation created: rid=%s brand=%s user=%s at=%s type=%s",
-        rid, body.brand_id, body.user_id, body.scheduled_at, body.type,
+        "reservation created: rid=%s brand=%s user=%s at=%s type=%s label=%s",
+        rid, body.brand_id, body.user_id, body.scheduled_at, norm_type, norm_label,
     )
 
     return CreateReservationResponse(
@@ -762,6 +946,12 @@ async def cancel(
     resource_id = state.get("resource_id") or ""
     if resource_id:
         pipe.zrem(_k_brand_res_by_resource(brand_id, resource_id), rid)
+    beneficiary_uid = state.get("beneficiary_user_id") or ""
+    if beneficiary_uid and beneficiary_uid != user_id:
+        pipe.zrem(_k_user_res_as_beneficiary(beneficiary_uid), rid)
+    fulfiller_uid = state.get("fulfiller_user_id") or ""
+    if fulfiller_uid:
+        pipe.zrem(_k_user_res_as_fulfiller(fulfiller_uid), rid)
     pipe.hincrby(_k_brand_stats(brand_id), f"total_{new_status}", 1)
     await pipe.execute()
 
@@ -835,6 +1025,18 @@ async def reschedule(
     if resource_id:
         pipe.zadd(
             _k_brand_res_by_resource(brand_id, resource_id),
+            {rid: body.new_scheduled_at},
+        )
+    beneficiary_uid = state.get("beneficiary_user_id") or ""
+    if beneficiary_uid and beneficiary_uid != user_id:
+        pipe.zadd(
+            _k_user_res_as_beneficiary(beneficiary_uid),
+            {rid: body.new_scheduled_at},
+        )
+    fulfiller_uid = state.get("fulfiller_user_id") or ""
+    if fulfiller_uid:
+        pipe.zadd(
+            _k_user_res_as_fulfiller(fulfiller_uid),
             {rid: body.new_scheduled_at},
         )
     pipe.hincrby(_k_brand_stats(brand_id), "total_rescheduled", 1)
@@ -1027,6 +1229,251 @@ async def list_user_reservations(
     return {"user_id": user_id, "count": len(items), "reservations": items}
 
 
+@router.get(
+    "/fulfiller/{user_id}",
+    summary="List reservations where this user is the fulfiller (courier/doctor/stylist)",
+)
+async def list_fulfiller_reservations(
+    user_id: str,
+    status: str | None = Query(None),
+    from_ts: int | None = Query(None, alias="from"),
+    to_ts: int | None = Query(None, alias="to"),
+    limit: int = Query(200, ge=1, le=2000),
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Fulfiller-side calendar: jobs assigned to this user.
+
+    Powers courier route boards (老贾), doctor day-views (老蔡), and stylist
+    chair calendars (老钱) — anywhere the booking user differs from the
+    person actually performing the work.
+    """
+    if status and status not in _STATUSES:
+        raise HTTPException(status_code=400, detail=f"unknown status: {status}")
+    items = await _list_by_index(
+        r,
+        index_key=_k_user_res_as_fulfiller(user_id),
+        status_filter=status,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        limit=limit,
+    )
+    return {
+        "fulfiller_user_id": user_id,
+        "count": len(items),
+        "reservations": items,
+    }
+
+
+@router.get(
+    "/recipient/{user_id}",
+    summary="List reservations where this user is the beneficiary / recipient",
+)
+async def list_recipient_reservations(
+    user_id: str,
+    status: str | None = Query(None),
+    from_ts: int | None = Query(None, alias="from"),
+    to_ts: int | None = Query(None, alias="to"),
+    limit: int = Query(200, ge=1, le=2000),
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Beneficiary-side view: services someone else booked *for* this user.
+
+    Logistics deliveries (老贾), parent-books-for-child appointments (老蔡),
+    and gifted services all surface here even though the booker differs
+    from the recipient.
+    """
+    if status and status not in _STATUSES:
+        raise HTTPException(status_code=400, detail=f"unknown status: {status}")
+    items = await _list_by_index(
+        r,
+        index_key=_k_user_res_as_beneficiary(user_id),
+        status_filter=status,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        limit=limit,
+    )
+    return {
+        "beneficiary_user_id": user_id,
+        "count": len(items),
+        "reservations": items,
+    }
+
+
+# ── Travelers manifest (老梁 group tour) ─────────────────────────────────
+
+
+def _hash_passport(raw: str) -> str:
+    """SHA-256 hex digest of a passport number; never store plaintext."""
+    import hashlib
+
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+class TravelerEntry(BaseModel):
+    name: str = Field(..., min_length=1, max_length=256)
+    passport_number: str | None = Field(
+        None,
+        min_length=1,
+        max_length=64,
+        description=(
+            "Plaintext passport number — never persisted. Hashed via SHA-256 "
+            "at write-time; the digest is stored as passport_number_hash."
+        ),
+    )
+    passport_number_hash: str | None = Field(
+        None,
+        min_length=8,
+        max_length=128,
+        description=(
+            "Pre-hashed passport identifier. Supply this when the client "
+            "already hashed the number (preferred — avoids plaintext over "
+            "the wire)."
+        ),
+    )
+    dob_year: int | None = Field(None, ge=1900, le=3000)
+    dietary: str | None = Field(None, max_length=256)
+    visa_status: str | None = Field(None, max_length=128)
+    role: Literal["primary", "companion", "child"] | None = None
+    notes: str | None = Field(None, max_length=512)
+
+
+class TravelersUpsertRequest(BaseModel):
+    travelers: list[TravelerEntry] = Field(..., min_length=1, max_length=200)
+    replace: bool = Field(
+        True,
+        description=(
+            "When True (default), the existing manifest is replaced. When "
+            "False, entries are appended to the existing list."
+        ),
+    )
+
+
+def _sanitize_traveler(entry: TravelerEntry) -> dict[str, Any]:
+    """Strip plaintext PII, hash passport, return persistable dict."""
+    out: dict[str, Any] = {"name": entry.name}
+    digest = entry.passport_number_hash
+    if entry.passport_number and not digest:
+        digest = _hash_passport(entry.passport_number)
+    if digest:
+        out["passport_number_hash"] = digest
+    if entry.dob_year is not None:
+        out["dob_year"] = entry.dob_year
+    if entry.dietary:
+        out["dietary"] = entry.dietary
+    if entry.visa_status:
+        out["visa_status"] = entry.visa_status
+    if entry.role:
+        out["role"] = entry.role
+    if entry.notes:
+        out["notes"] = entry.notes
+    return out
+
+
+async def _log_sensitive_pi(
+    *,
+    reservation_id: str,
+    brand_id: str,
+    user_id: str,
+    field: str,
+    count: int,
+) -> None:
+    """Best-effort sensitive PI audit hook for compliance modules."""
+    try:
+        from app.routers import compliance as _compliance  # type: ignore
+
+        logger_fn = getattr(_compliance, "log_sensitive_pi_access", None)
+        if logger_fn is None:
+            return
+        await logger_fn(
+            actor_user_id=user_id,
+            subject_user_id=user_id,
+            brand_id=brand_id,
+            resource=f"reservation:{reservation_id}:travelers",
+            field=field,
+            count=count,
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.debug("sensitive_pi log skipped: %s", exc)
+
+
+@router.post(
+    "/{rid}/travelers",
+    summary="Attach a traveler manifest to a (group) reservation (老梁)",
+    status_code=status.HTTP_201_CREATED,
+)
+async def upsert_travelers(
+    rid: str,
+    body: TravelersUpsertRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    state = await r.hgetall(_k_res(rid))
+    if not state:
+        raise HTTPException(status_code=404, detail="reservation not found")
+
+    brand_id = state.get("brand_id", "")
+    user_id = state.get("user_id", "")
+
+    sanitized = [_sanitize_traveler(e) for e in body.travelers]
+    passport_hits = sum(1 for s in sanitized if s.get("passport_number_hash"))
+
+    pipe = r.pipeline()
+    if body.replace:
+        pipe.delete(_k_res_travelers(rid))
+    for entry in sanitized:
+        pipe.rpush(_k_res_travelers(rid), _dumps(entry))
+    # Stamp manifest size on the reservation header so list views show it.
+    if body.replace:
+        manifest_count = len(sanitized)
+    else:
+        # Approximate; the precise count requires LLEN post-write.
+        existing = int(state.get("travelers_count") or 0)
+        manifest_count = existing + len(sanitized)
+    pipe.hset(
+        _k_res(rid),
+        mapping={
+            "travelers_count": str(manifest_count),
+            "updated_at": str(_now()),
+        },
+    )
+    await pipe.execute()
+
+    if passport_hits > 0:
+        await _log_sensitive_pi(
+            reservation_id=rid,
+            brand_id=brand_id,
+            user_id=user_id,
+            field="passport_number_hash",
+            count=passport_hits,
+        )
+
+    return {
+        "reservation_id": rid,
+        "travelers_count": manifest_count,
+        "replaced": body.replace,
+        "added": len(sanitized),
+    }
+
+
+@router.get(
+    "/{rid}/travelers",
+    summary="Read the traveler manifest for a (group) reservation",
+)
+async def list_travelers(
+    rid: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    state = await r.hgetall(_k_res(rid))
+    if not state:
+        raise HTTPException(status_code=404, detail="reservation not found")
+    raw = await r.lrange(_k_res_travelers(rid), 0, -1)
+    travelers = [_safe_loads(item, {}) for item in raw]
+    return {
+        "reservation_id": rid,
+        "count": len(travelers),
+        "travelers": travelers,
+    }
+
+
 @router.post(
     "/scan-no-shows",
     summary="Cron-like: mark overdue confirmed reservations as no_show",
@@ -1106,6 +1553,12 @@ async def scan_no_shows(
                 pipe.zrem(
                     _k_brand_res_by_resource(brand_id, no_show_resource), rid
                 )
+            ns_beneficiary = state.get("beneficiary_user_id") or ""
+            if ns_beneficiary and ns_beneficiary != user_id:
+                pipe.zrem(_k_user_res_as_beneficiary(ns_beneficiary), rid)
+            ns_fulfiller = state.get("fulfiller_user_id") or ""
+            if ns_fulfiller:
+                pipe.zrem(_k_user_res_as_fulfiller(ns_fulfiller), rid)
             pipe.hincrby(_k_brand_stats(brand_id), "total_no_show", 1)
             await pipe.execute()
             marked_no_show += 1
@@ -1301,10 +1754,11 @@ class CreateSeriesRequest(BaseModel):
     brand_id: str = Field(..., min_length=1, max_length=128)
     user_id: str = Field(..., min_length=1, max_length=128)
     resource_id: str | None = Field(None, max_length=128)
-    type: Literal[
-        "dining", "fitness_class", "appointment", "event", "tour", "service",
-        "grooming",
-    ] = "appointment"
+    # Open type: same normalization rules as CreateReservationRequest.
+    type: str = Field("appointment", min_length=1, max_length=64)
+    type_label: str | None = Field(None, max_length=128)
+    fulfiller_user_id: str | None = Field(None, max_length=128)
+    beneficiary_user_id: str | None = Field(None, max_length=128)
     first_scheduled_at: int = Field(..., gt=0)
     cadence_days: int | None = Field(None, ge=1, le=365)
     cadence_pattern: Literal["weekly", "biweekly", "monthly", "custom"] | None = None
@@ -1352,6 +1806,9 @@ async def _series_create_one(
     duration_minutes: int | None,
     series_id: str,
     series_index: int,
+    type_label: str | None = None,
+    fulfiller_user_id: str | None = None,
+    beneficiary_user_id: str | None = None,
 ) -> str:
     """Internal helper — create a single reservation belonging to a series.
 
@@ -1381,6 +1838,12 @@ async def _series_create_one(
         state["resource_id"] = resource_id
     if duration_minutes is not None:
         state["duration_minutes"] = str(duration_minutes)
+    if type_label:
+        state["type_label"] = type_label
+    if fulfiller_user_id:
+        state["fulfiller_user_id"] = fulfiller_user_id
+    if beneficiary_user_id:
+        state["beneficiary_user_id"] = beneficiary_user_id
 
     pipe = r.pipeline()
     pipe.hset(_k_res(rid), mapping=state)
@@ -1389,6 +1852,16 @@ async def _series_create_one(
     if resource_id:
         pipe.zadd(
             _k_brand_res_by_resource(brand_id, resource_id),
+            {rid: scheduled_at},
+        )
+    if beneficiary_user_id and beneficiary_user_id != user_id:
+        pipe.zadd(
+            _k_user_res_as_beneficiary(beneficiary_user_id),
+            {rid: scheduled_at},
+        )
+    if fulfiller_user_id:
+        pipe.zadd(
+            _k_user_res_as_fulfiller(fulfiller_user_id),
             {rid: scheduled_at},
         )
     pipe.hincrby(_k_brand_stats(brand_id), "total_confirmed", 1)
@@ -1449,6 +1922,8 @@ async def create_series(
         or ""
     )
 
+    norm_type, norm_label = _normalize_type(body.type, body.type_label)
+
     sid = _new_sid()
     cadence_seconds = cadence_days * 24 * 3600
     reservation_ids: list[str] = []
@@ -1462,7 +1937,10 @@ async def create_series(
             "brand_id": body.brand_id,
             "user_id": body.user_id,
             "resource_id": body.resource_id or "",
-            "type": body.type,
+            "type": norm_type,
+            "type_label": norm_label or "",
+            "fulfiller_user_id": body.fulfiller_user_id or "",
+            "beneficiary_user_id": body.beneficiary_user_id or "",
             "cadence_days": str(cadence_days),
             "cadence_pattern": body.cadence_pattern or "custom",
             "first_scheduled_at": str(body.first_scheduled_at),
@@ -1486,7 +1964,7 @@ async def create_series(
             user_id=body.user_id,
             scheduled_at=scheduled_at,
             party_size=body.party_size,
-            res_type=body.type,
+            res_type=norm_type,
             metadata=body.metadata,
             recovery_voucher_template_id=recovery_template or None,
             cancellation_policy=cancellation_policy,
@@ -1495,6 +1973,9 @@ async def create_series(
             duration_minutes=body.duration_minutes,
             series_id=sid,
             series_index=i,
+            type_label=norm_label,
+            fulfiller_user_id=body.fulfiller_user_id,
+            beneficiary_user_id=body.beneficiary_user_id,
         )
         reservation_ids.append(rid)
         await r.rpush(_k_series_rids(sid), rid)
@@ -1596,6 +2077,12 @@ async def cancel_series(
         pipe.zrem(_k_user_res(user_id), rid)
         if resource_id:
             pipe.zrem(_k_brand_res_by_resource(brand_id, resource_id), rid)
+        beneficiary_uid = rstate.get("beneficiary_user_id") or ""
+        if beneficiary_uid and beneficiary_uid != user_id:
+            pipe.zrem(_k_user_res_as_beneficiary(beneficiary_uid), rid)
+        fulfiller_uid = rstate.get("fulfiller_user_id") or ""
+        if fulfiller_uid:
+            pipe.zrem(_k_user_res_as_fulfiller(fulfiller_uid), rid)
         pipe.hincrby(_k_brand_stats(brand_id), "total_cancelled_by_user", 1)
         await pipe.execute()
 
@@ -1703,6 +2190,18 @@ async def reschedule_series(
         if resource_id:
             pipe.zadd(
                 _k_brand_res_by_resource(brand_id, resource_id),
+                {rid: new_sched},
+            )
+        beneficiary_uid = rstate.get("beneficiary_user_id") or ""
+        if beneficiary_uid and beneficiary_uid != user_id:
+            pipe.zadd(
+                _k_user_res_as_beneficiary(beneficiary_uid),
+                {rid: new_sched},
+            )
+        fulfiller_uid = rstate.get("fulfiller_user_id") or ""
+        if fulfiller_uid:
+            pipe.zadd(
+                _k_user_res_as_fulfiller(fulfiller_uid),
                 {rid: new_sched},
             )
         pipe.hincrby(_k_brand_stats(brand_id), "total_rescheduled", 1)

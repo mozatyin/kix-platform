@@ -61,10 +61,57 @@ router = APIRouter()
 # ── Constants ─────────────────────────────────────────────────────────────
 
 VALID_SCOPES: set[str] = {
+    # Existing baseline scopes
     "cross_brand_tracking",
     "geo_lbs",
     "personalization",
     "marketing",
+    # Regulated-data scopes (PHI / KYC / 双录 / biometrics / docs)
+    "phi_storage",
+    "pii_kyc",
+    "audio_video_recording",
+    "medical_data",
+    "medical_record_retention",
+    "before_after_photo",
+    "marketing_medical",
+    "financial_data",
+    "document_storage",
+    "financial_proof",
+    "biometric_data",
+}
+
+# Scopes that REQUIRE stronger evidence (explicit OTP / signature / video).
+# A grant for any of these must include ``consent_evidence``.
+REGULATED_SCOPES: set[str] = {
+    "phi_storage",
+    "pii_kyc",
+    "audio_video_recording",
+    "medical_data",
+    "medical_record_retention",
+    "biometric_data",
+    "before_after_photo",
+}
+
+# Evidence methods accepted for regulated scope grants
+VALID_EVIDENCE_METHODS: set[str] = {"otp", "signature", "video"}
+
+# Document types for high-level "signed document" consent
+VALID_DOCUMENT_TYPES: set[str] = {
+    "tos",
+    "privacy_policy",
+    "medical_consent",
+    "financial_disclosure",
+    "双录",
+    "buyer_agreement",
+}
+
+# Signature methods for document consent (looser than grant evidence —
+# tos/privacy_policy can be ``click_agree``)
+VALID_SIGNATURE_METHODS: set[str] = {
+    "click_agree",
+    "otp",
+    "signature",
+    "video_recording",
 }
 
 VALID_SOURCES: set[str] = {"web", "app", "qr"}
@@ -84,11 +131,26 @@ REASON_NO_POLICY = "no_policy_published"
 # ── Pydantic models ───────────────────────────────────────────────────────
 
 
+class ConsentEvidence(BaseModel):
+    """Strong-evidence verification for regulated scopes.
+
+    ``method`` is the verification channel used; ``reference`` is an
+    opaque pointer to the verification artifact (OTP txn id, signature
+    blob URL, recorded video URL). Stored verbatim on the scope record
+    and replayed in the audit trail.
+    """
+
+    method: Literal["otp", "signature", "video"]
+    reference: str = Field(..., min_length=1, max_length=512)
+
+
 class GrantRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=128)
     scopes: list[str] = Field(..., min_length=1)
     policy_version: str = Field(..., min_length=1, max_length=64)
     source: Literal["web", "app", "qr"] = "web"
+    # Required when any scope is in REGULATED_SCOPES
+    consent_evidence: ConsentEvidence | None = None
 
 
 class RevokeRequest(BaseModel):
@@ -292,11 +354,32 @@ async def grant_consent(
             ),
         )
 
+    # ── Regulated scope gating ────────────────────────────────────────
+    # Any scope in REGULATED_SCOPES requires explicit verification
+    # evidence (OTP / signature / video). We fail the WHOLE grant
+    # request — partial grants would leave the audit trail ambiguous.
+    regulated_in_request = [s for s in body.scopes if s in REGULATED_SCOPES]
+    if regulated_in_request and body.consent_evidence is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Regulated scope(s) {regulated_in_request} require "
+                "`consent_evidence` {method, reference}. "
+                f"Accepted methods: {sorted(VALID_EVIDENCE_METHODS)}."
+            ),
+        )
+
     ip_hash = _hash_ip(_client_ip(request))
     now = int(time.time())
 
     key = f"consent:user:{body.user_id}"
     granted: list[str] = []
+    evidence_payload: dict[str, Any] | None = None
+    if body.consent_evidence is not None:
+        evidence_payload = {
+            "method": body.consent_evidence.method,
+            "reference": body.consent_evidence.reference,
+        }
 
     for scope in body.scopes:
         record = {
@@ -307,26 +390,39 @@ async def grant_consent(
             "ip_hash": ip_hash,
             "source": body.source,
         }
+        # Stamp the evidence onto regulated scope records so downstream
+        # auditors (and forensics) can re-prove the verification.
+        if scope in REGULATED_SCOPES and evidence_payload is not None:
+            record["consent_evidence"] = evidence_payload
+            record["verified"] = True
         await r.hset(key, scope, json.dumps(record))
         granted.append(scope)
 
-    await _audit(
-        r,
-        body.user_id,
-        "grant",
-        {
-            "scopes": granted,
-            "policy_version": body.policy_version,
-            "source": body.source,
-            "ip_hash": ip_hash,
-        },
-    )
+    audit_detail: dict[str, Any] = {
+        "scopes": granted,
+        "policy_version": body.policy_version,
+        "source": body.source,
+        "ip_hash": ip_hash,
+    }
+    if regulated_in_request:
+        audit_detail["regulated_scopes"] = regulated_in_request
+        audit_detail["verified"] = True
+        audit_detail["evidence_method"] = (
+            evidence_payload["method"] if evidence_payload else None
+        )
+        audit_detail["evidence_reference"] = (
+            evidence_payload["reference"] if evidence_payload else None
+        )
+
+    await _audit(r, body.user_id, "grant", audit_detail)
 
     return {
         "user_id": body.user_id,
         "granted": granted,
         "granted_at": now,
         "policy_version": body.policy_version,
+        "regulated_scopes": regulated_in_request or None,
+        "verified": bool(regulated_in_request),
     }
 
 
@@ -646,12 +742,183 @@ async def delete_data(
     )
 
 
+# ── Endpoints: document consent (high-evidence) ───────────────────────────
+
+
+class DocumentConsentRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=128)
+    document_type: str = Field(..., min_length=1, max_length=64)
+    document_version: str = Field(..., min_length=1, max_length=64)
+    document_url: str | None = Field(default=None, max_length=1024)
+    signature_method: str = Field(..., min_length=1, max_length=32)
+    signature_evidence_url: str | None = Field(default=None, max_length=1024)
+    granted_scopes: list[str] = Field(default_factory=list)
+
+
+class DocumentConsentResponse(BaseModel):
+    document_consent_id: str
+    user_id: str
+    document_type: str
+    document_version: str
+    signature_method: str
+    granted_scopes: list[str]
+    signed_at: int
+
+
+@router.post("/document/sign", response_model=DocumentConsentResponse)
+async def sign_document_consent(
+    body: DocumentConsentRequest,
+    request: Request,
+    r: aioredis.Redis = Depends(get_redis),
+) -> DocumentConsentResponse:
+    """Record a high-evidence "signed document" consent.
+
+    This is a heavier-weight consent than ``/grant``: it records a
+    specific document version + how the user signed it (click /
+    OTP / wet signature / recorded video). Used for medical informed
+    consent, financial 双录, buyer-side agreements, and similar
+    regulated contexts.
+
+    A document signature MAY also imply scope grants (``granted_scopes``),
+    which are recorded against the document_consent_id for traceability
+    but are NOT auto-promoted into ``consent:user:{uid}`` — callers
+    that need a scope active must additionally call ``/grant`` so the
+    standard ``check_internal`` path sees them.
+    """
+    if body.document_type not in VALID_DOCUMENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid document_type: '{body.document_type}'. "
+                f"Allowed: {sorted(VALID_DOCUMENT_TYPES)}"
+            ),
+        )
+    if body.signature_method not in VALID_SIGNATURE_METHODS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid signature_method: '{body.signature_method}'. "
+                f"Allowed: {sorted(VALID_SIGNATURE_METHODS)}"
+            ),
+        )
+    if body.granted_scopes:
+        _validate_scopes(body.granted_scopes)
+
+    # Stronger document types should not be signed by a mere click.
+    strong_required = {
+        "medical_consent",
+        "financial_disclosure",
+        "双录",
+    }
+    if (
+        body.document_type in strong_required
+        and body.signature_method == "click_agree"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"document_type '{body.document_type}' requires a "
+                "stronger signature_method than 'click_agree' "
+                "(use otp / signature / video_recording)."
+            ),
+        )
+
+    document_consent_id = f"dcons_{uuid4().hex[:20]}"
+    now = int(time.time())
+    ip_hash = _hash_ip(_client_ip(request))
+
+    record = {
+        "document_consent_id": document_consent_id,
+        "user_id": body.user_id,
+        "document_type": body.document_type,
+        "document_version": body.document_version,
+        "document_url": body.document_url or "",
+        "signature_method": body.signature_method,
+        "signature_evidence_url": body.signature_evidence_url or "",
+        "granted_scopes": json.dumps(body.granted_scopes),
+        "signed_at": str(now),
+        "ip_hash": ip_hash,
+    }
+    await r.hset(f"consent:document:{document_consent_id}", mapping=record)
+    await r.lpush(
+        f"user:{body.user_id}:signed_documents", document_consent_id
+    )
+    await r.ltrim(
+        f"user:{body.user_id}:signed_documents", 0, AUDIT_LOG_MAX - 1
+    )
+
+    await _audit(
+        r,
+        body.user_id,
+        "document_sign",
+        {
+            "document_consent_id": document_consent_id,
+            "document_type": body.document_type,
+            "document_version": body.document_version,
+            "signature_method": body.signature_method,
+            "granted_scopes": body.granted_scopes,
+            "ip_hash": ip_hash,
+        },
+    )
+
+    return DocumentConsentResponse(
+        document_consent_id=document_consent_id,
+        user_id=body.user_id,
+        document_type=body.document_type,
+        document_version=body.document_version,
+        signature_method=body.signature_method,
+        granted_scopes=body.granted_scopes,
+        signed_at=now,
+    )
+
+
+@router.get("/document/{user_id}")
+async def list_user_signed_documents(
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return all signed-document consent records for a user."""
+    ids = await r.lrange(f"user:{user_id}:signed_documents", 0, -1)
+    documents: list[dict[str, Any]] = []
+    for did in ids:
+        raw = await r.hgetall(f"consent:document:{did}")
+        if not raw:
+            continue
+        try:
+            granted_scopes = json.loads(raw.get("granted_scopes", "[]"))
+        except (json.JSONDecodeError, TypeError):
+            granted_scopes = []
+        documents.append(
+            {
+                "document_consent_id": raw.get("document_consent_id"),
+                "user_id": raw.get("user_id"),
+                "document_type": raw.get("document_type"),
+                "document_version": raw.get("document_version"),
+                "document_url": raw.get("document_url") or None,
+                "signature_method": raw.get("signature_method"),
+                "signature_evidence_url": raw.get("signature_evidence_url") or None,
+                "granted_scopes": granted_scopes,
+                "signed_at": int(raw.get("signed_at", 0) or 0),
+            }
+        )
+
+    return {
+        "user_id": user_id,
+        "count": len(documents),
+        "documents": documents,
+    }
+
+
 # ── Public exports ────────────────────────────────────────────────────────
 
 __all__ = [
     "router",
     "check_internal",
     "VALID_SCOPES",
+    "REGULATED_SCOPES",
+    "VALID_EVIDENCE_METHODS",
+    "VALID_DOCUMENT_TYPES",
+    "VALID_SIGNATURE_METHODS",
     "REASON_OK",
     "REASON_NOT_GRANTED",
     "REASON_REVOKED",

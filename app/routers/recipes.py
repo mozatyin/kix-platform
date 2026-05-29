@@ -86,20 +86,23 @@ KNOWN_MODULES: set[str] = {
 Industry = Literal[
     # Food & Beverage
     "coffee", "bubble_tea", "food", "restaurant", "luxury_dining", "qsr",
-    # Retail
-    "retail", "ecommerce", "luxury_retail", "fashion",
+    # Retail / commerce
+    "retail", "ecommerce", "luxury_retail", "fashion", "marketplace",
     # Health & Wellness
     "fitness", "beauty", "wellness", "healthcare",
-    # Family
-    "baby_products", "kids_education", "parenting",
+    # Medical
+    "medical", "medical_aesthetics",
+    # Family / Pet
+    "baby_products", "kids_education", "parenting", "pet",
     # Community
     "community", "book_club", "education", "co_working", "religious",
-    # Hospitality
+    # Hospitality / Travel
     "hotel", "travel", "airline",
     # Entertainment
     "gaming", "music", "events", "cinema",
     # Services
-    "automotive", "real_estate", "financial_services", "telecom",
+    "automotive", "real_estate", "financial_services", "fintech",
+    "telecom", "logistics", "sharing_economy",
     # Catch-all
     "other",
 ]

@@ -311,6 +311,12 @@ KiX = TikTok Ads for Gamification.
         tags=["compliance"],
     )
 
+    # ── Media: regulated-data registry (PHI / KYC / 双录 / biometric) ──
+    from app.routers import media
+    app.include_router(
+        media.router, prefix="/api/v1/media", tags=["media"]
+    )
+
     # ── Campaign Manager + Auction Engine (Google-Ads-style) ───────────
     from app.routers import campaigns, auction
     app.include_router(
@@ -344,6 +350,12 @@ KiX = TikTok Ads for Gamification.
     from app.routers import payouts
     app.include_router(
         payouts.router, prefix="/api/v1/payouts", tags=["payouts"]
+    )
+
+    # ── FX Engine: multi-currency rate store + conversion ──────────────
+    from app.routers import fx
+    app.include_router(
+        fx.router, prefix="/api/v1/fx", tags=["fx"]
     )
 
     # ── Creative Generator: ELTM-powered on-demand HTML game creatives ─
