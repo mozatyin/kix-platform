@@ -641,6 +641,17 @@ async def upgrade(
         ts=now,
     )
 
+    # Default-on auto-recharge: STARTER+ tiers with a verified payment method
+    # get auto-recharge enabled at 20% threshold (unless previously opted out).
+    autorecharge_v2: dict[str, Any] | None = None
+    try:
+        from app.routers.wallet import enable_autorecharge_v2_for_upgrade
+        autorecharge_v2 = await enable_autorecharge_v2_for_upgrade(brand_id, r)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "autorecharge_v2 default-enable failed brand=%s: %s", brand_id, exc
+        )
+
     return {
         "tier": new_tier,
         "effective_at": now,
@@ -648,6 +659,7 @@ async def upgrade(
         "charge_amount": charge_now,
         "billing": body.billing,
         "first_year_free": first_year_free_flag,
+        "autorecharge_v2": autorecharge_v2,
     }
 
 

@@ -269,12 +269,24 @@ async def get_today_dashboard(
     deltas = {k: metrics[k] - ytd_metrics.get(k, 0) for k in metrics}
     streak = await _streak(r, brand_id)
 
+    # Pre-depletion + auto-recharge-failure surfaces (set by wallet flow).
+    wallet_low = (await r.get(f"notification:brand:{brand_id}:wallet_low")) == "1"
+    autorecharge_failed_at = await r.get(
+        f"notification:brand:{brand_id}:autorecharge_failed"
+    )
+
     result = {
         "brand_id": brand_id,
         "date": day,
         "metrics": metrics,
         "deltas": deltas,
         "streak": streak,
+        "alerts": {
+            "wallet_low": wallet_low,
+            "autorecharge_failed_at": (
+                float(autorecharge_failed_at) if autorecharge_failed_at else None
+            ),
+        },
     }
     await _store_cached_json(r, cache_key, result, 60)
     return result

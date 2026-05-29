@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -143,8 +143,141 @@ def _k_refund(refund_id: str) -> str:
 _AUTO_RECHARGE_EVENT_LIST = "wallet:auto_recharge_needed"
 
 
+# ── v2 Auto-recharge schema ──────────────────────────────────────────────
+AUTORECHARGE_THRESHOLD_PCT = 0.20
+AUTORECHARGE_WARNING_PCT = 0.30
+AUTORECHARGE_MIN_THRESHOLD_CENTS = 1_000
+AUTORECHARGE_MIN_TOPUP_CENTS = 5_000
+AUTORECHARGE_FAILURE_BACKOFF_SEC = 86_400
+AUTORECHARGE_TOPUP_DAYS = 7
+AUTORECHARGE_TOPUP_RATIO = 0.5
+
+
+def _k_autorecharge_v2(brand_id: str) -> str:
+    return f"brand:{brand_id}:autorecharge"
+
+
+def _k_autorecharge_v2_opt_out(brand_id: str) -> str:
+    return f"brand:{brand_id}:autorecharge:opt_out"
+
+
+def _k_autorecharge_v2_paused(brand_id: str) -> str:
+    return f"brand:{brand_id}:autorecharge:paused_until"
+
+
+def _k_autorecharge_v2_log(brand_id: str) -> str:
+    return f"wallet:{brand_id}:autorecharge_log"
+
+
+def _k_wallet_low_notif(brand_id: str) -> str:
+    return f"notification:brand:{brand_id}:wallet_low"
+
+
+def _k_autorecharge_failed_notif(brand_id: str) -> str:
+    return f"notification:brand:{brand_id}:autorecharge_failed"
+
+
 def _today_str() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+# ── Daily-budget backpressure (sim feedback: log-flood on cap-hit) ────────
+#
+# When a brand's daily wallet cap (or a campaign's per-day budget) is
+# exhausted, the auction must STOP awarding impressions to that brand for
+# the rest of the UTC day. Without this, every auction:
+#   * picks the brand again,
+#   * tries to charge,
+#   * gets daily_budget_exceeded,
+#   * floods the log with the same 402 stack trace.
+#
+# Mechanism: set a Redis flag keyed by ``campaign_id`` (and a brand-level
+# fallback flag for callers that don't have a campaign in scope) with a
+# TTL ending at the next UTC midnight. The auction's ``_has_budget``
+# (campaign side) + ``run_auction`` (brand side) short-circuit when the
+# flag is set.
+BUDGET_BLOCKED_CAMPAIGN_KEY = "auction:campaign:{cid}:budget_blocked"
+BUDGET_BLOCKED_BRAND_KEY = "auction:brand:{brand_id}:budget_blocked"
+BUDGET_EXHAUSTED_NOTIFICATION_KEY = (
+    "notification:brand:{brand_id}:budget_exhausted"
+)
+
+
+def _seconds_until_utc_midnight(now: float | None = None) -> int:
+    """Return whole seconds remaining until the next UTC midnight.
+
+    Used as the TTL for budget-blocked flags so they auto-clear at the
+    rollover. Always returns at least 1 to avoid a 0-TTL (PERSIST).
+    """
+    now_dt = (
+        datetime.fromtimestamp(now, tz=timezone.utc)
+        if now is not None
+        else datetime.now(timezone.utc)
+    )
+    next_midnight = datetime(
+        now_dt.year, now_dt.month, now_dt.day, tzinfo=timezone.utc
+    ) + timedelta(days=1)
+    return max(1, int((next_midnight - now_dt).total_seconds()))
+
+
+async def _set_budget_blocked(
+    r: aioredis.Redis,
+    *,
+    brand_id: str,
+    campaign_id: str | None,
+    reason: str,
+) -> bool:
+    """Set the campaign + brand budget-block flags. Returns True iff this
+    call was the first to flip the flag (so callers can fire a single
+    notification instead of one-per-charge-attempt).
+    """
+    ttl = _seconds_until_utc_midnight()
+    first_block = False
+
+    brand_key = BUDGET_BLOCKED_BRAND_KEY.format(brand_id=brand_id)
+    # NX so the first hit wins and downstream "first time" notification
+    # logic doesn't fire twice.
+    set_first_brand = await r.set(brand_key, reason, nx=True, ex=ttl)
+    if set_first_brand:
+        first_block = True
+
+    if campaign_id:
+        cam_key = BUDGET_BLOCKED_CAMPAIGN_KEY.format(cid=campaign_id)
+        await r.set(cam_key, reason, ex=ttl)
+
+    return bool(first_block)
+
+
+async def _maybe_emit_budget_exhausted_notification(
+    r: aioredis.Redis, brand_id: str, reason: str, *, campaign_id: str | None
+) -> None:
+    """Emit a once-per-day notification when budget first exhausts.
+
+    Uses ``SET NX EX(until_midnight)`` so re-firing within the same UTC
+    day is a no-op. The notification payload mirrors the budget-status
+    contract so dashboards can render a single banner without follow-up
+    reads.
+    """
+    import json as _json
+
+    notif_key = BUDGET_EXHAUSTED_NOTIFICATION_KEY.format(brand_id=brand_id)
+    ttl = _seconds_until_utc_midnight()
+    payload = _json.dumps(
+        {
+            "brand_id": brand_id,
+            "reason": reason,
+            "campaign_id": campaign_id,
+            "first_seen_at": int(time.time()),
+            "unblock_at_ts": int(time.time()) + ttl,
+        }
+    )
+    set_first = await r.set(notif_key, payload, nx=True, ex=ttl)
+    if set_first:
+        logger.info(
+            "budget_exhausted notification emitted brand=%s reason=%s",
+            brand_id,
+            reason,
+        )
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────
@@ -388,6 +521,213 @@ async def _maybe_auto_recharge(
         new_balance,
         cfg.threshold_cents,
     )
+
+
+# ── v2 Auto-recharge helpers ─────────────────────────────────────────────
+class AutoRechargeV2Settings(BaseModel):
+    enabled: bool
+    threshold_cents: int = Field(..., ge=0)
+    topup_cents: int = Field(..., gt=0)
+    payment_method_id: str | None = None
+    last_triggered_ts: float | None = None
+
+
+async def _v2_get_settings(brand_id, r):
+    raw = await r.hgetall(_k_autorecharge_v2(brand_id))
+    if not raw:
+        return None
+    try:
+        return AutoRechargeV2Settings(
+            enabled=raw.get("enabled", "0") == "1",
+            threshold_cents=int(raw.get("threshold_cents", "0")),
+            topup_cents=int(raw.get("topup_cents", "0") or 1),
+            payment_method_id=raw.get("payment_method_id") or None,
+            last_triggered_ts=(
+                float(raw["last_triggered_ts"])
+                if raw.get("last_triggered_ts")
+                else None
+            ),
+        )
+    except (ValueError, TypeError):
+        logger.warning("Malformed autorecharge v2 config brand=%s", brand_id)
+        return None
+
+
+async def _v2_avg_daily_spend_cents(r, brand_id, window_days=7):
+    now = time.time()
+    window_start = now - window_days * 86400
+    ids = await r.lrange(_k_tx_list(brand_id), -5000, -1)
+    total = 0
+    for tx_id in reversed(ids):
+        ch = await r.hgetall(_k_charge(tx_id))
+        if not ch:
+            continue
+        ts = float(ch.get("ts") or 0.0)
+        if ts < window_start:
+            break
+        if ch.get("status") == "completed":
+            total += int(ch.get("amount") or 0)
+    if total <= 0:
+        return 0
+    return total // window_days
+
+
+async def _v2_compute_defaults(r, brand_id):
+    avg = await _v2_avg_daily_spend_cents(r, brand_id)
+    threshold = max(
+        AUTORECHARGE_MIN_THRESHOLD_CENTS,
+        int(avg * AUTORECHARGE_THRESHOLD_PCT),
+    )
+    topup = max(
+        AUTORECHARGE_MIN_TOPUP_CENTS,
+        int(avg * AUTORECHARGE_TOPUP_DAYS * AUTORECHARGE_TOPUP_RATIO),
+    )
+    return threshold, topup
+
+
+async def _v2_get_default_verified_pm(brand_id, r):
+    default_pm = await r.get(f"brand:{brand_id}:payment_method:default")
+    if default_pm:
+        raw = await r.hgetall(f"payment_method:{default_pm}")
+        if raw and raw.get("status") == "active" and raw.get("verified") == "1":
+            return default_pm
+    pm_ids = await r.smembers(f"brand:{brand_id}:payment_methods")
+    for pm_id in sorted(pm_ids):
+        raw = await r.hgetall(f"payment_method:{pm_id}")
+        if raw and raw.get("status") == "active" and raw.get("verified") == "1":
+            return pm_id
+    return None
+
+
+async def enable_autorecharge_v2_for_upgrade(brand_id, r):
+    """Default-enable on STARTER+ upgrade. Skips if opted out or no verified PM."""
+    opted_out = await r.get(_k_autorecharge_v2_opt_out(brand_id))
+    if opted_out == "1":
+        return None
+    pm_id = await _v2_get_default_verified_pm(brand_id, r)
+    if not pm_id:
+        return None
+    threshold, topup = await _v2_compute_defaults(r, brand_id)
+    now = time.time()
+    await r.hset(
+        _k_autorecharge_v2(brand_id),
+        mapping={
+            "enabled": "1",
+            "threshold_cents": str(threshold),
+            "topup_cents": str(topup),
+            "payment_method_id": pm_id,
+            "last_triggered_ts": "",
+            "created_at": str(now),
+            "updated_at": str(now),
+            "source": "tier_upgrade",
+        },
+    )
+    logger.info(
+        "autorecharge_v2 default-enabled brand=%s pm=%s threshold=%s topup=%s",
+        brand_id, pm_id, threshold, topup,
+    )
+    return {
+        "enabled": True,
+        "threshold_cents": threshold,
+        "topup_cents": topup,
+        "payment_method_id": pm_id,
+    }
+
+
+async def _v2_fire_gateway_recharge(brand_id, pm_id, amount_cents, reference_id, r):
+    """Call the payment_methods gateway. Auto-stubbed in dev/CI."""
+    from app.routers.payment_methods import _gateway_charge as _pm_gateway_charge
+
+    wallet_currency = await _get_currency(brand_id, r)
+    return await _pm_gateway_charge(
+        pm_id, amount_cents, wallet_currency, reference_id, r
+    )
+
+
+async def _v2_maybe_trigger(brand_id, new_balance, r):
+    """Fire auto-recharge after a charge if balance < threshold."""
+    cfg = await _v2_get_settings(brand_id, r)
+    if cfg is None or not cfg.enabled or not cfg.payment_method_id:
+        return
+
+    warning_at = int(
+        cfg.threshold_cents * (AUTORECHARGE_WARNING_PCT / AUTORECHARGE_THRESHOLD_PCT)
+    )
+    if 0 < new_balance < warning_at:
+        await r.set(_k_wallet_low_notif(brand_id), "1", ex=86400)
+
+    if new_balance >= cfg.threshold_cents:
+        return
+
+    paused_until_raw = await r.get(_k_autorecharge_v2_paused(brand_id))
+    if paused_until_raw:
+        try:
+            if time.time() < float(paused_until_raw):
+                return
+        except (ValueError, TypeError):
+            pass
+
+    now_ts = time.time()
+    trigger_bucket = int(now_ts)
+    idem_key = f"autorecharge_idem:{brand_id}:{trigger_bucket}"
+    claimed = await r.set(idem_key, "1", nx=True, ex=600)
+    if not claimed:
+        return
+
+    reference_id = f"autorecharge:{brand_id}:{trigger_bucket}"
+    try:
+        result = await _v2_fire_gateway_recharge(
+            brand_id, cfg.payment_method_id, cfg.topup_cents, reference_id, r
+        )
+    except Exception as exc:
+        result = {"success": False, "error": f"exception:{exc.__class__.__name__}"}
+
+    import json as _json
+    log_entry = {
+        "ts": now_ts,
+        "reference_id": reference_id,
+        "topup_cents": cfg.topup_cents,
+        "threshold_cents": cfg.threshold_cents,
+        "balance_at_trigger": new_balance,
+        "payment_method_id": cfg.payment_method_id,
+        "ok": bool(result.get("success")),
+        "error": None if result.get("success") else result.get("error"),
+    }
+    try:
+        await r.rpush(_k_autorecharge_v2_log(brand_id), _json.dumps(log_entry))
+        await r.ltrim(_k_autorecharge_v2_log(brand_id), -500, -1)
+    except Exception as exc:
+        logger.warning("autorecharge_v2 log write failed: %s", exc)
+
+    if result.get("success"):
+        await r.incrby(_k_balance(brand_id), cfg.topup_cents)
+        await r.hset(
+            _k_autorecharge_v2(brand_id),
+            mapping={
+                "last_triggered_ts": str(now_ts),
+                "updated_at": str(now_ts),
+            },
+        )
+        await r.delete(_k_wallet_low_notif(brand_id))
+        logger.info(
+            "autorecharge_v2 fired brand=%s amount=%s gateway_tx=%s",
+            brand_id, cfg.topup_cents, result.get("gateway_tx_id"),
+        )
+    else:
+        await r.set(
+            _k_autorecharge_failed_notif(brand_id),
+            str(now_ts),
+            ex=AUTORECHARGE_FAILURE_BACKOFF_SEC,
+        )
+        await r.set(
+            _k_autorecharge_v2_paused(brand_id),
+            str(now_ts + AUTORECHARGE_FAILURE_BACKOFF_SEC),
+            ex=AUTORECHARGE_FAILURE_BACKOFF_SEC,
+        )
+        logger.warning(
+            "autorecharge_v2 failed brand=%s error=%s pausing 24h",
+            brand_id, result.get("error"),
+        )
 
 
 async def _append_tx(
@@ -726,6 +1066,31 @@ async def charge(
                     and daily_spent + charge_amount > daily_budget
                 ):
                     await pipe.unwatch()
+                    # ── Auction backpressure ───────────────────────────
+                    # Set the brand + (optional) campaign budget-block
+                    # flags so subsequent auctions short-circuit instead
+                    # of attempting another doomed charge. Done OUTSIDE
+                    # the WATCH/MULTI block so a Redis hiccup never
+                    # silently extends the budget.
+                    try:
+                        await _set_budget_blocked(
+                            r,
+                            brand_id=brand_id,
+                            campaign_id=body.campaign_id,
+                            reason="daily_budget_exceeded",
+                        )
+                        # Once-per-day notification (no log-flood).
+                        await _maybe_emit_budget_exhausted_notification(
+                            r,
+                            brand_id,
+                            "daily_budget_exceeded",
+                            campaign_id=body.campaign_id,
+                        )
+                    except Exception as exc:  # never break the 402 path
+                        logger.warning(
+                            "budget backpressure side-effect failed: %s", exc
+                        )
+
                     raise HTTPException(
                         status_code=status.HTTP_402_PAYMENT_REQUIRED,
                         detail={
@@ -801,6 +1166,12 @@ async def charge(
                     await _maybe_auto_recharge(brand_id, new_balance, r)
                 except Exception as exc:  # never break the charge path
                     logger.warning("auto_recharge check failed: %s", exc)
+
+                # v2 default-on auto-recharge (STARTER+).
+                try:
+                    await _v2_maybe_trigger(brand_id, new_balance, r)
+                except Exception as exc:  # never break the charge path
+                    logger.warning("autorecharge_v2 trigger failed: %s", exc)
 
                 # Outbound webhook fan-out: wallet.charged + balance_low.
                 try:
@@ -1000,6 +1371,148 @@ async def configure_auto_recharge(
         },
     )
     return body
+
+
+# ── v2 Auto-recharge endpoints ───────────────────────────────────────────
+class AutoRechargeV2UpdateRequest(BaseModel):
+    threshold_cents: int | None = Field(default=None, ge=0)
+    topup_cents: int | None = Field(default=None, gt=0)
+    payment_method_id: str | None = None
+    enabled: bool | None = None
+
+
+class AutoRechargeV2View(BaseModel):
+    brand_id: str
+    enabled: bool
+    threshold_cents: int
+    topup_cents: int
+    payment_method_id: str | None
+    last_triggered_ts: float | None
+    opted_out: bool
+    paused_until: float | None
+    wallet_low_warning: bool
+
+
+async def _v2_view(brand_id, r):
+    cfg = await _v2_get_settings(brand_id, r)
+    opted_out = (await r.get(_k_autorecharge_v2_opt_out(brand_id))) == "1"
+    paused_raw = await r.get(_k_autorecharge_v2_paused(brand_id))
+    paused_until = None
+    if paused_raw:
+        try:
+            paused_until = float(paused_raw)
+        except (ValueError, TypeError):
+            paused_until = None
+    wallet_low = (await r.get(_k_wallet_low_notif(brand_id))) == "1"
+    if cfg is None:
+        return AutoRechargeV2View(
+            brand_id=brand_id, enabled=False, threshold_cents=0, topup_cents=0,
+            payment_method_id=None, last_triggered_ts=None, opted_out=opted_out,
+            paused_until=paused_until, wallet_low_warning=wallet_low,
+        )
+    return AutoRechargeV2View(
+        brand_id=brand_id, enabled=cfg.enabled,
+        threshold_cents=cfg.threshold_cents, topup_cents=cfg.topup_cents,
+        payment_method_id=cfg.payment_method_id,
+        last_triggered_ts=cfg.last_triggered_ts, opted_out=opted_out,
+        paused_until=paused_until, wallet_low_warning=wallet_low,
+    )
+
+
+@router.get("/{brand_id}/autorecharge", response_model=AutoRechargeV2View)
+async def get_autorecharge_v2(
+    brand_id: str, r: aioredis.Redis = Depends(get_redis),
+) -> AutoRechargeV2View:
+    """Current default-on auto-recharge settings for a brand."""
+    return await _v2_view(brand_id, r)
+
+
+@router.put("/{brand_id}/autorecharge", response_model=AutoRechargeV2View)
+async def update_autorecharge_v2(
+    brand_id: str,
+    body: AutoRechargeV2UpdateRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> AutoRechargeV2View:
+    """Update threshold / topup / payment method. Re-enabling clears opt-out."""
+    current = await _v2_get_settings(brand_id, r)
+    if current is None:
+        threshold, topup = await _v2_compute_defaults(r, brand_id)
+        pm_id = await _v2_get_default_verified_pm(brand_id, r)
+        current = AutoRechargeV2Settings(
+            enabled=False, threshold_cents=threshold, topup_cents=topup,
+            payment_method_id=pm_id, last_triggered_ts=None,
+        )
+    new_enabled = current.enabled if body.enabled is None else body.enabled
+    new_threshold = (
+        body.threshold_cents
+        if body.threshold_cents is not None
+        else current.threshold_cents
+    )
+    new_topup = (
+        body.topup_cents if body.topup_cents is not None else current.topup_cents
+    )
+    new_pm_id = body.payment_method_id or current.payment_method_id
+    if new_enabled and not new_pm_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "missing_payment_method",
+                "hint": "add a verified payment method before enabling auto-recharge",
+            },
+        )
+    now = time.time()
+    await r.hset(
+        _k_autorecharge_v2(brand_id),
+        mapping={
+            "enabled": "1" if new_enabled else "0",
+            "threshold_cents": str(new_threshold),
+            "topup_cents": str(new_topup),
+            "payment_method_id": new_pm_id or "",
+            "updated_at": str(now),
+        },
+    )
+    if new_enabled:
+        await r.delete(_k_autorecharge_v2_opt_out(brand_id))
+    return await _v2_view(brand_id, r)
+
+
+@router.post(
+    "/{brand_id}/autorecharge/disable", response_model=AutoRechargeV2View
+)
+async def disable_autorecharge_v2(
+    brand_id: str, r: aioredis.Redis = Depends(get_redis),
+) -> AutoRechargeV2View:
+    """Opt out of auto-recharge. Persists across future tier upgrades."""
+    await r.hset(
+        _k_autorecharge_v2(brand_id),
+        mapping={"enabled": "0", "updated_at": str(time.time())},
+    )
+    await r.set(_k_autorecharge_v2_opt_out(brand_id), "1")
+    return await _v2_view(brand_id, r)
+
+
+@router.post("/{brand_id}/autorecharge/test-trigger")
+async def test_trigger_autorecharge_v2(
+    brand_id: str, r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Manually fire auto-recharge for testing / merchant validation."""
+    cfg = await _v2_get_settings(brand_id, r)
+    if cfg is None or not cfg.enabled or not cfg.payment_method_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "autorecharge_not_configured"},
+        )
+    balance = int(await r.get(_k_balance(brand_id)) or 0)
+    await r.delete(_k_autorecharge_v2_paused(brand_id))
+    await _v2_maybe_trigger(brand_id, -1, r)
+    new_balance = int(await r.get(_k_balance(brand_id)) or 0)
+    view = await _v2_view(brand_id, r)
+    return {
+        "ok": True,
+        "previous_balance_cents": balance,
+        "new_balance_cents": new_balance,
+        "settings": view.model_dump(),
+    }
 
 
 # ── GET /{brand_id}/transactions ─────────────────────────────────────────
