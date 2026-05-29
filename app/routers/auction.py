@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import time
 from typing import Any, Literal
 from uuid import uuid4
@@ -37,6 +38,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
+from app.pacing_controller import (
+    pacing_factor_for_auction as _pi_pacing_factor,
+    in_schedule_window as _pi_in_schedule_window,
+    record_spend as _pi_record_spend,
+    get_state as _pi_get_state,
+)
 from app.redis_client import get_redis
 from app.routers.audiences import campaign_audience_matches
 from datetime import datetime, timezone
@@ -116,6 +123,23 @@ FRAUD_REJECT_THRESHOLD = 70
 # Reserve price (slot floor) — admin-tunable, in cents.
 RESERVE_KEY = "auction:reserve:{slot}"
 VALID_RESERVE_SLOTS = ("main", "banner", "interstitial", "push", "geofence")
+
+# Cold-start QS learning phase — new campaigns get a decaying boost on rank
+# for their first LEARNING_PHASE_HOURS hours so a default qs=0.5 can compete
+# against incumbents with high earned QS.
+LEARNING_PHASE_HOURS = 24
+LEARNING_BOOST_MAX = 0.5  # 1 + 0.5 = 1.5× at t=0, decays linearly to 1.0
+
+# Diversity floor — fraction of trailing auctions each brand is guaranteed
+# to enter the top-3 for. Combats winner-take-all dynamics (cold-start
+# starvation) when one high-bid brand dominates ranking.
+DIVERSITY_WINDOW = 1000
+DIVERSITY_FLOOR_PCT = float(os.environ.get("AUCTION_DIVERSITY_FLOOR_PCT", "3"))
+DIVERSITY_TOP_K = 3
+DIVERSITY_ENTERED_KEY = "auction:diversity:entered:{brand_id}"
+DIVERSITY_WON_KEY = "auction:diversity:won:{brand_id}"
+DIVERSITY_TOTAL_KEY = "auction:diversity:total"
+DIVERSITY_TTL = 86400 * 7
 
 
 # ── Pydantic ─────────────────────────────────────────────────────────────
@@ -420,6 +444,130 @@ async def _get_reserve_cents(r: aioredis.Redis, slot: str) -> int:
         return 0
 
 
+# ── Cold-start learning boost ────────────────────────────────────────────
+
+
+def _learning_boost(campaign: dict[str, str], now: float | None = None) -> float:
+    """Multiplier on rank for campaigns in their learning phase.
+
+    Returns 1.0 once the campaign is past LEARNING_PHASE_HOURS, otherwise
+    linearly decays from (1 + LEARNING_BOOST_MAX) at t=0 to 1.0 at the
+    boundary. Lets a fresh campaign with default qs=0.5 outrank an
+    incumbent for its first day so QS can actually learn.
+    """
+    try:
+        created_at = float(campaign.get("created_at", 0) or 0)
+    except (TypeError, ValueError):
+        return 1.0
+    if created_at <= 0:
+        return 1.0
+    now = now if now is not None else _now()
+    hours_old = max(0.0, (now - created_at) / 3600.0)
+    if hours_old >= LEARNING_PHASE_HOURS:
+        return 1.0
+    remaining = 1.0 - (hours_old / LEARNING_PHASE_HOURS)
+    return 1.0 + remaining * LEARNING_BOOST_MAX
+
+
+# ── Diversity floor (sliding window) ─────────────────────────────────────
+
+
+async def _record_brand_auction_entered(
+    r: aioredis.Redis, brand_ids: set[str]
+) -> None:
+    """Bump the trailing-window entered counters for every brand that bid."""
+    if not brand_ids:
+        return
+    ts = _now()
+    pipe = r.pipeline()
+    for bid in brand_ids:
+        key = DIVERSITY_ENTERED_KEY.format(brand_id=bid)
+        pipe.zadd(key, {f"{ts}:{uuid4().hex[:8]}": ts})
+        pipe.zremrangebyrank(key, 0, -DIVERSITY_WINDOW - 1)
+        pipe.expire(key, DIVERSITY_TTL)
+    pipe.incr(DIVERSITY_TOTAL_KEY)
+    pipe.expire(DIVERSITY_TOTAL_KEY, DIVERSITY_TTL)
+    await pipe.execute()
+
+
+async def _record_brand_auction_won(r: aioredis.Redis, brand_id: str) -> None:
+    if not brand_id:
+        return
+    ts = _now()
+    key = DIVERSITY_WON_KEY.format(brand_id=brand_id)
+    pipe = r.pipeline()
+    pipe.zadd(key, {f"{ts}:{uuid4().hex[:8]}": ts})
+    pipe.zremrangebyrank(key, 0, -DIVERSITY_WINDOW - 1)
+    pipe.expire(key, DIVERSITY_TTL)
+    await pipe.execute()
+
+
+async def _brand_entered_count(r: aioredis.Redis, brand_id: str) -> int:
+    if not brand_id:
+        return 0
+    try:
+        return int(await r.zcard(DIVERSITY_ENTERED_KEY.format(brand_id=brand_id)))
+    except Exception:  # pragma: no cover
+        return 0
+
+
+async def _brand_won_count(r: aioredis.Redis, brand_id: str) -> int:
+    if not brand_id:
+        return 0
+    try:
+        return int(await r.zcard(DIVERSITY_WON_KEY.format(brand_id=brand_id)))
+    except Exception:  # pragma: no cover
+        return 0
+
+
+async def _trailing_total_auctions(r: aioredis.Redis) -> int:
+    try:
+        raw = await r.get(DIVERSITY_TOTAL_KEY)
+        return int(raw) if raw is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def _apply_diversity_floor(
+    ranked: list[tuple[float, int, float, float, dict[str, str]]],
+    starved_brand_ids: set[str],
+) -> list[tuple[float, int, float, float, dict[str, str]]]:
+    """Force candidates from starved brands into the top-K of the ranking.
+
+    Promotes the highest-ranked candidate of each starved brand into the
+    top-K slots, displacing the lowest-ranked incumbent in those slots.
+    Preserves the overall sort below the displaced cutoff. Idempotent —
+    starved brands already in the top-K are left alone.
+    """
+    if not starved_brand_ids or not ranked:
+        return ranked
+
+    top_k = min(DIVERSITY_TOP_K, len(ranked))
+    head = ranked[:top_k]
+    tail = ranked[top_k:]
+    head_brands = {row[4].get("brand_id", "") for row in head}
+
+    promotions: list[tuple[float, int, float, float, dict[str, str]]] = []
+    keep_tail: list[tuple[float, int, float, float, dict[str, str]]] = []
+    promoted_brands: set[str] = set()
+    for row in tail:
+        b = row[4].get("brand_id", "")
+        if b and b in starved_brand_ids and b not in head_brands and b not in promoted_brands:
+            promotions.append(row)
+            promoted_brands.add(b)
+        else:
+            keep_tail.append(row)
+
+    if not promotions:
+        return ranked
+
+    head_sorted = sorted(head, key=lambda x: -x[0])
+    keep_count = max(0, top_k - len(promotions))
+    new_head = head_sorted[:keep_count] + promotions
+    new_head.sort(key=lambda x: -x[0])
+    return new_head + keep_tail
+
+
 # ── Existing-customer exclusion (TikTok/Google/Facebook parity) ─────────
 #
 # Acquisition campaigns by default skip users already known to the
@@ -549,74 +697,29 @@ async def _record_existing_customer_skip(
         pass
 
 
-# ── Pacing (don't burn the daily budget at 9am) ──────────────────────────
+# ── Pacing (PI controller — see app.pacing_controller) ──────────────────
+#
+# The legacy hourly-bucket pacing was replaced by a Proportional-Integral
+# controller in ``app/pacing_controller.py``. The controller recomputes a
+# rank multiplier every 60s against a per-minute setpoint, so bursty
+# traffic can no longer over- or under-shoot the daily budget by the >96
+# percentage-point margins observed in sim. The PI factor is clamped to
+# [0.1, 2.0]; outside-schedule-window still returns 0.0 so the auction's
+# fast-path ``if pacing <= 0: continue`` keeps working unchanged.
 
 
-def _pacing_factor(
-    campaign: dict[str, str],
-    current_hour: int,
-    daily_spent_cents: int,
-) -> float:
-    """Return a multiplier in [0, 1] to apply to rank based on burn rate.
-
-    Returns ``0.0`` if the current hour is outside the campaign's local
-    schedule window. Otherwise compares actual spend fraction against the
-    expected fraction for the elapsed share of the active window:
-
-      * overshooting > 1.2× expected → 0.3 (deprioritize hard)
-      * undershooting < 0.5× expected → 1.0 (catch up)
-      * else                          → 0.8 (normal-cruise)
-
-    Wrap-around windows (e.g. 22→6) are supported.
-    """
-    sched = _safe_json_loads(campaign.get("schedule"), {})
-    hours = sched.get("hours_local") or [0, 24]
-    try:
-        h_start, h_end = int(hours[0]), int(hours[1])
-    except (TypeError, ValueError, IndexError):
-        h_start, h_end = 0, 24
-
-    # In-window check (handles wrap).
-    if h_start <= h_end:
-        if current_hour < h_start or current_hour >= h_end:
-            return 0.0
-        total_hours = max(1, h_end - h_start)
-        elapsed_hours = current_hour - h_start + 1
-    else:
-        # window wraps midnight
-        if not (current_hour >= h_start or current_hour < h_end):
-            return 0.0
-        total_hours = max(1, (24 - h_start) + h_end)
-        if current_hour >= h_start:
-            elapsed_hours = current_hour - h_start + 1
-        else:
-            elapsed_hours = (24 - h_start) + current_hour + 1
-
-    expected_spend_pct = elapsed_hours / total_hours
-
-    try:
-        daily_budget = int(campaign.get("daily_budget_cents", 0))
-    except (TypeError, ValueError):
-        daily_budget = 0
-
-    if daily_budget <= 0:
-        # No budget cap → no pacing pressure.
-        return 0.8
-
-    actual_spend_pct = daily_spent_cents / daily_budget if daily_budget else 0
-
-    if actual_spend_pct > expected_spend_pct * 1.2:
-        return 0.3
-    if actual_spend_pct < expected_spend_pct * 0.5:
-        return 1.0
-    return 0.8
-
-
-def _pacing_recommendation(expected_pct: float, actual_pct: float) -> str:
-    if actual_pct > expected_pct * 1.2:
-        return "overpacing — reduce bids or pause until daily window catches up"
-    if actual_pct < expected_pct * 0.5:
-        return "underpacing — increase bids or broaden targeting"
+def _pacing_recommendation(factor: float) -> str:
+    """Human-readable recommendation derived from the PI factor."""
+    if factor <= 0:
+        return "outside_schedule_window"
+    if factor < 0.5:
+        return "overpacing — PI braking hard, reduce bids or pause"
+    if factor < 0.9:
+        return "overpacing — PI lightly braking"
+    if factor > 1.5:
+        return "underpacing — PI throttling up, broaden targeting"
+    if factor > 1.1:
+        return "underpacing — PI lightly accelerating"
     return "on track"
 
 
@@ -959,19 +1062,36 @@ async def run_auction(
         if bid <= 0:
             continue
 
-        # Pacing factor — outside-window or schedule-mismatch returns 0.
-        daily_spent = await _read_daily_spend(r, cid)
-        pacing = _pacing_factor(c, current_hour, daily_spent)
+        # PI pacing factor — outside-window or schedule-mismatch returns 0.
+        # Replaces legacy hourly-bucket pacing; recomputes at most every 60s
+        # per campaign via app.pacing_controller.
+        pacing = await _pi_pacing_factor(r, c, current_hour)
         if pacing <= 0:
             continue
 
-        rank = bid * qs * pacing
+        boost = _learning_boost(c)
+        rank = bid * qs * pacing * boost
         ranked.append((rank, bid, qs, pacing, c))
 
     if not ranked:
         return AuctionResponse(no_eligible_campaigns=True, eligible_count=0)
 
     ranked.sort(key=lambda x: -x[0])
+
+    # ── Diversity bookkeeping + floor injection ─────────────────────────
+    entered_brands = {row[4].get("brand_id", "") for row in ranked if row[4].get("brand_id")}
+    await _record_brand_auction_entered(r, entered_brands)
+
+    total_auctions = await _trailing_total_auctions(r)
+    if total_auctions >= DIVERSITY_WINDOW and DIVERSITY_FLOOR_PCT > 0:
+        floor_count = max(1, int(DIVERSITY_WINDOW * DIVERSITY_FLOOR_PCT / 100.0))
+        starved: set[str] = set()
+        for bid_brand in entered_brands:
+            won = await _brand_won_count(r, bid_brand)
+            if won < floor_count:
+                starved.add(bid_brand)
+        if starved:
+            ranked = _apply_diversity_floor(ranked, starved)
 
     # ── Reserve price gate (per-slot floor) ─────────────────────────────
     reserve_cents = await _get_reserve_cents(r, body.slot)
@@ -1118,6 +1238,38 @@ async def run_auction(
     # ── Bookkeeping: impression count + QS update ───────────────────────
     await r.hincrby(_sk(winner_cid), "impressions", 1)
     await adjust_quality_score(r, winner_cid, impression=True)
+    await _record_brand_auction_won(r, winner_brand_id)
+
+    # ── Touchpoint log for cross-brand multi-touch attribution ──────────
+    # P2 fix: same conversion needs to credit every brand the user touched
+    # in the lookback window. Best-effort -- never blocks the auction.
+    if body.user_id:
+        try:
+            from app.routers.attribution import log_touchpoint as _log_tp
+            await _log_tp(
+                r,
+                user_id=body.user_id,
+                touchpoint_id=impression_token,
+                timestamp=_now(),
+                campaign_id=winner_cid,
+                brand_id=winner_brand_id,
+            )
+        except Exception as _tp_exc:  # pragma: no cover
+            logger.debug("touchpoint log failed: %s", _tp_exc)
+
+    # Death-spiral tracking (P1 fix): record every eligible candidate's
+    # participation so the low-perf sweep can compute win_rate accurately.
+    try:
+        from app.routers.campaigns import record_auction_participation
+        for _rk, _b, _q, _p, _cand in ranked:
+            cand_cid = _cand.get("campaign_id", "")
+            if not cand_cid:
+                continue
+            await record_auction_participation(
+                r, cand_cid, won=(cand_cid == winner_cid)
+            )
+    except Exception:  # noqa: BLE001 — never break auction on bookkeeping
+        logger.exception("record_auction_participation failed")
 
     # Multi-dim reporting fan-out (best-effort, never breaks auction).
     try:
@@ -1219,6 +1371,13 @@ async def _settle_charge(
             campaign_id=campaign_id,
         )
         daily, total, new_status = await record_spend(r, campaign_id, cents)
+        # PI controller: feed the charge into the per-campaign sliding
+        # window so the next factor recompute (≤60s away) reflects it.
+        # Best-effort — never block settlement on a pacing telemetry hiccup.
+        try:
+            await _pi_record_spend(r, campaign_id, cents)
+        except Exception as exc:  # pragma: no cover
+            logger.debug("pacing PI record_spend failed: %s", exc)
         await r.hset(
             imp_key,
             mapping={
@@ -1733,7 +1892,13 @@ async def admin_pacing(
     campaign_id: str,
     r: aioredis.Redis = Depends(get_redis),
 ) -> dict[str, Any]:
-    """Inspect pacing for a single campaign: expected vs actual + factor."""
+    """Inspect PI pacing state for a single campaign.
+
+    Surfaces the schedule-window check plus the live PI controller state
+    (setpoint / actual / cumulative error / current factor). The factor
+    drives both rank multiplication and probabilistic skipping in the
+    auction; values below 1.0 mean the controller is braking.
+    """
     c = await r.hgetall(_ck(campaign_id))
     if not c:
         raise HTTPException(status_code=404, detail="campaign not found")
@@ -1746,57 +1911,59 @@ async def admin_pacing(
         h_start, h_end = 0, 24
 
     current_hour = time.localtime(_now()).tm_hour
-
-    # Same in-window math as _pacing_factor.
-    in_window = True
-    if h_start <= h_end:
-        if current_hour < h_start or current_hour >= h_end:
-            in_window = False
-            total_hours = max(1, h_end - h_start)
-            elapsed_hours = 0
-        else:
-            total_hours = max(1, h_end - h_start)
-            elapsed_hours = current_hour - h_start + 1
-    else:
-        if not (current_hour >= h_start or current_hour < h_end):
-            in_window = False
-            total_hours = max(1, (24 - h_start) + h_end)
-            elapsed_hours = 0
-        else:
-            total_hours = max(1, (24 - h_start) + h_end)
-            if current_hour >= h_start:
-                elapsed_hours = current_hour - h_start + 1
-            else:
-                elapsed_hours = (24 - h_start) + current_hour + 1
-
-    expected_pct = elapsed_hours / total_hours if total_hours else 0.0
+    in_window = _pi_in_schedule_window(c.get("schedule"), current_hour)
 
     try:
         daily_budget = int(c.get("daily_budget_cents", 0))
     except (TypeError, ValueError):
         daily_budget = 0
     daily_spent = await _read_daily_spend(r, campaign_id)
-    actual_pct = (daily_spent / daily_budget) if daily_budget > 0 else 0.0
 
-    factor = _pacing_factor(c, current_hour, daily_spent)
-    recommendation = (
-        "outside_schedule_window"
-        if not in_window
-        else _pacing_recommendation(expected_pct, actual_pct)
+    # Apply PI within-window; outside window the auction skips the
+    # campaign entirely so we surface factor=0 + a clear recommendation.
+    factor = (
+        await _pi_pacing_factor(r, c, current_hour)
+        if in_window
+        else 0.0
     )
+    recommendation = _pacing_recommendation(factor)
 
     return {
         "campaign_id": campaign_id,
         "current_hour_local": current_hour,
         "window": {"start": h_start, "end": h_end},
         "in_window": in_window,
-        "expected_pct": round(expected_pct, 4),
-        "actual_pct": round(actual_pct, 4),
         "daily_budget_cents": daily_budget,
         "daily_spent_cents": daily_spent,
         "pacing_factor": factor,
         "recommendation": recommendation,
     }
+
+
+@router.get("/admin/pacing/{campaign_id}/pi-state")
+async def admin_pacing_pi_state(
+    campaign_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return the full PI controller state for ops debugging.
+
+    Reads (no recompute, no side effects) every Redis key the controller
+    writes for this campaign — useful when investigating why a particular
+    campaign is being throttled or starved by pacing.
+    """
+    c = await r.hgetall(_ck(campaign_id))
+    if not c:
+        raise HTTPException(status_code=404, detail="campaign not found")
+    try:
+        daily_budget = int(c.get("daily_budget_cents", 0))
+    except (TypeError, ValueError):
+        daily_budget = 0
+    state = await _pi_get_state(r, campaign_id, daily_budget)
+    state.update({
+        "campaign_id": campaign_id,
+        "daily_budget_cents": daily_budget,
+    })
+    return state
 
 
 # ── Admin: explain auction (dry-run) ─────────────────────────────────────
@@ -1927,8 +2094,7 @@ async def admin_explain(
             rows.append(row)
             continue
 
-        daily_spent = await _read_daily_spend(r, cid)
-        pacing = _pacing_factor(c, current_hour, daily_spent)
+        pacing = await _pi_pacing_factor(r, c, current_hour)
         if pacing <= 0:
             row["dropped"] = "outside_schedule_window"
             row["pacing"] = pacing
@@ -2067,4 +2233,38 @@ async def admin_savings(
         "existing_customers_skipped": skipped,
         "average_cpa_cents": avg_cpa_cents,
         "estimated_savings_cents": skipped * avg_cpa_cents,
+    }
+
+
+# ── Diversity report (trailing-window per-brand share) ───────────────────
+
+
+@router.get("/diversity-report/{brand_id}")
+async def diversity_report(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Trailing-window share metrics for a brand.
+
+    Surfaces auction-entered / auction-won counts and the share of the
+    last ``DIVERSITY_WINDOW`` (=1000) platform auctions, along with the
+    current floor threshold. Used by ops to verify diversity-floor
+    behaviour and by brand portals to display competitive position.
+    """
+    entered = await _brand_entered_count(r, brand_id)
+    won = await _brand_won_count(r, brand_id)
+    total = await _trailing_total_auctions(r)
+    trailing = min(total, DIVERSITY_WINDOW)
+    floor_count = max(1, int(DIVERSITY_WINDOW * DIVERSITY_FLOOR_PCT / 100.0))
+    won_share = (won / trailing) if trailing > 0 else 0.0
+    return {
+        "brand_id": brand_id,
+        "window_size": DIVERSITY_WINDOW,
+        "trailing_total_auctions": trailing,
+        "entered": entered,
+        "won": won,
+        "won_share": round(won_share, 4),
+        "floor_pct": DIVERSITY_FLOOR_PCT,
+        "floor_count": floor_count,
+        "below_floor": won < floor_count and trailing >= DIVERSITY_WINDOW,
     }

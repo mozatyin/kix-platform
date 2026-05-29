@@ -174,6 +174,8 @@ COUNTER_METRICS: tuple[str, ...] = (
     "new_users",
     "returning_users",
     "store_visits",
+    "attributed_value_cents",
+    "attributed_conversions",
 )
 
 # Composite metrics (post-aggregation).
@@ -1544,6 +1546,37 @@ async def record_conversion(
     )
     if user_id:
         await mark_cohort_touch(r, brand_id, user_id)
+
+
+async def record_attributed_value(
+    r: aioredis.Redis,
+    *,
+    brand_id: str,
+    campaign_id: str | None,
+    source_brand: str | None,
+    user_id: str | None,
+    attributed_value_cents: float,
+    weight: float,
+) -> None:
+    """Multi-touch attributed value -- separate from record_conversion.
+
+    Rounded to int cents for the cube (cumulative drift is sub-cent).
+    """
+    val_int = int(max(0, round(attributed_value_cents)))
+    deltas: dict[str, int] = {"attributed_conversions": 1}
+    if val_int > 0:
+        deltas["attributed_value_cents"] = val_int
+    await write_event(
+        r,
+        brand_id=brand_id,
+        dim_values={
+            "campaign_id": campaign_id,
+            "source_brand": source_brand,
+        },
+        metric_deltas=deltas,
+        user_id=user_id,
+        device_fingerprint=None,
+    )
 
 
 async def record_engagement(

@@ -3090,3 +3090,377 @@ async def backfill_journey_zset(
         next_cursor=0,
         done=True,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Cross-Brand Multi-Touch Conversion (P2 fix)
+# ═══════════════════════════════════════════════════════════════════════════
+
+ATTRIBUTED_FIXED_POINT_SCALE = 1000  # 1 unit = 0.001 cent
+CROSS_BRAND_DEFAULT_LOOKBACK_DAYS = 7
+TOUCHPOINT_LOG_MAX_ENTRIES = 100
+TOUCHPOINT_LOG_MAX_AGE_SECONDS = 30 * 86400
+
+
+class CrossBrandConversionRequest(BaseModel):
+    user_id: str = Field(min_length=1)
+    brand_id_converted_at: str = Field(min_length=1)
+    conversion_ts: float | None = None
+    conversion_value_cents: int = Field(ge=0)
+    order_id: str | None = None
+    model: Literal[
+        "linear", "time_decay", "position_based",
+        "first_touch", "last_touch",
+    ] = "linear"
+    lookback_days: int = Field(
+        default=CROSS_BRAND_DEFAULT_LOOKBACK_DAYS, ge=1, le=365,
+    )
+
+
+class CampaignCredit(BaseModel):
+    campaign_id: str | None = None
+    source_brand: str | None = None
+    touchpoint_id: str
+    stage: str
+    weight: float
+    credited_value_cents: float
+    timestamp: float
+
+
+class CrossBrandConversionResponse(BaseModel):
+    attributed: bool
+    user_id: str
+    brand_id_converted_at: str
+    conversion_ts: float
+    conversion_value_cents: int
+    model: str
+    lookback_days: int
+    touchpoint_count: int
+    credits: list[CampaignCredit]
+
+
+def _compute_position_based_weights(n: int) -> list[float]:
+    if n <= 0:
+        return []
+    if n == 1:
+        return [1.0]
+    if n == 2:
+        return [0.5, 0.5]
+    middle = n - 2
+    return [0.4] + [0.2 / middle] * middle + [0.4]
+
+
+def compute_cross_brand_weights(
+    touchpoints: list[dict[str, Any]],
+    model: str,
+    *,
+    conversion_ts: float,
+) -> list[float]:
+    """Pure weight function. Chronological input (first -> last)."""
+    n = len(touchpoints)
+    if n == 0:
+        return []
+    if model == "last_touch":
+        return [0.0] * (n - 1) + [1.0]
+    if model == "first_touch":
+        return [1.0] + [0.0] * (n - 1)
+    if model == "linear":
+        return [1.0 / n] * n
+    if model == "position_based":
+        return _compute_position_based_weights(n)
+    if model == "time_decay":
+        raw: list[float] = []
+        for t in touchpoints:
+            try:
+                ts = float(t.get("timestamp", conversion_ts) or conversion_ts)
+            except (TypeError, ValueError):
+                ts = conversion_ts
+            delta_hours = max(0.0, (conversion_ts - ts) / 3600.0)
+            raw.append(math.exp(-delta_hours / 168.0))
+        s = sum(raw) or 1.0
+        return [w / s for w in raw]
+    return [1.0 / n] * n
+
+
+async def _read_cross_brand_touchpoints(
+    r: aioredis.Redis,
+    user_id: str,
+    *,
+    conversion_ts: float,
+    lookback_seconds: int,
+) -> list[dict[str, Any]]:
+    """Read every attributable touchpoint for this user in the window."""
+    window_start = conversion_ts - lookback_seconds
+    zkey = f"user:{user_id}:attr_journey_z"
+    ids = await r.zrevrangebyscore(
+        zkey, max=conversion_ts, min=window_start, start=0, num=500,
+    )
+    if not ids:
+        legacy = await r.lrange(f"user:{user_id}:attr_journey", 0, 499)
+        ids = list(legacy) if legacy else []
+
+    touchpoints: list[dict[str, Any]] = []
+    for eid in ids:
+        e = await r.hgetall(f"attr:{eid}")
+        if not e:
+            continue
+        try:
+            ts = float(e.get("timestamp", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if ts < window_start or ts > conversion_ts:
+            continue
+        stage = e.get("stage") or ""
+        if stage not in ATTRIBUTABLE_STAGES:
+            continue
+        meta_raw = e.get("meta") or "{}"
+        try:
+            meta = json.loads(meta_raw)
+            if not isinstance(meta, dict):
+                meta = {}
+        except json.JSONDecodeError:
+            meta = {}
+        touchpoints.append({
+            "event_id": eid,
+            "stage": stage,
+            "timestamp": ts,
+            "source_brand": e.get("source_brand") or "",
+            "target_brand": e.get("target_brand") or "",
+            "campaign_id": meta.get("campaign_id"),
+            "meta": meta,
+        })
+    return touchpoints
+
+
+@router.post(
+    "/conversion",
+    response_model=CrossBrandConversionResponse,
+)
+async def cross_brand_conversion(
+    req: CrossBrandConversionRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Multi-touch attribution across ALL brands the user touched.
+
+    Reads every impression/click/install/visit logged for this user
+    in the lookback window, applies the chosen attribution model, and
+    credits each touchpoint's campaign with its fractional share of
+    the conversion value. Coexists with /track/conversion (last-touch).
+    """
+    await _enforce_consent(req.user_id, r, endpoint="cross_brand_conversion")
+
+    conversion_ts = (
+        req.conversion_ts
+        if req.conversion_ts and req.conversion_ts > 0
+        else _now()
+    )
+    lookback_seconds = req.lookback_days * 86400
+
+    touchpoints = await _read_cross_brand_touchpoints(
+        r,
+        req.user_id,
+        conversion_ts=conversion_ts,
+        lookback_seconds=lookback_seconds,
+    )
+    touchpoints.reverse()  # chronological first -> last
+
+    if not touchpoints:
+        return CrossBrandConversionResponse(
+            attributed=False,
+            user_id=req.user_id,
+            brand_id_converted_at=req.brand_id_converted_at,
+            conversion_ts=conversion_ts,
+            conversion_value_cents=req.conversion_value_cents,
+            model=req.model,
+            lookback_days=req.lookback_days,
+            touchpoint_count=0,
+            credits=[],
+        )
+
+    weights = compute_cross_brand_weights(
+        touchpoints, req.model, conversion_ts=conversion_ts,
+    )
+
+    credits_out: list[CampaignCredit] = []
+    persisted_credits: list[dict[str, Any]] = []
+    pipe = r.pipeline(transaction=True)
+    for tp, w in zip(touchpoints, weights):
+        if w <= 0:
+            continue
+        share = req.conversion_value_cents * w
+        cid = tp.get("campaign_id")
+        fixed_units = int(round(share * ATTRIBUTED_FIXED_POINT_SCALE))
+        credit = CampaignCredit(
+            campaign_id=cid,
+            source_brand=tp.get("source_brand") or None,
+            touchpoint_id=tp.get("event_id", ""),
+            stage=tp.get("stage", ""),
+            weight=round(float(w), 6),
+            credited_value_cents=round(share, 4),
+            timestamp=float(tp.get("timestamp", 0) or 0),
+        )
+        credits_out.append(credit)
+        persisted_credits.append({
+            "campaign_id": cid,
+            "source_brand": credit.source_brand,
+            "touchpoint_id": credit.touchpoint_id,
+            "stage": credit.stage,
+            "weight": credit.weight,
+            "credited_value_cents": credit.credited_value_cents,
+            "timestamp": credit.timestamp,
+        })
+        if cid:
+            pipe.hincrby(
+                f"campaign:{cid}:attributed_value_cents",
+                "fixed_point_units",
+                fixed_units,
+            )
+            pipe.hincrbyfloat(
+                f"campaign:{cid}:attributed_conversions",
+                "count",
+                float(w),
+            )
+
+    record_payload = json.dumps({
+        "model": req.model,
+        "lookback_days": req.lookback_days,
+        "conversion_value_cents": req.conversion_value_cents,
+        "brand_id_converted_at": req.brand_id_converted_at,
+        "order_id": req.order_id,
+        "credits": persisted_credits,
+    }, separators=(",", ":"))
+    converted_key = (
+        f"attribution:user:{req.user_id}:converted:{conversion_ts:.6f}"
+    )
+    pipe.set(converted_key, record_payload, ex=EVENT_TTL_SECONDS)
+    pipe.zadd(
+        f"attribution:user:{req.user_id}:converted",
+        {f"{conversion_ts:.6f}": conversion_ts},
+    )
+    pipe.expire(
+        f"attribution:user:{req.user_id}:converted", EVENT_TTL_SECONDS,
+    )
+    await pipe.execute()
+
+    try:
+        from app.routers.reporting import record_attributed_value as _rep_attr
+        for c in credits_out:
+            if not c.campaign_id:
+                continue
+            await _rep_attr(
+                r,
+                brand_id=req.brand_id_converted_at,
+                campaign_id=c.campaign_id,
+                source_brand=c.source_brand,
+                user_id=req.user_id,
+                attributed_value_cents=c.credited_value_cents,
+                weight=c.weight,
+            )
+    except Exception as exc:  # pragma: no cover
+        logger.debug("reporting fan-out (attributed value) failed: %s", exc)
+
+    return CrossBrandConversionResponse(
+        attributed=True,
+        user_id=req.user_id,
+        brand_id_converted_at=req.brand_id_converted_at,
+        conversion_ts=conversion_ts,
+        conversion_value_cents=req.conversion_value_cents,
+        model=req.model,
+        lookback_days=req.lookback_days,
+        touchpoint_count=len(touchpoints),
+        credits=credits_out,
+    )
+
+
+async def log_touchpoint(
+    r: aioredis.Redis,
+    *,
+    user_id: str,
+    touchpoint_id: str,
+    timestamp: float | None = None,
+    campaign_id: str | None = None,
+    brand_id: str | None = None,
+) -> None:
+    """Log an auction-win impression into the per-user touchpoint ZSET.
+
+    Capped to last 30 days (score-bounded) and 100 entries (rank-bounded).
+    Best-effort -- never raises so the auction path stays safe.
+    """
+    if not user_id or not touchpoint_id:
+        return
+    ts = timestamp if timestamp and timestamp > 0 else _now()
+    cutoff = ts - TOUCHPOINT_LOG_MAX_AGE_SECONDS
+    key = f"attribution:user:{user_id}:touchpoints"
+    member = json.dumps({
+        "id": touchpoint_id,
+        "campaign_id": campaign_id or "",
+        "brand_id": brand_id or "",
+        "ts": ts,
+    }, separators=(",", ":"))
+    try:
+        pipe = r.pipeline(transaction=True)
+        pipe.zadd(key, {member: ts})
+        pipe.zremrangebyscore(key, "-inf", cutoff)
+        pipe.zremrangebyrank(key, 0, -(TOUCHPOINT_LOG_MAX_ENTRIES + 1))
+        pipe.expire(key, TOUCHPOINT_LOG_MAX_AGE_SECONDS + 86400)
+        await pipe.execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("log_touchpoint failed uid=%s err=%s", user_id, exc)
+
+
+@router.get("/user/{user_id}/touchpoints")
+async def get_user_touchpoints(
+    user_id: str,
+    limit: int = Query(default=100, ge=1, le=100),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Return the cross-brand touchpoint log for a user (newest first)."""
+    raw = await r.zrevrange(
+        f"attribution:user:{user_id}:touchpoints",
+        0,
+        limit - 1,
+        withscores=True,
+    )
+    entries: list[dict[str, Any]] = []
+    for member, score in raw or []:
+        try:
+            payload = json.loads(member)
+            if not isinstance(payload, dict):
+                continue
+        except (json.JSONDecodeError, TypeError):
+            continue
+        payload["score"] = float(score)
+        entries.append(payload)
+    return {
+        "user_id": user_id,
+        "count": len(entries),
+        "touchpoints": entries,
+    }
+
+
+@router.get("/campaign/{campaign_id}/attributed")
+async def campaign_attributed(
+    campaign_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Cumulative attributed-value report for a campaign."""
+    fixed_raw = await r.hget(
+        f"campaign:{campaign_id}:attributed_value_cents", "fixed_point_units",
+    )
+    count_raw = await r.hget(
+        f"campaign:{campaign_id}:attributed_conversions", "count",
+    )
+    try:
+        fixed = int(fixed_raw) if fixed_raw else 0
+    except (TypeError, ValueError):
+        fixed = 0
+    try:
+        count = float(count_raw) if count_raw else 0.0
+    except (TypeError, ValueError):
+        count = 0.0
+    return {
+        "campaign_id": campaign_id,
+        "attributed_value_cents": fixed / ATTRIBUTED_FIXED_POINT_SCALE,
+        "attributed_value_fixed_point_units": fixed,
+        "attributed_conversions": round(count, 6),
+    }
