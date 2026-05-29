@@ -698,14 +698,16 @@ Round 11 商家漏斗:     预计降 ~5 P0 (验证中)
 - [x] ~~Sim probe wave 3（6 sim 接 R10 端点）~~ ✅ +21 pass / -1 P0
 - [ ] 短信 OTP 网关接入（外部，需选 Twilio / 阿里云短信）
 
-### R11 已完成清单（4/5 P0 闭合）
+### R11 已完成清单（5/5 P0 全部闭合 ✨）
 | # | 模块 | 状态 |
 |---|------|------|
 | 1 | Brand subscription tier（4 级 + 3 个月试用）| ✅ |
 | 2 | Payment method on-file（PCI-safe + 防卡复用）| ✅ |
 | 3 | Today dashboard + Welcome kit（多巴胺 + 实体物料）| ✅ |
-| 4 | Quota 接入 4 个创建端点 | 🟡 跑中 |
+| 4 | Quota 接入 4 个创建端点（campaigns/recipes/audiences/creative-gen）| ✅ |
 | 5 | Self-serve upgrade flow（upgrade/downgrade）| ✅ |
+
+**Quota smoke test 验证**：FREE tier 限制 1 game / 2 campaigns / 3 audiences / 5 recipes，超过返回 402 + 升级提示。
 
 ## 7.3 待办 (Round 12+)
 
