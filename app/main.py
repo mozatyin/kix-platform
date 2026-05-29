@@ -64,6 +64,22 @@ KiX = TikTok Ads for Gamification.
 - **Identity (KiX ID)**: Universal user identity + OAuth Connect
 - **Push Engine**: Right-time/place/user delivery
 - **Master Account**: Multi-store hierarchy + RBAC
+
+## API Standards (5 invariants)
+
+Every public endpoint in this API obeys 5 invariants. Full spec lives in
+[`API_STANDARDS.md`](https://github.com/mozat/kix-platform/blob/main/API_STANDARDS.md)
+and the shim helpers in `app.api_standards`.
+
+1. **ID format** — `<prefix>_<22-char-hex>` (e.g. `cmp_8f3a1c…`,
+   `kid_2b71e0…`). Stable prefixes: `acct_ user_ kid_ ent_ lst_ ofr_ med_
+   cmp_ adg_ bdg_ qst_ vid_ res_ led_ inc_ tx_ sub_ pm_ dpt_ prt_ crv_`.
+2. **Timestamps** — Unix integer seconds, UTC. All `*_at` fields are `int`.
+3. **Error envelope** — `{"detail": {"error": "<code>", "message": "...",
+   ...context}}`. Pattern-match on `error`, not the message string.
+4. **List responses** — `{items, count, total, has_more, limit, offset}`.
+5. **HTTP method semantics** — `POST` 201 (create) / 200 (action), `PUT`
+   200, `PATCH` 200, `DELETE` 204, `GET` 200.
 """,
         version="5.0.0",
         contact={

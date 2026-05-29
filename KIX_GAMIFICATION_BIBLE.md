@@ -751,6 +751,7 @@ Round 11 商家漏斗:     预计降 ~5 P0 (验证中)
 ### 工程层
 - [`README.md`](README.md) — 启动指南
 - [`ENGINEERING.md`](ENGINEERING.md) — 工程移交
+- [`API_STANDARDS.md`](API_STANDARDS.md) — 公共 API 5 条不变量（ID / 时间 / 错误 / 列表 / HTTP）
 - [`BUILD_HISTORY.md`](BUILD_HISTORY.md) — 构建历史
 - [`BUILD_PROCESS.md`](BUILD_PROCESS.md) — 构建方法论
 - [`GAMIFICATION_AUDIT.md`](GAMIFICATION_AUDIT.md) — 全球 100 案例
@@ -798,6 +799,9 @@ Round 11 商家漏斗:     预计降 ~5 P0 (验证中)
 
 完整 OpenAPI 文档：`/docs`（Swagger UI）/ `/redoc`（ReDoc）
 公开 API 参考：`/api-docs`
+**API 公共契约：[`API_STANDARDS.md`](API_STANDARDS.md)** — 5 条不变量
+（ID 格式 / 时间戳 / 错误信封 / 列表响应 / HTTP 方法语义），所有公开端点遵守，
+shim helpers 在 `app/api_standards.py`。
 
 关键端点：
 - 注册：`POST /brands/register`

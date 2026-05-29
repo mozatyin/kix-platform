@@ -30,8 +30,10 @@ cross_brand_tracking`` so the SDK can drive the grant UX and retry.
 Key schema
 ----------
     attr:{event_id}                    HASH   — the event record
-    user:{user_id}:attr_journey        LIST   — chronological event_ids
-    device:{fp}:attr_journey           LIST   — anonymous journey
+    user:{user_id}:attr_journey        LIST   — chronological event_ids (legacy)
+    user:{user_id}:attr_journey_z      ZSET   — score=ts, member=event_id (O(log N) lookup)
+    device:{fp}:attr_journey           LIST   — anonymous journey (legacy)
+    device:{fp}:attr_journey_z         ZSET   — score=ts, member=event_id (O(log N) lookup)
     brand:{bid}:attr_incoming          ZSET   — score=ts, member=event_id
     brand:{bid}:attr_outgoing          ZSET   — score=ts, member=event_id
     invite_token:{token}               HASH   — token metadata (+EXPIRE)
@@ -479,14 +481,25 @@ async def _persist_event(
     pipe.expire(f"attr:{event_id}", EVENT_TTL_SECONDS)
 
     if user_id:
+        # Legacy LIST (kept during migration so existing readers don't break)
         pipe.lpush(f"user:{user_id}:attr_journey", event_id)
         pipe.ltrim(f"user:{user_id}:attr_journey", 0, JOURNEY_MAX_LEN - 1)
         pipe.expire(f"user:{user_id}:attr_journey", EVENT_TTL_SECONDS)
+        # New ZSET — O(log N) lookups via ZREVRANGEBYSCORE. Score = timestamp
+        # so the same key trims-by-rank (cap) and trims-by-score (window).
+        zkey = f"user:{user_id}:attr_journey_z"
+        pipe.zadd(zkey, {event_id: ts})
+        pipe.zremrangebyrank(zkey, 0, -(JOURNEY_MAX_LEN + 1))
+        pipe.expire(zkey, EVENT_TTL_SECONDS)
 
     if device_fingerprint:
         pipe.lpush(f"device:{device_fingerprint}:attr_journey", event_id)
         pipe.ltrim(f"device:{device_fingerprint}:attr_journey", 0, JOURNEY_MAX_LEN - 1)
         pipe.expire(f"device:{device_fingerprint}:attr_journey", EVENT_TTL_SECONDS)
+        zkey = f"device:{device_fingerprint}:attr_journey_z"
+        pipe.zadd(zkey, {event_id: ts})
+        pipe.zremrangebyrank(zkey, 0, -(JOURNEY_MAX_LEN + 1))
+        pipe.expire(zkey, EVENT_TTL_SECONDS)
 
     if target_brand:
         pipe.zadd(f"brand:{target_brand}:attr_incoming", {event_id: ts})
@@ -572,6 +585,40 @@ async def _resolve_effective_window(
     return ATTRIBUTION_WINDOW_SECONDS
 
 
+async def _read_journey_recent(
+    r: aioredis.Redis,
+    subject_key: str,
+    *,
+    limit: int,
+    min_score: float | None = None,
+) -> list[str]:
+    """Return event_ids newest-first for a journey subject.
+
+    Strategy:
+      1. Prefer the ZSET ``{subject_key}_z`` — O(log N + M) via ZREVRANGEBYSCORE.
+         When ``min_score`` is given, only events with score >= min_score are
+         returned (range query); otherwise the most recent ``limit`` entries.
+      2. Fall back to the legacy LIST ``{subject_key}`` (LRANGE 0..limit-1)
+         when the ZSET is empty / absent — covers the lazy-migration window.
+
+    ``subject_key`` is the LIST key (e.g. ``user:alice:attr_journey``); the
+    ZSET key is derived by appending ``_z``.
+    """
+    zkey = f"{subject_key}_z"
+    if min_score is not None:
+        ids = await r.zrevrangebyscore(
+            zkey, max="+inf", min=min_score, start=0, num=limit,
+        )
+    else:
+        ids = await r.zrevrange(zkey, 0, limit - 1)
+    if ids:
+        return list(ids)
+    # Fall back to legacy LIST (lazy migration: backfill endpoint copies
+    # LIST → ZSET, but until that runs the LIST is the source of truth).
+    legacy = await r.lrange(subject_key, 0, limit - 1)
+    return list(legacy) if legacy else []
+
+
 async def find_attribution(
     r: aioredis.Redis,
     user_id: str,
@@ -588,6 +635,7 @@ async def find_attribution(
     """
     window_seconds = _clamp_window(window_seconds)
     now = _now()
+    window_start = now - window_seconds
     journeys: list[str] = []
     if user_id:
         journeys.append(f"user:{user_id}:attr_journey")
@@ -596,7 +644,11 @@ async def find_attribution(
 
     seen: set[str] = set()
     for jkey in journeys:
-        event_ids = await r.lrange(jkey, 0, 200)
+        # O(log N + M) via ZREVRANGEBYSCORE; falls back to legacy LIST when
+        # the ZSET hasn't been backfilled yet for this subject.
+        event_ids = await _read_journey_recent(
+            r, jkey, limit=200, min_score=window_start,
+        )
         for event_id in event_ids:
             if event_id in seen:
                 continue
@@ -609,7 +661,9 @@ async def find_attribution(
             except ValueError:
                 continue
             if now - ts > window_seconds:
-                # journey is reverse-chrono; everything after is older
+                # Legacy LIST path is reverse-chrono; everything after is
+                # older. (ZSET path is already score-bounded, so this is a
+                # cheap no-op for the modern path.)
                 break
             if event.get("stage") not in ATTRIBUTABLE_STAGES:
                 continue
@@ -1133,7 +1187,9 @@ async def user_journey(
     r: aioredis.Redis = Depends(get_redis),
 ):
     """Reverse-chronological journey for a user, optionally filtered to one brand."""
-    event_ids = await r.lrange(f"user:{user_id}:attr_journey", 0, limit - 1)
+    event_ids = await _read_journey_recent(
+        r, f"user:{user_id}:attr_journey", limit=limit,
+    )
     entries: list[JourneyEntry] = []
     for eid in event_ids:
         raw = await r.hgetall(f"attr:{eid}")
@@ -1469,7 +1525,12 @@ async def attribute_multitouch(
     if window_seconds is not None:
         window = window_seconds
     window = _clamp_window(window)
-    journey = await r.lrange(f"user:{user_id}:attr_journey", 0, 200)
+    journey = await _read_journey_recent(
+        r,
+        f"user:{user_id}:attr_journey",
+        limit=200,
+        min_score=_now() - window,
+    )
     touchpoints: list[dict[str, Any]] = []
     now = _now()
 
@@ -2128,7 +2189,13 @@ async def _user_active_days(
 ) -> list[float]:
     """Return timestamps of attribution events for (user, brand) in window."""
     # Pull journey then filter; cheaper than per-event hgetall for huge users.
-    journey = await r.lrange(f"user:{user_id}:attr_journey", 0, JOURNEY_MAX_LEN - 1)
+    # ZSET-preferred (O(log N + M)); falls back to legacy LIST.
+    journey = await _read_journey_recent(
+        r,
+        f"user:{user_id}:attr_journey",
+        limit=JOURNEY_MAX_LEN,
+        min_score=from_ts,
+    )
     out: list[float] = []
     for eid in journey:
         e = await r.hgetall(f"attr:{eid}")
@@ -2358,7 +2425,9 @@ async def brand_user_recency(
     for uid in user_ids:
         # Fast path: most recent journey event timestamp for this brand.
         last_ts: float | None = None
-        journey = await r.lrange(f"user:{uid}:attr_journey", 0, 50)
+        journey = await _read_journey_recent(
+            r, f"user:{uid}:attr_journey", limit=50,
+        )
         for eid in journey:
             e = await r.hgetall(f"attr:{eid}")
             if not e:
@@ -2624,6 +2693,11 @@ async def track_conversion_co(
         pipe.lpush(f"user:{entry.user_id}:attr_journey", event_id)
         pipe.ltrim(f"user:{entry.user_id}:attr_journey", 0, JOURNEY_MAX_LEN - 1)
         pipe.expire(f"user:{entry.user_id}:attr_journey", EVENT_TTL_SECONDS)
+        # ZSET mirror for O(log N) lookups.
+        zkey = f"user:{entry.user_id}:attr_journey_z"
+        pipe.zadd(zkey, {event_id: ts})
+        pipe.zremrangebyrank(zkey, 0, -(JOURNEY_MAX_LEN + 1))
+        pipe.expire(zkey, EVENT_TTL_SECONDS)
 
     # Target-brand commission accounting.
     pipe.hincrby("kix:commission_collected", "cents", total_kix)
@@ -2720,8 +2794,10 @@ async def account_journey(
         member_count = len(members)
         per_user_limit = max(20, limit // max(1, member_count or 1))
         for m in members:
-            uid_events = await r.lrange(
-                f"user:{m.user_id}:attr_journey", 0, per_user_limit - 1,
+            uid_events = await _read_journey_recent(
+                r,
+                f"user:{m.user_id}:attr_journey",
+                limit=per_user_limit,
             )
             for eid in uid_events:
                 if eid in seen:
@@ -2771,4 +2847,178 @@ async def account_journey(
         total_gmv_cents=total_gmv,
         member_count=member_count,
         entries=entries,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Admin — ZSET backfill (LIST → ZSET migration)
+#
+# The journey storage migrated from LIST (O(N) LRANGE) to ZSET (O(log N)
+# ZRANGEBYSCORE). New writes hit both. This endpoint lazy-migrates existing
+# LIST keys by reading each event's stored timestamp and ZADD'ing under the
+# parallel ``_z`` key. Safe to re-run — ZADD on an existing (member, score)
+# pair is a no-op.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class JourneyZSetBackfillRequest(BaseModel):
+    admin_token: str = Field(..., min_length=8, max_length=512)
+    batch_size: int = Field(default=100, ge=1, le=1000)
+    max_users: int | None = Field(default=None, ge=1, le=1_000_000)
+    # Restrict scan to "user" or "device" subjects, or both (None = both).
+    subject: Literal["user", "device"] | None = None
+    # Resume cursor (Redis SCAN cursor as string). 0 / None starts fresh.
+    cursor: int = Field(default=0, ge=0)
+
+
+class JourneyZSetBackfillResponse(BaseModel):
+    scanned: int
+    migrated_keys: int
+    migrated_events: int
+    skipped_empty: int
+    errors: int
+    next_cursor: int
+    done: bool
+
+
+def _journey_subject_patterns(
+    subject: Literal["user", "device"] | None,
+) -> list[str]:
+    if subject == "user":
+        return ["user:*:attr_journey"]
+    if subject == "device":
+        return ["device:*:attr_journey"]
+    return ["user:*:attr_journey", "device:*:attr_journey"]
+
+
+@router.post(
+    "/admin/backfill-journey-zset",
+    response_model=JourneyZSetBackfillResponse,
+)
+async def backfill_journey_zset(
+    body: JourneyZSetBackfillRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Backfill ZSET journeys from existing LIST journeys.
+
+    For each ``user:*:attr_journey`` (and/or ``device:*:attr_journey``) LIST
+    key found via SCAN, read all entries + their stored ``attr:{eid}.timestamp``
+    and ZADD into the parallel ``{subject_key}_z`` ZSET. Idempotent.
+
+    Pagination: returns ``next_cursor`` and ``done=False`` when more keys
+    remain; the caller is expected to re-call with the returned cursor.
+    """
+    # Admin auth — mirrors payouts._check_admin pattern.
+    from app.security import constant_time_eq  # local import to avoid cycles
+    from app.config import settings as _settings
+
+    if not constant_time_eq(body.admin_token, _settings.jwt_secret):
+        raise HTTPException(
+            status_code=403, detail={"error": "admin_token_invalid"},
+        )
+
+    patterns = _journey_subject_patterns(body.subject)
+
+    scanned = 0
+    migrated_keys = 0
+    migrated_events = 0
+    skipped_empty = 0
+    errors = 0
+    cursor: int = body.cursor
+    user_quota: int | None = body.max_users
+
+    for pattern in patterns:
+        # Each SCAN pass uses its own cursor — but we only honour the
+        # caller-supplied cursor for the first pattern; subsequent patterns
+        # start from 0. (Callers typically pin subject= to paginate cleanly.)
+        local_cursor = cursor if pattern == patterns[0] else 0
+        first_loop = True
+        while True:
+            if not first_loop and local_cursor == 0:
+                # Completed full circle on this pattern.
+                break
+            first_loop = False
+            local_cursor, keys = await r.scan(
+                cursor=local_cursor,
+                match=pattern,
+                count=body.batch_size,
+            )
+            for key in keys:
+                # Skip ZSET sentinels (defensive — pattern shouldn't match,
+                # but keys returned by SCAN can be either bytes or str).
+                if not isinstance(key, str):
+                    try:
+                        key = key.decode("utf-8")
+                    except Exception:  # noqa: BLE001
+                        errors += 1
+                        continue
+                if key.endswith("_z"):
+                    continue
+                scanned += 1
+                try:
+                    event_ids = await r.lrange(key, 0, JOURNEY_MAX_LEN - 1)
+                except Exception as exc:  # noqa: BLE001 — never abort batch
+                    logger.warning("backfill lrange failed key=%s err=%s", key, exc)
+                    errors += 1
+                    continue
+                if not event_ids:
+                    skipped_empty += 1
+                    continue
+                # Build score map by reading each event's timestamp.
+                score_map: dict[str, float] = {}
+                for eid in event_ids:
+                    try:
+                        raw_ts = await r.hget(f"attr:{eid}", "timestamp")
+                    except Exception:  # noqa: BLE001
+                        errors += 1
+                        continue
+                    if raw_ts is None:
+                        # Event TTL'd away — drop it.
+                        continue
+                    try:
+                        score_map[eid] = float(raw_ts)
+                    except (TypeError, ValueError):
+                        errors += 1
+                        continue
+                if not score_map:
+                    skipped_empty += 1
+                    continue
+                zkey = f"{key}_z"
+                try:
+                    await r.zadd(zkey, score_map)
+                    # Cap and refresh TTL to match the source LIST.
+                    await r.zremrangebyrank(zkey, 0, -(JOURNEY_MAX_LEN + 1))
+                    await r.expire(zkey, EVENT_TTL_SECONDS)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("backfill zadd failed key=%s err=%s", zkey, exc)
+                    errors += 1
+                    continue
+                migrated_keys += 1
+                migrated_events += len(score_map)
+                if user_quota is not None:
+                    user_quota -= 1
+                    if user_quota <= 0:
+                        # Return early so caller can decide whether to continue.
+                        return JourneyZSetBackfillResponse(
+                            scanned=scanned,
+                            migrated_keys=migrated_keys,
+                            migrated_events=migrated_events,
+                            skipped_empty=skipped_empty,
+                            errors=errors,
+                            next_cursor=int(local_cursor),
+                            done=False,
+                        )
+            if local_cursor == 0:
+                break
+        # Only the first pattern carries the caller cursor; reset for next.
+        cursor = 0
+
+    return JourneyZSetBackfillResponse(
+        scanned=scanned,
+        migrated_keys=migrated_keys,
+        migrated_events=migrated_events,
+        skipped_empty=skipped_empty,
+        errors=errors,
+        next_cursor=0,
+        done=True,
     )

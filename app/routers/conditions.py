@@ -89,6 +89,7 @@ router = APIRouter()
 RESERVATION_TTL_SECONDS = 60
 AUDIT_LOG_MAX = 500
 TIME_CACHE_TTL_SECONDS = 60
+MAX_COMMIT_RETRIES = 10
 
 # Bilingual fix hints — single source of truth, keyed by blocker code.
 FIX_HINTS: dict[str, dict[str, str]] = {
@@ -179,6 +180,14 @@ FIX_HINTS: dict[str, dict[str, str]] = {
     "reservation_already_refunded": {
         "zh": "该预约已退回",
         "en": "Reservation has already been refunded.",
+    },
+    "reservation_expired": {
+        "zh": "预约已过期，请重新发起",
+        "en": "Reservation has expired; please retry.",
+    },
+    "commit_contention": {
+        "zh": "系统繁忙，请稍后重试",
+        "en": "High contention on commit; please retry.",
     },
 }
 
@@ -893,6 +902,10 @@ async def reserve_conditions(
                     rem_bud_after = current_budget - value_cents
 
                 expires_at = _now_utc() + timedelta(seconds=RESERVATION_TTL_SECONDS)
+                # Bug 1 fix: store epoch as a separate, authoritative field so
+                # commit can check expiry even if Redis EXPIRE evicted the key
+                # and a stale copy comes back from a follower / cache.
+                expires_at_epoch = expires_at.timestamp()
                 reservation_payload = {
                     "campaign_id": req.campaign_id,
                     "brand_id": req.brand_id,
@@ -900,6 +913,7 @@ async def reserve_conditions(
                     "value_cents": str(value_cents),
                     "status": "reserved",
                     "expires_at": expires_at.isoformat(),
+                    "expires_at_epoch": str(expires_at_epoch),
                     "created_at": str(time.time()),
                     "supply_consumed": "1" if needs_supply else "0",
                     "budget_consumed": str(value_cents) if needs_budget else "0",
@@ -986,6 +1000,24 @@ async def commit_reservation(
             },
         )
 
+    # Bug 1 fix: don't rely solely on Redis EXPIRE — check the embedded
+    # expires_at_epoch so we never commit a logically-expired reservation
+    # even if its key happens to still exist (replication lag, audit copy,
+    # extended TTL after a status change, etc.).
+    try:
+        exp_epoch = float(res.get("expires_at_epoch") or 0)
+    except (TypeError, ValueError):
+        exp_epoch = 0.0
+    if exp_epoch > 0 and time.time() > exp_epoch:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={
+                "ok": False,
+                "blocked_by": ["reservation_expired"],
+                "fix_hints": _hints_for(["reservation_expired"]),
+            },
+        )
+
     campaign_id = res["campaign_id"]
     user_id = res["user_id"]
     value_cents = int(res.get("value_cents", 0) or 0)
@@ -995,37 +1027,80 @@ async def commit_reservation(
     ym = _ym_str()
     hour = _hour_bucket()
 
-    pipe = r.pipeline(transaction=True)
+    # ── Bug 2 fix: WATCH/MULTI around the user's daily frequency counter
+    # so concurrent commits from the same user can't both observe an
+    # under-cap value and then both increment past the cap.
+    rkey = _k_reservation(req.reservation_id)
+    user_daily_key = _k_user_daily(campaign_id, user_id, today)
+    for _attempt in range(MAX_COMMIT_RETRIES):
+        async with r.pipeline(transaction=True) as pipe:
+            try:
+                await pipe.watch(rkey, user_daily_key)
+                # Re-check status under WATCH: another commit may have raced.
+                cur_status = await pipe.hget(rkey, "status")
+                if cur_status == "committed":
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "ok": False,
+                            "blocked_by": ["reservation_already_committed"],
+                            "fix_hints": _hints_for(["reservation_already_committed"]),
+                        },
+                    )
+                if cur_status == "refunded":
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "ok": False,
+                            "blocked_by": ["reservation_already_refunded"],
+                            "fix_hints": _hints_for(["reservation_already_refunded"]),
+                        },
+                    )
 
-    # ── frequency counters (with appropriate TTLs) ───────────────────────
-    pipe.incr(_k_user_daily(campaign_id, user_id, today))
-    pipe.expire(_k_user_daily(campaign_id, user_id, today), 86400)
-    pipe.incr(_k_user_weekly(campaign_id, user_id, isoweek))
-    pipe.expire(_k_user_weekly(campaign_id, user_id, isoweek), 604800)
-    pipe.incr(_k_user_monthly(campaign_id, user_id, ym))
-    pipe.expire(_k_user_monthly(campaign_id, user_id, ym), 2678400)
-    pipe.incr(_k_user_total(campaign_id, user_id))
+                pipe.multi()
+                # ── frequency counters (with appropriate TTLs) ───────────
+                pipe.incr(user_daily_key)
+                pipe.expire(user_daily_key, 86400)
+                pipe.incr(_k_user_weekly(campaign_id, user_id, isoweek))
+                pipe.expire(_k_user_weekly(campaign_id, user_id, isoweek), 604800)
+                pipe.incr(_k_user_monthly(campaign_id, user_id, ym))
+                pipe.expire(_k_user_monthly(campaign_id, user_id, ym), 2678400)
+                pipe.incr(_k_user_total(campaign_id, user_id))
 
-    # ── global counters ──────────────────────────────────────────────────
-    pipe.incr(_k_global_daily(campaign_id, today))
-    pipe.expire(_k_global_daily(campaign_id, today), 86400)
-    pipe.incr(_k_hourly(campaign_id, hour))
-    pipe.expire(_k_hourly(campaign_id, hour), 86400 * 31)
-    pipe.incr(_k_claims(campaign_id))
-    pipe.sadd(_k_unique_users(campaign_id), user_id)
+                # ── global counters ──────────────────────────────────────
+                pipe.incr(_k_global_daily(campaign_id, today))
+                pipe.expire(_k_global_daily(campaign_id, today), 86400)
+                pipe.incr(_k_hourly(campaign_id, hour))
+                pipe.expire(_k_hourly(campaign_id, hour), 86400 * 31)
+                pipe.incr(_k_claims(campaign_id))
+                pipe.sadd(_k_unique_users(campaign_id), user_id)
 
-    # ── first-time flag ─────────────────────────────────────────────────
-    pipe.set(_k_user_claimed(campaign_id, user_id), "1")
+                # ── first-time flag ──────────────────────────────────────
+                pipe.set(_k_user_claimed(campaign_id, user_id), "1")
 
-    # ── promote reservation status, drop TTL ─────────────────────────────
-    pipe.hset(_k_reservation(req.reservation_id), mapping={
-        "status": "committed",
-        "committed_at": str(time.time()),
-    })
-    # Keep committed reservations around for ~7d for audit trail
-    pipe.expire(_k_reservation(req.reservation_id), 86400 * 7)
+                # ── promote reservation status, drop TTL ─────────────────
+                pipe.hset(rkey, mapping={
+                    "status": "committed",
+                    "committed_at": str(time.time()),
+                })
+                # Keep committed reservations around for ~7d for audit trail
+                pipe.expire(rkey, 86400 * 7)
 
-    await pipe.execute()
+                await pipe.execute()
+                break
+            except WatchError:
+                continue
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "ok": False,
+                "blocked_by": ["commit_contention"],
+                "fix_hints": _hints_for(["commit_contention"]),
+            },
+        )
 
     await _audit(
         r, campaign_id, user_id, "commit",

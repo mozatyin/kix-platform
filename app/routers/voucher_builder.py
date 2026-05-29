@@ -119,6 +119,10 @@ class VoucherRedeemRequest(BaseModel):
     pos_id: str = Field(..., min_length=1)
     purchase_amount_cents: int = Field(..., ge=0)
     items: list[dict[str, Any]] = Field(default_factory=list)
+    # Bug 10 fix: optional partial-redeem amount in cents. When supplied,
+    # the voucher remains active with its remaining_value decremented; when
+    # absent, the full computed discount is consumed and the voucher closes.
+    redeem_amount_cents: int | None = Field(default=None, ge=0)
 
 
 class VoucherTransferRequest(BaseModel):
@@ -426,13 +430,17 @@ async def issue_voucher(
             await r.incr(_k_template_issued(template_id))
 
         vid = uuid4().hex[:16]
-        code = _gen_code()
-        # Ensure code uniqueness
-        for _ in range(5):
-            if await r.setnx(_k_code(code), vid):
+        # Bug 4 fix: SET NX guarantees uniqueness even under concurrent issuance.
+        # Each iteration regenerates the code so retries don't keep colliding on
+        # the same value. Capped to 20 attempts; in practice collisions are
+        # near-zero (12-char alphanumeric ≈ 4.7e18 namespace).
+        code: str | None = None
+        for _ in range(20):
+            candidate = _gen_code()
+            if await r.set(_k_code(candidate), vid, nx=True):
+                code = candidate
                 break
-            code = _gen_code()
-        else:
+        if code is None:
             raise HTTPException(
                 status_code=500, detail="Failed to allocate unique code"
             )
@@ -569,7 +577,53 @@ async def redeem_voucher(
             detail=f"Conditions not met: {reason}",
         )
 
-    discount = _compute_discount(template["value"], body.purchase_amount_cents)
+    full_discount = _compute_discount(template["value"], body.purchase_amount_cents)
+
+    # ── Bug 10 fix: partial-redeem validation ──────────────────────────
+    # If the caller asked for a partial redeem (``redeem_amount_cents``),
+    # we cap it at both (a) the original computed discount and (b) the
+    # remaining_value still on the voucher, and update remaining_value
+    # atomically under WATCH. When the caller omits the field, behaviour
+    # matches the legacy full-redeem semantics.
+    cur_remaining_raw = state.get("remaining_value_cents")
+    if cur_remaining_raw is None or cur_remaining_raw == "":
+        # First redeem on this voucher — seed remaining_value to the full
+        # computed discount so subsequent partials decrement from there.
+        cur_remaining = full_discount
+    else:
+        try:
+            cur_remaining = int(cur_remaining_raw)
+        except (TypeError, ValueError):
+            cur_remaining = full_discount
+
+    if body.redeem_amount_cents is None:
+        # Full redeem of the entire remaining balance.
+        discount = cur_remaining
+        new_remaining = 0
+        will_close = True
+    else:
+        if body.redeem_amount_cents > cur_remaining:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "redeem_amount_exceeds_remaining",
+                    "requested_cents": body.redeem_amount_cents,
+                    "remaining_cents": cur_remaining,
+                },
+            )
+        if body.redeem_amount_cents > full_discount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "redeem_amount_exceeds_voucher_value",
+                    "requested_cents": body.redeem_amount_cents,
+                    "voucher_value_cents": full_discount,
+                },
+            )
+        discount = body.redeem_amount_cents
+        new_remaining = cur_remaining - discount
+        will_close = new_remaining <= 0
+
     final_amount = max(0, body.purchase_amount_cents - discount)
 
     # Atomic state flip with WATCH/MULTI to prevent double-redeem.
@@ -579,29 +633,56 @@ async def redeem_voucher(
             await pipe.watch(vkey)
             cur_status = await pipe.hget(vkey, "status")
             cur_redeemed = await pipe.hget(vkey, "redeemed_at")
-            if cur_redeemed:
+            if cur_redeemed and will_close:
+                # Already fully redeemed.
                 await pipe.unwatch()
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Voucher already redeemed",
                 )
-            if cur_status != "active":
+            if cur_status not in ("active",):
                 await pipe.unwatch()
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"Voucher status changed to {cur_status}",
                 )
+            # Re-read remaining under WATCH so concurrent partial redeems
+            # can't both observe the same value.
+            live_remaining_raw = await pipe.hget(vkey, "remaining_value_cents")
+            try:
+                live_remaining = (
+                    int(live_remaining_raw)
+                    if live_remaining_raw is not None
+                    else cur_remaining
+                )
+            except (TypeError, ValueError):
+                live_remaining = cur_remaining
+            if discount > live_remaining:
+                await pipe.unwatch()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": "redeem_amount_exceeds_remaining",
+                        "requested_cents": discount,
+                        "remaining_cents": live_remaining,
+                    },
+                )
+            new_remaining = live_remaining - discount
+            will_close = new_remaining <= 0
+
             pipe.multi()
-            pipe.hset(
-                vkey,
-                mapping={
-                    "status": "redeemed",
-                    "redeemed_at": str(_now()),
-                    "pos_id": body.pos_id,
-                    "discount_applied_cents": str(discount),
-                    "final_amount_cents": str(final_amount),
-                },
-            )
+            redemption_status = "redeemed" if will_close else "active"
+            mapping = {
+                "status": redemption_status,
+                "pos_id": body.pos_id,
+                "discount_applied_cents": str(discount),
+                "final_amount_cents": str(final_amount),
+                "remaining_value_cents": str(new_remaining),
+                "last_redeemed_at": str(_now()),
+            }
+            if will_close:
+                mapping["redeemed_at"] = str(_now())
+            pipe.hset(vkey, mapping=mapping)
             pipe.incr(_k_user_template_count(template_id, user_id))
             # Mark that this user has now purchased (kills first-time-only)
             pipe.set(_k_user_brand_first_purchase(brand_id, user_id), "1")
@@ -613,16 +694,19 @@ async def redeem_voucher(
             )
 
     logger.info(
-        "Voucher redeemed: vid=%s pos=%s discount=%d final=%d",
+        "Voucher redeemed: vid=%s pos=%s discount=%d final=%d remaining=%d",
         voucher_id,
         body.pos_id,
         discount,
         final_amount,
+        new_remaining,
     )
     return {
         "ok": True,
         "discount_applied_cents": discount,
         "final_amount_cents": final_amount,
+        "remaining_value_cents": new_remaining,
+        "voucher_closed": will_close,
     }
 
 

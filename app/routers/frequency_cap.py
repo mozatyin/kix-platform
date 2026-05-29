@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -85,6 +86,12 @@ DEFAULT_CONFIG: dict[str, int] = {
 }
 
 VALID_SLOTS = {"push", "feed", "interstitial", "main", "banner", "geofence"}
+
+# Upper bound on the daily priority-bypass counter (Bug 6). Real-world
+# regulatory/emergency volumes are << 100/day per user; the cap exists to
+# prevent a buggy integration or hostile admin from creating an unbounded
+# integer in Redis.
+PRIORITY_BYPASS_MAX = 10_000
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -389,6 +396,12 @@ async def check_internal(
             n = await r.incr(bypass_key)
             if n == 1:
                 await r.expire(bypass_key, SECONDS_DAY * 2)
+            # Bug 6 fix: clamp the counter to PRIORITY_BYPASS_MAX so a
+            # mis-configured admin / runaway integration can't blow this
+            # value up unboundedly. Anything above the cap is recorded
+            # at the cap; the audit log already captures every event.
+            if isinstance(n, int) and n > PRIORITY_BYPASS_MAX:
+                await r.set(bypass_key, str(PRIORITY_BYPASS_MAX), keepttl=True)
         except aioredis.RedisError as exc:
             logger.warning("priority_bypass counter failed: %s", exc)
         logger.info(
@@ -662,15 +675,25 @@ async def user_status(
     pattern_day = f"freq:user:{uid}:brand:*:day:{date}"
     pattern_week = f"freq:user:{uid}:brand:*:week:{week}"
     brand_ids: set[str] = set()
+    # Bug 5 fix: brand_ids can themselves contain ``:`` (legacy data, hashed
+    # identifiers, namespaced ids). Use a regex that anchors on the trailing
+    # ``:day:{date}`` / ``:week:{week}`` segment so the whole id between
+    # ``:brand:`` and that suffix is captured verbatim.
+    re_day = re.compile(r":brand:(.+):day:" + re.escape(date) + r"$")
+    re_week = re.compile(r":brand:(.+):week:" + re.escape(week) + r"$")
     async for key in r.scan_iter(match=pattern_day, count=100):
         try:
-            brand_ids.add(key.split(":brand:")[1].split(":day:")[0])
-        except (IndexError, AttributeError):
+            m = re_day.search(key)
+            if m:
+                brand_ids.add(m.group(1))
+        except (TypeError, AttributeError):
             continue
     async for key in r.scan_iter(match=pattern_week, count=100):
         try:
-            brand_ids.add(key.split(":brand:")[1].split(":week:")[0])
-        except (IndexError, AttributeError):
+            m = re_week.search(key)
+            if m:
+                brand_ids.add(m.group(1))
+        except (TypeError, AttributeError):
             continue
 
     per_brand: dict[str, PerBrandCounts] = {}

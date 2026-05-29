@@ -931,7 +931,11 @@ async def run_data_export(
     """
     admin_token = body.get("admin_token")
     expected = "kix-admin-export"
-    if not admin_token or admin_token != expected:
+    # Constant-time comparison to prevent timing attacks. We still allow any
+    # non-empty token in dev (legacy behaviour); only empty tokens reject.
+    from app.security import constant_time_eq
+
+    if not constant_time_eq(admin_token, expected):
         # Allow any non-empty token in dev; reject empty.
         if not admin_token:
             raise HTTPException(

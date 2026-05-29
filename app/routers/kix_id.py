@@ -316,7 +316,9 @@ def _admin_token() -> str:
 
 
 def _check_admin(token: str | None) -> None:
-    if not token or token != _admin_token():
+    from app.security import constant_time_eq
+
+    if not constant_time_eq(token, _admin_token()):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="admin_token required",

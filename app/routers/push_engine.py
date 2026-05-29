@@ -139,6 +139,22 @@ PUSH_DAILY_SPEND_KEY = "brand:{bid}:push_spend:{date}"
 PUSH_DAILY_SENT_KEY = "brand:{bid}:push_sent:{date}"
 
 OUTBOUND_QUEUE_KEY = "push:outbound:queue"
+# Sharded queues consumed by ``app.workers.push_worker``. Kept in lock-step
+# with ``push_worker.NUM_SHARDS`` / ``push_worker.shard_for``.
+NUM_PUSH_SHARDS = 16
+
+
+def _push_shard_for(push_id: str) -> int:
+    """Stable shard id for a push_id (md5 → 4-byte int → mod N)."""
+    import hashlib
+    if not push_id:
+        return 0
+    digest = hashlib.md5(push_id.encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "big") % NUM_PUSH_SHARDS
+
+
+def _outbound_shard_key(push_id: str) -> str:
+    return f"{OUTBOUND_QUEUE_KEY}:{_push_shard_for(push_id)}"
 
 DEFAULT_RELEVANCE_MIN = 0.25
 DEFAULT_MAX_CANDIDATES = 5
@@ -950,8 +966,11 @@ async def _dispatch_internal(
         )
 
     # ── Stub delivery: enqueue + immediately mark delivered ─────────────
-    await r.lpush(OUTBOUND_QUEUE_KEY, push_id)
-    await r.ltrim(OUTBOUND_QUEUE_KEY, 0, 9999)
+    # Write to the sharded outbound queue so push_worker can scale
+    # horizontally (16 shards, one process per shard for 1M pushes/day).
+    shard_key = _outbound_shard_key(push_id)
+    await r.lpush(shard_key, push_id)
+    await r.ltrim(shard_key, 0, 9999)
     await r.hset(
         PUSH_KEY.format(push_id=push_id),
         mapping={

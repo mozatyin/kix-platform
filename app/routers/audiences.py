@@ -457,12 +457,18 @@ async def _scan_users_for_filters(
     """SCAN ``user:*`` profile keys, return up to ``limit`` matching uids.
 
     Returns (matched_uids, total_scanned). Scans are capped at
-    FILTER_MAX_SCAN candidates to bound runtime.
+    ``min(limit, FILTER_MAX_SCAN)`` candidates so a caller asking for 50
+    matches doesn't pay the cost of scanning 5000 keys.
     """
+    # Bug 7 fix: respect the caller's ``limit`` as a strict upper bound on
+    # both matched results AND total keys scanned. Previously the scan
+    # would keep going up to FILTER_MAX_SCAN regardless of how few results
+    # the caller wanted, causing latency spikes for small audiences.
+    effective_scan_cap = min(max(int(limit), 1), FILTER_MAX_SCAN)
     out: list[str] = []
     cursor = 0
     scanned = 0
-    while scanned < FILTER_MAX_SCAN and len(out) < limit:
+    while scanned < effective_scan_cap and len(out) < limit:
         cursor, batch = await r.scan(cursor=cursor, match="user:*", count=200)
         for k in batch:
             # Only top-level user profile keys (user:{uid}), not sub-keys
@@ -483,7 +489,7 @@ async def _scan_users_for_filters(
                 out.append(uid)
                 if len(out) >= limit:
                     break
-            if scanned >= FILTER_MAX_SCAN:
+            if scanned >= effective_scan_cap:
                 break
         if cursor == 0:
             break

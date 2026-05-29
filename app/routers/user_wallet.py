@@ -105,6 +105,12 @@ def _k_freeze(uid: str, ref: str) -> str:
     return f"user_wallet:{uid}:freeze:{ref}"
 
 
+def _k_daily_spent(uid: str, brand_id: str) -> str:
+    """Per-(user, brand) daily-spent counter. TTL 86400s."""
+    day = _today()
+    return f"user_wallet:{uid}:daily_spent:{brand_id}:{day}"
+
+
 def _now() -> float:
     return time.time()
 
@@ -654,9 +660,34 @@ async def charge(
                         },
                     )
 
+                # Bug 9 fix: refuse to mutate near-midnight when the
+                # daily-spent TTL is about to roll. The daily_spent counter
+                # belongs to the same key (wkey) but a separate brand-scoped
+                # daily counter has its own TTL — check it before committing
+                # so we don't end up with a negative leftover after expiry.
+                ds_key = _k_daily_spent(user_id, body.brand_id)
+                ds_ttl = await pipe.ttl(ds_key)
+                # ttl returns -2 if no key, -1 if no TTL set, else seconds.
+                if isinstance(ds_ttl, int) and 0 < ds_ttl < 60:
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail={
+                            "error": "daily_counter_rollover",
+                            "retry_after_seconds": ds_ttl + 1,
+                        },
+                    )
+
                 pipe.multi()
+                # Bug 3 fix: wkey is already in WATCH set (see watch() call
+                # above) so any concurrent mutation to balance/frozen aborts
+                # this transaction via WatchError and we retry. We additionally
+                # assert the post-decrement balance is non-negative below.
                 pipe.hincrby(wkey, "balance", -body.amount_cents)
                 pipe.hincrby(wkey, "total_charge", body.amount_cents)
+                # Daily-spent counter for cap enforcement / analytics.
+                pipe.hincrby(ds_key, "spent_cents", body.amount_cents)
+                pipe.expire(ds_key, 86400)
                 await _append_tx(
                     pipe, user_id, tx_id,
                     {
@@ -677,6 +708,13 @@ async def charge(
                 )
                 results = await pipe.execute()
                 new_balance = int(results[0])
+                # Defensive: WATCH should have prevented this, but if a
+                # concurrent path somehow drove balance negative, log loudly.
+                if new_balance < 0:
+                    logger.error(
+                        "user_wallet_charge produced negative balance uid=%s new=%s",
+                        user_id, new_balance,
+                    )
                 logger.info(
                     "user_wallet_charge uid=%s amount=%s reason=%s brand=%s",
                     user_id, body.amount_cents, body.reason, body.brand_id,

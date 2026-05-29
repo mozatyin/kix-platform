@@ -1334,10 +1334,17 @@ def _is_auto_approvable(
 
 
 def _check_admin(token: str) -> None:
-    """Centralised admin-token check. Lift to env-config in production."""
+    """Centralised admin-token check. Lift to env-config in production.
+
+    Uses :func:`app.security.constant_time_eq` to prevent timing attacks
+    (see Trinity security audit 2026-05-29).
+    """
     import os
+
+    from app.security import constant_time_eq
+
     expected = os.getenv("KIX_ADMIN_TOKEN", ADMIN_TOKEN_DEFAULT)
-    if token != expected:
+    if not constant_time_eq(token, expected):
         raise HTTPException(status_code=403, detail="invalid admin token")
 
 

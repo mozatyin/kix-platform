@@ -55,20 +55,24 @@ class FriendRequest(BaseModel):
     from_user: str = Field(..., min_length=1)
     to_user: str = Field(..., min_length=1)
     brand_id: str = Field(..., min_length=1)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class FriendAccept(BaseModel):
     request_id: str = Field(..., min_length=1)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class FriendRemove(BaseModel):
     user_id: str = Field(..., min_length=1)
     friend_id: str = Field(..., min_length=1)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class FollowRequest(BaseModel):
     follower_id: str = Field(..., min_length=1)
     followed_id: str = Field(..., min_length=1)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class FeedPostRequest(BaseModel):
@@ -76,15 +80,63 @@ class FeedPostRequest(BaseModel):
     brand_id: str = Field(..., min_length=1)
     event_type: str = Field(..., min_length=1)  # high_score, level_up, etc.
     payload: dict[str, Any] = Field(default_factory=dict)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class LikeRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class CommentRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
     text: str = Field(..., min_length=1, max_length=1000)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+
+# ── Bug 8 fix: lightweight idempotency primitive ─────────────────────────
+# Each POST endpoint accepts an optional ``idempotency_key`` in its body.
+# On first use we SET NX a short-lived marker under ``social:idem:{key}``
+# with the JSON response; subsequent calls observe the cached response
+# and short-circuit, avoiding duplicate mutations (double-follows, double
+# kudos, duplicate comments) when clients retry on network flakiness.
+
+SOCIAL_IDEM_TTL_SECONDS = 24 * 3600
+
+
+def _k_idem(key: str) -> str:
+    return f"social:idem:{key}"
+
+
+async def _idem_get(r: aioredis.Redis, key: str | None) -> dict[str, Any] | None:
+    """Return a previously-cached response for this idempotency key, or None."""
+    if not key:
+        return None
+    raw = await r.get(_k_idem(key))
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+async def _idem_put(
+    r: aioredis.Redis, key: str | None, payload: dict[str, Any]
+) -> None:
+    """Record this response under the idempotency key (TTL 24h)."""
+    if not key:
+        return
+    try:
+        await r.set(
+            _k_idem(key),
+            json.dumps(payload, default=str),
+            nx=True,
+            ex=SOCIAL_IDEM_TTL_SECONDS,
+        )
+    except (TypeError, ValueError):
+        # Don't fail the request if we can't serialise the payload.
+        logger.warning("social idem put failed for key=%s", key)
 
 
 # ── Redis key helpers ─────────────────────────────────────────────────────
@@ -177,16 +229,22 @@ async def friend_request(
     body: FriendRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
+
     if body.from_user == body.to_user:
         raise HTTPException(400, "Cannot friend yourself")
 
     # Already friends?
     if await r.sismember(_k_friends(body.from_user), body.to_user):
-        return {
+        out = {
             "ok": True,
             "request_id": None,
             "status": "already_friends",
         }
+        await _idem_put(r, body.idempotency_key, out)
+        return out
 
     rid = _new_id("freq")
     record = {
@@ -202,7 +260,9 @@ async def friend_request(
     pipe.sadd(_k_incoming(body.to_user), rid)
     pipe.sadd(_k_outgoing(body.from_user), rid)
     await pipe.execute()
-    return {"ok": True, "request_id": rid, "status": "pending"}
+    out = {"ok": True, "request_id": rid, "status": "pending"}
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.post(
@@ -213,6 +273,10 @@ async def friend_accept(
     body: FriendAccept,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
+
     record = await r.hgetall(_k_request(body.request_id))
     if not record:
         raise HTTPException(404, "Friend request not found")
@@ -230,7 +294,9 @@ async def friend_accept(
     pipe.srem(_k_incoming(b), body.request_id)
     pipe.srem(_k_outgoing(a), body.request_id)
     await pipe.execute()
-    return {"ok": True, "request_id": body.request_id, "status": "accepted"}
+    out = {"ok": True, "request_id": body.request_id, "status": "accepted"}
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.post(
@@ -241,11 +307,16 @@ async def friend_remove(
     body: FriendRemove,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     pipe = r.pipeline()
     pipe.srem(_k_friends(body.user_id), body.friend_id)
     pipe.srem(_k_friends(body.friend_id), body.user_id)
     removed = await pipe.execute()
-    return {"ok": True, "removed": any(removed)}
+    out = {"ok": True, "removed": any(removed)}
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.get(
@@ -295,13 +366,18 @@ async def follow(
     body: FollowRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     if body.follower_id == body.followed_id:
         raise HTTPException(400, "Cannot follow yourself")
     pipe = r.pipeline()
     pipe.sadd(_k_following(body.follower_id), body.followed_id)
     pipe.sadd(_k_followers(body.followed_id), body.follower_id)
     await pipe.execute()
-    return {"ok": True}
+    out = {"ok": True}
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.post(
@@ -312,11 +388,16 @@ async def unfollow(
     body: FollowRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     pipe = r.pipeline()
     pipe.srem(_k_following(body.follower_id), body.followed_id)
     pipe.srem(_k_followers(body.followed_id), body.follower_id)
     await pipe.execute()
-    return {"ok": True}
+    out = {"ok": True}
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.get(
@@ -363,6 +444,9 @@ async def feed_post(
     body: FeedPostRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     pid = _new_id("post")
     now = _now()
 
@@ -404,12 +488,14 @@ async def feed_post(
         body.brand_id,
         len(targets),
     )
-    return {
+    out = {
         "ok": True,
         "post_id": pid,
         "fanout_count": len(targets),
         "created_at": now,
     }
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.get(
@@ -448,18 +534,23 @@ async def like_post(
     body: LikeRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     if not await r.exists(_k_post(post_id)):
         raise HTTPException(404, "Post not found")
     added = await r.sadd(_k_post_likes(post_id), body.user_id)
     if added:
         await r.hincrby(_k_post(post_id), "like_count", 1)
     new_count = await r.scard(_k_post_likes(post_id))
-    return {
+    out = {
         "ok": True,
         "post_id": post_id,
         "kudos": int(new_count or 0),
         "newly_liked": bool(added),
     }
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.post(
@@ -471,18 +562,23 @@ async def unlike_post(
     body: LikeRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     if not await r.exists(_k_post(post_id)):
         raise HTTPException(404, "Post not found")
     removed = await r.srem(_k_post_likes(post_id), body.user_id)
     if removed:
         await r.hincrby(_k_post(post_id), "like_count", -1)
     new_count = await r.scard(_k_post_likes(post_id))
-    return {
+    out = {
         "ok": True,
         "post_id": post_id,
         "kudos": int(new_count or 0),
         "newly_unliked": bool(removed),
     }
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.post(
@@ -495,6 +591,9 @@ async def comment_post(
     body: CommentRequest,
     r: aioredis.Redis = Depends(get_redis),
 ):
+    cached = await _idem_get(r, body.idempotency_key)
+    if cached is not None:
+        return cached
     if not await r.exists(_k_post(post_id)):
         raise HTTPException(404, "Post not found")
     cid = _new_id("c")
@@ -506,7 +605,9 @@ async def comment_post(
         "created_at": _now(),
     }
     await r.rpush(_k_post_comments(post_id), json.dumps(comment))
-    return {"ok": True, "comment": comment}
+    out = {"ok": True, "comment": comment}
+    await _idem_put(r, body.idempotency_key, out)
+    return out
 
 
 @router.get(

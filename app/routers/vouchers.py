@@ -2341,8 +2341,10 @@ async def cleanup_expired_reservations(
        reservation but did not roll back the voucher hash).
     """
     from app.config import settings  # local to avoid top-level coupling
+    from app.security import constant_time_eq
+
     expected = getattr(settings, "admin_token", None)
-    if expected and body.admin_token != expected:
+    if expected and not constant_time_eq(body.admin_token, expected):
         raise HTTPException(status_code=403, detail="invalid admin_token")
 
     scanned = 0
@@ -2436,8 +2438,10 @@ async def cleanup_expired(
     r: aioredis.Redis = Depends(get_redis),
 ):
     from app.config import settings  # local to avoid top-level coupling
+    from app.security import constant_time_eq
+
     expected = getattr(settings, "admin_token", None)
-    if expected and body.admin_token != expected:
+    if expected and not constant_time_eq(body.admin_token, expected):
         raise HTTPException(status_code=403, detail="invalid admin_token")
 
     # Scan voucher hashes — bounded by ``limit``.

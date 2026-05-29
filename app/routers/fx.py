@@ -182,7 +182,9 @@ class ExpireRateResponse(BaseModel):
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 def _check_admin(token: str) -> None:
-    if not token or not secrets.compare_digest(token, _ADMIN_TOKEN_FALLBACK):
+    from app.security import constant_time_eq
+
+    if not constant_time_eq(token, _ADMIN_TOKEN_FALLBACK):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "admin_token_invalid"},

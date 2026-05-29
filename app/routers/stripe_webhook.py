@@ -7,12 +7,16 @@ Handles:
 - invoice.payment_succeeded        → audit
 - charge.refunded                  → audit + reverse wallet credit
 
-Signature verification uses ``STRIPE_WEBHOOK_SECRET``. We always respond 200
-when the signature is valid so Stripe doesn't retry on application bugs;
-internal failures are logged for the operator to chase asynchronously.
+Signature verification uses ``STRIPE_WEBHOOK_SECRET``. Handler failures
+return 500 so Stripe retries — exactly-once side-effects matter more than
+"always 200" for money flows.
 
-Idempotency: Stripe sends each event with a stable ``id`` (``evt_…``). We
-SETNX a short-lived processed marker so duplicate deliveries are no-ops.
+Idempotency (two-phase, crash-safe):
+    Phase 1 — SET NX state="processing" with a 60s TTL (a "claim").
+    Phase 2 — on success, promote to state="completed" with 24h TTL.
+    On crash, the 60s TTL releases the claim and Stripe's retry re-runs it.
+    Concurrent deliveries: loser sees "processing" → 503 (Stripe retries),
+    or "completed" → duplicate=True (no-op).
 
 Mount in main.py::
 
@@ -43,6 +47,14 @@ router = APIRouter()
 
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 EVENT_DEDUP_TTL_SECONDS = 24 * 3600
+EVENT_PROCESSING_TTL_SECONDS = 60  # Phase-1 claim; expires if instance crashes.
+AUDIT_LIST_MAX = 10_000
+
+# Two-phase idempotency state values stored at _k_event_seen(event_id):
+#   "processing" → an instance is currently handling this event (TTL 60s)
+#   "completed"  → handler ran to completion (TTL 24h, hard duplicate)
+EVENT_STATE_PROCESSING = "processing"
+EVENT_STATE_COMPLETED = "completed"
 
 
 def _k_event_seen(event_id: str) -> str:
@@ -51,6 +63,19 @@ def _k_event_seen(event_id: str) -> str:
 
 def _k_event_log(brand_id: str) -> str:
     return f"stripe_webhook:brand:{brand_id}:events"
+
+
+def _k_audit() -> str:
+    return "stripe_webhook:audit"
+
+
+def _decode_state(value: Any) -> str:
+    """Redis client may return bytes or str depending on decode_responses."""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
 
 
 async def _log_event(
@@ -99,13 +124,65 @@ async def webhook(
     event_type = event.get("type", "")
     obj = event["data"]["object"]
 
-    # Idempotency — collapse duplicate deliveries.
-    if event_id:
-        first = await r.set(
-            _k_event_seen(event_id), "1", ex=EVENT_DEDUP_TTL_SECONDS, nx=True
+    # Forensic audit log — every received & signature-valid event, before any
+    # idempotency / handler logic. Best-effort: never break the handler.
+    try:
+        await r.lpush(
+            _k_audit(),
+            json.dumps(
+                {
+                    "event_id": event_id,
+                    "type": event_type,
+                    "received_at": time.time(),
+                    "ip": request.client.host if request.client else None,
+                },
+                ensure_ascii=False,
+            ),
         )
-        if not first:
-            return {"received": True, "event_type": event_type, "duplicate": True}
+        await r.ltrim(_k_audit(), 0, AUDIT_LIST_MAX - 1)
+    except Exception as exc:  # noqa: BLE001 — audit must never break delivery
+        logger.warning("audit log failed event=%s: %s", event_id, exc)
+
+    # ── Two-phase idempotency ────────────────────────────────────────────
+    # Phase 1: atomically claim the event with state="processing" + short TTL.
+    # If the handler crashes mid-flight, the short TTL releases the claim so
+    # Stripe's retry can re-process. If two instances race, only one wins SET
+    # NX; the other inspects state and either reports duplicate or asks
+    # Stripe to retry (503).
+    seen_key = _k_event_seen(event_id) if event_id else ""
+    if seen_key:
+        claimed = await r.set(
+            seen_key,
+            EVENT_STATE_PROCESSING,
+            ex=EVENT_PROCESSING_TTL_SECONDS,
+            nx=True,
+        )
+        if not claimed:
+            state = _decode_state(await r.get(seen_key))
+            if state == EVENT_STATE_COMPLETED:
+                return {
+                    "received": True,
+                    "event_type": event_type,
+                    "duplicate": True,
+                }
+            if state == EVENT_STATE_PROCESSING:
+                # Another instance is mid-flight. Tell Stripe to retry; the
+                # winning instance will mark "completed" before the retry
+                # window closes.
+                raise HTTPException(503, "event_already_being_processed")
+            # Stale TTL or unknown sentinel — try to re-claim race-safely.
+            claimed = await r.set(
+                seen_key,
+                EVENT_STATE_PROCESSING,
+                ex=EVENT_PROCESSING_TTL_SECONDS,
+                nx=True,
+            )
+            if not claimed:
+                return {
+                    "received": True,
+                    "event_type": event_type,
+                    "duplicate": True,
+                }
 
     handlers = {
         "payment_intent.succeeded": _handle_payment_succeeded,
@@ -118,10 +195,27 @@ async def webhook(
     if handler:
         try:
             await handler(r, obj, event)
-        except Exception as exc:  # noqa: BLE001 — log but ack
+        except Exception as exc:  # noqa: BLE001
+            # Phase-2 (failure): release the claim so Stripe's retry can
+            # pick the event up cleanly. This trades "200 OK on bug" for
+            # "exactly-once side-effects" — preferable for money flows.
+            if seen_key:
+                try:
+                    await r.delete(seen_key)
+                except Exception as del_exc:  # noqa: BLE001
+                    logger.warning(
+                        "failed to release claim event=%s: %s", event_id, del_exc
+                    )
             logger.exception("Webhook handler %s failed: %s", event_type, exc)
+            raise HTTPException(500, "handler_failed") from exc
 
-    # Always 200 OK so Stripe doesn't retry on our internal bugs.
+    # Phase 2 (success): promote claim → "completed" with the long dedup TTL.
+    if seen_key:
+        try:
+            await r.set(seen_key, EVENT_STATE_COMPLETED, ex=EVENT_DEDUP_TTL_SECONDS)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("failed to mark completed event=%s: %s", event_id, exc)
+
     return {"received": True, "event_type": event_type}
 
 

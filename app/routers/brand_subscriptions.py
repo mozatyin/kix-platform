@@ -711,11 +711,10 @@ async def admin_run_billing_cron(
     auth model mirrors ``payouts._check_admin``: shared pre-shared key
     against ``settings.jwt_secret`` until JWT roles land.
     """
-    import secrets as _secrets
-
     from app.config import settings
+    from app.security import constant_time_eq
 
-    if not _secrets.compare_digest(body.admin_token, settings.jwt_secret):
+    if not constant_time_eq(body.admin_token, settings.jwt_secret):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "admin_token_invalid"},

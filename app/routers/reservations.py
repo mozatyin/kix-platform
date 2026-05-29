@@ -1482,13 +1482,15 @@ async def scan_no_shows(
     body: ScanNoShowsRequest,
     r: aioredis.Redis = Depends(get_redis),
 ) -> dict[str, Any]:
-    # Admin gate (matches vouchers.cleanup pattern).
+    # Admin gate (matches vouchers.cleanup pattern). Constant-time compare.
+    from app.security import constant_time_eq
+
     try:
         from app.config import settings
         expected = getattr(settings, "admin_token", None)
     except Exception:
         expected = None
-    if expected and body.admin_token != expected:
+    if expected and not constant_time_eq(body.admin_token, expected):
         raise HTTPException(status_code=403, detail="invalid admin_token")
 
     now = _now()

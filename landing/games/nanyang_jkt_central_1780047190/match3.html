@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>消消乐 - Match-3</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <style>
+        :root {
+            --cell-size: min(11vw, 11vh, 44px);
+            --gap: 2px;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: system-ui, sans-serif;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+            background: #1a1a2e;
+            color: #eee;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: 64px;
+            overflow-y: auto;
+            z-index: 1;
+        }
+        .screen:not(.active) {
+            display: none !important;
+        }
+        .screen.active {
+            display: flex !important;
+            z-index: 10;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, var(--cell-size));
+            grid-template-rows: repeat(8, var(--cell-size));
+            gap: var(--gap);
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        .cell {
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s;
+            width: var(--cell-size);
+            height: var(--cell-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(var(--cell-size) * 0.7);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .cell:active {
+            transform: scale(0.9);
+        }
+        .cell.selected {
+            box-shadow: 0 0 0 3px #fff, 0 0 14px 3px #ff0;
+            transform: scale(1.06);
+            z-index: 2;
+            position: relative;
+        }
+        
+        
+        
+        
+        
+        
+        
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            display: flex;
+            gap: 6px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            flex-wrap: wrap;
+            min-height: 56px;
+            align-items: center;
+        }
+        .bottom-bar button {
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .bottom-bar button:active {
+            transform: scale(0.94);
+            opacity: 0.8;
+        }
+        .btn-primary {
+            background: #ff6b6b;
+            color: #fff;
+        }
+        .btn-secondary {
+            background: #4a4a6a;
+            color: #ddd;
+        }
+        .btn-accent {
+            background: #ffa502;
+            color: #1a1a2e;
+        }
+        .btn-success {
+            background: #2ed573;
+            color: #1a1a2e;
+        }
+        .btn-warn {
+            background: #ff4757;
+            color: #fff;
+        }
+        .score-display {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #ffa502;
+        }
+        .moves-display {
+            font-size: 1rem;
+            color: #ccc;
+        }
+        .title-text {
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ff6b6b, #ffa502, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+<style>
+/* KiX Brand CSS —  */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #00704A, #003825) !important;
+  --tw-gradient-from: #00704A !important;
+  --tw-gradient-to: #003825 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #00704A !important;
+  background: #00704A !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #003825 !important;
+  background: #003825 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #00704A !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body>
+    <div id="home-screen" class="screen active">
+        <div class="text-center px-4">
+            <div style="font-size:48px;margin-bottom:8px">⭐</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px"></h1>
+            <p class="text-gray-400 mb-4">Match-3 Puzzle</p>
+            <div class="flex items-center gap-2 justify-center mb-2"><span class="text-yellow-400 text-xl">🪙</span><span id="home-coins" class="text-yellow-400 font-bold"></span></div>
+        </div>
+    </div>
+    <div id="level_select-screen" class="screen">
+        <h2 class="text-2xl font-bold mb-3 text-yellow-400">📋 选择关卡</h2>
+        <div id="level-grid" class="grid grid-cols-4 gap-3 p-4 max-w-sm"></div>
+    </div>
+    <div id="gameplay-screen" class="screen">
+        <div class="flex items-center justify-between w-full max-w-sm px-4 mb-2">
+            <span id="gameplay-score" class="score-display">0</span>
+            <span class="text-sm text-gray-400">关卡 <span id="gameplay-level" class="font-bold text-white"></span></span>
+            <span class="moves-display">步数:<span id="gameplay-moves" class="font-bold text-white"></span></span>
+        </div>
+        <div id="game-board"></div>
+        <div id="combo-indicator" class="text-center mt-2 text-sm text-yellow-400 font-bold hidden"></div>
+    </div>
+    <div id="pause_menu-screen" class="screen">
+        <div class="bg-gray-800 rounded-2xl p-8 text-center shadow-xl">
+            <h2 class="text-2xl font-bold mb-6 text-yellow-400">⏸️ 暂停</h2>
+            <p id="pause-score" class="text-gray-300 mb-4"></p>
+        </div>
+    </div>
+    <div id="settings-screen" class="screen">
+        <div class="bg-gray-800 rounded-2xl p-6 w-72 shadow-xl">
+            <h2 class="text-xl font-bold mb-5 text-center text-yellow-400">⚙️ 设置</h2>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center"><span>🔊 音效</span><button id="toggle-sound" class="px-4 py-1 rounded-full btn-secondary text-sm"></button></div>
+                <div class="flex justify-between items-center"><span>🎵 音乐</span><button id="toggle-music" class="px-4 py-1 rounded-full btn-secondary text-sm"></button></div>
+                <div class="flex justify-between items-center"><span>📳 震动</span><button id="toggle-vibration" class="px-4 py-1 rounded-full btn-secondary text-sm"></button></div>
+            </div>
+        </div>
+    </div>
+    <div id="shop-screen" class="screen">
+        <h2 class="text-2xl font-bold mb-4 text-yellow-400">🛒 商店</h2>
+        <p class="text-gray-400 mb-2">🪙 金币: <span id="shop-coins" class="font-bold text-yellow-400"></span></p>
+        <div id="shop-items" class="grid grid-cols-2 gap-3 p-3 max-w-xs"></div>
+    </div>
+    <div id="game_result-screen" class="screen">
+        <div class="bg-gray-800 rounded-2xl p-8 text-center shadow-xl">
+            <div id="result-icon" class="text-5xl mb-3"></div>
+            <h2 id="result-title" class="text-2xl font-bold mb-2"></h2>
+            <p id="result-score" class="text-gray-300 mb-1"></p>
+            <p id="result-stars" class="text-yellow-400 text-2xl mb-3"></p>
+        </div>
+    </div>
+    <div id="high_scores-screen" class="screen">
+        <h2 class="text-2xl font-bold mb-4 text-yellow-400">🏆 高分榜</h2>
+        <div id="scores-list" class="w-72 space-y-2 px-4"></div>
+    </div>
+    <div class="bottom-bar" id="bottom-bar">
+        <button id="btn-play" class="btn-primary">▶ 开始</button>
+        <button id="btn-level-select" class="btn-secondary">📋 选关</button>
+        <button id="btn-settings" class="btn-secondary">⚙️</button>
+        <button id="btn-high-scores" class="btn-secondary">🏆</button>
+        <button id="btn-shop" class="btn-accent">🛒</button>
+        <button id="btn-pause" class="btn-secondary">⏸️</button>
+        <button id="btn-resume" class="btn-primary">▶ 继续</button>
+        <button id="btn-restart" class="btn-warn">🔄 重来</button>
+        <button id="btn-home" class="btn-secondary">🏠 主页</button>
+        <button id="btn-next-level" class="btn-success">➡ 下一关</button>
+        <button id="btn-close-result" class="btn-secondary">✖ 关闭</button>
+    </div>
+
+    <script>
+        let gameState = null;
+
+        function initState() {
+            return {
+                screen: 'home',
+                coins: 0,
+                soundEnabled: true,
+                musicEnabled: true,
+                vibrationEnabled: true,
+                highScores: [],
+                level: 1,
+                levelsUnlocked: 1,
+                board: null,
+                selectedPiece: null,
+                moves: 0,
+                score: 0,
+                combo: 0,
+                gameOver: false,
+                result: null,
+                stars: 0,
+                pieceTypes: ['red', 'blue', 'green', 'yellow', 'purple'],
+                previousScreen: null
+            };
+        }
+
+        function getLevelConfig(level) {
+            let targetScore = level * 1000;
+            let maxMoves = Math.max(10, 30 - (level - 1) * 2);
+            let rowCount = 8;
+            let colCount = 8;
+            let pieceTypes = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+            let coinReward = 50 + level * 10;
+            return { targetScore: targetScore, maxMoves: maxMoves, rowCount: rowCount, colCount: colCount,
+                pieceTypes: pieceTypes, coinReward: coinReward };
+        }
+
+        function generateBoard(board, rowCount, colCount, pieceTypes) {
+            if (!board || board.length !== rowCount || (rowCount > 0 && board[0].length !== colCount)) {
+                board = [];
+                for (let r = 0; r < rowCount; r++) {
+                    board[r] = [];
+                    for (let c = 0; c < colCount; c++) {
+                        board[r][c] = null;
+                    }
+                }
+            }
+            for (let r = 0; r < rowCount; r++) {
+                for (let c = 0; c < colCount; c++) {
+                    let possibleTypes = pieceTypes.slice();
+                    if (c >= 2 && board[r][c - 1] === board[r][c - 2] && board[r][c - 1] !== null) {
+                        let forbidden = board[r][c - 1];
+                        possibleTypes = possibleTypes.filter(function(t) { return t !== forbidden; });
+                    }
+                    if (r >= 2 && board[r - 1][c] === board[r - 2][c] && board[r - 1][c] !== null) {
+                        let forbidden = board[r - 1][c];
+                        possibleTypes = possibleTypes.filter(function(t) { return t !== forbidden; });
+                    }
+                    if (possibleTypes.length === 0) {
+                        possibleTypes = pieceTypes.slice();
+                    }
+                    let randomIndex = Math.floor(Math.random() * possibleTypes.length);
+                    board[r][c] = possibleTypes[randomIndex];
+                }
+            }
+            return board;
+        }
+
+        function generateValidBoard(rowCount, colCount, pieceTypes) {
+            let maxAttempts = 50;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                let board = generateBoard([], rowCount, colCount, pieceTypes);
+                let testState = { board: board, moves: 1 };
+                if (!checkGameOver(testState)) {
+                    return board;
+                }
+            }
+            return generateBoard([], rowCount, colCount, pieceTypes);
+        }
+
+        function findMatches(state) {
+            let board = state.board;
+            if (!board) return [];
+            let rowCount = board.length;
+            if (rowCount === 0) return [];
+            let colCount = board[0].length;
+            let matches = [];
+            for (let r = 0; r < rowCount; r++) {
+                let c = 0;
+                while (c < colCount) {
+                    let piece = board[r][c];
+                    if (piece === null || piece === undefined) {
+                        c++;
+                        continue;
+                    }
+                    let startCol = c;
+                    let len = 1;
+                    while (c + len < colCount && board[r][c + len] === piece) {
+                        len++;
+                    }
+                    if (len >= 3) {
+                        matches.push({ row: r, col: startCol, length: len, direction: 'horizontal' });
+                    }
+                    c += len;
+                }
+            }
+            for (let c = 0; c < colCount; c++) {
+                let r = 0;
+                while (r < rowCount) {
+                    let piece = board[r][c];
+                    if (piece === null || piece === undefined) {
+                        r++;
+                        continue;
+                    }
+                    let startRow = r;
+                    let len = 1;
+                    while (r + len < rowCount && board[r + len][c] === piece) {
+                        len++;
+                    }
+                    if (len >= 3) {
+                        matches.push({ row: startRow, col: c, length: len, direction: 'vertical' });
+                    }
+                    r += len;
+                }
+            }
+            return matches;
+        }
+
+        function removeMatches(state, matches) {
+            let newBoard = state.board.map(function(row) { return [...row]; });
+            for (let i = 0; i < matches.length; i++) {
+                let match = matches[i];
+                let row = match.row;
+                let col = match.col;
+                let length = match.length;
+                let direction = match.direction;
+                let dr = 0;
+                let dc = 0;
+                if (direction === 'horizontal') dc = 1;
+                else if (direction === 'vertical') dr = 1;
+                for (let j = 0; j < length; j++) {
+                    newBoard[row + j * dr][col + j * dc] = null;
+                }
+            }
+            return { ...state, board: newBoard };
+        }
+
+        function cascadePieces(state) {
+            let board = state.board.map(function(row) { return [...row]; });
+            let rows = board.length;
+            let cols = board[0].length;
+            for (let c = 0; c < cols; c++) {
+                let write = rows - 1;
+                for (let r = rows - 1; r >= 0; r--) {
+                    if (board[r][c] !== null) {
+                        if (r !== write) {
+                            board[write][c] = board[r][c];
+                            board[r][c] = null;
+                        }
+                        write--;
+                    }
+                }
+            }
+            return { ...state, board: board };
+        }
+
+        function fillBoard(state) {
+            let pieceTypes = state.pieceTypes || ['red', 'blue', 'green', 'yellow', 'purple'];
+            let board = state.board.map(function(row) {
+                return row.map(function(cell) {
+                    if (cell === null) {
+                        let randIndex = Math.floor(Math.random() * pieceTypes.length);
+                        return pieceTypes[randIndex];
+                    }
+                    return cell;
+                });
+            });
+            return { ...state, board: board };
+        }
+
+        function calculateScore(state, matches, combo) {
+            let total = 0;
+            for (let i = 0; i < matches.length; i++) {
+                let m = matches[i];
+                total += m.length * 10 * combo;
+            }
+            return total;
+        }
+
+        function processBoard(state) {
+            let current = state;
+            let comboCount = 0;
+            let matches;
+            let safetyLimit = 200;
+            while (safetyLimit > 0) {
+                safetyLimit--;
+                matches = findMatches(current);
+                if (!matches || matches.length === 0) break;
+                comboCount++;
+                let scoreAdd = calculateScore(current, matches, comboCount);
+                current = { ...current, score: current.score + scoreAdd, combo: comboCount };
+                current = removeMatches(current, matches);
+                current = cascadePieces(current);
+                current = fillBoard(current);
+            }
+            return { ...current, combo: comboCount };
+        }
+
+        function checkGameOver(state) {
+            if (state.moves <= 0) return true;
+            let board = state.board;
+            if (!board) return true;
+            let rows = board.length;
+            if (rows === 0) return true;
+            let cols = board[0].length;
+            let testBoard = board.map(function(row) { return [...row]; });
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (c + 1 < cols) {
+                        let temp = testBoard[r][c];
+                        testBoard[r][c] = testBoard[r][c + 1];
+                        testBoard[r][c + 1] = temp;
+                        let matches = findMatches({ board: testBoard });
+                        testBoard[r][c + 1] = testBoard[r][c];
+                        testBoard[r][c] = temp;
+                        if (matches.length > 0) return false;
+                    }
+                    if (r + 1 < rows) {
+                        let temp = testBoard[r][c];
+                        testBoard[r][c] = testBoard[r + 1][c];
+                        testBoard[r + 1][c] = temp;
+                        let matches = findMatches({ board: testBoard });
+                        testBoard[r + 1][c] = testBoard[r][c];
+                        testBoard[r][c] = temp;
+                        if (matches.length > 0) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function swapPieces(state, r1, c1, r2, c2) {
+            let newBoard = state.board.map(function(row) { return [...row]; });
+            let temp = newBoard[r1][c1];
+            newBoard[r1][c1] = newBoard[r2][c2];
+            newBoard[r2][c2] = temp;
+            return { ...state, board: newBoard, selectedPiece: null };
+        }
+
+        function handleBoardClick(state, row, col) {
+            if (!state.board || !state.board[row] || state.board[row][col] === undefined) return state;
+            let selected = state.selectedPiece;
+            if (!selected) {
+                return { ...state, selectedPiece: { row: row, col: col } };
+            }
+            let sr = selected.row;
+            let sc = selected.col;
+            if (sr === row && sc === col) {
+                return { ...state, selectedPiece: null };
+            }
+            let dr = Math.abs(row - sr);
+            let dc = Math.abs(col - sc);
+            if (dr + dc === 1) {
+                let newState = { ...state, selectedPiece: null, moves: state.moves - 1 };
+                newState = swapPieces(newState, sr, sc, row, col);
+                let matchesAfterSwap = findMatches(newState);
+                if (matchesAfterSwap.length === 0) {
+                    let revertedBoard = state.board.map(function(rr) { return [...rr]; });
+                    let revertedState = { ...state, board: revertedBoard, selectedPiece: null, moves: state.moves };
+                    if (checkGameOver(revertedState)) {
+                        revertedState = { ...revertedState, gameOver: true };
+                    }
+                    return revertedState;
+                }
+                newState = processBoard(newState);
+                if (checkGameOver(newState)) {
+                    newState = { ...newState, gameOver: true };
+                }
+                return newState;
+            }
+            return { ...state, selectedPiece: { row: row, col: col } };
+        }
+
+        function handleAction(state, action) {
+            let newState = { ...state };
+            let actionType = action.type;
+            switch (actionType) {
+                case 'PLAY':
+                case 'play':
+                case 'START':
+                case 'start':
+                case 'START_GAME':
+                case 'start_game': {
+                    let lvl = state.level || 1;
+                    let config = getLevelConfig(lvl);
+                    if (!config) return state;
+                    newState = {
+                        ...state,
+                        screen: 'gameplay',
+                        board: generateValidBoard(config.rowCount, config.colCount, config.pieceTypes),
+                        score: 0,
+                        moves: config.maxMoves,
+                        level: lvl,
+                        selectedPiece: null,
+                        gameOver: false,
+                        result: null,
+                        combo: 0,
+                        pieceTypes: config.pieceTypes,
+                        previousScreen: null
+                    };
+                    break;
+                }
+                case 'START_LEVEL': {
+                    let lvl = action.level;
+                    let config = getLevelConfig(lvl);
+                    if (!config) return state;
+                    newState = {
+                        ...state,
+                        screen: 'gameplay',
+                        board: generateValidBoard(config.rowCount, config.colCount, config.pieceTypes),
+                        score: 0,
+                        moves: config.maxMoves,
+                        level: lvl,
+                        selectedPiece: null,
+                        gameOver: false,
+                        result: null,
+                        combo: 0,
+                        pieceTypes: config.pieceTypes,
+                        previousScreen: null
+                    };
+                    break;
+                }
+                case 'select_level': {
+                    let lvl = action.level;
+                    let config = getLevelConfig(lvl);
+                    if (!config || lvl > state.levelsUnlocked) return state;
+                    newState = {
+                        ...state,
+                        screen: 'gameplay',
+                        board: generateValidBoard(config.rowCount, config.colCount, config.pieceTypes),
+                        score: 0,
+                        moves: config.maxMoves,
+                        level: lvl,
+                        selectedPiece: null,
+                        gameOver: false,
+                        result: null,
+                        combo: 0,
+                        pieceTypes: config.pieceTypes,
+                        previousScreen: null
+                    };
+                    break;
+                }
+                case 'LEVEL_SELECT':
+                    newState = { ...state, screen: 'level_select', previousScreen: state.screen };
+                    break;
+                case 'SETTINGS':
+                    newState = { ...state, screen: 'settings', previousScreen: state.screen };
+                    break;
+                case 'HIGH_SCORES':
+                    newState = { ...state, screen: 'high_scores', previousScreen: state.screen };
+                    break;
+                case 'SHOP':
+                    newState = { ...state, screen: 'shop', previousScreen: state.screen };
+                    break;
+                case 'PAUSE':
+                    if (state.screen === 'gameplay') {
+                        newState = { ...state, screen: 'pause_menu', previousScreen: 'gameplay' };
+                    }
+                    break;
+                case 'RESUME':
+                    if (state.screen === 'pause_menu') {
+                        newState = { ...state, screen: state.previousScreen || 'gameplay', previousScreen: null };
+                    }
+                    break;
+                case 'RESTART': {
+                    let curLevel = state.level || 1;
+                    let config = getLevelConfig(curLevel);
+                    if (!config) return state;
+                    newState = {
+                        ...state,
+                        screen: 'gameplay',
+                        board: generateValidBoard(config.rowCount, config.colCount, config.pieceTypes),
+                        score: 0,
+                        moves: config.maxMoves,
+                        selectedPiece: null,
+                        gameOver: false,
+                        result: null,
+                        combo: 0,
+                        pieceTypes: config.pieceTypes,
+                        previousScreen: null
+                    };
+                    break;
+                }
+                case 'HOME':
+                    newState = { ...state, screen: 'home', previousScreen: null, selectedPiece: null,
+                        gameOver: false, result: null };
+                    break;
+                case 'NEXT_LEVEL': {
+                    let nextLevel = (state.level || 0) + 1;
+                    let config = getLevelConfig(nextLevel);
+                    if (!config) {
+                        newState = { ...state, screen: 'level_select', previousScreen: null };
+                    } else {
+                        let unlocked = Math.max(state.levelsUnlocked || 1, nextLevel);
+                        newState = {
+                            ...state,
+                            screen: 'gameplay',
+                            level: nextLevel,
+                            levelsUnlocked: unlocked,
+                            board: generateValidBoard(config.rowCount, config.colCount, config.pieceTypes),
+                            score: 0,
+                            moves: config.maxMoves,
+                            selectedPiece: null,
+                            gameOver: false,
+                            result: null,
+                            combo: 0,
+                            pieceTypes: config.pieceTypes,
+                            previousScreen: null
+                        };
+                    }
+                    break;
+                }
+                case 'CLOSE_RESULT':
+                    newState = { ...state, screen: 'level_select', previousScreen: null, result: null,
+                        gameOver: false };
+                    break;
+                case 'TOGGLE_SOUND':
+                    newState = { ...state, soundEnabled: !state.soundEnabled };
+                    break;
+                case 'TOGGLE_MUSIC':
+                    newState = { ...state, musicEnabled: !state.musicEnabled };
+                    break;
+                case 'TOGGLE_VIBRATION':
+                    newState = { ...state, vibrationEnabled: !state.vibrationEnabled };
+                    break;
+                case 'CELL_CLICK': {
+                    if (state.screen !== 'gameplay' || state.gameOver || state.moves <= 0) return state;
+                    newState = handleBoardClick(state, action.row, action.col);
+                    if (newState.screen === 'gameplay' && !newState.gameOver) {
+                        let levelConfig = getLevelConfig(newState.level);
+                        if (levelConfig) {
+                            let target = levelConfig.targetScore || Infinity;
+                            if (newState.moves <= 0 && newState.score < target) {
+                                let stars = 0;
+                                if (newState.score >= target * 0.3) stars = 1;
+                                if (newState.score >= target * 0.6) stars = 2;
+                                if (newState.score >= target) stars = 3;
+                                newState = { ...newState, gameOver: true, result: 'lose',
+                                    screen: 'game_result', stars: stars };
+                            } else if (newState.score >= target) {
+                                let coinReward = levelConfig.coinReward || 50;
+                                let stars = 1;
+                                if (newState.score >= target * 1.5) stars = 2;
+                                if (newState.score >= target * 2) stars = 3;
+                                let unlocked = Math.max(state.levelsUnlocked || 1, (newState.level || 1) + 1);
+                                newState = { ...newState, gameOver: true, result: 'win',
+                                    screen: 'game_result', coins: (newState.coins || 0) + coinReward,
+                                    stars: stars, levelsUnlocked: unlocked };
+                            }
+                        }
+                    }
+                    if (newState.gameOver && newState.screen === 'gameplay') {
+                        let levelConfig = getLevelConfig(newState.level);
+                        let target = levelConfig ? levelConfig.targetScore : Infinity;
+                        if (newState.score >= target) {
+                            let coinReward = levelConfig ? (levelConfig.coinReward || 50) : 50;
+                            let stars = 1;
+                            if (newState.score >= target * 1.5) stars = 2;
+                            if (newState.score >= target * 2) stars = 3;
+                            let unlocked = Math.max(state.levelsUnlocked || 1, (newState.level || 1) + 1);
+                            newState = { ...newState, gameOver: true, result: 'win', screen: 'game_result',
+                                coins: (newState.coins || 0) + coinReward, stars: stars,
+                                levelsUnlocked: unlocked };
+                        } else {
+                            let stars = 0;
+                            if (newState.score >= target * 0.3) stars = 1;
+                            if (newState.score >= target * 0.6) stars = 2;
+                            newState = { ...newState, gameOver: true, result: 'lose', screen: 'game_result',
+                                stars: stars };
+                        }
+                    }
+                    break;
+                }
+                default:
+                    return state;
+            }
+            return newState;
+        }
+
+        function showScreen(screenId) {
+            let allScreens = document.querySelectorAll('.screen');
+            for (let i = 0; i < allScreens.length; i++) {
+                allScreens[i].classList.remove('active');
+            }
+            let target = document.getElementById(screenId + '-screen');
+            if (target) {
+                target.classList.add('active');
+            }
+        }
+
+        function render(state) {
+            showScreen(state.screen);
+            let bottomBar = document.getElementById('bottom-bar');
+            if (!bottomBar) return;
+            let allButtons = bottomBar.querySelectorAll('button');
+            for (let i = 0; i < allButtons.length; i++) {
+                allButtons[i].style.display = 'none';
+            }
+            let buttonsToShow = [];
+            switch (state.screen) {
+                case 'home': {
+                    buttonsToShow = ['btn-play', 'btn-level-select', 'btn-settings', 'btn-high-scores', 'btn-shop'];
+                    let homeCoins = document.getElementById('home-coins');
+                    if (homeCoins) homeCoins.textContent = state.coins || 0;
+                    break;
+                }
+                case 'level_select': {
+                    buttonsToShow = ['btn-home'];
+                    let levelGrid = document.getElementById('level-grid');
+                    if (levelGrid) {
+                        levelGrid.innerHTML = '';
+                        let totalLevels = 20;
+                        for (let i = 1; i <= totalLevels; i++) {
+                            let unlocked = i <= (state.levelsUnlocked || 1);
+                            let completed = i < (state.level || 1);
+                            let btn = document.createElement('button');
+                            btn.className = 'px-3 py-2 rounded-xl font-bold text-center ' + (unlocked ?
+                                'bg-yellow-500 text-black cursor-pointer' :
+                                'bg-gray-600 text-gray-400 cursor-not-allowed');
+                            btn.textContent = i + (completed ? ' ★' : '');
+                            if (unlocked) {
+                                (function(lvl) {
+                                    btn.addEventListener('click', function() {
+                                        gameState = handleAction(gameState, { type: 'select_level', level: lvl });
+                                        render(gameState);
+                                    });
+                                })(i);
+                            }
+                            levelGrid.appendChild(btn);
+                        }
+                    }
+                    break;
+                }
+                case 'gameplay': {
+                    buttonsToShow = ['btn-pause', 'btn-restart'];
+                    let gs = document.getElementById('gameplay-score');
+                    if (gs) gs.textContent = state.score || 0;
+                    let gl = document.getElementById('gameplay-level');
+                    if (gl) gl.textContent = state.level || 1;
+                    let gm = document.getElementById('gameplay-moves');
+                    if (gm) gm.textContent = state.moves || 0;
+                    let comboEl = document.getElementById('combo-indicator');
+                    if (comboEl) {
+                        if (state.combo && state.combo > 1) {
+                            comboEl.classList.remove('hidden');
+                            comboEl.textContent = '🔥 ' + state.combo + 'x Combo!';
+                        } else {
+                            comboEl.classList.add('hidden');
+                        }
+                    }
+                    renderBoard(state);
+                    break;
+                }
+                case 'pause_menu': {
+                    buttonsToShow = ['btn-resume', 'btn-restart', 'btn-home'];
+                    let ps = document.getElementById('pause-score');
+                    if (ps) ps.textContent = '得分: ' + (state.score || 0);
+                    break;
+                }
+                case 'settings': {
+                    buttonsToShow = ['btn-home'];
+                    let ts = document.getElementById('toggle-sound');
+                    if (ts) ts.textContent = state.soundEnabled ? '开' : '关';
+                    let tm = document.getElementById('toggle-music');
+                    if (tm) tm.textContent = state.musicEnabled ? '开' : '关';
+                    let tv = document.getElementById('toggle-vibration');
+                    if (tv) tv.textContent = state.vibrationEnabled ? '开' : '关';
+                    break;
+                }
+                case 'shop': {
+                    buttonsToShow = ['btn-home'];
+                    let sc = document.getElementById('shop-coins');
+                    if (sc) sc.textContent = state.coins || 0;
+                    let shopContainer = document.getElementById('shop-items');
+                    if (shopContainer) {
+                        shopContainer.innerHTML = '';
+                        let shopItems = [
+                            { id: 'bomb', name: '💣 炸弹', cost: 100, desc: '消除3x3区域' },
+                            { id: 'rainbow', name: '🌈 彩虹', cost: 200, desc: '消除一种颜色' },
+                            { id: 'hammer', name: '🔨 锤子', cost: 50, desc: '消除单个方块' },
+                            { id: 'shuffle', name: '🔀 洗牌', cost: 75, desc: '重新排列棋盘' }
+                        ];
+                        for (let i = 0; i < shopItems.length; i++) {
+                            let item = shopItems[i];
+                            let btn = document.createElement('button');
+                            btn.className = 'bg-gray-700 rounded-xl p-3 text-center hover:bg-gray-600';
+                            btn.innerHTML = item.name + '<br><small>' + item.cost + ' 🪙</small><br><small class="text-gray-500">' + item.desc + '</small>';
+                            (function(itm) {
+                                btn.addEventListener('click', function() {
+                                    if ((gameState.coins || 0) >= itm.cost) {
+                                        gameState = { ...gameState, coins: gameState.coins - itm.cost };
+                                        render(gameState);
+                                    }
+                                });
+                            })(item);
+                            shopContainer.appendChild(btn);
+                        }
+                    }
+                    break;
+                }
+                case 'game_result': {
+                    let ri = document.getElementById('result-icon');
+                    let rt = document.getElementById('result-title');
+                    let rs = document.getElementById('result-score');
+                    let rstar = document.getElementById('result-stars');
+                    if (state.result === 'win') {
+                        buttonsToShow = ['btn-next-level', 'btn-close-result', 'btn-home', 'btn-restart'];
+                        if (ri) ri.textContent = '🎉';
+                        if (rt) rt.textContent = '胜利！';
+                        if (rs) rs.textContent = '得分: ' + (state.score || 0);
+                        if (rstar) rstar.textContent = '⭐'.repeat(state.stars || 0);
+                    } else {
+                        buttonsToShow = ['btn-close-result', 'btn-home', 'btn-restart'];
+                        if (ri) ri.textContent = '😞';
+                        if (rt) rt.textContent = '失败';
+                        if (rs) rs.textContent = '得分: ' + (state.score || 0);
+                        if (rstar) rstar.textContent = state.stars ? '⭐'.repeat(state.stars) : '';
+                    }
+                    break;
+                }
+                case 'high_scores': {
+                    buttonsToShow = ['btn-home'];
+                    let scoresList = document.getElementById('scores-list');
+                    if (scoresList) {
+                        scoresList.innerHTML = '';
+                        let hs = state.highScores || [];
+                        if (hs.length === 0) {
+                            let div = document.createElement('div');
+                            div.className = 'text-gray-400 text-center py-4';
+                            div.textContent = '暂无高分记录';
+                            scoresList.appendChild(div);
+                        }
+                        for (let i = 0; i < hs.length; i++) {
+                            let entry = hs[i];
+                            let div = document.createElement('div');
+                            div.className = 'flex justify-between bg-gray-700 rounded-lg px-3 py-2';
+                            div.innerHTML = '<span>' + (entry.name || 'Player') + '</span><span class="text-yellow-400">' + (entry.score || 0) + '</span>';
+                            scoresList.appendChild(div);
+                        }
+                    }
+                    break;
+                }
+                default:
+                    buttonsToShow = ['btn-home'];
+                    break;
+            }
+            for (let i = 0; i < allButtons.length; i++) {
+                let btn = allButtons[i];
+                if (buttonsToShow.indexOf(btn.id) !== -1) {
+                    btn.style.display = '';
+                }
+            }
+        }
+
+        function renderBoard(state) {
+            let boardEl = document.getElementById('game-board');
+            if (!boardEl) return;
+            boardEl.innerHTML = '';
+            let board = state.board;
+            if (!board) return;
+            for (let r = 0; r < board.length; r++) {
+                for (let c = 0; c < board[r].length; c++) {
+                    let piece = board[r][c];
+                    let cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (piece) {
+                        cell.classList.add('piece-' + piece);
+                    }
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    if (state.selectedPiece && state.selectedPiece.row === r && state.selectedPiece.col === c) {
+                        cell.classList.add('selected');
+                    }
+                    (function(row, col) {
+                        cell.addEventListener('click', function() {
+                            if (gameState.screen !== 'gameplay' || gameState.gameOver || gameState.moves <= 0) return;
+                            gameState = handleAction(gameState, { type: 'CELL_CLICK', row: row, col: col });
+                            render(gameState);
+                        });
+                    })(r, c);
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function startGame() {
+            gameState = initState();
+            render(gameState);
+            let btnPlay = document.getElementById('btn-play');
+            if (btnPlay) {
+                btnPlay.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'PLAY' });
+                    render(gameState);
+                });
+            }
+            let btnLevelSelect = document.getElementById('btn-level-select');
+            if (btnLevelSelect) {
+                btnLevelSelect.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'LEVEL_SELECT' });
+                    render(gameState);
+                });
+            }
+            let btnSettings = document.getElementById('btn-settings');
+            if (btnSettings) {
+                btnSettings.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'SETTINGS' });
+                    render(gameState);
+                });
+            }
+            let btnHighScores = document.getElementById('btn-high-scores');
+            if (btnHighScores) {
+                btnHighScores.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'HIGH_SCORES' });
+                    render(gameState);
+                });
+            }
+            let btnShop = document.getElementById('btn-shop');
+            if (btnShop) {
+                btnShop.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'SHOP' });
+                    render(gameState);
+                });
+            }
+            let btnPause = document.getElementById('btn-pause');
+            if (btnPause) {
+                btnPause.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'PAUSE' });
+                    render(gameState);
+                });
+            }
+            let btnResume = document.getElementById('btn-resume');
+            if (btnResume) {
+                btnResume.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'RESUME' });
+                    render(gameState);
+                });
+            }
+            let btnRestart = document.getElementById('btn-restart');
+            if (btnRestart) {
+                btnRestart.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'RESTART' });
+                    render(gameState);
+                });
+            }
+            let btnHome = document.getElementById('btn-home');
+            if (btnHome) {
+                btnHome.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'HOME' });
+                    render(gameState);
+                });
+            }
+            let btnNextLevel = document.getElementById('btn-next-level');
+            if (btnNextLevel) {
+                btnNextLevel.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'NEXT_LEVEL' });
+                    render(gameState);
+                });
+            }
+            let btnCloseResult = document.getElementById('btn-close-result');
+            if (btnCloseResult) {
+                btnCloseResult.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'CLOSE_RESULT' });
+                    render(gameState);
+                });
+            }
+            let toggleSound = document.getElementById('toggle-sound');
+            if (toggleSound) {
+                toggleSound.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'TOGGLE_SOUND' });
+                    render(gameState);
+                });
+            }
+            let toggleMusic = document.getElementById('toggle-music');
+            if (toggleMusic) {
+                toggleMusic.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'TOGGLE_MUSIC' });
+                    render(gameState);
+                });
+            }
+            let toggleVibration = document.getElementById('toggle-vibration');
+            if (toggleVibration) {
+                toggleVibration.addEventListener('click', function() {
+                    gameState = handleAction(gameState, { type: 'TOGGLE_VIBRATION' });
+                    render(gameState);
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', startGame);
+    
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

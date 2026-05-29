@@ -231,9 +231,14 @@ def _now() -> int:
 
 
 def _admin_ok(token: str) -> bool:
-    """Trivial admin gate — env-configurable, mirrors compliance.py style."""
+    """Trivial admin gate — env-configurable, mirrors compliance.py style.
+
+    Uses constant-time comparison to prevent timing attacks.
+    """
+    from app.security import constant_time_eq
+
     expected = os.environ.get("KIX_ADMIN_TOKEN", "kix-admin-dev")
-    return bool(token) and token == expected
+    return constant_time_eq(token, expected)
 
 
 async def _load_thresholds(r, category: str) -> dict[str, int]:

@@ -309,8 +309,11 @@ def _check_admin(token: str) -> None:
 
     Production swap: validate a signed JWT with `role=admin`. The
     pre-shared key path stays as a controlled-environment fallback.
+    Constant-time comparison via :mod:`app.security`.
     """
-    if not token or not secrets.compare_digest(token, _ADMIN_TOKEN_FALLBACK):
+    from app.security import constant_time_eq
+
+    if not constant_time_eq(token, _ADMIN_TOKEN_FALLBACK):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "admin_token_invalid"},
@@ -1348,10 +1351,38 @@ async def _inter_brand_transfer_impl(
     # Resolve currency from the source brand wallet (treasury POV).
     currency = await _get_currency(from_brand_id, r)
 
-    for _ in range(MAX_WATCH_RETRIES):
+    # ZSET indexes we will write — must be in WATCH set so a concurrent
+    # writer touching either index forces our transaction to retry.
+    from_outgoing_key = _k_brand_ledger_outgoing(from_brand_id)
+    to_incoming_key = _k_brand_ledger_incoming(to_brand_id)
+
+    audit_key = "payouts:audit:inter_brand"
+
+    async def _audit(payload: dict[str, Any]) -> None:
+        """Best-effort forensic audit. Failure here does not undo a transfer."""
+        try:
+            await r.lpush(audit_key, json.dumps(payload, separators=(",", ":")))
+            await r.ltrim(audit_key, 0, 9999)
+        except Exception as audit_exc:  # noqa: BLE001 - audit must not raise
+            logger.warning("inter_brand audit write failed: %s", audit_exc)
+
+    last_exc: Exception | None = None
+
+    for attempt in range(MAX_WATCH_RETRIES):
         try:
             async with r.pipeline(transaction=True) as pipe:
-                await pipe.watch(from_balance_key, to_balance_key, idem_key)
+                # WATCH every key we will read-then-write. The ledger entry
+                # HASH is keyed by a fresh uuid per attempt and cannot
+                # collide, so it is intentionally omitted; both directional
+                # ZSETs are included so a concurrent transfer touching the
+                # same brand pair forces a retry.
+                await pipe.watch(
+                    from_balance_key,
+                    to_balance_key,
+                    idem_key,
+                    from_outgoing_key,
+                    to_incoming_key,
+                )
 
                 # Re-check idempotency under WATCH to close the race.
                 claimed = await pipe.get(idem_key)
@@ -1376,9 +1407,46 @@ async def _inter_brand_transfer_impl(
                             "idempotent": True,
                         }
 
-                from_balance = int(await pipe.get(from_balance_key) or 0)
+                # Both-brands-exist precondition under WATCH. A brand is
+                # considered existent if its wallet balance key has been
+                # initialised (even to "0").
+                from_raw = await pipe.get(from_balance_key)
+                to_raw = await pipe.get(to_balance_key)
+                if from_raw is None or to_raw is None:
+                    await pipe.unwatch()
+                    missing = []
+                    if from_raw is None:
+                        missing.append(from_brand_id)
+                    if to_raw is None:
+                        missing.append(to_brand_id)
+                    await _audit({
+                        "outcome": "rejected_unknown_brand",
+                        "from": from_brand_id,
+                        "to": to_brand_id,
+                        "missing": missing,
+                        "amount_cents": amount_cents,
+                        "reference_id": reference_id,
+                        "ts": _now(),
+                        "attempt": attempt + 1,
+                    })
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail={"error": "unknown_brand", "missing": missing},
+                    )
+
+                from_balance = int(from_raw or 0)
                 if from_balance < amount_cents:
                     await pipe.unwatch()
+                    await _audit({
+                        "outcome": "rejected_insufficient_funds",
+                        "from": from_brand_id,
+                        "to": to_brand_id,
+                        "balance_cents": from_balance,
+                        "amount_cents": amount_cents,
+                        "reference_id": reference_id,
+                        "ts": _now(),
+                        "attempt": attempt + 1,
+                    })
                     raise HTTPException(
                         status_code=status.HTTP_402_PAYMENT_REQUIRED,
                         detail={
@@ -1410,16 +1478,50 @@ async def _inter_brand_transfer_impl(
                         "metadata": meta_json,
                     },
                 )
-                pipe.zadd(_k_brand_ledger_outgoing(from_brand_id), {entry_id: now})
-                pipe.zadd(_k_brand_ledger_incoming(to_brand_id), {entry_id: now})
+                pipe.zadd(from_outgoing_key, {entry_id: now})
+                pipe.zadd(to_incoming_key, {entry_id: now})
                 # 24h idempotency window.
                 pipe.set(idem_key, entry_id, ex=86400)
-                await pipe.execute()
+
+                try:
+                    await pipe.execute()
+                except aioredis.WatchError:
+                    raise
+                except Exception as exec_exc:  # noqa: BLE001
+                    logger.exception(
+                        "inter_brand_transfer execute failed from=%s to=%s amount=%s ref=%s: %s",
+                        from_brand_id, to_brand_id, amount_cents, reference_id, exec_exc,
+                    )
+                    await _audit({
+                        "outcome": "execute_failed",
+                        "from": from_brand_id,
+                        "to": to_brand_id,
+                        "amount_cents": amount_cents,
+                        "reference_id": reference_id,
+                        "error": repr(exec_exc),
+                        "ts": _now(),
+                        "attempt": attempt + 1,
+                    })
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail={"error": "ledger_execute_failed"},
+                    ) from exec_exc
 
                 logger.info(
                     "ledger transfer from=%s to=%s amount=%s reason=%s ref=%s",
                     from_brand_id, to_brand_id, amount_cents, reason, reference_id,
                 )
+                await _audit({
+                    "outcome": "success",
+                    "eid": entry_id,
+                    "from": from_brand_id,
+                    "to": to_brand_id,
+                    "amount_cents": amount_cents,
+                    "reason": reason,
+                    "reference_id": reference_id,
+                    "ts": now,
+                    "attempt": attempt + 1,
+                })
                 return {
                     "entry_id": entry_id,
                     "from_brand_id": from_brand_id,
@@ -1432,12 +1534,28 @@ async def _inter_brand_transfer_impl(
                     "metadata": metadata,
                     "idempotent": False,
                 }
-        except aioredis.WatchError:
+        except aioredis.WatchError as we:
+            last_exc = we
+            logger.info(
+                "inter_brand_transfer WATCH conflict (attempt=%d/%d) ref=%s",
+                attempt + 1, MAX_WATCH_RETRIES, reference_id,
+            )
             continue
 
+    # Exhausted retries — caller should retry the request.
+    await _audit({
+        "outcome": "contention_max_retries",
+        "from": from_brand_id,
+        "to": to_brand_id,
+        "amount_cents": amount_cents,
+        "reference_id": reference_id,
+        "ts": _now(),
+        "attempts": MAX_WATCH_RETRIES,
+        "error": repr(last_exc) if last_exc else None,
+    })
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail={"error": "ledger_contention"},
+        detail={"error": "ledger_contention", "retries": MAX_WATCH_RETRIES},
     )
 
 
