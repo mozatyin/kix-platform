@@ -2092,14 +2092,14 @@ async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         sc, b = await call(c, "POST", "/api/v1/deposits/place", json_body={
             "user_id": traveler_kid,
             "brand_id": primary_bid,
-            "amount_cents": 200_00_00,  # ¥20000 EU tour deposit
+            "amount_cents": 300_000,  # ¥3000 EU tour deposit (within ¥5000 wallet)
             "purpose": "event_deposit",
             "reference_id": f"tour_dep_{RUN_TAG}",
             "refundable": True,
             "note": "Europe 12-day tour booking deposit",
         })
         if sc in (200, 201) and isinstance(b, dict):
-            ok("deposits/place ¥20000 refundable tour deposit",
+            ok("deposits/place ¥3000 refundable tour deposit",
                f"deposit_id={(b.get('deposit_id') or '?')[:24]}…")
         else:
             gap("P0", "deposits/place refundable tour deposit",

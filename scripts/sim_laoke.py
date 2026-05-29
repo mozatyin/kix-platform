@@ -1598,6 +1598,123 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:110]}")
 
 
+# ── Phase R10: Round 10 — flash-sale dynamic pricing, premium reservation
+#              wallet freeze, commission-split transactions ───────────────
+async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R10: flash sale pricing + wallet freeze + commission split tx")
+    bid = state.get("brand_id") or BRAND_ID
+    hosts = state.get("hosts") or {}
+    viewers = state.get("viewers") or {}
+    host_kid = next(iter(hosts.values()), None)
+    viewer_kid = next(iter(viewers.values()), None)
+
+    # ── 1. POST /pricing/quote — flash sale dynamic surge/discount ─────────
+    sku = f"flash_sku_{RUN_TAG}"
+    sc, b = await call(c, "POST", "/api/v1/pricing/rule/configure", json_body={
+        "brand_id": bid,
+        "sku_or_listing_id": sku,
+        "rules": [
+            {"trigger": "flag", "condition": {"flag": "flash_sale"},
+             "multiplier": 0.5, "label": "flash sale -50%"},
+            {"trigger": "low_inventory",
+             "condition": {"threshold_pct": 0.1},
+             "multiplier": 1.4, "label": "scarcity bump"},
+            {"trigger": "demand", "condition": {"min_demand_index": 90},
+             "multiplier": 1.2, "label": "viral demand"},
+        ],
+    })
+    if sc in (200, 201):
+        ok("pricing/rule/configure flash sale composite",
+           "flash 0.5x + scarcity 1.4x + demand 1.2x")
+    else:
+        gap("P1", "pricing/rule/configure", f"{sc} {_short(b)}")
+
+    sc, b = await call(c, "POST", "/api/v1/pricing/quote", json_body={
+        "brand_id": bid,
+        "sku_or_listing_id": sku,
+        "base_price_cents": 99_00,  # ¥99 base
+        "context": {
+            "flag": {"flash_sale": True},
+            "inventory_pct": 0.05,
+            "demand_index": 95,
+        },
+    })
+    if sc == 200 and isinstance(b, dict):
+        ok("pricing/quote flash sale dynamic",
+           f"mult={b.get('multiplier_applied')} "
+           f"quoted={b.get('quoted_price_cents')}c "
+           f"fired={len(b.get('rules_fired') or [])} "
+           f"clamped={b.get('clamped')}")
+    else:
+        gap("P0", "pricing/quote flash sale dynamic", f"{sc} {_short(b)}")
+
+    # ── 2. POST /user-wallet/{kid}/freeze — premium reservation hold ───────
+    if viewer_kid:
+        sc, _ = await call(c, "POST",
+                           f"/api/v1/user-wallet/{viewer_kid}/create",
+                           json_body={"currency": "CNY"})
+        if sc in (200, 201):
+            ok("user-wallet/create for viewer", "premium reservation prep")
+        else:
+            gap("P1", "user-wallet/create", f"{sc}")
+        sc, _ = await call(c, "POST",
+                           f"/api/v1/user-wallet/{viewer_kid}/topup",
+                           json_body={
+                               "amount_cents": 50000,
+                               "source": "alipay",
+                               "reference_id": f"viewer_topup_{RUN_TAG}",
+                           })
+        if sc == 200:
+            ok("user-wallet/topup ¥500 viewer", "alipay")
+        else:
+            gap("P1", "user-wallet/topup viewer", f"{sc}")
+
+        sc, b = await call(c, "POST",
+                           f"/api/v1/user-wallet/{viewer_kid}/freeze",
+                           json_body={
+                               "amount_cents": 29900,  # ¥299 hold
+                               "reason": "reservation",
+                               "reference_id": f"premium_seat_{RUN_TAG}",
+                               "note": "premium VIP front-row reservation",
+                           })
+        if sc == 200 and isinstance(b, dict):
+            ok("user-wallet/freeze ¥299 premium reservation",
+               f"frozen={b.get('frozen_cents')}c "
+               f"available={b.get('available_cents')}c")
+        else:
+            gap("P0", "user-wallet/freeze premium reservation",
+                f"{sc} {_short(b)}")
+
+    # ── 3. POST /transactions/record with host_user_id + commission split ──
+    if host_kid and viewer_kid:
+        sc, b = await call(c, "POST", "/api/v1/transactions/record", json_body={
+            "brand_id": bid,
+            "buyer_user_id": viewer_kid,
+            "seller_user_id": host_kid,
+            "amount_cents": 9900,  # ¥99 flash sale
+            "currency": "CNY",
+            "transaction_type": "purchase",
+            "payment_method": "alipay",
+            "line_items": [
+                {"name": "Limited Edition Skincare Set", "qty": 1,
+                 "unit_price_cents": 9900},
+            ],
+            "metadata": {
+                "host_user_id": host_kid,
+                "commission_cents": 1500,  # ¥15 to platform (15%)
+                "host_split_cents": 3000,  # ¥30 to host (30%)
+                "stream_session_id": f"stream_{RUN_TAG}",
+            },
+        })
+        if sc in (200, 201) and isinstance(b, dict) and b.get("transaction_id"):
+            ok("transactions/record host commission split",
+               f"tx={b['transaction_id']} "
+               f"commission_charge={b.get('commission_charge_id') or 'none'}")
+        else:
+            gap("P0", "transactions/record host commission split",
+                f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1630,6 +1747,7 @@ async def main() -> int:
                 await phase_11_fraud(c, state)
                 await phase_12_replay(c, state)
                 await phase_13_module_probe(c, state)
+                await phase_r10_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

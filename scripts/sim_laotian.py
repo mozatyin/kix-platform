@@ -1392,6 +1392,163 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:110]}")
 
 
+# ── Phase R10: Round 10 — consumer wallet + first-class deposit lifecycle
+#              + dynamic pricing for the bike-share journey ───────────────
+async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R10: user_wallet + deposits FSM + pricing surge")
+    bid = state.get("primary_bid")
+    rider_kid = state.get("rider_kid")
+
+    # Mint a second rider so we can exercise both refund paths without
+    # double-consuming the same deposit state.
+    sc, b = await call(c, "POST", "/api/v1/kix-id/register", json_body={
+        "phone": f"+8615922{RUN_TAG % 1000000:06d}",
+        "display_name": "R10 rider B",
+        "primary_language": "zh-CN",
+        "source_brand_id": bid,
+        "device_fingerprint": f"dev_r10_b_{RUN_TAG}",
+        "country": "CN",
+    })
+    rider_b: str | None = None
+    if sc == 200 and isinstance(b, dict) and b.get("kid"):
+        rider_b = b["kid"]
+        ok("kix-id register R10 rider B", f"kid={rider_b}")
+    else:
+        gap("P1", "kix-id register R10 rider B", f"{sc} {_short(b)}")
+
+    candidates = [k for k in (rider_kid, rider_b) if k]
+    if not candidates:
+        gap("P0", "R10 prerequisites", "no rider kid available")
+        return
+
+    # ── 1. POST /user-wallet/{kid}/create + topup for each rider ───────────
+    for kid in candidates:
+        sc, _ = await call(c, "POST",
+                           f"/api/v1/user-wallet/{kid}/create",
+                           json_body={"currency": "CNY"})
+        if sc in (200, 201):
+            ok(f"user-wallet/create {kid[:14]}", "CNY wallet")
+        else:
+            gap("P0", "user-wallet/create", f"{sc} for {kid[:14]}")
+        sc, _ = await call(c, "POST",
+                           f"/api/v1/user-wallet/{kid}/topup",
+                           json_body={
+                               "amount_cents": 50000,  # ¥500
+                               "source": "wechat",
+                               "reference_id": f"topup_{RUN_TAG}_{kid[:8]}",
+                           })
+        if sc == 200:
+            ok(f"user-wallet/topup ¥500 {kid[:14]}", "wechat")
+        else:
+            gap("P1", "user-wallet/topup", f"{sc}")
+
+    # ── 2. POST /deposits/place — ¥99 bike rental hold for rider A ─────────
+    deposit_a: str | None = None
+    sc, b = await call(c, "POST", "/api/v1/deposits/place", json_body={
+        "user_id": candidates[0],
+        "brand_id": bid,
+        "amount_cents": 9900,  # ¥99
+        "purpose": "bike_rental",
+        "reference_id": f"bike_dep_a_{RUN_TAG}",
+        "refundable": True,
+    })
+    if sc in (200, 201) and isinstance(b, dict):
+        deposit_a = b.get("deposit_id")
+        ok("deposits/place ¥99 bike rental hold A",
+           f"deposit_id={(deposit_a or '?')[:24]}…")
+    else:
+        gap("P0", "deposits/place bike rental hold A", f"{sc} {_short(b)}")
+
+    # ── 3a. Full refund release ────────────────────────────────────────────
+    if deposit_a:
+        sc, b = await call(c, "POST",
+                           f"/api/v1/deposits/{deposit_a}/release",
+                           json_body={
+                               "action": "full_refund",
+                               "reason": "ride completed without damage",
+                           })
+        if sc == 200 and isinstance(b, dict):
+            ok("deposits/release full_refund",
+               f"released={b.get('released_amount_cents')}c "
+               f"status={b.get('status')}")
+        else:
+            gap("P0", "deposits/release full_refund", f"{sc} {_short(b)}")
+
+    # ── 3b. Partial deduct for second rider ────────────────────────────────
+    if len(candidates) > 1:
+        sc, b = await call(c, "POST", "/api/v1/deposits/place", json_body={
+            "user_id": candidates[1],
+            "brand_id": bid,
+            "amount_cents": 9900,
+            "purpose": "bike_rental",
+            "reference_id": f"bike_dep_b_{RUN_TAG}",
+            "refundable": True,
+        })
+        deposit_b: str | None = None
+        if sc in (200, 201) and isinstance(b, dict):
+            deposit_b = b.get("deposit_id")
+            ok("deposits/place ¥99 bike rental hold B",
+               f"deposit_id={(deposit_b or '?')[:24]}…")
+        else:
+            gap("P1", "deposits/place bike rental hold B", f"{sc} {_short(b)}")
+
+        if deposit_b:
+            sc, b = await call(c, "POST",
+                               f"/api/v1/deposits/{deposit_b}/release",
+                               json_body={
+                                   "action": "partial_deduct",
+                                   "deduct_amount_cents": 3000,  # ¥30 damage
+                                   "reason": "scratched seat - ¥30 deducted",
+                               })
+            if sc == 200 and isinstance(b, dict):
+                ok("deposits/release partial_deduct ¥30",
+                   f"released={b.get('released_amount_cents')}c "
+                   f"retained={b.get('retained_amount_cents')}c")
+            else:
+                gap("P0", "deposits/release partial_deduct",
+                    f"{sc} {_short(b)}")
+
+    # ── 4. POST /pricing/rule/configure + /pricing/quote peak hour 1.5x ────
+    sku = f"bike_ride_{RUN_TAG}"
+    sc, b = await call(c, "POST", "/api/v1/pricing/rule/configure", json_body={
+        "brand_id": bid,
+        "sku_or_listing_id": sku,
+        "rules": [
+            {"trigger": "peak_hour", "condition": {},
+             "multiplier": 1.5, "label": "evening rush 1.5x"},
+            {"trigger": "low_inventory",
+             "condition": {"threshold_pct": 0.2},
+             "multiplier": 1.3, "label": "scarcity surge"},
+        ],
+    })
+    if sc in (200, 201):
+        ok("pricing/rule/configure peak_hour + low_inventory",
+           "1.5x evening rush + 1.3x scarcity")
+    else:
+        gap("P0", "pricing/rule/configure", f"{sc} {_short(b)}")
+
+    # Quote during a peak hour: force hour 19 via context.time
+    import datetime as _dt
+    # build a UTC timestamp at 19:00 today
+    peak_dt = _dt.datetime.now(_dt.timezone.utc).replace(
+        hour=19, minute=0, second=0, microsecond=0
+    )
+    peak_ts = peak_dt.timestamp()
+    sc, b = await call(c, "POST", "/api/v1/pricing/quote", json_body={
+        "brand_id": bid,
+        "sku_or_listing_id": sku,
+        "base_price_cents": 200,  # ¥2 base ride
+        "context": {"time": peak_ts, "inventory_pct": 0.1},
+    })
+    if sc == 200 and isinstance(b, dict):
+        ok("pricing/quote peak hour 1.5x + low_inv 1.3x",
+           f"mult={b.get('multiplier_applied')} "
+           f"quoted={b.get('quoted_price_cents')}c "
+           f"fired={len(b.get('rules_fired') or [])}")
+    else:
+        gap("P0", "pricing/quote peak hour surge", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1425,6 +1582,7 @@ async def main() -> int:
                 await phase_11_fraud(c, state)
                 await phase_12_deposit_edges(c, state)
                 await phase_13_module_probe(c, state)
+                await phase_r10_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

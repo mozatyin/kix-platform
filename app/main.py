@@ -490,6 +490,22 @@ KiX = TikTok Ads for Gamification.
         tags=["payment_methods"],
     )
 
+    # ── Merchant Dashboards: today / cumulative / leaderboard / insights ─
+    from app.routers import dashboards
+    app.include_router(
+        dashboards.router,
+        prefix="/api/v1/dashboards",
+        tags=["dashboards"],
+    )
+
+    # ── Welcome Kit: auto-generated table stand / poster / shipping ────
+    from app.routers import welcome_kit
+    app.include_router(
+        welcome_kit.router,
+        prefix="/api/v1/welcome-kit",
+        tags=["welcome_kit"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():

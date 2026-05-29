@@ -554,11 +554,45 @@ async def create_custom_recipe(
 ) -> dict[str, Any]:
     """Save a merchant-authored recipe under brand:{bid}:custom_recipes."""
     _validate_recipe(recipe)
+
+    # ── Tier-quota gate (recipes) ──────────────────────────────────────
+    # Block creation when the brand has hit the recipes quota for its
+    # current subscription tier. Fail-open if the subscription module is
+    # unavailable.
+    try:
+        from app.routers.brand_subscriptions import check_quota
+        allowed, info = await check_quota(brand_id, "recipes", r)
+        if not allowed:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_limit_reached",
+                    "message": (
+                        f"Your {info['tier']} tier allows "
+                        f"{info['limit']} custom recipes. Upgrade to "
+                        f"{info['upgrade_required_to']} for more."
+                    ),
+                    "tier": info["tier"],
+                    "current": info["current"],
+                    "limit": info["limit"],
+                    "upgrade_required_to": info["upgrade_required_to"],
+                },
+            )
+    except HTTPException:
+        raise
+    except (ImportError, ValueError):
+        # Module not available or unknown resource — fail-open.
+        pass
+
     payload = json.dumps(recipe.model_dump())
-    await r.hset(_k_custom(brand_id), recipe.id, payload)
+    # HSET returns 1 for new field, 0 if overwriting. Only INCR on a
+    # genuinely new recipe so re-saves don't inflate the counter.
+    was_new = await r.hset(_k_custom(brand_id), recipe.id, payload)
+    if was_new:
+        await r.incr(f"brand:{brand_id}:recipes_count")
     logger.info(
-        "recipe_custom_created brand=%s recipe=%s modules=%d rules=%d",
-        brand_id, recipe.id, len(recipe.modules), len(recipe.rules),
+        "recipe_custom_created brand=%s recipe=%s modules=%d rules=%d new=%s",
+        brand_id, recipe.id, len(recipe.modules), len(recipe.rules), bool(was_new),
     )
     return {"ok": True, "recipe": recipe.model_dump()}
 
@@ -588,11 +622,40 @@ async def clone_recipe(
         )
     _validate_recipe(new_recipe)
 
-    await r.hset(
+    # ── Tier-quota gate (recipes) ──────────────────────────────────────
+    # Cloning also produces a new custom recipe, so the same quota
+    # applies. Fail-open if the subscription module is unavailable.
+    try:
+        from app.routers.brand_subscriptions import check_quota
+        allowed, info = await check_quota(body.brand_id, "recipes", r)
+        if not allowed:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_limit_reached",
+                    "message": (
+                        f"Your {info['tier']} tier allows "
+                        f"{info['limit']} custom recipes. Upgrade to "
+                        f"{info['upgrade_required_to']} for more."
+                    ),
+                    "tier": info["tier"],
+                    "current": info["current"],
+                    "limit": info["limit"],
+                    "upgrade_required_to": info["upgrade_required_to"],
+                },
+            )
+    except HTTPException:
+        raise
+    except (ImportError, ValueError):
+        pass
+
+    was_new = await r.hset(
         _k_custom(body.brand_id),
         new_recipe.id,
         json.dumps(new_recipe.model_dump()),
     )
+    if was_new:
+        await r.incr(f"brand:{body.brand_id}:recipes_count")
     logger.info(
         "recipe_cloned brand=%s from=%s to=%s",
         body.brand_id, recipe_id, new_recipe.id,

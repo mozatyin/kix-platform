@@ -357,6 +357,35 @@ async def request_creative(
     r=Depends(get_redis),
 ):
     """Create a creative_id and kick an ELTM build in the background."""
+    # ── Tier-quota gate (games) ────────────────────────────────────────
+    # Each creative-generation request produces a game-style creative; it
+    # consumes the brand's "games" quota. Fail-open if the subscription
+    # module is unavailable.
+    try:
+        from app.routers.brand_subscriptions import check_quota
+        allowed, info = await check_quota(body.brand_id, "games", r)
+        if not allowed:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_limit_reached",
+                    "message": (
+                        f"Your {info['tier']} tier allows "
+                        f"{info['limit']} games. Upgrade to "
+                        f"{info['upgrade_required_to']} for more."
+                    ),
+                    "tier": info["tier"],
+                    "current": info["current"],
+                    "limit": info["limit"],
+                    "upgrade_required_to": info["upgrade_required_to"],
+                },
+            )
+    except HTTPException:
+        raise
+    except (ImportError, ValueError):
+        # Module not available or unknown resource — fail-open.
+        pass
+
     creative_id = f"crv_{uuid.uuid4().hex[:12]}"
     job_id = f"job_{uuid.uuid4().hex[:8]}"
 
@@ -381,6 +410,8 @@ async def request_creative(
     pipe.hset(_k(_K_CREATIVE, cid=creative_id), mapping=mapping)
     pipe.sadd(_k(_K_BRAND_CREATIVES, bid=body.brand_id), creative_id)
     pipe.rpush(_K_QUEUE, creative_id)
+    # Tier-quota counter — INCR games_count for this brand.
+    pipe.incr(f"brand:{body.brand_id}:games_count")
     await pipe.execute()
 
     background_tasks.add_task(_kick_build, r, creative_id)

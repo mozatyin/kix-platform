@@ -505,6 +505,35 @@ async def create_custom_audience(
             detail=f"source must be one of {sorted(VALID_SOURCES)}",
         )
 
+    # ── Tier-quota gate (audiences) ────────────────────────────────────
+    # Block creation when the brand has hit the audiences quota for its
+    # current subscription tier. Fail-open if the subscription module is
+    # unavailable.
+    try:
+        from app.routers.brand_subscriptions import check_quota
+        allowed, info = await check_quota(body.brand_id, "audiences", r)
+        if not allowed:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_limit_reached",
+                    "message": (
+                        f"Your {info['tier']} tier allows "
+                        f"{info['limit']} custom audiences. Upgrade to "
+                        f"{info['upgrade_required_to']} for more."
+                    ),
+                    "tier": info["tier"],
+                    "current": info["current"],
+                    "limit": info["limit"],
+                    "upgrade_required_to": info["upgrade_required_to"],
+                },
+            )
+    except HTTPException:
+        raise
+    except (ImportError, ValueError):
+        # Module not available or unknown resource — fail-open.
+        pass
+
     aid = f"aud_{uuid4().hex[:16]}"
 
     matched_email_uids, unmatched_emails = await _resolve_email_hashes(
@@ -566,6 +595,8 @@ async def create_custom_audience(
         pipe.sadd(_pek(aid), *unmatched_emails)
     if unmatched_phones:
         pipe.sadd(_ppk(aid), *unmatched_phones)
+    # Tier-quota counter — INCR audiences_count for this brand.
+    pipe.incr(f"brand:{body.brand_id}:audiences_count")
     await pipe.execute()
 
     added = await _add_members(r, aid, all_uids)
@@ -782,7 +813,18 @@ async def delete_audience(
     )
     if brand_id:
         pipe.srem(_bak(brand_id), audience_id)
+        # Tier-quota counter — DECR audiences_count.
+        pipe.decr(f"brand:{brand_id}:audiences_count")
     await pipe.execute()
+
+    # Clamp the counter at 0 (defensive against double-delete drift).
+    if brand_id:
+        try:
+            cur = await r.get(f"brand:{brand_id}:audiences_count")
+            if cur is not None and int(cur) < 0:
+                await r.set(f"brand:{brand_id}:audiences_count", 0)
+        except (TypeError, ValueError):
+            pass
 
     return {"ok": True, "deleted": audience_id}
 
@@ -976,6 +1018,32 @@ async def create_lookalike(
             detail="cannot build lookalike from another lookalike",
         )
 
+    # ── Tier-quota gate (audiences) ────────────────────────────────────
+    # Lookalikes are a new persisted audience, so the same quota applies.
+    try:
+        from app.routers.brand_subscriptions import check_quota
+        allowed, info = await check_quota(body.brand_id, "audiences", r)
+        if not allowed:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_limit_reached",
+                    "message": (
+                        f"Your {info['tier']} tier allows "
+                        f"{info['limit']} custom audiences. Upgrade to "
+                        f"{info['upgrade_required_to']} for more."
+                    ),
+                    "tier": info["tier"],
+                    "current": info["current"],
+                    "limit": info["limit"],
+                    "upgrade_required_to": info["upgrade_required_to"],
+                },
+            )
+    except HTTPException:
+        raise
+    except (ImportError, ValueError):
+        pass
+
     seed_size = await r.scard(_mk(audience_id))
     if seed_size == 0:
         raise HTTPException(
@@ -1043,6 +1111,8 @@ async def create_lookalike(
     pipe = r.pipeline()
     pipe.hset(_ak(new_aid), mapping=payload)
     pipe.sadd(_bak(body.brand_id), new_aid)
+    # Tier-quota counter — INCR audiences_count for this brand.
+    pipe.incr(f"brand:{body.brand_id}:audiences_count")
     await pipe.execute()
 
     if chosen:

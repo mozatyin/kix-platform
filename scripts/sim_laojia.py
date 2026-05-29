@@ -1497,6 +1497,89 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:100]}")
 
 
+# ── Phase R10: Round 10 — B2B shipping accounts, master inventory rollup,
+#              multi-party transactions, master health check ──────────────
+async def phase_r10_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R10: B2B accounts + master inventory + multi-party tx + health")
+    master_id = state.get("master_id")
+    triads = state.get("triads", [])
+    bid = state.get("brand_id") or BRAND_ID
+
+    # ── 1. POST /accounts/register — B2B shipping client (cosmetics brand) ─
+    primary_contact = f"shipper_contact_{RUN_TAG}"
+    sc, b = await call(c, "POST", "/api/v1/accounts/register", json_body={
+        "account_name": f"BeautyCo Shipping {RUN_TAG}",
+        "industry": "e-commerce",
+        "size": "11-50",
+        "primary_contact_user_id": primary_contact,
+        "domain": f"beauty{RUN_TAG}.example.cn",
+        "metadata": {"vertical": "logistics_b2b_shipper"},
+    })
+    aid: str | None = None
+    if sc in (200, 201) and isinstance(b, dict) and b.get("account_id"):
+        aid = b["account_id"]
+        ok("accounts/register B2B shipping client",
+           f"account_id={aid} name=BeautyCo")
+    else:
+        gap("P0", "accounts/register B2B shipping client",
+            f"{sc} {_short(b)}")
+
+    # ── 2. GET /master/{mid}/inventory/cross-brand ─────────────────────────
+    if master_id:
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/inventory/cross-brand",
+                           params={"limit_per_brand": 50})
+        if sc == 200 and isinstance(b, dict):
+            ok("master inventory/cross-brand",
+               f"brands={b.get('brand_count')} "
+               f"total_listings={b.get('total_listings')}")
+        else:
+            gap("P0", "master inventory/cross-brand", f"{sc} {_short(b)}")
+
+    # ── 3. POST /transactions/record — multi-party sender → courier → recipient
+    if triads:
+        triad = triads[0]
+        sc, b = await call(c, "POST", "/api/v1/transactions/record", json_body={
+            "brand_id": bid,
+            "buyer_user_id": triad["sender_kid"],
+            "seller_user_id": triad["courier_kid"],
+            "amount_cents": 2500,  # ¥25 shipping fee
+            "currency": "CNY",
+            "transaction_type": "purchase",
+            "payment_method": "wechat",
+            "line_items": [
+                {"name": "express delivery service", "qty": 1,
+                 "unit_price_cents": 2500},
+            ],
+            "metadata": {
+                "courier_user_id": triad["courier_kid"],
+                "recipient_user_id": triad["recipient_kid"],
+                "sender_user_id": triad["sender_kid"],
+                "commission_cents": 500,  # ¥5 platform fee
+                "tracking_no": f"SF{RUN_TAG}",
+            },
+        })
+        if sc in (200, 201) and isinstance(b, dict) and b.get("transaction_id"):
+            ok("transactions/record multi-party (sender→courier→recipient)",
+               f"tx={b['transaction_id']} "
+               f"commission_charge={b.get('commission_charge_id') or 'none'}")
+        else:
+            gap("P0", "transactions/record multi-party", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "transactions/record prereq", "no triads available")
+
+    # ── 4. GET /master/{mid}/health/check ──────────────────────────────────
+    if master_id:
+        sc, b = await call(c, "GET",
+                           f"/api/v1/master/{master_id}/health/check")
+        if sc == 200 and isinstance(b, dict):
+            ok("master health/check",
+               f"status={b.get('overall_status') or b.get('status')} "
+               f"issues={len(b.get('issues') or [])}")
+        else:
+            gap("P0", "master health/check", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1532,6 +1615,7 @@ async def main() -> int:
                 await phase_13_failed_delivery(c, state)
                 await phase_14_cross_id_attribution(c, state)
                 await phase_15_module_probe(c, state)
+                await phase_r10_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback
