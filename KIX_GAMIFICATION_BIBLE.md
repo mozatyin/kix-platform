@@ -1,5 +1,5 @@
-# 📖 KIX BIBLE
-## KiX Gamification Platform — 唯一权威文档
+# 📖 KIX GAMIFICATION BIBLE
+## 唯一权威文档 · Single Source of Truth
 
 > 「软件免费送，网络收费。」 — KiX 唯一商业模式
 >
@@ -594,7 +594,7 @@ Round 11 商家漏斗:     预计降 ~5 P0 (验证中)
 ## A. 所有文档索引
 
 ### 战略层
-- [`KIX_BIBLE.md`](KIX_BIBLE.md) — **本文档**（唯一权威源）
+- [`KIX_GAMIFICATION_BIBLE.md`](KIX_GAMIFICATION_BIBLE.md) — **本文档**（唯一权威源）
 - [`PLATFORM_OVERVIEW.md`](PLATFORM_OVERVIEW.md) — 平台总览（团队接入手册）
 - [`MONETIZATION_V2.md`](MONETIZATION_V2.md) — TikTok/Google 模型详解
 - [`MASTER_BLUEPRINT.md`](MASTER_BLUEPRINT.md) — 全球 100 Gamification → KiX 化
@@ -676,4 +676,4 @@ Round 11 商家漏斗:     预计降 ~5 P0 (验证中)
 
 ---
 
-📖 *KIX BIBLE · 唯一权威 · 持续更新*
+📖 *KIX GAMIFICATION BIBLE · 唯一权威 · 持续更新*
