@@ -1486,9 +1486,142 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — real estate PHI + buyer agreement + relationships ─
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — recipes + financial_proof PHI + buyer_agreement + property_viewing + agent_of")
+    primary = state.get("primary_bid")
+    version = state.get("consent_version") or f"v_re_{RUN_TAG}"
+    clients = state.get("clients") or []
+    agents = state.get("agents") or []
+    client_uid = clients[0].get("kid") if (clients and isinstance(clients[0], dict)) else f"client_probe_{RUN_TAG}"
+    agent_uid = agents[0].get("kid") if (agents and isinstance(agents[0], dict)) else f"agent_probe_{RUN_TAG}"
+
+    # 1) Recipe library
+    for industry in ("real_estate", "financial_services"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version, "text_md": "## Real Estate Privacy",
+        "effective_at": int(time.time()) - 60, "requires_re_grant": False,
+    })
+
+    # 2) consent scopes: document_storage / financial_proof / pii_kyc WITH consent_evidence
+    consent_grant_id = None
+    for scope_name in ("document_storage", "financial_proof", "pii_kyc"):
+        sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": client_uid,
+            "scopes": [scope_name],
+            "policy_version": version,
+            "source": "app",
+            "consent_evidence": {
+                "method": "signature",
+                "reference": f"sig_re_{scope_name}_{RUN_TAG}",
+            },
+        })
+        if sc == 200:
+            ok(f"{scope_name} scope w/ consent_evidence", "")
+            if isinstance(b, dict) and not consent_grant_id:
+                consent_grant_id = b.get("grant_id") or b.get("user_id")
+        elif sc in (400, 422):
+            gap("P0", f"consent scope {scope_name} rejected",
+                f"{sc} {_short(b)}")
+
+    # 3) /consent/document/sign type=buyer_agreement + signature
+    sc, b = await call(c, "POST", "/api/v1/consent/document/sign", json_body={
+        "user_id": client_uid,
+        "document_type": "buyer_agreement",
+        "document_version": version,
+        "document_url": "https://example.com/buyer-agreement-re.pdf",
+        "signature_method": "signature",
+        "signature_evidence_url": "https://example.com/sig-re",
+        "granted_scopes": ["document_storage", "financial_proof"],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("document_consent_id"):
+        ok("buyer_agreement signed (real estate)",
+           f"doc_id={b['document_consent_id']}")
+    elif sc in (400, 422):
+        gap("P1", "buyer_agreement document/sign", f"{sc} {_short(b)}")
+
+    # 4) /media/upload media_class=document for property paperwork
+    sc, b = await call(c, "POST", "/api/v1/media/upload", json_body={
+        "owner_user_id": client_uid,
+        "brand_id": primary,
+        "media_class": "document",
+        "storage_url": "s3://kix-re/title-deed.pdf",
+        "content_hash": "sha256:" + "d" * 40,
+        "mime_type": "application/pdf",
+        "size_bytes": 512000,
+        "consent_grant_id": consent_grant_id or f"grant_{client_uid}",
+        "retention_days": 3650,
+        "metadata": {"doc_kind": "title_deed"},
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("media_id"):
+        ok("media.upload document w/ consent_grant_id",
+           f"media_id={b['media_id']}")
+    elif sc in (400, 422):
+        gap("P1", "media.upload document",
+            f"{sc} {_short(b)}")
+
+    # 5) Reservation type=property_viewing + resource_id=property + fulfiller=agent
+    property_id = f"property_shenzhen_lot_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": agent_uid, "scopes": ["cross_brand_tracking"],
+        "policy_version": version, "source": "app",
+    })
+    sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+        "brand_id": primary,
+        "user_id": client_uid,
+        "scheduled_at": int(time.time()) + 86400 * 2,
+        "party_size": 2,
+        "type": "property_viewing",
+        "resource_id": property_id,
+        "fulfiller_user_id": agent_uid,
+        "metadata": {"property_type": "apartment", "price_cny": 8500000},
+    })
+    if sc in (200, 201) and isinstance(b, dict):
+        rid = b.get("reservation_id")
+        ok("property_viewing reservation w/ agent", f"rid={rid}")
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid}")
+        if sc_get == 200 and isinstance(b_get, dict):
+            if b_get.get("resource_id") == property_id:
+                ok("property resource_id persisted", "")
+            else:
+                gap("P1", "property resource_id dropped", f"{b_get.get('resource_id')!r}")
+    elif sc in (400, 422):
+        gap("P0", "property_viewing reservation type", f"{sc} {_short(b)}")
+
+    # 6) Relationship: agent_of / client_of (new in R6)
+    sc, b = await call(c, "POST", f"/api/v1/primitives/users/{agent_uid}/relationships",
+                       json_body={
+                           "related_user_id": client_uid,
+                           "relationship": "agent_of",
+                           "bidirectional": True,
+                       })
+    if sc in (200, 201):
+        ok("agent_of relationship created", "")
+    elif sc in (400, 422):
+        gap("P1", "agent_of relationship", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1511,6 +1644,7 @@ async def main() -> int:
                 await phase_12_regulatory(c, state)
                 await phase_13_target_audience(c, state)
                 await phase_14_module_probe(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

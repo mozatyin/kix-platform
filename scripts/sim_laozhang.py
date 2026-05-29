@@ -1255,9 +1255,129 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — restaurant reservation + dining consent ───
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — dining reservation + VIP allergy PHI + recipes")
+    bid = state.get("brand_id") or BRAND_ID
+    vip_uid = state.get("vip_test_user") or f"vip_probe_{RUN_TAG}"
+    version = f"v_dining_{RUN_TAG}"
+
+    # 1) Recipe library — luxury_dining / restaurant / food
+    for industry in ("luxury_dining", "restaurant", "food"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    # 2) Publish a consent policy for the probe (high-end restaurants need PHI for allergies)
+    sc, _ = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version,
+        "text_md": "## Forbidden City Small House — Dining Privacy Policy",
+        "effective_at": int(time.time()) - 60,
+        "requires_re_grant": False,
+    })
+
+    # 3) Reservation type=dining with resource_id=table + fulfiller=server
+    server_uid = f"server_alice_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": server_uid, "scopes": ["cross_brand_tracking"],
+        "policy_version": version, "source": "app",
+    })
+    table_id = f"vip_table_3_{RUN_TAG}"
+    sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+        "brand_id": bid,
+        "user_id": vip_uid,
+        "scheduled_at": int(time.time()) + 86400,
+        "party_size": 4,
+        "type": "dining",
+        "resource_id": table_id,
+        "fulfiller_user_id": server_uid,
+        "metadata": {"section": "vip_room", "occasion": "anniversary"},
+        "check_in_grace_minutes": 15,
+    })
+    rid = None
+    if sc in (200, 201) and isinstance(b, dict):
+        rid = b.get("reservation_id")
+        ok("dining reservation w/ table + server",
+           f"rid={rid} table={table_id} server={server_uid}")
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid}")
+        if sc_get == 200 and isinstance(b_get, dict):
+            if b_get.get("resource_id") == table_id:
+                ok("table resource_id persisted", "")
+            else:
+                gap("P0", "table resource_id dropped",
+                    f"readback resource_id={b_get.get('resource_id')!r}")
+            if b_get.get("fulfiller_user_id") == server_uid:
+                ok("server fulfiller_user_id persisted", "")
+            else:
+                gap("P1", "fulfiller_user_id dropped",
+                    f"readback={b_get.get('fulfiller_user_id')!r}")
+        sc_ff, b_ff = await call(c, "GET", f"/api/v1/reservations/fulfiller/{server_uid}")
+        if sc_ff == 200 and isinstance(b_ff, dict) and b_ff.get("count", 0) >= 1:
+            ok("server day-view via /fulfiller", f"count={b_ff['count']}")
+        else:
+            gap("P1", "server fulfiller list", f"{sc_ff}")
+    else:
+        gap("P0", "dining reservation create", f"{sc} {_short(b)}")
+
+    # 4) consent.grant scope=phi_storage WITH consent_evidence (VIP allergy data)
+    sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": vip_uid,
+        "scopes": ["phi_storage"],
+        "policy_version": version,
+        "source": "app",
+        "consent_evidence": {
+            "method": "signature",
+            "reference": f"sig_allergy_{RUN_TAG}",
+        },
+    })
+    if sc == 200:
+        ok("phi_storage scope w/ consent_evidence (VIP allergy)", "")
+    elif sc in (400, 422):
+        gap("P0", "phi_storage for restaurant allergy",
+            f"{sc} {_short(b)} — high-end dining needs phi_storage for VIP allergy data.")
+
+    # 5) /consent/document/sign type=medical_consent for dietary restrictions
+    sc, b = await call(c, "POST", "/api/v1/consent/document/sign", json_body={
+        "user_id": vip_uid,
+        "document_type": "medical_consent",
+        "document_version": version,
+        "document_url": "https://example.com/allergy-form.pdf",
+        "signature_method": "signature",
+        "signature_evidence_url": "https://example.com/sig-blob",
+        "granted_scopes": ["phi_storage"],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("document_consent_id"):
+        ok("medical_consent signed (dietary restriction form)",
+           f"doc_id={b['document_consent_id']}")
+    else:
+        gap("P1", "medical_consent document sign", f"{sc} {_short(b)}")
+
+    # 6) Tier portability scope=brand (single venue but should work)
+    sc, b = await call(c, "GET", f"/api/v1/primitives/user/{vip_uid}/tier",
+                       params={"brand_id": bid, "scope": "brand"})
+    if sc == 200 and isinstance(b, dict):
+        ok("tier portability scope=brand", f"tier={b.get('current_tier')}")
+    elif sc in (400, 422):
+        gap("P1", "tier scope=brand", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1278,6 +1398,7 @@ async def main() -> int:
                 await phase_10_attribution(c, state)
                 await phase_11_bulk_voucher(c, state)
                 await phase_12_edges(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

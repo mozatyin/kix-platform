@@ -1264,9 +1264,125 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — medical aesthetics PHI + before/after media ─
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — recipes + PHI consent_evidence + before_after media + consultation")
+    primary_bid = state.get("primary_bid")
+    version = state.get("consent_version") or f"v_med_{RUN_TAG}"
+    members = state.get("members") or []
+    member_uid = members[0] if (members and isinstance(members[0], str)) else (
+        members[0].get("user_id") if (members and isinstance(members[0], dict)) else
+        f"patient_probe_{RUN_TAG}"
+    )
+
+    # 1) Recipe library — medical_aesthetics / wellness
+    for industry in ("medical_aesthetics", "wellness", "beauty"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    # Ensure consent policy + user consent
+    await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version, "text_md": "## Medical Aesthetics Privacy",
+        "effective_at": int(time.time()) - 60, "requires_re_grant": False,
+    })
+
+    # 2) consent scopes: before_after_photo / marketing_medical / medical_data WITH consent_evidence
+    consent_grant_id = None
+    for scope_name in ("before_after_photo", "marketing_medical", "medical_data"):
+        sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": member_uid,
+            "scopes": [scope_name],
+            "policy_version": version,
+            "source": "app",
+            "consent_evidence": {
+                "method": "signature",
+                "reference": f"sig_{scope_name}_{RUN_TAG}",
+            },
+        })
+        if sc == 200:
+            ok(f"{scope_name} scope w/ consent_evidence", "")
+            if isinstance(b, dict) and not consent_grant_id:
+                consent_grant_id = b.get("grant_id") or b.get("user_id")
+        elif sc in (400, 422):
+            gap("P0", f"consent scope {scope_name} rejected",
+                f"{sc} {_short(b)} — medical aesthetics specific scope missing")
+
+    # 3) /consent/document/sign type=medical_consent + signature_method=signature
+    sc, b = await call(c, "POST", "/api/v1/consent/document/sign", json_body={
+        "user_id": member_uid,
+        "document_type": "medical_consent",
+        "document_version": version,
+        "document_url": "https://example.com/med-aesthetic-consent.pdf",
+        "signature_method": "signature",
+        "signature_evidence_url": "https://example.com/sig-blob",
+        "granted_scopes": ["medical_data", "before_after_photo"],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("document_consent_id"):
+        ok("medical_consent document signed",
+           f"doc_id={b['document_consent_id']}")
+    else:
+        gap("P0", "medical_consent /document/sign", f"{sc} {_short(b)}")
+
+    # 4) /media/upload media_class=before_after (REQUIRES consent_grant_id)
+    sc, b = await call(c, "POST", "/api/v1/media/upload", json_body={
+        "owner_user_id": member_uid,
+        "brand_id": primary_bid,
+        "media_class": "before_after",
+        "storage_url": "s3://kix-med/before-001.jpg",
+        "content_hash": "sha256:" + "b" * 40,
+        "mime_type": "image/jpeg",
+        "size_bytes": 204800,
+        "consent_grant_id": consent_grant_id or f"grant_{member_uid}",
+        "retention_days": 1825,
+        "metadata": {"phase": "pre_treatment"},
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("media_id"):
+        ok("media.upload before_after w/ consent_grant_id", f"media_id={b['media_id']}")
+    elif sc in (400, 422):
+        gap("P0", "media.upload before_after",
+            f"{sc} {_short(b)} — media_class=before_after or consent_grant_id pairing failed")
+
+    # 5) Reservation type=consultation / treatment + doctor fulfiller
+    doctor_uid = f"dr_li_aesthetics_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": doctor_uid, "scopes": ["cross_brand_tracking"],
+        "policy_version": version, "source": "app",
+    })
+    for r_type in ("consultation", "treatment"):
+        sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+            "brand_id": primary_bid,
+            "user_id": member_uid,
+            "scheduled_at": int(time.time()) + 86400,
+            "party_size": 1,
+            "type": r_type,
+            "resource_id": doctor_uid,
+            "fulfiller_user_id": doctor_uid,
+            "metadata": {"procedure": "lip_filler"},
+        })
+        if sc in (200, 201):
+            ok(f"reservation type={r_type} w/ doctor", "")
+        elif sc in (400, 422):
+            gap("P1", f"reservation type={r_type}", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1288,6 +1404,7 @@ async def main() -> int:
                 await phase_11_groupbuy(c, state)
                 await phase_12_push_marketing(c, state)
                 await phase_13_edges_and_probe(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

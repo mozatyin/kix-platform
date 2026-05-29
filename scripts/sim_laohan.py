@@ -1512,9 +1512,136 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — pet entity primitive + recurring + guardian ─
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — recipes + entity primitive + entity attributes + guardian_of + recurring grooming")
+    primary_bid = state.get("primary_bid")
+    owner_uid = state.get("owner_kid") or f"owner_probe_{RUN_TAG}"
+    version = state.get("consent_version") or f"v_pet_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version, "text_md": "## Pet Care Privacy",
+        "effective_at": int(time.time()) - 60, "requires_re_grant": False,
+    })
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": owner_uid, "scopes": ["cross_brand_tracking", "personalization"],
+        "policy_version": version, "source": "app",
+    })
+
+    # 1) Recipe library — pet
+    sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": "pet"})
+    if sc == 200 and isinstance(b, (list, dict)):
+        items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+        if items:
+            ok("recipes industry=pet", f"{len(items)} recipes")
+            found_vax = any("vaccin" in (it.get("id") or "").lower()
+                            or "vaccin" in (it.get("name") or "").lower()
+                            for it in items)
+            if found_vax:
+                ok("pet_vaccination_calendar recipe discovered", "")
+        else:
+            gap("P1", "recipes industry=pet empty", "")
+    else:
+        gap("P1", "recipes industry=pet", f"{sc}")
+
+    # 2) /primitives/entities/register entity_type=pet + owner_user_id
+    sc, b = await call(c, "POST", "/api/v1/primitives/entities/register", json_body={
+        "entity_type": "pet",
+        "owner_user_id": owner_uid,
+        "display_name": "豆豆 (Doudou)",
+        "attributes": {"species": "dog", "breed": "Golden Retriever",
+                        "weight_kg": "12.5", "birth_year": "2022"},
+    })
+    pet_eid = None
+    if sc in (200, 201) and isinstance(b, dict):
+        pet_eid = b.get("entity_id") or b.get("eid") or b.get("id")
+        ok("entity register pet", f"eid={pet_eid}")
+    elif sc in (400, 422):
+        gap("P0", "entity register pet schema", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "entity register pet", f"{sc} {_short(b)}")
+
+    # 3) /primitives/users/{uid}/entities?entity_type=pet
+    sc, b = await call(c, "GET", f"/api/v1/primitives/users/{owner_uid}/entities",
+                       params={"entity_type": "pet"})
+    if sc == 200 and isinstance(b, (list, dict)):
+        items = b if isinstance(b, list) else b.get("entities", b.get("items", []))
+        if items:
+            ok("list owner's pet entities", f"count={len(items)}")
+        else:
+            gap("P1", "list pet entities empty",
+                "entity register succeeded but list returns 0")
+    else:
+        gap("P1", "list user entities", f"{sc} {_short(b)}")
+
+    # 4) /primitives/entities/{eid}/attributes for pet weight (time-series log)
+    if pet_eid:
+        for weight in ("12.5", "13.0", "13.2"):
+            sc, b = await call(c, "POST",
+                               f"/api/v1/primitives/entities/{pet_eid}/attributes",
+                               json_body={
+                                   "attrs": {"weight_kg": weight,
+                                              "timestamp": int(time.time())},
+                                   "append": True,
+                               })
+            if sc not in (200, 201):
+                gap("P1", "entity attribute append",
+                    f"{sc} {_short(b)}")
+                break
+        else:
+            ok("entity weight time-series logged (3 entries)", "")
+
+    # 5) /reservations/series/create for monthly grooming (recurring)
+    groomer_uid = f"groomer_zhang_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": groomer_uid, "scopes": ["cross_brand_tracking"],
+        "policy_version": version, "source": "app",
+    })
+    sc, b = await call(c, "POST", "/api/v1/reservations/series/create", json_body={
+        "brand_id": primary_bid,
+        "user_id": owner_uid,
+        "scheduled_at": int(time.time()) + 86400 * 30,
+        "party_size": 1,
+        "type": "appointment",
+        "resource_id": pet_eid or "pet_x",
+        "fulfiller_user_id": groomer_uid,
+        "metadata": {"service": "grooming", "pet_eid": pet_eid},
+        "recurrence": {"frequency": "monthly", "count": 6},
+    })
+    if sc in (200, 201):
+        ok("monthly grooming series created", "")
+    elif sc in (400, 422):
+        gap("P1", "reservation series create schema",
+            f"{sc} {_short(b)}")
+    else:
+        gap("P1", "reservation series create", f"{sc} {_short(b)}")
+
+    # 6) Relationship: guardian_of / ward_of
+    if pet_eid:
+        sc, b = await call(c, "POST",
+                           f"/api/v1/primitives/users/{owner_uid}/relationships",
+                           json_body={
+                               "related_user_id": pet_eid,
+                               "relationship": "guardian_of",
+                               "bidirectional": True,
+                           })
+        if sc in (200, 201):
+            ok("guardian_of relationship created (owner→pet)", "")
+        elif sc in (400, 422):
+            gap("P1", "guardian_of relationship",
+                f"{sc} {_short(b)} — likely rejects entity-id as related_user_id")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1535,6 +1662,7 @@ async def main() -> int:
                 await phase_10_push_reminders(c, state)
                 await phase_11_edges(c, state)
                 await phase_r5_round5(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

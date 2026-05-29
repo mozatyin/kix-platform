@@ -1858,9 +1858,144 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — group class + trainer + recurring + PHI ───
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — master tier portability + group_class + recurring + body metrics PHI")
+    master_id = state.get("master_id")
+    primary_bid = state.get("primary_bid")
+    if not primary_bid:
+        gap("P0", "no primary_bid for R7 probes", "phase_1 did not produce sub_brands")
+        return
+
+    # 1) Recipe library — fitness / wellness
+    for industry in ("fitness", "wellness"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    # Probe user setup
+    member_uid = f"member_probe_{RUN_TAG}"
+    trainer_uid = f"trainer_alex_{RUN_TAG}"
+    version = state.get("consent_version") or f"v_gym_{RUN_TAG}"
+    sc, _ = await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version, "text_md": "## Fitness Privacy",
+        "effective_at": int(time.time()) - 60, "requires_re_grant": False,
+    })
+    for uid in (member_uid, trainer_uid):
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": uid, "scopes": ["cross_brand_tracking", "personalization", "geo_lbs"],
+            "policy_version": version, "source": "app",
+        })
+
+    # 2) Reservation type=group_class + resource_id=trainer + fulfiller=trainer
+    sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+        "brand_id": primary_bid,
+        "user_id": member_uid,
+        "scheduled_at": int(time.time()) + 86400,
+        "party_size": 1,
+        "type": "group_class",
+        "resource_id": trainer_uid,
+        "fulfiller_user_id": trainer_uid,
+        "metadata": {"class": "HIIT", "duration_min": 60},
+        "check_in_grace_minutes": 10,
+    })
+    if sc in (200, 201) and isinstance(b, dict):
+        rid = b.get("reservation_id")
+        ok("group_class reservation w/ trainer fulfiller", f"rid={rid}")
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid}")
+        if sc_get == 200 and isinstance(b_get, dict):
+            if b_get.get("fulfiller_user_id") == trainer_uid:
+                ok("trainer fulfiller_user_id persisted", "")
+            else:
+                gap("P1", "trainer fulfiller dropped", f"{b_get.get('fulfiller_user_id')!r}")
+        sc_ff, b_ff = await call(c, "GET", f"/api/v1/reservations/fulfiller/{trainer_uid}")
+        if sc_ff == 200 and isinstance(b_ff, dict) and b_ff.get("count", 0) >= 1:
+            ok("trainer day-view via /fulfiller", f"count={b_ff['count']}")
+        else:
+            gap("P1", "trainer fulfiller listing", f"{sc_ff}")
+    elif sc in (400, 422):
+        # try fitness_class
+        sc2, b2 = await call(c, "POST", "/api/v1/reservations/create", json_body={
+            "brand_id": primary_bid,
+            "user_id": member_uid,
+            "scheduled_at": int(time.time()) + 86400,
+            "party_size": 1,
+            "type": "fitness_class",
+            "resource_id": trainer_uid,
+            "fulfiller_user_id": trainer_uid,
+            "metadata": {"class": "HIIT"},
+        })
+        if sc2 in (200, 201):
+            ok("fitness_class reservation (group_class rejected)", "")
+        else:
+            gap("P0", "group_class / fitness_class reservation",
+                f"first={sc} {_short(b)} retry={sc2}")
+    else:
+        gap("P0", "group_class reservation", f"{sc} {_short(b)}")
+
+    # 3) /reservations/series/create for recurring weekly classes
+    sc, b = await call(c, "POST", "/api/v1/reservations/series/create", json_body={
+        "brand_id": primary_bid,
+        "user_id": member_uid,
+        "scheduled_at": int(time.time()) + 86400 * 7,
+        "party_size": 1,
+        "type": "group_class",
+        "resource_id": trainer_uid,
+        "fulfiller_user_id": trainer_uid,
+        "metadata": {"class": "HIIT_recurring"},
+        "recurrence": {"frequency": "weekly", "count": 8},
+    })
+    if sc in (200, 201):
+        ok("recurring weekly class series", "")
+    elif sc in (400, 422):
+        gap("P1", "reservation series create schema", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "reservation series create", f"{sc} {_short(b)}")
+
+    # 4) consent scope=phi_storage for body metrics w/ consent_evidence
+    sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": member_uid,
+        "scopes": ["phi_storage"],
+        "policy_version": version,
+        "source": "app",
+        "consent_evidence": {"method": "signature",
+                              "reference": f"sig_body_metrics_{RUN_TAG}"},
+    })
+    if sc == 200:
+        ok("phi_storage scope for body metrics", "")
+    elif sc in (400, 422):
+        gap("P0", "phi_storage for fitness body metrics",
+            f"{sc} {_short(b)}")
+
+    # 5) Master tier portability scope=master (gym chain)
+    if master_id:
+        sc, b = await call(c, "GET", f"/api/v1/primitives/user/{member_uid}/tier",
+                           params={"master_id": master_id, "scope": "master"})
+        if sc == 200 and isinstance(b, dict):
+            ok("master tier portability (gym chain)",
+               f"tier={b.get('current_tier')}")
+        elif sc in (400, 422):
+            gap("P1", "master tier scope=master",
+                f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1884,6 +2019,7 @@ async def main() -> int:
                 await phase_13_edges(c, state)
                 await phase_14_module_probe(c, state)
                 await phase_r5_round5(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

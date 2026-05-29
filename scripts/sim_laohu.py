@@ -1338,9 +1338,159 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — C2C marketplace listings + take-rate + offers ─
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — listings primitive + take-rate + multi-currency + offer chain")
+    bid = state.get("brand_id") or BRAND_ID
+    users = state.get("users") or {}
+    user_kids = list(users.values()) if isinstance(users, dict) else []
+    seller_uid = user_kids[0] if user_kids else f"seller_probe_{RUN_TAG}"
+    buyer_uid = user_kids[1] if len(user_kids) >= 2 else f"buyer_probe_{RUN_TAG}"
+
+    # 1) Recipe library — marketplace / ecommerce
+    for industry in ("marketplace", "ecommerce"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    # 2) /listings/create + /listings/{lid}/promote
+    sc, b = await call(c, "POST", "/api/v1/listings/create", json_body={
+        "brand_id": bid,
+        "seller_user_id": seller_uid,
+        "title": "iPhone 13 Pro Max 256GB — 95新",
+        "description": "Test listing for R7 probe",
+        "price_cents": 450000,
+        "currency": "CNY",
+        "category": "electronics",
+    })
+    listing_id = None
+    if sc in (200, 201) and isinstance(b, dict):
+        listing_id = b.get("listing_id") or b.get("id")
+        ok("listing create", f"lid={listing_id}")
+    else:
+        gap("P0", "listing create", f"{sc} {_short(b)}")
+
+    if listing_id:
+        sc, b = await call(c, "POST", f"/api/v1/listings/{listing_id}/promote", json_body={
+            "duration_days": 7,
+            "promotion_cents": 500,
+        })
+        if sc in (200, 201):
+            ok("listing promote", "")
+        elif sc in (400, 422):
+            gap("P1", "listing promote schema", f"{sc} {_short(b)}")
+        else:
+            gap("P1", "listing promote", f"{sc} {_short(b)}")
+
+    # 3) /wallet/{bid}/take-rate/configure with category_rates AND currency_rates
+    sc, b = await call(c, "POST", f"/api/v1/wallet/{bid}/take-rate/configure", json_body={
+        "default_basis_points": 500,
+        "minimum_fee_cents": 100,
+        "category_rates": {
+            "electronics": 600,
+            "luxury": 800,
+            "books": 300,
+        },
+        "currency_rates": {
+            "CNY": 500,
+            "USD": 700,
+        },
+    })
+    if sc in (200, 201):
+        ok("take-rate configured (category + currency)", "")
+    elif sc in (400, 422):
+        gap("P1", "take-rate configure schema",
+            f"{sc} {_short(b)} — category_rates/currency_rates rejected")
+
+    # 4) /wallet/{bid}/marketplace-charge + marketplace-charge-multi-currency
+    sc, b = await call(c, "POST", f"/api/v1/wallet/{bid}/marketplace-charge", json_body={
+        "gross_amount_cents": 100000,
+        "seller_user_id": seller_uid,
+        "buyer_user_id": buyer_uid,
+        "category": "electronics",
+        "listing_id": listing_id or "x",
+    })
+    if sc in (200, 201):
+        ok("marketplace-charge", "")
+    elif sc in (400, 422):
+        gap("P1", "marketplace-charge schema", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "marketplace-charge", f"{sc} {_short(b)}")
+
+    sc, b = await call(c, "POST",
+                       f"/api/v1/wallet/{bid}/marketplace-charge-multi-currency",
+                       json_body={
+                           "gross_amount_cents": 10000,
+                           "currency": "USD",
+                           "seller_user_id": seller_uid,
+                           "buyer_user_id": buyer_uid,
+                           "category": "electronics",
+                           "listing_id": listing_id or "x",
+                       })
+    if sc in (200, 201):
+        ok("marketplace-charge-multi-currency", "")
+    elif sc in (400, 422):
+        gap("P1", "marketplace-charge-multi-currency schema", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "marketplace-charge-multi-currency", f"{sc} {_short(b)}")
+
+    # 5) /listings/{lid}/offer + /accept + /counter (offer chain)
+    if listing_id:
+        sc, b = await call(c, "POST", f"/api/v1/listings/{listing_id}/offer", json_body={
+            "buyer_user_id": buyer_uid,
+            "offer_cents": 420000,
+            "message": "minor scratch okay?",
+        })
+        offer_id = None
+        if sc in (200, 201) and isinstance(b, dict):
+            offer_id = b.get("offer_id") or b.get("id")
+            ok("listing offer create", f"oid={offer_id}")
+        else:
+            gap("P1", "listing offer", f"{sc} {_short(b)}")
+
+        if offer_id:
+            sc, b = await call(c, "POST",
+                               f"/api/v1/listings/{listing_id}/counter",
+                               json_body={
+                                   "offer_id": offer_id,
+                                   "counter_cents": 440000,
+                                   "message": "would do 4400",
+                               })
+            if sc in (200, 201):
+                ok("listing counter-offer", "")
+            elif sc in (400, 422):
+                gap("P1", "counter schema", f"{sc} {_short(b)}")
+            else:
+                gap("P1", "counter offer", f"{sc} {_short(b)}")
+
+            sc, b = await call(c, "POST",
+                               f"/api/v1/listings/{listing_id}/accept",
+                               json_body={"offer_id": offer_id})
+            if sc in (200, 201):
+                ok("listing offer accept", "")
+            elif sc in (400, 422):
+                gap("P1", "accept schema", f"{sc} {_short(b)}")
+            else:
+                gap("P1", "accept offer", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1362,6 +1512,7 @@ async def main() -> int:
                 await phase_11_disputes(c, state)
                 await phase_12_edges(c, state)
                 await phase_13_module_probe(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

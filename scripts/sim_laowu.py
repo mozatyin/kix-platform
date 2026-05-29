@@ -1591,9 +1591,104 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         gap("P1", "connect authorize", f"{sc} {_short(b)}")
 
 
+# ── Phase R7: Round 7 probes — parent-teacher meeting + buyer agreement ──
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — recipes + parent-teacher + buyer_agreement + master tier")
+    bid = state.get("brand_id")
+    version = state.get("consent_version") or f"v_k12_{RUN_TAG}"
+    parent_ids = state.get("parent_ids") or []
+    parent_uid = parent_ids[0] if parent_ids else f"parent_probe_{RUN_TAG}"
+
+    # 1) Recipe library — education / kids_education / book_club (extension)
+    for industry in ("education", "kids_education", "book_club"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    # 2) Reservation type=appointment for parent-teacher meeting
+    teacher_uid = f"teacher_wang_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": teacher_uid, "scopes": ["cross_brand_tracking"],
+        "policy_version": version, "source": "app",
+    })
+    if parent_uid:
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": parent_uid, "scopes": ["cross_brand_tracking"],
+            "policy_version": version, "source": "app",
+        })
+    sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+        "brand_id": bid,
+        "user_id": parent_uid,
+        "scheduled_at": int(time.time()) + 86400 * 2,
+        "party_size": 1,
+        "type": "appointment",
+        "resource_id": teacher_uid,
+        "fulfiller_user_id": teacher_uid,
+        "metadata": {"purpose": "parent_teacher_meeting", "student_id": "kid_123"},
+    })
+    if sc in (200, 201) and isinstance(b, dict):
+        rid = b.get("reservation_id")
+        ok("parent-teacher appointment", f"rid={rid}")
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid}")
+        if sc_get == 200 and b_get.get("fulfiller_user_id") == teacher_uid:
+            ok("teacher fulfiller_user_id persisted", "")
+        else:
+            gap("P1", "teacher fulfiller dropped", f"{_short(b_get)}")
+    else:
+        gap("P1", "parent-teacher appointment", f"{sc} {_short(b)}")
+
+    # 3) /consent/document/sign type=buyer_agreement + signature_method=signature
+    sc, b = await call(c, "POST", "/api/v1/consent/document/sign", json_body={
+        "user_id": parent_uid,
+        "document_type": "buyer_agreement",
+        "document_version": version,
+        "document_url": "https://example.com/k12-buyer-agreement.pdf",
+        "signature_method": "signature",
+        "signature_evidence_url": "https://example.com/sig-k12",
+        "granted_scopes": ["marketing", "personalization"],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("document_consent_id"):
+        ok("buyer_agreement signed", f"doc_id={b['document_consent_id']}")
+    elif sc in (400, 422):
+        gap("P1", "buyer_agreement document/sign", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "buyer_agreement document/sign", f"{sc} {_short(b)}")
+
+    # 4) Master tier portability scope=master (parent across multiple kid records)
+    master_id = state.get("master_id")
+    if master_id:
+        sc, b = await call(c, "GET", f"/api/v1/primitives/user/{parent_uid}/tier",
+                           params={"master_id": master_id, "scope": "master"})
+        if sc == 200 and isinstance(b, dict):
+            ok("master tier scope=master (parent across kids)",
+               f"tier={b.get('current_tier')}")
+        elif sc in (400, 422):
+            gap("P1", "master tier scope=master", f"{sc} {_short(b)}")
+    else:
+        # Still try scope=master via primary as brand
+        sc, b = await call(c, "GET", f"/api/v1/primitives/user/{parent_uid}/tier",
+                           params={"scope": "brand", "brand_id": bid})
+        if sc == 200:
+            ok("tier scope=brand fallback", "")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1618,6 +1713,7 @@ async def main() -> int:
                 await phase_14_edge_cases(c, state)
                 await phase_15_module_probe(c, state)
                 await phase_r5_round5(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

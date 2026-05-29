@@ -1260,9 +1260,120 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — international ecom FX + relational vouchers ─
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — FX + multi-currency wallet + relational vouchers")
+    bid = BRAND_ID
+
+    # 1) Recipe library — baby_products / parenting / ecommerce
+    for industry in ("baby_products", "parenting", "ecommerce"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+
+    # 2) /fx/rates/configure — CNY/USD/EUR for international ecom
+    sc, b = await call(c, "POST", "/api/v1/fx/rates/configure", json_body={
+        "from_currency": "USD",
+        "to_currency": "CNY",
+        "rate": 7.2,
+        "expires_at": int(time.time()) + 86400,
+    })
+    if sc in (200, 201):
+        ok("fx rate USD→CNY configured", "")
+    else:
+        gap("P1", "fx rates/configure USD→CNY", f"{sc} {_short(b)}")
+    sc, b = await call(c, "POST", "/api/v1/fx/rates/configure", json_body={
+        "from_currency": "EUR",
+        "to_currency": "CNY",
+        "rate": 7.8,
+        "expires_at": int(time.time()) + 86400,
+    })
+    if sc in (200, 201):
+        ok("fx rate EUR→CNY configured", "")
+    else:
+        gap("P1", "fx rates/configure EUR→CNY", f"{sc} {_short(b)}")
+
+    # 3) /wallet/{bid}/topup-with-fx — USD payment for overseas customer
+    sc, b = await call(c, "POST", f"/api/v1/wallet/{bid}/topup-with-fx", json_body={
+        "amount_cents": 100000,  # $1000 USD
+        "currency": "USD",
+        "payment_method": "wechat",
+    })
+    if sc in (200, 201):
+        ok("topup-with-fx USD→CNY", f"converted topup created")
+    else:
+        gap("P1", "topup-with-fx", f"{sc} {_short(b)}")
+
+    # 4) Sibling/parent_of relational vouchers (R4+R6)
+    parent_uid = f"parent_probe_{RUN_TAG}"
+    sibling_uid = f"sibling_probe_{RUN_TAG}"
+    version = f"v_huang_r7_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version, "text_md": "## Baby Privacy",
+        "effective_at": int(time.time()) - 60, "requires_re_grant": False,
+    })
+    for uid in (parent_uid, sibling_uid):
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": uid, "scopes": ["cross_brand_tracking", "personalization"],
+            "policy_version": version, "source": "app",
+        })
+    sc, b = await call(c, "POST", f"/api/v1/primitives/users/{parent_uid}/relationships",
+                       json_body={
+                           "related_user_id": sibling_uid,
+                           "relationship": "parent_of",
+                           "bidirectional": True,
+                       })
+    if sc in (200, 201):
+        ok("parent_of relationship created", "")
+        # Now try voucher with relational predicate
+        sc, b = await call(c, "POST", "/api/v1/vouchers/issue",
+                           params={"issuer_brand_id": bid},
+                           json_body={
+                               "user_id": parent_uid,
+                               "value_cents": 5000,
+                               "redeemable_at": "issuer_only",
+                               "relational_conditions": {"relationship_type_required": "parent_of"},
+                               "source": "campaign",
+                           })
+        if sc in (200, 201):
+            ok("relational sibling_discount voucher issued", "")
+        else:
+            gap("P1", "relational voucher (sibling_discount)", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "relationship parent_of", f"{sc} {_short(b)}")
+
+    # 5) Customer service appointment reservation (light)
+    sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+        "brand_id": bid,
+        "user_id": parent_uid,
+        "scheduled_at": int(time.time()) + 86400,
+        "party_size": 1,
+        "type": "appointment",
+        "metadata": {"channel": "customer_service", "topic": "返修"},
+    })
+    if sc in (200, 201):
+        ok("customer service appointment reservation", "")
+    else:
+        gap("P2", "appointment reservation", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1284,6 +1395,7 @@ async def main() -> int:
                 await phase_11_international(c, state)
                 await phase_12_edges(c, state)
                 await phase_13_module_probe(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

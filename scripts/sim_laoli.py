@@ -1313,9 +1313,90 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — book club recipes + event reservations ────
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — book_club / community / education recipes + event reservations")
+    bid = state.get("brand_id") or BRAND_ID
+    member = (state.get("members") or [{}])[0]
+    if isinstance(member, dict):
+        user_id = member.get("user_id") or f"reader_probe_{RUN_TAG}"
+    else:
+        user_id = f"reader_probe_{RUN_TAG}"
+
+    # 1) Recipe library — three industries
+    total_recipes = 0
+    found_kq = found_brs = False
+    for industry in ("book_club", "community", "education"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                total_recipes += len(items)
+                ok(f"recipes industry={industry}", f"{len(items)} recipes")
+                for it in items:
+                    name = (it.get("id") or it.get("name") or "").lower()
+                    if "knowledge_quiz" in name or "quiz" in name:
+                        found_kq = True
+                    if "book_review" in name or "social" in name:
+                        found_brs = True
+            else:
+                gap("P1", f"recipes industry={industry} empty", "")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc}")
+    if total_recipes >= 9:
+        ok("R7 community recipes available", f"{total_recipes} across 3 industries")
+    if found_kq:
+        ok("knowledge_quiz recipe discovered", "")
+    if found_brs:
+        ok("book_review_social recipe discovered", "")
+
+    # 2) /reservations type=event + resource_id=meeting_room
+    room_id = f"meeting_room_a_{RUN_TAG}"
+    host_uid = f"host_facilitator_{RUN_TAG}"
+    version = f"v_book_{RUN_TAG}"
+    await call(c, "POST", "/api/v1/consent/policy/publish", json_body={
+        "version": version, "text_md": "## Book Club Privacy",
+        "effective_at": int(time.time()) - 60, "requires_re_grant": False,
+    })
+    for uid in (user_id, host_uid):
+        await call(c, "POST", "/api/v1/consent/grant", json_body={
+            "user_id": uid, "scopes": ["cross_brand_tracking", "personalization"],
+            "policy_version": version, "source": "app",
+        })
+    sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+        "brand_id": bid,
+        "user_id": user_id,
+        "scheduled_at": int(time.time()) + 86400 * 3,
+        "party_size": 1,
+        "type": "event",
+        "resource_id": room_id,
+        "fulfiller_user_id": host_uid,
+        "metadata": {"book": "百年孤独", "session": "weekly_discussion"},
+        "check_in_grace_minutes": 30,
+    })
+    if sc in (200, 201) and isinstance(b, dict):
+        rid = b.get("reservation_id")
+        ok("event reservation w/ meeting_room", f"rid={rid}")
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid}")
+        if sc_get == 200 and isinstance(b_get, dict) and b_get.get("resource_id") == room_id:
+            ok("meeting_room resource_id persisted", "")
+        else:
+            gap("P1", "meeting_room resource_id dropped", f"{_short(b_get)}")
+    else:
+        gap("P0", "event reservation create", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1337,6 +1418,7 @@ async def main() -> int:
                 await phase_11_cross_brand(c, state)
                 await phase_12_edges(c, state)
                 await phase_13_module_probe(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback

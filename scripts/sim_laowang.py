@@ -1133,9 +1133,69 @@ def write_findings(start_ts: float) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
+# ── Phase R7: Round 7 probes — recipes, tier portability ─────────────────
+async def phase_r7_probes(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R7: Round 7 probes — recipe library + tier portability")
+    master_id = state.get("master_id")
+    jkt_bid = STORES[0]["brand_id"]
+    sby_bid = STORES[4]["brand_id"]
+
+    # 1) Recipe library — bubble tea + coffee + food
+    for industry in ("bubble_tea", "coffee", "food"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipe library industry={industry}", f"{len(items)} recipes")
+            else:
+                gap("P1", f"recipes industry={industry} empty",
+                    f"R7 seeded recipes for {industry} not loaded for 10-store F&B chain.")
+        else:
+            gap("P1", f"recipes industry={industry}", f"{sc} {_short(b)}")
+
+    # 2) Tier portability — scope=region (Jakarta) vs scope=master
+    sample_user = (state.get("users") or [{}])[0].get("user_id") if state.get("users") else None
+    if not sample_user:
+        sample_user = f"laowang_probe_user_{RUN_TAG}"
+    # need consent first
+    await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": sample_user,
+        "scopes": ["cross_brand_tracking", "personalization"],
+        "policy_version": state.get("consent_version", f"v_{RUN_TAG}"),
+        "source": "app",
+    })
+    # grant XP at one store
+    await call(c, "POST", "/api/v1/primitives/currency/xp/grant", json_body={
+        "user_id": sample_user, "brand_id": jkt_bid, "amount": 5000, "reason": "purchase",
+    })
+
+    for scope, params in (
+        ("region", {"region_id": "Jakarta", "scope": "region"}),
+        ("master", {"master_id": master_id or "x", "scope": "master"}),
+    ):
+        sc, b = await call(c, "GET", f"/api/v1/primitives/user/{sample_user}/tier",
+                           params=params)
+        if sc == 200 and isinstance(b, dict):
+            ok(f"tier portability scope={scope}",
+               f"current_tier={b.get('current_tier')} xp={b.get('xp') or b.get('aggregated_xp')}")
+        elif sc in (400, 422):
+            gap("P1", f"tier scope={scope}",
+                f"{sc} {_short(b)} — scoped tier resolution rejected for {scope}.")
+        else:
+            gap("P2", f"tier scope={scope}", f"{sc} {_short(b)}")
+
+
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -1154,6 +1214,7 @@ async def main() -> int:
                 await phase_8_edges(c, state)
                 await phase_9_module_probe(c, state)
                 await phase_extra_smoke(c, state)
+                await phase_r7_probes(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback
