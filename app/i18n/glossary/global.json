@@ -1,0 +1,202 @@
+{
+  "_meta": {
+    "description": "Global do-not-translate and product terminology glossary.",
+    "version": 1,
+    "updated": "2026-05-30",
+    "notes": "Terms with do_not_translate=true are preserved verbatim by the LLM translator. ui_label terms surface per-locale translations from app/i18n/glossary/<locale>.json."
+  },
+  "terms": [
+    {
+      "term_id": "kix",
+      "source_term": "KiX",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "kix_id",
+      "source_term": "KiX ID",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "kix_platform",
+      "source_term": "KiX Platform",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "soul",
+      "source_term": "Soul",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "soulmate",
+      "source_term": "SoulMate",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "eltm",
+      "source_term": "ELTM",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "trisoul",
+      "source_term": "TriSoul",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "pm_soul",
+      "source_term": "PM-Soul",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "code_soul",
+      "source_term": "Code-Soul",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "user_soul",
+      "source_term": "User Soul",
+      "do_not_translate": true,
+      "category": "product_name"
+    },
+    {
+      "term_id": "voucher",
+      "source_term": "voucher",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "campaign",
+      "source_term": "campaign",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "attribution",
+      "source_term": "attribution",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "leaderboard",
+      "source_term": "leaderboard",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "streak",
+      "source_term": "streak",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "merchant",
+      "source_term": "merchant",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "wallet",
+      "source_term": "wallet",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "auction",
+      "source_term": "auction",
+      "do_not_translate": false,
+      "category": "technical"
+    },
+    {
+      "term_id": "toast_box",
+      "source_term": "Toast Box",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "ya_kun",
+      "source_term": "Ya Kun",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "ya_kun_kaya",
+      "source_term": "Ya Kun Kaya Toast",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "chir_chir",
+      "source_term": "CHIR CHIR",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "old_chang_kee",
+      "source_term": "Old Chang Kee",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "fairprice",
+      "source_term": "FairPrice",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "ntuc",
+      "source_term": "NTUC",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "kopitiam",
+      "source_term": "Kopitiam",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "lazada",
+      "source_term": "Lazada",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "grab",
+      "source_term": "Grab",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "shopee",
+      "source_term": "Shopee",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "paynow",
+      "source_term": "PayNow",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "singpass",
+      "source_term": "Singpass",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    },
+    {
+      "term_id": "gst",
+      "source_term": "GST",
+      "do_not_translate": true,
+      "category": "brand_specific"
+    }
+  ]
+}

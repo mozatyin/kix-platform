@@ -1,0 +1,31 @@
+# i18n_translate cost projection — committed for visibility
+#
+# Generated 2026-05-30 via:
+#   .venv/bin/python -m scripts.i18n_translate \
+#       --source app/i18n/catalogs/en-SG/main.ftl \
+#       --locales zh-Hans-SG,id-ID,ms-MY,ta-SG,en-US \
+#       --estimate-only
+#
+# At-scale projection assumes the wave-2 production catalog of 3,000
+# strings (1,840 HTML + 502 JS + 263 Py + buffer per strategy doc §4.4).
+# The current EN-SG catalog still holds only the welcome-message
+# scaffolding; the projection below shows what the LLM cost will be
+# once the extractor produces the full 3k-string baseline.
+
+i18n_translate cost estimate
+============================
+Model:               claude-haiku-4-5-20251001
+Source strings:      3000
+Approx words:        27000
+Batches per locale:  150 (size=20)
+Input tokens/locale: 82,800
+Output tokens/locale: 56,700
+Cost per locale:     $0.3663
+Target locales:      zh-Hans-SG, id-ID, ms-MY, ta-SG, en-US
+Total LLM cost:      $1.8315
+Wall time/locale:    ~600s
+Total wall time:     ~3000s
+
+# Compare to strategy doc §4.8: ~$1,500 per locale ALL-IN including
+# human review. The LLM piece itself is rounding error — the
+# reviewer is the cost. This projection only sizes the LLM share.
