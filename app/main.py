@@ -588,6 +588,14 @@ and the shim helpers in `app.api_standards`.
         tags=["payment_methods"],
     )
 
+    # ── Regional Payments: per-country capability registry (read-only) ─
+    from app.routers import payments_regional
+    app.include_router(
+        payments_regional.router,
+        prefix="/api/v1/payments",
+        tags=["payments_regional"],
+    )
+
     # ── Customers: Stripe-style merchant billing root + tax/address ────
     from app.routers import customers
     app.include_router(
