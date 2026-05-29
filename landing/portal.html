@@ -987,6 +987,108 @@ textarea.form-input{
   color: var(--text);
   margin-right: 6px;
 }
+
+/* ─── Analytics View ──────────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.kpi-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.kpi-value { font-size: 26px; font-weight: 700; color: var(--green); letter-spacing: -0.5px; }
+.data-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.data-table th, .data-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+.data-table thead th { color: var(--text-dim); font-weight: 500; background: rgba(255,255,255,0.02); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table .empty-row { text-align: center; color: var(--text-dim); padding: 20px; }
+.modules-mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.module-mini-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+.mini-label { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.funnel { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.funnel-step { background: var(--green); color: var(--dark); padding: 8px 16px; border-radius: 4px; font-weight: 600; transition: width 0.5s; min-width: 80px; white-space: nowrap; }
+.funnel-dropoff { display: flex; gap: 18px; margin-top: 10px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; }
+.funnel-dropoff strong { color: var(--danger); }
+.activity-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+.activity-list li { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.activity-list li:last-child { border-bottom: none; }
+.activity-list .time { color: var(--text-dim); flex-shrink: 0; min-width: 130px; }
+.activity-list .event { color: var(--text); font-weight: 500; }
+.activity-list .user { color: var(--text-dim); font-family: monospace; }
+.activity-list .blocked { color: var(--danger); margin-left: auto; }
+.activity-list .success { color: var(--green); margin-left: auto; }
+.empty { color: var(--text-dim); text-align: center; padding: 20px; }
+.sparkline { vertical-align: middle; }
+.spark-empty { color: var(--text-dim); }
+
+/* ── Operations View ───────────────────────────────────────── */
+.ops-tabs { display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.ops-tab { background:transparent; color:var(--text-dim); border:none; border-bottom:2px solid transparent; padding:10px 14px; font-size:13px; font-weight:600; cursor:pointer; transition:color .15s, border-color .15s; }
+.ops-tab:hover { color:var(--text); }
+.ops-tab.active { color:var(--green); border-bottom-color:var(--green); }
+.ops-pane { padding:8px 0; }
+.ops-toolbar { margin-bottom:14px; }
+.ops-toolbar .btn-primary { padding:10px 16px; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer; }
+.ops-hint { color:var(--text-dim); font-size:12px; margin:0 0 12px; }
+.ops-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px; }
+.ops-card:hover { border-color:var(--border-light); }
+.ops-card h4 { margin:0 0 8px; color:var(--green); font-size:14px; font-weight:700; }
+.ops-stats { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--text-dim); }
+.ops-stats strong { color:var(--text); }
+.ops-stats code { background:rgba(255,255,255,.06); padding:1px 6px; border-radius:3px; color:var(--text); font-size:11px; }
+.ops-tools { display:flex; gap:6px; margin-top:10px; }
+.ops-tools .btn-mini { background:transparent; color:var(--green); border:1px solid var(--green-border); border-radius:4px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer; }
+.ops-tools .btn-mini:hover { background:var(--green-bg); }
+.ops-progress { height:6px; background:var(--border); border-radius:3px; margin:10px 0 4px; overflow:hidden; }
+.ops-progress-fill { height:100%; background:var(--green); transition:width .4s ease; }
+
+/* ── Rules editor + Voucher templates ─────────────────────────────────── */
+.rule-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+.rule-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.rule-when { font-size: 13px; color: var(--text-dim); margin: 6px 0; }
+.rule-when code { background: var(--dark); padding: 2px 6px; border-radius: 3px; color: var(--green); font-size: 12px; }
+.rule-actions { font-size: 12px; color: var(--text-muted); }
+.rule-tools { display: flex; gap: 6px; margin-top: 10px; }
+.rule-action-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.rule-action-row select, .rule-action-row input { flex: 1; padding: 6px 10px; background: var(--dark); border: 1px solid var(--border-light); color: var(--text); border-radius: 4px; font-size: 12px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.tabs .tab { background: transparent; border: none; padding: 10px 16px; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px; font-weight: 600; transition: var(--transition); }
+.tabs .tab:hover { color: var(--text); }
+.tabs .tab.active { color: var(--green); border-bottom-color: var(--green); }
+.pill-green { background: var(--green-bg); color: var(--green); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.pill-gray { background: var(--border); color: var(--text-dim); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.rule-tools .btn-mini { background: var(--green); color: var(--dark); border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.rule-tools .btn-mini:hover { box-shadow: 0 0 12px rgba(0,252,0,.25); }
+.rule-tools .btn-mini.btn-danger { background: var(--danger); color: #fff; }
+.rule-tools .btn-mini.btn-danger:hover { background: #ff5555; box-shadow: 0 0 12px rgba(255,68,68,.25); }
+.rule-action-row .btn-mini { flex: 0 0 auto; background: var(--danger); color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+
+/* ── Monitoring view ──────────────────────────────────────────────────── */
+.mon-pane { padding: 16px 0; }
+.mon-toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.mon-input { flex: 1; max-width: 260px; padding: 6px 10px; background: var(--dark); border: 1px solid var(--border); color: var(--text); border-radius: 4px; font-size: 13px; }
+.mon-input:focus { outline: none; border-color: var(--green); }
+.mon-info { color: var(--text-dim); font-size: 13px; padding: 8px 12px; background: var(--card); border-left: 3px solid var(--green); border-radius: 4px; margin: 8px 0; }
+.mon-list { list-style: none; padding: 0; margin: 8px 0; }
+.mon-list li { padding: 6px 0; font-size: 13px; color: var(--text-dim); }
+.mon-list code { background: var(--dark); padding: 2px 6px; border-radius: 3px; color: var(--green); font-size: 12px; }
+.mon-toolbar .btn-mini { background: var(--green); color: var(--dark); border: none; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.mon-toolbar .btn-mini:hover { box-shadow: 0 0 12px rgba(0,252,0,.25); }
+.json-out { background: var(--dark); padding: 12px; border-radius: 6px; font-size: 12px; max-height: 400px; overflow: auto; color: var(--text); border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; }
+.empty { color: var(--text-dim); font-size: 13px; padding: 16px; text-align: center; background: var(--card); border-radius: 6px; }
+/* Primitives Admin */
+.prim-pane { padding: 16px 0; }
+.prim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
+.prim-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.prim-card h4 { margin: 4px 0; color: var(--green); font-size: 14px; }
+.prim-icon { font-size: 24px; margin-bottom: 4px; }
+.prim-meta { font-size: 12px; color: var(--text-dim); display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.prim-card code { font-size: 11px; color: var(--text-dim); }
+.pill-common { background: rgba(150,150,150,0.2); color: #aaa; padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+.pill-rare { background: rgba(0,150,255,0.2); color: #6cf; padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+.pill-epic { background: rgba(180,0,255,0.2); color: #c6f; padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+.pill-legendary { background: rgba(255,180,0,0.2); color: #fc6; padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+.tier-ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.tier-row { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
+.tier-row code { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+.tier-threshold { color: var(--green); font-weight: 600; }
+.tier-perks { color: var(--text-dim); font-size: 13px; flex: 1; }
 </style>
 </head>
 <body>
@@ -1331,6 +1433,15 @@ textarea.form-input{
       </div>
     </div>
 
+    <!-- ─── Analytics / 数据分析 ────────────────────────────────── -->
+    <div id="view-analytics" class="view"></div>
+
+    <!-- ─── Rules / 规则引擎 ────────────────────────────────────── -->
+    <div id="view-rules" class="view"></div>
+
+    <!-- ─── Primitives / 原语管理 ──────────────────────────────── -->
+    <div id="view-primitives" class="view"></div>
+
     <!-- ─── Settings ──────────────────────────────────────────── -->
     <div id="view-settings" class="view">
       <h2 class="page-title">Settings / 设置</h2>
@@ -1441,6 +1552,12 @@ textarea.form-input{
         <div id="modules-grid" class="modules-grid"></div>
       </div>
     </div>
+
+    <!-- Operations View -->
+    <div id="view-operations" class="view"></div>
+
+    <!-- Monitoring View -->
+    <div id="view-monitoring" class="view"></div>
   </div>
 
   <!-- Module Config Modal -->
@@ -1491,6 +1608,26 @@ textarea.form-input{
     <div class="nav-item" data-view="locations" onclick="navigate('locations')">
       <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Locations</span>
+    </div>
+    <div class="nav-item" data-view="analytics" onclick="navigate('analytics')">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 15l4-4 3 3 5-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Analytics</span>
+    </div>
+    <div class="nav-item" data-view="operations" onclick="navigate('operations')">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Ops</span>
+    </div>
+    <div class="nav-item" data-view="rules" onclick="navigate('rules')">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 7h16v2H4zm0 7h16v2H4z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Rules</span>
+    </div>
+    <div class="nav-item" data-view="monitoring" onclick="navigate('monitoring')">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor" stroke="none"/></svg>
+      <span>Monitor</span>
+    </div>
+    <div class="nav-item" data-view="primitives" onclick="navigate('primitives')">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" stroke="none"/></svg>
+      <span>Primitives</span>
     </div>
     <div class="nav-item" data-view="settings" onclick="navigate('settings')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2205,12 +2342,17 @@ function navigate(view){
   switch(view){
     case'dashboard':loadDashboard();break;
     case'games':initGameView();break;
-    case'vouchers':loadVouchers();break;
+    case'vouchers':if(window.VoucherTemplatesView){VoucherTemplatesView.render();}else{loadVouchers();}break;
     case'qr':loadQRLocations();break;
     case'locations':loadLocations();break;
     case'settings':loadSettings();break;
     case'engagement':renderEngagement();break;
     case'recipes':renderRecipes();break;
+    case'analytics':if(window.AnalyticsView)AnalyticsView.render();break;
+    case'operations':if(window.OperationsView)OperationsView.render();break;
+    case'rules':if(window.RulesEditorView)RulesEditorView.render();break;
+    case'monitoring':if(window.MonitoringView)MonitoringView.render();break;
+    case'primitives':if(window.PrimitivesAdminView)PrimitivesAdminView.render();break;
   }
 }
 
@@ -2219,7 +2361,7 @@ function showApp(){
   document.getElementById('app-shell').className='active';
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives'];
   navigate(validViews.includes(hash)?hash:'dashboard');
 }
 
@@ -4051,7 +4193,7 @@ async function applyGeneratedAsTutorial() {
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }
@@ -4462,5 +4604,23 @@ window.ConditionsBuilder = (function(){
     </div>
   </div>
 </div>
+
+<!-- ─── Analytics View Module ───────────────────────────────────────── -->
+<script src="/landing/sdk/portal-views/analytics.js"></script>
+
+<!-- ─── Operations View Module ──────────────────────────────────────── -->
+<script src="/landing/sdk/portal-views/operations.js"></script>
+
+<!-- ─── Voucher Templates View Module ───────────────────────────────── -->
+<script src="/landing/sdk/portal-views/voucher_templates.js"></script>
+
+<!-- ─── Rules Editor View Module ────────────────────────────────────── -->
+<script src="/landing/sdk/portal-views/rules_editor.js"></script>
+
+<!-- ─── Monitoring View Module ──────────────────────────────────────── -->
+<script src="/landing/sdk/portal-views/monitoring.js"></script>
+
+<!-- ─── Primitives Admin View Module ────────────────────────────────── -->
+<script src="/landing/sdk/portal-views/primitives_admin.js"></script>
 </body>
 </html>
