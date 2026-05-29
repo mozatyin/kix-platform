@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX — RTL Visual QA Test Page</title>
+<!--
+  Phase-2 RTL visual QA harness. Open with:
+    ?dir=rtl&lang=ar-EG  → Arabic mode
+    ?dir=rtl&lang=he-IL  → Hebrew mode
+    ?dir=rtl&lang=fa-IR  → Persian mode
+    ?dir=ltr (default)   → LTR baseline
+
+  Each pattern below has an "expected" cell describing the correct RTL
+  behaviour and an "actual" cell that the reviewer marks pass/fail.
+  Sample Arabic / Hebrew strings are inline below — once Agent 2 lands
+  the i18next runtime, these can be swapped for catalog lookups.
+-->
+<link rel="stylesheet" href="rtl.css">
+<!-- Phase-3 conditional load — rtl-base.css adds per-component RTL overrides. -->
+<link rel="stylesheet" href="rtl-base.css">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #161616;
+    --border: #2a2a2a;
+    --text: #fff;
+    --dim: rgba(255,255,255,.62);
+    --green: #00FC00;
+    --warn: #ffb020;
+    --ok: #00FC00;
+    --fail: #ff4040;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Arabic",
+                 "Noto Sans Hebrew", "Noto Naskh Arabic UI", "Noto Nastaliq Urdu",
+                 sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-block: 32px;
+    padding-inline: 24px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 22px; margin-block-end: 8px; }
+  h2 { font-size: 16px; margin-block: 24px 12px; color: var(--green); }
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-block-end: 24px;
+  }
+  .toolbar button {
+    padding-block: 8px;
+    padding-inline: 14px;
+    background: var(--green);
+    color: #000;
+    border: 0;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .toolbar button.secondary {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .card-title {
+    font-size: 14px;
+    color: var(--green);
+    margin-block-end: 8px;
+  }
+  .pattern {
+    background: #1f1f1f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-block: 8px 12px;
+    min-height: 60px;
+  }
+  .expected {
+    font-size: 12px;
+    color: var(--dim);
+    margin-block-start: 8px;
+    border-inline-start: 3px solid var(--green);
+    padding-inline-start: 10px;
+  }
+  .checkbox-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-block-start: 8px;
+    font-size: 13px;
+  }
+  .checkbox-row label { color: var(--dim); cursor: pointer; }
+  .checkbox-row input { accent-color: var(--green); }
+
+  /* ─── 1. Header ─── */
+  .demo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #0d0d0d;
+    border-radius: 6px;
+  }
+  .demo-header .logo { font-weight: 800; }
+  .demo-header nav { display: flex; gap: 12px; font-size: 13px; }
+
+  /* ─── 2. Sidebar ─── */
+  .demo-sidebar-wrap {
+    display: flex;
+    gap: 8px;
+    height: 100px;
+  }
+  .demo-sidebar-wrap aside {
+    flex: 0 0 80px;
+    background: #0d0d0d;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+  }
+  .demo-sidebar-wrap main {
+    flex: 1;
+    background: #0d0d0d;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  /* ─── 3. Card grid ─── */
+  .demo-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .demo-card-grid > div {
+    background: #0d0d0d;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  /* ─── 4. Form ─── */
+  .demo-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .demo-form label {
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .demo-form input {
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  /* ─── 5. Button group ─── */
+  .demo-button-group {
+    display: flex;
+    gap: 6px;
+  }
+  .demo-button-group button {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .demo-button-group .primary { background: var(--green); color: #000; font-weight: 600; }
+  .demo-button-group .secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+
+  /* ─── 6. Modal ─── */
+  .demo-modal {
+    position: relative;
+    background: #0d0d0d;
+    padding: 16px;
+    border-radius: 6px;
+    min-height: 70px;
+  }
+  .demo-modal .close {
+    position: absolute;
+    inset-block-start: 6px;
+    inset-inline-end: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--dim);
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  /* ─── 7. Dropdown ─── */
+  .demo-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  .demo-dropdown summary {
+    background: #0d0d0d;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 12px;
+  }
+  .demo-dropdown[open] > ul {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: 0;
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    font-size: 12px;
+    min-width: 120px;
+  }
+
+  /* ─── 8. Tab bar ─── */
+  .demo-tabs {
+    display: flex;
+    border-block-end: 1px solid var(--border);
+  }
+  .demo-tabs button {
+    flex: 1;
+    padding: 8px;
+    background: transparent;
+    border: 0;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 12px;
+    border-block-end: 2px solid transparent;
+  }
+  .demo-tabs button.active {
+    color: var(--green);
+    border-block-end-color: var(--green);
+  }
+
+  /* ─── 9. Pagination ─── */
+  .demo-pagination {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .demo-pagination .nav-arrow {
+    background: #0d0d0d;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  /* ─── 12. Icon button ─── */
+  .demo-icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--green);
+    color: #000;
+    border: 0;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .demo-icon-button .kix-icon-directional {
+    display: inline-block;
+  }
+
+  .status-ok { color: var(--ok); }
+  .status-fail { color: var(--fail); }
+  .status-pending { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<h1>KiX RTL Visual QA — 12-Pattern Harness</h1>
+<p style="color:var(--dim);font-size:13px;">
+  Toggle direction with the buttons below. Each card shows an expected RTL
+  behaviour; mark Pass / Fail after visual inspection.
+</p>
+
+<div class="toolbar">
+  <button onclick="setDir('ltr','en')">LTR (English)</button>
+  <button onclick="setDir('rtl','ar-EG')">RTL — Arabic (ar-EG)</button>
+  <button onclick="setDir('rtl','he-IL')" class="secondary">RTL — Hebrew (he-IL)</button>
+  <button onclick="setDir('rtl','fa-IR')" class="secondary">RTL — Persian (fa-IR)</button>
+  <button onclick="setDir('rtl','ur-PK')" class="secondary">RTL — Urdu (ur-PK)</button>
+  <span style="color:var(--dim);font-size:12px;align-self:center;">
+    Current: <span id="status">dir=ltr, lang=en</span>
+  </span>
+</div>
+
+<div class="grid">
+
+  <!-- 1. Header -->
+  <div class="card">
+    <div class="card-title">1. Header (logo + nav)</div>
+    <div class="pattern">
+      <div class="demo-header">
+        <div class="logo">KiX</div>
+        <nav>
+          <a href="#" data-i18n="nav.products">Products</a>
+          <a href="#" data-i18n="nav.pricing">Pricing</a>
+          <a href="#" data-i18n="nav.docs">Docs</a>
+        </nav>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Logo on the <em>start</em> (right) edge,
+      nav links on the <em>end</em> (left) edge. Item order within nav stays the
+      same in source; visual order mirrors.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p1"> Pass</label>
+      <label><input type="checkbox" name="p1f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 2. Sidebar -->
+  <div class="card">
+    <div class="card-title">2. Sidebar</div>
+    <div class="pattern">
+      <div class="demo-sidebar-wrap">
+        <aside data-i18n="sidebar.label">Sidebar</aside>
+        <main data-i18n="sidebar.main">Main content area lives here.</main>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Sidebar snaps to the right; main content
+      flows leftward. No manual flip needed if layout uses flexbox + `dir`.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p2"> Pass</label>
+      <label><input type="checkbox" name="p2f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 3. Card grid -->
+  <div class="card">
+    <div class="card-title">3. Card grid</div>
+    <div class="pattern">
+      <div class="demo-card-grid">
+        <div>1</div><div>2</div><div>3</div>
+        <div>4</div><div>5</div><div>6</div>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Reading order is right-to-left, top-to-bottom.
+      Card "1" is at top-right; card "6" at bottom-left.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p3"> Pass</label>
+      <label><input type="checkbox" name="p3f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 4. Form with labels -->
+  <div class="card">
+    <div class="card-title">4. Form (label + input)</div>
+    <div class="pattern">
+      <form class="demo-form" onsubmit="event.preventDefault();">
+        <label data-i18n="form.email">Email</label>
+        <input type="email" placeholder="user@example.com">
+        <label data-i18n="form.password">Password</label>
+        <input type="password" placeholder="••••••">
+      </form>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Labels right-aligned; inputs flow with their
+      placeholder text starting from the right edge. Phone numbers / emails in
+      input values should stay LTR via <code>dir="auto"</code>.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p4"> Pass</label>
+      <label><input type="checkbox" name="p4f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 5. Button group -->
+  <div class="card">
+    <div class="card-title">5. Button group</div>
+    <div class="pattern">
+      <div class="demo-button-group">
+        <button class="secondary" data-i18n="btn.cancel">Cancel</button>
+        <button class="primary" data-i18n="btn.confirm">Confirm</button>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Primary CTA stays on the visually-trailing
+      end (left in RTL, right in LTR). Some Arabic apps put primary on the
+      reading-start side instead — confirm with native reviewer.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p5"> Pass</label>
+      <label><input type="checkbox" name="p5f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 6. Modal -->
+  <div class="card">
+    <div class="card-title">6. Modal (close button)</div>
+    <div class="pattern">
+      <div class="demo-modal">
+        <button class="close" aria-label="Close">×</button>
+        <strong data-i18n="modal.title">Dialog title</strong>
+        <p data-i18n="modal.body">A short modal body line.</p>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Close-× button on the end edge
+      (left in RTL). Uses <code>inset-inline-end</code> so flip is automatic.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p6"> Pass</label>
+      <label><input type="checkbox" name="p6f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 7. Dropdown -->
+  <div class="card">
+    <div class="card-title">7. Dropdown</div>
+    <div class="pattern">
+      <details class="demo-dropdown">
+        <summary data-i18n="dropdown.label">Choose…</summary>
+        <ul>
+          <li>Option A</li>
+          <li>Option B</li>
+          <li>Option C</li>
+        </ul>
+      </details>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Dropdown panel opens flush to the parent's
+      start edge (right edge in RTL). Items list right-aligned.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p7"> Pass</label>
+      <label><input type="checkbox" name="p7f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 8. Tab bar -->
+  <div class="card">
+    <div class="card-title">8. Tab bar</div>
+    <div class="pattern">
+      <div class="demo-tabs">
+        <button class="active" data-i18n="tab.overview">Overview</button>
+        <button data-i18n="tab.settings">Settings</button>
+        <button data-i18n="tab.activity">Activity</button>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Tab order mirrors so "Overview" is on the
+      reading-start (right) edge; underline indicator follows the active tab.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p8"> Pass</label>
+      <label><input type="checkbox" name="p8f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 9. Pagination -->
+  <div class="card">
+    <div class="card-title">9. Pagination</div>
+    <div class="pattern">
+      <div class="demo-pagination">
+        <button class="nav-arrow kix-icon-directional" aria-label="Previous">‹</button>
+        <span>1</span><span>2</span><span>3</span>
+        <button class="nav-arrow kix-icon-directional" aria-label="Next">›</button>
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> "Next" arrow points to the left
+      (reading-forward direction). <code>.kix-icon-directional</code> handles
+      the mirror via <code>transform: scaleX(-1)</code>.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p9"> Pass</label>
+      <label><input type="checkbox" name="p9f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 10. Currency display -->
+  <div class="card">
+    <div class="card-title">10. Currency display</div>
+    <div class="pattern">
+      <div id="currency-demo" style="font-size:18px;">
+        <!-- Filled by JS using Intl.NumberFormat -->
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Currency symbol position follows the
+      locale CLDR rule (EGP precedes in Arabic, ﷼ follows in Saudi Arabic).
+      Digits use the locale's preferred numbering system.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p10"> Pass</label>
+      <label><input type="checkbox" name="p10f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 11. Date display -->
+  <div class="card">
+    <div class="card-title">11. Date display</div>
+    <div class="pattern">
+      <div id="date-demo" style="font-size:14px;">
+        <!-- Filled by JS using Intl.DateTimeFormat -->
+      </div>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Date components flow per locale rules.
+      Arabic months are spelled out (يناير, فبراير…); Hebrew uses Hebrew names.
+      Persian shows Gregorian by default unless <code>calendar=persian</code>.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p11"> Pass</label>
+      <label><input type="checkbox" name="p11f"> Fail</label>
+    </div>
+  </div>
+
+  <!-- 12. Icon button -->
+  <div class="card">
+    <div class="card-title">12. Icon button (directional)</div>
+    <div class="pattern">
+      <button class="demo-icon-button">
+        <span data-i18n="btn.continue">Continue</span>
+        <span class="kix-icon-directional" aria-hidden="true">→</span>
+      </button>
+    </div>
+    <div class="expected">
+      <strong>Expected in RTL:</strong> Arrow flips to point left (reading-forward).
+      Logo / brand icons (with NO <code>.kix-icon-directional</code> class)
+      should NOT flip.
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="p12"> Pass</label>
+      <label><input type="checkbox" name="p12f"> Fail</label>
+    </div>
+  </div>
+
+</div>
+
+<h2>Sample text (for bidi rendering check)</h2>
+<div class="card">
+  <p data-sample-lang="ar-EG" style="margin-block-end:8px;">
+    <strong>ar-EG:</strong>
+    <bdi>مرحبا بك في KiX! منصة الإعلانات المدعومة بالألعاب.
+    رصيدك الحالي هو <span dir="ltr">$1,234.56 USD</span>.</bdi>
+  </p>
+  <p data-sample-lang="he-IL" style="margin-block-end:8px;">
+    <strong>he-IL:</strong>
+    <bdi>ברוכים הבאים ל-KiX! פלטפורמת פרסום מבוססת משחקים.
+    היתרה הנוכחית שלך היא <span dir="ltr">$1,234.56 USD</span>.</bdi>
+  </p>
+  <p data-sample-lang="fa-IR" style="margin-block-end:8px;">
+    <strong>fa-IR:</strong>
+    <bdi>به KiX خوش آمدید! پلتفرم تبلیغاتی مبتنی بر بازی.
+    موجودی فعلی شما <span dir="ltr">$1,234.56 USD</span> است.</bdi>
+  </p>
+  <p data-sample-lang="ur-PK">
+    <strong>ur-PK:</strong>
+    <bdi>KiX میں خوش آمدید! گیم پر مبنی اشتہاری پلیٹ فارم۔
+    آپ کا موجودہ بیلنس <span dir="ltr">$1,234.56 USD</span> ہے۔</bdi>
+  </p>
+</div>
+
+<script>
+  // Read URL params on load.
+  function paramFromUrl(name, fallback) {
+    const u = new URL(location.href);
+    return u.searchParams.get(name) || fallback;
+  }
+
+  function setDir(dir, lang) {
+    document.documentElement.setAttribute('dir', dir);
+    document.documentElement.setAttribute('lang', lang);
+    document.getElementById('status').textContent = `dir=${dir}, lang=${lang}`;
+    // Push state so reload preserves choice.
+    const u = new URL(location.href);
+    u.searchParams.set('dir', dir);
+    u.searchParams.set('lang', lang);
+    history.replaceState(null, '', u.toString());
+    renderCurrencyAndDate(lang);
+  }
+
+  function renderCurrencyAndDate(lang) {
+    const localeMap = {
+      'ar-EG': { locale: 'ar-EG', currency: 'EGP' },
+      'ar-SA': { locale: 'ar-SA', currency: 'SAR' },
+      'he-IL': { locale: 'he-IL', currency: 'ILS' },
+      'fa-IR': { locale: 'fa-IR', currency: 'IRR' },
+      'ur-PK': { locale: 'ur-PK', currency: 'PKR' },
+      'en':    { locale: 'en-SG', currency: 'SGD' },
+    };
+    const conf = localeMap[lang] || localeMap['en'];
+    try {
+      const amount = 1234.56;
+      const cur = new Intl.NumberFormat(conf.locale, {
+        style: 'currency',
+        currency: conf.currency,
+      }).format(amount);
+      document.getElementById('currency-demo').textContent = cur;
+
+      const date = new Date(2026, 4, 30);
+      const dat = new Intl.DateTimeFormat(conf.locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }).format(date);
+      document.getElementById('date-demo').textContent = dat;
+    } catch (e) {
+      document.getElementById('currency-demo').textContent = '[Intl error: ' + e.message + ']';
+    }
+  }
+
+  // Bootstrap from URL params.
+  const initialDir = paramFromUrl('dir', 'ltr');
+  const initialLang = paramFromUrl('lang', 'en');
+  setDir(initialDir, initialLang);
+</script>
+</body>
+</html>

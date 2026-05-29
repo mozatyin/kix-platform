@@ -1,0 +1,188 @@
+/* ============================================================
+ * KiX i18n — RTL base stylesheet (Phase 2 stub)
+ * ------------------------------------------------------------
+ * Sibling to landing/i18n/rtl.css (which ships always-on utility
+ * classes). This file ships *only when* <html dir="rtl"> and
+ * patches existing LTR-authored chrome until Phase 3 migrates
+ * each page to CSS logical properties.
+ *
+ * Load via landing/i18n/i18next-runtime.js (Agent 2 wires this):
+ *
+ *   if (document.documentElement.dir === 'rtl') {
+ *     const l = document.createElement('link');
+ *     l.rel = 'stylesheet'; l.href = '/landing/i18n/rtl-base.css';
+ *     document.head.appendChild(l);
+ *   }
+ *
+ * Specificity strategy: every rule is namespaced under
+ * `html[dir="rtl"]` so we never affect LTR rendering. As Phase 3
+ * progresses, individual rules should be deleted once the source
+ * page migrates to logical properties (the rule becomes a no-op).
+ * ============================================================ */
+
+/* ─── Document baseline ─────────────────────────────────────── */
+html[dir="rtl"] body {
+  text-align: start;
+}
+
+html[dir="rtl"] :focus-visible {
+  /* Ring offset uses logical inset; keep parity in RTL. */
+  outline-offset: 2px;
+}
+
+/* ─── Landmark text alignment resets ────────────────────────── */
+html[dir="rtl"] header,
+html[dir="rtl"] nav,
+html[dir="rtl"] main,
+html[dir="rtl"] aside,
+html[dir="rtl"] footer,
+html[dir="rtl"] section,
+html[dir="rtl"] .container {
+  text-align: start;
+}
+
+/* Marketing headlines often hardcode text-align:center — that stays;
+   text-align:left/right authored against LTR needs RTL parity. */
+html[dir="rtl"] [data-i18n][style*="text-align:left"],
+html[dir="rtl"] .hero-inner[style*="text-align:left"] {
+  text-align: start !important;
+}
+html[dir="rtl"] [data-i18n][style*="text-align:right"] {
+  text-align: end !important;
+}
+
+/* ─── Nav / button row flex direction ───────────────────────── */
+/* Most flex rows authored as `flex-direction: row` are direction-
+ * symmetric (logo on start, CTAs on end) and need NO override
+ * because flexbox already reads the ancestor `dir`. The few that
+ * encode reading-order intent (e.g. step indicators, breadcrumbs)
+ * benefit from row-reverse in RTL. */
+html[dir="rtl"] .breadcrumbs,
+html[dir="rtl"] .step-indicator,
+html[dir="rtl"] .demo-pagination {
+  flex-direction: row-reverse;
+}
+
+/* ─── Position swaps for known LTR-anchored chrome ──────────── */
+/* These selectors patch concrete violations surfaced by
+ * `scripts/audit_rtl.py` in portal.html / play.html / index.html.
+ * Each comment links back to the file:line audit pointer so the
+ * Phase-3 migrator can delete the rule once the source migrates. */
+
+/* portal.html:69 — decorative blob in hero (top-right) */
+html[dir="rtl"] .hero-blob-right {
+  right: auto;
+  left: -150px;
+}
+
+/* portal.html:425 — close button in modal (top-right) */
+html[dir="rtl"] .modal-close,
+html[dir="rtl"] [data-role="close"] {
+  right: auto;
+  left: 20px;
+}
+
+/* portal.html:465-468 — toast notification fly-in (right edge → translateX(120%)) */
+html[dir="rtl"] .toast,
+html[dir="rtl"] .notification-toast {
+  right: auto;
+  left: 20px;
+  transform: translateX(-120%);
+}
+html[dir="rtl"] .toast.is-visible,
+html[dir="rtl"] .notification-toast.is-visible {
+  transform: translateX(0);
+}
+
+/* play.html:109 — close X in game-card */
+html[dir="rtl"] .game-card-close {
+  right: auto;
+  left: 8px;
+}
+
+/* sdk/kix.js floating widget (sets .style.left directly).
+ * Once the SDK migrates to class toggling, the JS sets
+ * `kix-anchor-end` instead of inline left/right styles. */
+html[dir="rtl"] .kix-widget.kix-anchor-end {
+  left: 14px;
+  right: auto;
+}
+html[dir="rtl"] .kix-widget.kix-anchor-start {
+  right: 14px;
+  left: auto;
+}
+
+/* ─── Form & input flips ────────────────────────────────────── */
+html[dir="rtl"] input[type="text"],
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="search"],
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="password"],
+html[dir="rtl"] textarea {
+  text-align: start;
+}
+
+/* Phone / email / URL inputs should remain LTR even in RTL forms.
+ * Author should also set dir="auto" on the input itself; this is a
+ * defensive fallback. */
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="number"],
+html[dir="rtl"] code,
+html[dir="rtl"] pre,
+html[dir="rtl"] kbd,
+html[dir="rtl"] samp {
+  direction: ltr;
+  text-align: start;
+  unicode-bidi: isolate;
+}
+
+/* ─── Dropdowns / menus ─────────────────────────────────────── */
+html[dir="rtl"] .dropdown-menu,
+html[dir="rtl"] details[open] > .menu,
+html[dir="rtl"] details[open] > ul {
+  left: auto;
+  right: 0;
+}
+
+/* ─── Modal padding mirror ──────────────────────────────────── */
+html[dir="rtl"] .modal-body {
+  padding-inline-start: 16px;
+  padding-inline-end: 40px;  /* room for close button on end edge */
+}
+
+/* ─── Tables: numeric columns stay LTR-aligned to end edge ──── */
+html[dir="rtl"] td.num,
+html[dir="rtl"] td[data-type="number"],
+html[dir="rtl"] th[data-type="number"] {
+  text-align: end;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ─── Icons that must NOT mirror (logos / brand glyphs) ─────── */
+/* Authors opt-OUT explicitly with [data-i18n-mirror="false"]. */
+html[dir="rtl"] [data-i18n-mirror="false"] {
+  transform: none !important;
+}
+
+/* ─── Box-shadow: directional shadows feel wrong when mirrored ─ */
+/* If a card uses `box-shadow: 8px 0 16px ...` (right-side shadow),
+ * the visual weight should flip in RTL to come from the start side. */
+html[dir="rtl"] .shadow-end {
+  box-shadow: -8px 0 16px rgba(0, 0, 0, 0.3);
+}
+html[dir="rtl"] .shadow-start {
+  box-shadow: 8px 0 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Scrollbar gutter (cosmetic) ───────────────────────────── */
+html[dir="rtl"] {
+  scrollbar-gutter: stable;
+}
+
+/* ─── End-of-file marker ────────────────────────────────────── */
+/* Add Phase-3 per-page overrides ABOVE this line. Each block
+ * should reference the audit CSV row(s) it fixes so the migration
+ * progress is auditable. */

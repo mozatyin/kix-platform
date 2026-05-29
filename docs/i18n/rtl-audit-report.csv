@@ -1,0 +1,715 @@
+file,line,column,severity,pattern,snippet,suggested_fix
+play.html,109,29,P0,right-positioning,position:absolute;top:8px;right:8px;,inset-inline-end
+play.html,190,58,P0,left-positioning,border-radius:0 0 60px 60px;position:absolute;bottom:0;left:10px;,inset-inline-start
+play.html,195,3,P1,border-left,border-left:none;border-radius:0 20px 20px 0;,border-inline-start*
+play.html,196,21,P0,right-positioning,position:absolute;right:-30px;top:30px;,inset-inline-end
+play.html,199,30,P0,left-positioning,position:absolute;bottom:0;left:0;right:0;height:110px;,inset-inline-start
+play.html,199,37,P0,right-positioning,position:absolute;bottom:0;left:0;right:0;height:110px;,inset-inline-end
+play.html,205,31,P0,left-positioning,position:absolute;top:-60px;left:50%;transform:translateX(-50%);,inset-inline-start
+play.html,211,30,P0,left-positioning,position:absolute;top:10px;left:50%;transform:translateX(-50%);,inset-inline-start
+play.html,224,3,P1,border-left,border-left:2px solid var(--green);border-right:2px solid var(--green);,border-inline-start*
+play.html,224,38,P1,border-right,border-left:2px solid var(--green);border-right:2px solid var(--green);,border-inline-end*
+play.html,329,17,P1,text-align-left,.milestone-info{text-align:left},text-align: start
+play.html,338,3,P1,border-left,border-left:4px solid var(--green);,border-inline-start*
+play.html,340,24,P1,border-left,.voucher-card.redeemed{border-left-color:var(--gray-4);opacity:.6},border-inline-start*
+play.html,341,23,P1,border-left,.voucher-card.expired{border-left-color:#e74c3c;opacity:.5},border-inline-start*
+play.html,365,27,P0,left-positioning,position:fixed;bottom:0;left:50%;transform:translateX(-50%);,inset-inline-start
+play.html,383,27,P0,left-positioning,position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);,inset-inline-start
+play.html,529,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,531,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,746,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,748,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,923,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,925,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,973,69,P0,left-positioning,"<div class=""latte-timing-indicator"" id=""indicator"" style=""left:0%""></div>",inset-inline-start
+play.html,997,16,P0,js-style-left,indicator.style.left = indicatorPos + '%';,use CSS class toggling inset-inline-start
+play.html,1034,12,P0,js-style-left,popup.style.left = '50%';,use CSS class toggling inset-inline-start
+play.html,1057,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1059,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1153,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1155,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1208,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1210,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1270,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1272,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1345,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+play.html,1347,4,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,37,14,P2,ascii-box-drawing,/* ── Header ─────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,39,24,P0,left-positioning,position:fixed;top:0;left:0;right:0;z-index:100;,inset-inline-start
+index.html,39,31,P0,right-positioning,position:fixed;top:0;left:0;right:0;z-index:100;,inset-inline-end
+index.html,59,12,P2,ascii-box-drawing,/* ── Hero ───────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,96,16,P2,ascii-box-drawing,/* ── Sections ───────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,109,13,P2,ascii-box-drawing,/* ── Cards ──────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,136,20,P2,ascii-box-drawing,/* ── How it works ───────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,144,31,P0,left-positioning,position:absolute;top:-18px;left:28px;,inset-inline-start
+index.html,151,23,P2,ascii-box-drawing,/* ── Industries grid ────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,167,15,P2,ascii-box-drawing,/* ── Pricing ────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,196,57,P1,margin-left,.tier-name span{color:var(--text-muted);font-weight:400;margin-left:8px},margin-inline-start
+index.html,199,20,P2,ascii-box-drawing,/* ── Testimonials ───────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,209,17,P2,ascii-box-drawing,/* ── For Users ─────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,228,22,P2,ascii-box-drawing,/* ── Investor strip ────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,238,14,P2,ascii-box-drawing,/* ── Footer ────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,253,24,P2,ascii-box-drawing,/* ── Reveal animation ──────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,263,6,P2,ascii-box-drawing,<!-- ═══ HEADER ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,263,17,P2,ascii-box-drawing,<!-- ═══ HEADER ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,277,6,P2,ascii-box-drawing,<!-- ═══ HERO ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,277,15,P2,ascii-box-drawing,<!-- ═══ HERO ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,285,86,P2,directional-arrow-unicode,"<a href=""https://partner.letskix.com"" class=""btn btn-primary"">立即开始 Get Started →</a>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+index.html,291,6,P2,ascii-box-drawing,<!-- ═══ PROBLEM ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,291,18,P2,ascii-box-drawing,<!-- ═══ PROBLEM ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,325,6,P2,ascii-box-drawing,<!-- ═══ SOLUTION ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,325,19,P2,ascii-box-drawing,<!-- ═══ SOLUTION ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,366,6,P2,ascii-box-drawing,<!-- ═══ HOW IT WORKS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,366,23,P2,ascii-box-drawing,<!-- ═══ HOW IT WORKS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,400,6,P2,ascii-box-drawing,<!-- ═══ INDUSTRIES ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,400,21,P2,ascii-box-drawing,<!-- ═══ INDUSTRIES ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,425,6,P2,ascii-box-drawing,<!-- ═══ PRICING ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,425,18,P2,ascii-box-drawing,<!-- ═══ PRICING ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,463,6,P2,ascii-box-drawing,<!-- ═══ TESTIMONIALS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,463,23,P2,ascii-box-drawing,<!-- ═══ TESTIMONIALS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,494,6,P2,ascii-box-drawing,<!-- ═══ FOR USERS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,494,20,P2,ascii-box-drawing,<!-- ═══ FOR USERS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,509,39,P2,directional-arrow-unicode,"<div class=""app-btn-icon"">▶️</div>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+index.html,530,6,P2,ascii-box-drawing,<!-- ═══ INVESTOR / PRESS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,530,27,P2,ascii-box-drawing,<!-- ═══ INVESTOR / PRESS ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,557,70,P1,margin-right,"<a href=""https://github.com/"" class=""btn btn-secondary"" style=""margin-right:8px"">GitHub</a>",margin-inline-end
+index.html,563,6,P2,ascii-box-drawing,<!-- ═══ FOOTER ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+index.html,563,17,P2,ascii-box-drawing,<!-- ═══ FOOTER ═══ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,11,25,P2,ascii-box-drawing,/* ── Reset & Variables ──────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,48,17,P2,ascii-box-drawing,/* ── Scrollbar ──────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,54,22,P2,ascii-box-drawing,/* ── Page structure ─────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,58,18,P2,ascii-box-drawing,/* ── Login Page ─────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,69,14,P0,right-positioning,top:-150px;right:-150px;pointer-events:none;,inset-inline-end
+portal.html,139,17,P2,ascii-box-drawing,/* ── App Shell ──────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,143,24,P0,left-positioning,position:fixed;top:0;left:0;right:0;z-index:100;,inset-inline-start
+portal.html,143,31,P0,right-positioning,position:fixed;top:0;left:0;right:0;z-index:100;,inset-inline-end
+portal.html,154,42,P1,margin-left,font-size:12px;color:var(--text-muted);margin-left:8px;,margin-inline-start
+portal.html,166,20,P2,ascii-box-drawing,/* ── Content Area ───────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,170,3,P1,padding-left,padding-left:16px;padding-right:16px;,padding-inline-start
+portal.html,170,21,P1,padding-right,padding-left:16px;padding-right:16px;,padding-inline-end
+portal.html,176,18,P2,ascii-box-drawing,/* ── Page Title ─────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,185,18,P2,ascii-box-drawing,/* ── Stat Cards ─────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,210,21,P2,ascii-box-drawing,/* ── Quick Actions ──────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,226,25,P2,ascii-box-drawing,/* ── Bottom Navigation ──────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,228,27,P0,left-positioning,position:fixed;bottom:0;left:0;right:0;z-index:100;,inset-inline-start
+portal.html,228,34,P0,right-positioning,position:fixed;bottom:0;left:0;right:0;z-index:100;,inset-inline-end
+portal.html,246,24,P2,ascii-box-drawing,/* ── Cards / Sections ───────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,259,14,P2,ascii-box-drawing,/* ── Badges ─────────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,273,18,P2,ascii-box-drawing,/* ── List Items ─────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,285,41,P1,margin-left,.list-item-actions{display:flex;gap:8px;margin-left:12px;flex-shrink:0},margin-inline-start
+portal.html,287,15,P2,ascii-box-drawing,/* ── Buttons ────────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,304,19,P2,ascii-box-drawing,/* ── Upload Zone ────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,322,26,P2,ascii-box-drawing,/* ── Upload Form Fields ─────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,337,3,P1,padding-right,padding-right:32px;,padding-inline-end
+portal.html,350,21,P2,ascii-box-drawing,/* ── Upload Result ──────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,361,18,P2,ascii-box-drawing,/* ── QR Display ─────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,387,29,P2,ascii-box-drawing,/* ── QR Fullscreen Overlay ──────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,425,30,P0,right-positioning,position:absolute;top:20px;right:20px;,inset-inline-end
+portal.html,433,31,P2,ascii-box-drawing,/* ── Settings Config Display ────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,447,19,P2,ascii-box-drawing,/* ── Empty State ────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,454,23,P2,ascii-box-drawing,/* ── Loading Spinner ────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,463,13,P2,ascii-box-drawing,/* ── Toast ──────────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,465,27,P0,right-positioning,position:fixed;top:20px;right:20px;z-index:10000;,inset-inline-end
+portal.html,468,13,P0,translateX-positive,"transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);",translate with logical sign or use inset-inline-* 
+portal.html,475,18,P2,ascii-box-drawing,/* ── Responsive ─────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,481,16,P1,padding-left,.app-content{padding-left:12px;padding-right:12px},padding-inline-start
+portal.html,481,34,P1,padding-right,.app-content{padding-left:12px;padding-right:12px},padding-inline-end
+portal.html,492,45,P2,ascii-box-drawing,/* ── Engagement: tabs / module marketplace ──────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,544,30,P0,right-positioning,position:absolute;top:10px;right:10px;,inset-inline-end
+portal.html,551,30,P0,right-positioning,position:absolute;top:10px;right:10px;,inset-inline-end
+portal.html,576,13,P2,ascii-box-drawing,/* ── Modal ──────────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,612,27,P2,ascii-box-drawing,/* ── Recipes Marketplace ────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,737,4,P2,ascii-box-drawing,/* ─── Tutorial Engine ─────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,737,24,P2,ascii-box-drawing,/* ─── Tutorial Engine ─────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,807,26,P1,margin-left,#tut-tooltip .tut-exit { margin-left: auto; },margin-inline-start
+portal.html,815,3,P1,border-right,border-right: none;,border-inline-end*
+portal.html,820,54,P0,left-positioning,"#tut-tooltip[data-pos=""bottom""]::before { top: -8px; left: 30px; }",inset-inline-start
+portal.html,821,54,P0,left-positioning,"#tut-tooltip[data-pos=""top""]::before { bottom: -8px; left: 30px; transform: rotate(135deg); }",inset-inline-start
+portal.html,822,53,P0,left-positioning,"#tut-tooltip[data-pos=""right""]::before { top: 30px; left: -8px; transform: rotate(-135deg); }",inset-inline-start
+portal.html,823,52,P0,right-positioning,"#tut-tooltip[data-pos=""left""]::before { top: 30px; right: -8px; transform: rotate(45deg); }",inset-inline-end
+portal.html,826,4,P2,ascii-box-drawing,/* ═══════════════════ Conditions Builder ═══════════════════ */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,826,43,P2,ascii-box-drawing,/* ═══════════════════ Conditions Builder ═══════════════════ */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,893,3,P1,margin-right,margin-right: 6px;,margin-inline-end
+portal.html,897,3,P0,flex-direction-row,flex-direction: row;,"consider row + dir-aware override, or use logical flex"
+portal.html,961,3,P1,margin-left,margin-left: auto;,margin-inline-start
+portal.html,988,3,P1,margin-right,margin-right: 6px;,margin-inline-end
+portal.html,991,4,P2,ascii-box-drawing,/* ─── Analytics View ──────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,991,23,P2,ascii-box-drawing,/* ─── Analytics View ──────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,997,54,P1,text-align-left,".data-table th, .data-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }",text-align: start
+portal.html,1014,49,P1,margin-left,.activity-list .blocked { color: var(--danger); margin-left: auto; },margin-inline-start
+portal.html,1015,48,P1,margin-left,.activity-list .success { color: var(--green); margin-left: auto; },margin-inline-start
+portal.html,1020,23,P2,ascii-box-drawing,/* ── Operations View ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1041,40,P2,ascii-box-drawing,/* ── Rules editor + Voucher templates ─────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1062,23,P2,ascii-box-drawing,/* ── Monitoring view ──────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1067,98,P1,border-left,.mon-info { color: var(--text-dim); font-size: 13px; padding: 8px 12px; background: var(--card); border-left: 3px solid var(--green); border-radius: 4px; margin: 8px 0; },border-inline-start*
+portal.html,1089,59,P1,margin-left,.tier-row code { font-size: 11px; color: var(--text-dim); margin-left: auto; },margin-inline-start
+portal.html,1117,4,P2,ascii-box-drawing,/* ─── Redeem Center / 核销中心 ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1117,29,P2,ascii-box-drawing,/* ─── Redeem Center / 核销中心 ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1193,3,P1,text-align-left,text-align: left; padding: 10px 8px; color: var(--text-dim);,text-align: start
+portal.html,1212,6,P2,ascii-box-drawing,<!-- ═══════════════════════════════════════════════════════════════════ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1214,6,P2,ascii-box-drawing,<!-- ═══════════════════════════════════════════════════════════════════ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1267,94,P2,directional-arrow-unicode,"<a href=""index.html"" style=""color:var(--text-dim);font-size:12px;text-decoration:none"">← 返回 KiX 首页</a>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,1272,6,P2,ascii-box-drawing,<!-- ═══════════════════════════════════════════════════════════════════ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1274,6,P2,ascii-box-drawing,<!-- ═══════════════════════════════════════════════════════════════════ -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1287,10,P2,ascii-box-drawing,<!-- ─── Dashboard ─────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1287,24,P2,ascii-box-drawing,<!-- ─── Dashboard ─────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1323,10,P2,ascii-box-drawing,<!-- ─── Games ─────────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1323,20,P2,ascii-box-drawing,<!-- ─── Games ─────────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1364,76,P2,directional-arrow-unicode,"<button class=""btn btn-sm btn-outline"" onclick=""backToStep1()"">← 重新描述</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,1395,93,P2,directional-arrow-unicode,"<button class=""btn btn-green"" id=""play-now-btn"" onclick=""playGeneratedGame()"">▶ 立即玩 / Play Now</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,1426,201,P2,directional-arrow-unicode,"<button class=""btn btn-outline"" style=""margin-top:8px"" onclick=""document.getElementById('route-b-section').style.display='none';document.getElementById('game-step-2').style.display='block'"">← 返回推荐列...","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,1431,10,P2,ascii-box-drawing,<!-- ─── Vouchers ──────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1431,23,P2,ascii-box-drawing,<!-- ─── Vouchers ──────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1475,10,P2,ascii-box-drawing,<!-- ─── QR Codes ──────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1475,23,P2,ascii-box-drawing,<!-- ─── QR Codes ──────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1506,10,P2,ascii-box-drawing,<!-- ─── Locations ─────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1506,24,P2,ascii-box-drawing,<!-- ─── Locations ─────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1514,87,P1,margin-left,"<button class=""btn btn-sm btn-outline"" onclick=""toggleAddLocation()"" style=""margin-left:auto"">+ Add / 添加</button>",margin-inline-start
+portal.html,1552,10,P2,ascii-box-drawing,<!-- ─── Analytics / 数据分析 ────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1552,31,P2,ascii-box-drawing,<!-- ─── Analytics / 数据分析 ────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1555,10,P2,ascii-box-drawing,<!-- ─── Rules / 规则引擎 ────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1555,27,P2,ascii-box-drawing,<!-- ─── Rules / 规则引擎 ────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1558,10,P2,ascii-box-drawing,<!-- ─── Primitives / 原语管理 ──────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1558,32,P2,ascii-box-drawing,<!-- ─── Primitives / 原语管理 ──────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1561,10,P2,ascii-box-drawing,<!-- ─── Redeem Center / 核销中心 ──────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1561,35,P2,ascii-box-drawing,<!-- ─── Redeem Center / 核销中心 ──────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1623,10,P2,ascii-box-drawing,<!-- ─── Settings ──────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1623,23,P2,ascii-box-drawing,<!-- ─── Settings ──────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1633,10,P2,ascii-box-drawing,<!-- ─── Recipes / 配方市场 ─────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1633,29,P2,ascii-box-drawing,<!-- ─── Recipes / 配方市场 ─────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1710,10,P2,ascii-box-drawing,<!-- ─── Engagement / 互动配置 ──────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1710,32,P2,ascii-box-drawing,<!-- ─── Engagement / 互动配置 ──────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1845,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,1848,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2336,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2338,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2354,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2356,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2384,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2386,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2510,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2512,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2559,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2561,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2625,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2627,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2755,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2757,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2926,4,P2,ascii-box-drawing,// ─── QR Fullscreen ───────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2926,22,P2,ascii-box-drawing,// ─── QR Fullscreen ───────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2958,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,2960,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3046,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3048,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3148,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3150,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3158,46,P0,js-style-left,ta.value=url;ta.style.position='fixed';ta.style.left='-9999px';,use CSS class toggling inset-inline-start
+portal.html,3165,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3167,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3208,190,P2,directional-arrow-unicode,"'<button onclick=""openGamePlayer()"" style=""background:var(--green);color:var(--dark);border:none;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer"">▶ 玩</button>' +","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,3253,205,P2,directional-arrow-unicode,"? '<button onclick=""openGamePlayer()"" style=""margin-top:8px;padding:4px 16px;background:var(--green);color:var(--dark);border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer"">▶...","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,3322,34,P1,text-align-right,"'<span style=""width:30px;text-align:right;color:var(--text-dim)"">' + pct + '%</span>' +",text-align: end
+portal.html,3531,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3533,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3535,24,P2,ascii-box-drawing,// ── Network Effect ────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3537,44,P2,directional-arrow-unicode,"desc_en:'High-score players share cards → friends sign up.',","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,3580,23,P2,ascii-box-drawing,// ── Commerce Loop ─────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3582,26,P2,directional-arrow-unicode,"desc_en:'Tiered score → coupon mapping.',","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,3619,20,P2,ascii-box-drawing,// ── Engagement ────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3692,31,P2,ascii-box-drawing,// ── Foundation (built-in) ─────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3916,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3918,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3926,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,3928,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4034,50,P2,directional-arrow-unicode,return '<li>When <code>'+trig+'</code> → '+nActions+' action'+(nActions===1?'':'s')+'</li>';,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,4154,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4156,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4220,16,P0,js-style-left,tooltipEl.style.left = '50%';,use CSS class toggling inset-inline-start
+portal.html,4236,16,P0,js-style-left,spotlightEl.style.left = `${rect.left - 8}px`;,use CSS class toggling inset-inline-start
+portal.html,4246,16,P0,js-style-left,"tooltipEl.style.left = `${Math.max(20, rect.left)}px`;",use CSS class toggling inset-inline-start
+portal.html,4251,16,P0,js-style-left,"tooltipEl.style.left = `${Math.max(20, rect.left)}px`;",use CSS class toggling inset-inline-start
+portal.html,4345,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4347,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4394,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4397,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4451,25,P0,flex-direction-row,"<label style=""flex-direction:row;align-items:center"">","consider row + dir-aware override, or use logical flex"
+portal.html,4779,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4781,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4939,6,P2,ascii-box-drawing,<!-- ─── Tutorial Engine Overlay ─────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4939,34,P2,ascii-box-drawing,<!-- ─── Tutorial Engine Overlay ─────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4951,62,P2,directional-arrow-unicode,"<button class=""tut-next"" onclick=""tutorialNext()"">Next →</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+portal.html,4958,6,P2,ascii-box-drawing,<!-- ─── Analytics View Module ───────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4958,32,P2,ascii-box-drawing,<!-- ─── Analytics View Module ───────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4961,6,P2,ascii-box-drawing,<!-- ─── Operations View Module ──────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4961,33,P2,ascii-box-drawing,<!-- ─── Operations View Module ──────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4964,6,P2,ascii-box-drawing,<!-- ─── Voucher Templates View Module ───────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4964,40,P2,ascii-box-drawing,<!-- ─── Voucher Templates View Module ───────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4967,6,P2,ascii-box-drawing,<!-- ─── Rules Editor View Module ────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4967,35,P2,ascii-box-drawing,<!-- ─── Rules Editor View Module ────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4970,6,P2,ascii-box-drawing,<!-- ─── Monitoring View Module ──────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4970,33,P2,ascii-box-drawing,<!-- ─── Monitoring View Module ──────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4973,6,P2,ascii-box-drawing,<!-- ─── Primitives Admin View Module ────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+portal.html,4973,39,P2,ascii-box-drawing,<!-- ─── Primitives Admin View Module ────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+connect.html,104,54,P1,margin-right,.guarantees .check{color:#00FC00;font-weight:700;margin-right:6px},margin-inline-end
+storefront.html,65,32,P2,ascii-box-drawing,/* ── Reveal animation utility ───────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,69,24,P2,ascii-box-drawing,/* ── Top bar (sticky) ───────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,103,12,P2,ascii-box-drawing,/* ── Hero ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,150,54,P0,right-positioning,position:absolute;top:calc(var(--header-h) + 14px);right:16px;z-index:5;,inset-inline-end
+storefront.html,163,12,P2,ascii-box-drawing,/* ── Tabs ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,184,15,P2,ascii-box-drawing,/* ── Content ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,189,17,P2,ascii-box-drawing,/* ── Card base ─────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,217,32,P2,ascii-box-drawing,/* ── Game card visual upgrade ──────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,238,12,P2,directional-arrow-unicode,content:'▶';color:var(--brand);font-size:36px;,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+storefront.html,243,15,P2,ascii-box-drawing,/* ── Reviews ──────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,288,14,P2,ascii-box-drawing,/* ── Stores ───────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,305,35,P2,ascii-box-drawing,/* ── Voucher card visual upgrade ──────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,313,32,P0,left-positioning,content:'';position:absolute;left:0;top:0;bottom:0;width:4px;,inset-inline-start
+storefront.html,319,25,P1,margin-right,letter-spacing:-.02em;margin-right:8px;,margin-inline-end
+storefront.html,322,13,P2,ascii-box-drawing,/* ── Toast ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,324,30,P0,left-positioning,position:fixed;bottom:24px;left:50%;transform:translateX(-50%);,inset-inline-start
+storefront.html,333,14,P2,ascii-box-drawing,/* ── Footer ───────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,342,16,P2,ascii-box-drawing,/* ── Tablet + ─────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,365,27,P2,ascii-box-drawing,/* ── Tight mobile (≤375) ──────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,370,49,P0,right-positioning,.follow-btn{padding:8px 14px;font-size:12.5px;right:12px},inset-inline-end
+storefront.html,426,37,P2,ascii-box-drawing,/* ── Reveal-on-scroll observer ─────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,436,31,P2,ascii-box-drawing,/* ── Topbar scroll state ──────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,443,30,P2,ascii-box-drawing,/* ── SEO meta injection ──────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+storefront.html,462,16,P2,ascii-box-drawing,/* ── Load ─────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/scan.html,58,32,P2,ascii-box-drawing,// ── Parse incoming query ─────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/scan.html,70,21,P2,ascii-box-drawing,// ── Detection ────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,51,15,P2,ascii-box-drawing,/* ── Top Bar ───────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,55,3,P0,left-positioning,left: 0;,inset-inline-start
+app/app.css,56,3,P0,right-positioning,right: 0;,inset-inline-end
+app/app.css,101,18,P2,ascii-box-drawing,/* ── Bottom Nav ────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,105,3,P0,left-positioning,left: 0;,inset-inline-start
+app/app.css,106,3,P0,right-positioning,right: 0;,inset-inline-end
+app/app.css,159,22,P2,ascii-box-drawing,/* ── Main Container ────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,197,22,P2,ascii-box-drawing,/* ── Welcome / Hero ────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,210,23,P2,ascii-box-drawing,/* ── Cards (generic) ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,239,21,P2,ascii-box-drawing,/* ── Discover list ─────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,268,26,P2,ascii-box-drawing,/* ── Inbox / Push items ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,283,3,P0,left-positioning,left: -3px;,inset-inline-start
+app/app.css,304,18,P2,ascii-box-drawing,/* ── Game cards ────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,327,26,P2,ascii-box-drawing,/* ── Rewards / Vouchers ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,344,3,P1,border-left,border-left: 3px solid var(--kix-primary);,border-inline-start*
+app/app.css,361,15,P2,ascii-box-drawing,/* ── Profile ──────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,460,39,P2,ascii-box-drawing,/* ── Brand Welcome Overlay (QR scan) ──────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,498,30,P2,ascii-box-drawing,/* ── Loading / Empty States ───────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,526,13,P2,ascii-box-drawing,/* ── Toast ─────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,529,3,P0,left-positioning,left: 50%;,inset-inline-start
+app/app.css,550,36,P2,ascii-box-drawing,/* ── Responsive: Tablet + Desktop ─────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.css,571,5,P0,flex-direction-row,flex-direction: row;,"consider row + dir-aware override, or use logical flex"
+app/app.css,577,22,P0,right-positioning,.badge { top: 8px; right: 4px; },inset-inline-end
+app/app.js,3,37,P2,directional-arrow-unicode,- Onboarding: device fingerprint → KiX ID (kid),"use icon class with .kix-icon-directional, or pair → with ← per dir"
+app/app.js,12,16,P2,ascii-box-drawing,// ── Config ──────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,18,15,P2,ascii-box-drawing,// ── State ───────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,28,28,P2,ascii-box-drawing,// ── Device Fingerprint ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,48,21,P2,ascii-box-drawing,// ── API Helpers ─────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,79,22,P2,ascii-box-drawing,// ── UI Utilities ────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,104,20,P2,ascii-box-drawing,// ── Onboarding ──────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,140,17,P2,ascii-box-drawing,// ── Session ─────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,152,25,P2,ascii-box-drawing,// ── QR Scan Handler ─────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,191,15,P2,ascii-box-drawing,// ── Inbox ───────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,231,17,P2,ascii-box-drawing,// ── Rewards ─────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,247,15,P2,ascii-box-drawing,// ── Views ───────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,454,20,P2,ascii-box-drawing,// ── Navigation ──────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,473,28,P2,ascii-box-drawing,// ── Welcome (new user) ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,478,14,P2,ascii-box-drawing,// ── Init ────────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,526,32,P2,ascii-box-drawing,// ── Global window handlers ─────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+app/app.js,594,14,P2,ascii-box-drawing,// ── Boot ────────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,62,37,P2,ascii-box-drawing,// ── Resolve pixel id + endpoint ────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,92,66,P2,ascii-box-drawing,// ── Storage helpers (graceful when localStorage unavailable) ──────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,103,28,P2,ascii-box-drawing,// ── Device fingerprint ────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,127,23,P2,ascii-box-drawing,// ── User identity ─────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,132,49,P2,ascii-box-drawing,// ── Enhanced Conversions (hashed-PII cache) ───────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,173,42,P2,ascii-box-drawing,// ── Unique event-id (for CAPI dedup) ──────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,187,37,P2,ascii-box-drawing,// ── Core send (fire-and-forget) ───────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,237,28,P2,ascii-box-drawing,// ── Auto-fire pageview ────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,249,20,P2,ascii-box-drawing,// ── Public API ────────────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,383,45,P2,ascii-box-drawing,// ── Enhanced Conversions (hashed PII) ──────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/kix-pixel.js,386,25,P2,directional-arrow-unicode,// accumulate (email→phone→address) without losing earlier hashes.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/kix-pixel.js,386,31,P2,directional-arrow-unicode,// accumulate (email→phone→address) without losing earlier hashes.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/kix-pixel.js,638,37,P2,ascii-box-drawing,// ── WeChat Mini-Program adapter ────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/demo.html,30,33,P1,margin-left,header nav a { color: #fff; margin-left: 18px; text-decoration: none; font-size: 14px; opacity: .9; },margin-inline-start
+sdk/demo.html,77,7,P1,margin-left,margin-left: 12px;,margin-inline-start
+sdk/demo.html,243,42,P2,directional-arrow-unicode,(data !== undefined ? ' → ' + (typeof data === 'object' ? JSON.stringify(data) : data) : '');,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/kix.js,182,36,P0,right-positioning,'.kix-sdk-fab{position:fixed;right:20px;bottom:20px;width:60px;height:60px;border-radius:50%;background:' + color + ';color:#fff;display:flex;align-items:center;justify-content:center;font:600 22px...,inset-inline-end
+sdk/kix.js,184,60,P0,right-positioning,"'.kix-sdk-fab .kix-sdk-dot{position:absolute;top:6px;right:6px;width:12px;height:12px;border-radius:50%;background:#ff4757;border:2px solid #fff}',",inset-inline-end
+sdk/kix.js,185,38,P0,right-positioning,"'.kix-sdk-panel{position:fixed;right:20px;bottom:90px;width:350px;height:500px;background:#fff;border-radius:16px;box-shadow:0 16px 40px rgba(0,0,0,.25);z-index:2147483601;display:flex;flex-directi...",inset-inline-end
+sdk/kix.js,202,88,P1,border-left,"'.kix-sdk-quest{padding:10px;background:#fafafd;border-radius:8px;margin-top:8px;border-left:3px solid ' + color + '}',",border-inline-start*
+sdk/kix.js,209,56,P0,right-positioning,"'.kix-sdk-modal-close{position:absolute;top:10px;right:14px;background:rgba(0,0,0,.5);color:#fff;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;z-index:2}',",inset-inline-end
+sdk/kix.js,214,51,P0,right-positioning,"'.kix-sdk-toast{position:fixed;bottom:100px;right:20px;background:' + color + ';color:#fff;padding:12px 16px;border-radius:10px;font:14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25);...",inset-inline-end
+sdk/kix.js,216,47,P0,right-positioning,'@media(max-width:480px){.kix-sdk-panel{right:0;bottom:0;width:100%;height:100%;border-radius:0}.kix-sdk-fab{right:14px;bottom:14px}}',inset-inline-end
+sdk/kix.js,216,116,P0,right-positioning,'@media(max-width:480px){.kix-sdk-panel{right:0;bottom:0;width:100%;height:100%;border-radius:0}.kix-sdk-fab{right:14px;bottom:14px}}',inset-inline-end
+sdk/portal-views/monitoring.js,1,4,P2,ascii-box-drawing,/* ─── Monitoring View ────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,1,24,P2,ascii-box-drawing,/* ─── Monitoring View ────────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,10,4,P2,ascii-box-drawing,* ──────────────────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,53,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,55,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,101,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,103,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,154,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,156,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,197,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/monitoring.js,199,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,1,4,P2,ascii-box-drawing,/* ─── Ads Manager View ───────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,1,25,P2,ascii-box-drawing,/* ─── Ads Manager View ───────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,17,4,P2,ascii-box-drawing,* ──────────────────────────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,62,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,64,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,208,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,210,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,378,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,380,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,385,45,P2,directional-arrow-unicode,"<p class=""mon-info"">门店地理围栏：用户进入半径范围 → 自动推送游戏 → 拉到店 / Geofence pushes game when user enters radius.</p>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/portal-views/ads.js,385,54,P2,directional-arrow-unicode,"<p class=""mon-info"">门店地理围栏：用户进入半径范围 → 自动推送游戏 → 拉到店 / Geofence pushes game when user enters radius.</p>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/portal-views/ads.js,445,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,447,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,494,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/ads.js,496,8,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/voucher_templates.js,2,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/voucher_templates.js,7,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/voucher_templates.js,254,36,P1,text-align-left,"'<p class=""empty"" style=""text-align:left"">ConditionsBuilder not loaded — conditions will be empty.</p>';",text-align: start
+sdk/portal-views/primitives_admin.js,48,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,50,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,103,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,105,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,159,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,161,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,220,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,222,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,279,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,281,8,P2,ascii-box-drawing,// ════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/primitives_admin.js,300,81,P2,directional-arrow-unicode,<span>${e.start_at ? new Date(e.start_at).toLocaleString() : '?'} → ${e.end_at ? new Date(e.end_at).toLocaleString() : '?'}</span>,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/portal-views/analytics.js,42,25,P2,directional-arrow-unicode,// Object map → array,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/portal-views/analytics.js,236,39,P2,directional-arrow-unicode,<span>↓ 流失 / Drop-off (issue→validate): <strong>${dropValidation.toFixed(1)}%</strong></span>,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/portal-views/analytics.js,237,42,P2,directional-arrow-unicode,<span>↓ 流失 / Drop-off (validate→redeem): <strong>${dropRedemption.toFixed(1)}%</strong></span>,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+sdk/portal-views/rules_editor.js,2,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/rules_editor.js,6,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,1,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,4,4,P2,ascii-box-drawing,// ═══════════════════════════════════════════════════════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,55,8,P2,ascii-box-drawing,// ════════════════════ GROUP BUY ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,55,39,P2,ascii-box-drawing,// ════════════════════ GROUP BUY ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,122,8,P2,ascii-box-drawing,// ════════════════════ TOURNAMENTS ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,122,41,P2,ascii-box-drawing,// ════════════════════ TOURNAMENTS ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,221,8,P2,ascii-box-drawing,// ════════════════════ LIMITED DROPS ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,221,43,P2,ascii-box-drawing,// ════════════════════ LIMITED DROPS ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,306,8,P2,ascii-box-drawing,// ════════════════════ FCFS POOL ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+sdk/portal-views/operations.js,306,39,P2,ascii-box-drawing,// ════════════════════ FCFS POOL ════════════════════,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/i18next-runtime.js,8,26,P2,directional-arrow-unicode,"*   - Detection: ?lang= → localStorage(""kix_locale"") → navigator.language → default.","use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/i18next-runtime.js,8,55,P2,directional-arrow-unicode,"*   - Detection: ?lang= → localStorage(""kix_locale"") → navigator.language → default.","use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/i18next-runtime.js,8,76,P2,directional-arrow-unicode,"*   - Detection: ?lang= → localStorage(""kix_locale"") → navigator.language → default.","use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/i18next-runtime.js,93,50,P2,directional-arrow-unicode,"// Loose match by primary subtag (e.g., zh → zh-Hans-SG)","use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-test.html,9,26,P2,directional-arrow-unicode,?dir=rtl&lang=ar-EG  → Arabic mode,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-test.html,10,26,P2,directional-arrow-unicode,?dir=rtl&lang=he-IL  → Hebrew mode,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-test.html,11,26,P2,directional-arrow-unicode,?dir=rtl&lang=fa-IR  → Persian mode,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-test.html,12,26,P2,directional-arrow-unicode,?dir=ltr (default)   → LTR baseline,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-test.html,113,6,P2,ascii-box-drawing,/* ─── 1. Header ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,113,20,P2,ascii-box-drawing,/* ─── 1. Header ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,125,6,P2,ascii-box-drawing,/* ─── 2. Sidebar ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,125,21,P2,ascii-box-drawing,/* ─── 2. Sidebar ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,146,6,P2,ascii-box-drawing,/* ─── 3. Card grid ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,146,23,P2,ascii-box-drawing,/* ─── 3. Card grid ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,160,6,P2,ascii-box-drawing,/* ─── 4. Form ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,160,18,P2,ascii-box-drawing,/* ─── 4. Form ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,179,6,P2,ascii-box-drawing,/* ─── 5. Button group ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,179,26,P2,ascii-box-drawing,/* ─── 5. Button group ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,195,6,P2,ascii-box-drawing,/* ─── 6. Modal ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,195,19,P2,ascii-box-drawing,/* ─── 6. Modal ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,214,6,P2,ascii-box-drawing,/* ─── 7. Dropdown ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,214,22,P2,ascii-box-drawing,/* ─── 7. Dropdown ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,241,6,P2,ascii-box-drawing,/* ─── 8. Tab bar ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,241,21,P2,ascii-box-drawing,/* ─── 8. Tab bar ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,261,6,P2,ascii-box-drawing,/* ─── 9. Pagination ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,261,24,P2,ascii-box-drawing,/* ─── 9. Pagination ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,277,6,P2,ascii-box-drawing,/* ─── 12. Icon button ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,277,26,P2,ascii-box-drawing,/* ─── 12. Icon button ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-test.html,552,63,P2,directional-arrow-unicode,"<span class=""kix-icon-directional"" aria-hidden=""true"">→</span>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-base.css,23,4,P2,ascii-box-drawing,/* ─── Document baseline ─────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,23,26,P2,ascii-box-drawing,/* ─── Document baseline ─────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,33,4,P2,ascii-box-drawing,/* ─── Landmark text alignment resets ────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,33,39,P2,ascii-box-drawing,/* ─── Landmark text alignment resets ────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,45,4,P1,text-align-left,text-align:left/right authored against LTR needs RTL parity. */,text-align: start
+i18n/rtl-base.css,46,37,P1,text-align-left,"html[dir=""rtl""] [data-i18n][style*=""text-align:left""],",text-align: start
+i18n/rtl-base.css,47,37,P1,text-align-left,"html[dir=""rtl""] .hero-inner[style*=""text-align:left""] {",text-align: start
+i18n/rtl-base.css,50,37,P1,text-align-right,"html[dir=""rtl""] [data-i18n][style*=""text-align:right""] {",text-align: end
+i18n/rtl-base.css,54,4,P2,ascii-box-drawing,/* ─── Nav / button row flex direction ───────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,54,40,P2,ascii-box-drawing,/* ─── Nav / button row flex direction ───────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,55,32,P0,flex-direction-row,/* Most flex rows authored as `flex-direction: row` are direction-,"consider row + dir-aware override, or use logical flex"
+i18n/rtl-base.css,66,4,P2,ascii-box-drawing,/* ─── Position swaps for known LTR-anchored chrome ──────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,66,53,P2,ascii-box-drawing,/* ─── Position swaps for known LTR-anchored chrome ──────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,75,3,P0,left-positioning,left: -150px;,inset-inline-start
+i18n/rtl-base.css,82,3,P0,left-positioning,left: 20px;,inset-inline-start
+i18n/rtl-base.css,85,66,P0,translateX-positive,/* portal.html:465-468 — toast notification fly-in (right edge → translateX(120%)) */,translate with logical sign or use inset-inline-* 
+i18n/rtl-base.css,85,64,P2,directional-arrow-unicode,/* portal.html:465-468 — toast notification fly-in (right edge → translateX(120%)) */,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl-base.css,89,3,P0,left-positioning,left: 20px;,inset-inline-start
+i18n/rtl-base.css,100,3,P0,left-positioning,left: 8px;,inset-inline-start
+i18n/rtl-base.css,107,3,P0,left-positioning,left: 14px;,inset-inline-start
+i18n/rtl-base.css,111,3,P0,right-positioning,right: 14px;,inset-inline-end
+i18n/rtl-base.css,115,4,P2,ascii-box-drawing,/* ─── Form & input flips ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,115,27,P2,ascii-box-drawing,/* ─── Form & input flips ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,136,3,P2,direction-ltr-hardcoded,direction: ltr;,remove (let document dir win) or guard with dir-specific selector
+i18n/rtl-base.css,141,4,P2,ascii-box-drawing,/* ─── Dropdowns / menus ─────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,141,26,P2,ascii-box-drawing,/* ─── Dropdowns / menus ─────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,146,3,P0,right-positioning,right: 0;,inset-inline-end
+i18n/rtl-base.css,149,4,P2,ascii-box-drawing,/* ─── Modal padding mirror ──────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,149,29,P2,ascii-box-drawing,/* ─── Modal padding mirror ──────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,155,4,P2,ascii-box-drawing,/* ─── Tables: numeric columns stay LTR-aligned to end edge ──── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,155,61,P2,ascii-box-drawing,/* ─── Tables: numeric columns stay LTR-aligned to end edge ──── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,160,3,P2,direction-ltr-hardcoded,direction: ltr;,remove (let document dir win) or guard with dir-specific selector
+i18n/rtl-base.css,164,4,P2,ascii-box-drawing,/* ─── Icons that must NOT mirror (logos / brand glyphs) ─────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,164,58,P2,ascii-box-drawing,/* ─── Icons that must NOT mirror (logos / brand glyphs) ─────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,170,4,P2,ascii-box-drawing,/* ─── Box-shadow: directional shadows feel wrong when mirrored ─ */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,180,4,P2,ascii-box-drawing,/* ─── Scrollbar gutter (cosmetic) ───────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,180,36,P2,ascii-box-drawing,/* ─── Scrollbar gutter (cosmetic) ───────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,185,4,P2,ascii-box-drawing,/* ─── End-of-file marker ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/rtl-base.css,185,27,P2,ascii-box-drawing,/* ─── End-of-file marker ────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+i18n/locale-switcher.js,19,31,P0,right-positioning,position:fixed; top:14px; right:14px; z-index:99999;,inset-inline-end
+i18n/locale-switcher.js,35,46,P0,right-positioning,position:absolute; top:calc(100% + 6px); right:0;,inset-inline-end
+i18n/locale-switcher.js,51,49,P0,left-positioning,"[dir=""rtl""] .kix-locale-switcher{ right:auto; left:14px }",inset-inline-start
+i18n/locale-switcher.js,52,41,P0,left-positioning,"[dir=""rtl""] .kix-ls-menu{ right:auto; left:0 }",inset-inline-start
+i18n/rtl.css,23,40,P2,directional-arrow-unicode,/* Recipe: convert directional spacing → logical.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl.css,54,32,P2,directional-arrow-unicode,/* Floating widgets (top-right → top-left in RTL) — locale-switcher already handles,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+i18n/rtl.css,56,47,P0,left-positioning,"html[dir=""rtl""] .kix-top-right { right: auto; left: 14px; }",inset-inline-start
+i18n/rtl.css,57,47,P0,right-positioning,"html[dir=""rtl""] .kix-top-left  { left:  auto; right: 14px; }",inset-inline-end
+api-docs/index.html,46,17,P2,ascii-box-drawing,/* ── Container ─────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,49,12,P2,ascii-box-drawing,/* ── Hero ──────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,60,13,P0,right-positioning,top:-80px;right:-100px;pointer-events:none;z-index:0;,inset-inline-end
+api-docs/index.html,88,23,P2,ascii-box-drawing,/* ── Section heading ───────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,93,21,P2,ascii-box-drawing,/* ── Category grid ─────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,113,20,P2,ascii-box-drawing,/* ── Code samples ──────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,134,21,P2,ascii-box-drawing,/* ── Auth + Errors ─────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,147,19,P2,ascii-box-drawing,/* ── Error table ───────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,149,51,P1,text-align-left,".error-table th,.error-table td{padding:13px 18px;text-align:left;font-size:13px;border-bottom:1px solid var(--border)}",text-align: start
+api-docs/index.html,157,14,P2,ascii-box-drawing,/* ── Footer ────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,177,16,P2,ascii-box-drawing,<!-- ── HERO ─────────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,191,22,P2,ascii-box-drawing,<!-- ── CATEGORIES ───────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,222,100,P2,directional-arrow-unicode,"<p class=""cat-desc"">Multi-store hierarchies with role-based access control. One corp account → many brand IDs → many stores.</p>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+api-docs/index.html,222,117,P2,directional-arrow-unicode,"<p class=""cat-desc"">Multi-store hierarchies with role-based access control. One corp account → many brand IDs → many stores.</p>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+api-docs/index.html,227,23,P2,ascii-box-drawing,<!-- ── QUICK START ──────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,317,26,P2,ascii-box-drawing,<!-- ── AUTHENTICATION ───────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,336,23,P2,ascii-box-drawing,<!-- ── ERROR CODES ──────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+api-docs/index.html,358,18,P2,ascii-box-drawing,<!-- ── FOOTER ───────────────────────────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/starbucks/match3.html,89,104,P2,directional-arrow-unicode,"<button id=""back-from-levels-btn"" class=""mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/starbucks/match3.html,133,106,P2,directional-arrow-unicode,"<button id=""back-from-settings-btn"" class=""mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/starbucks/match3.html,142,102,P2,directional-arrow-unicode,"<button id=""back-from-shop-btn"" class=""mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/starbucks/match3.html,166,104,P2,directional-arrow-unicode,"<button id=""back-from-scores-btn"" class=""mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780044826/match3.html,31,13,P0,left-positioning,left: 0;,inset-inline-start
+games/nanyang_jkt_central_1780044826/match3.html,115,13,P0,left-positioning,left: 0;,inset-inline-start
+games/nanyang_jkt_central_1780044826/match3.html,116,13,P0,right-positioning,right: 0;,inset-inline-end
+games/nanyang_jkt_central_1780044826/match3.html,147,13,P0,left-positioning,left: 50%;,inset-inline-start
+games/nanyang_jkt_central_1780048994/match3.html,120,104,P2,directional-arrow-unicode,"<button id=""btn-back-levelselect"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048994/match3.html,162,101,P2,directional-arrow-unicode,"<button id=""btn-back-settings"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048994/match3.html,179,97,P2,directional-arrow-unicode,"<button id=""btn-back-shop"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048994/match3.html,188,103,P2,directional-arrow-unicode,"<button id=""btn-back-highscores"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048994/match3.html,939,45,P0,js-style-left,if (sp) { sp.style.right = '1px'; sp.style.left = 'auto'; },use CSS class toggling inset-inline-start
+games/nanyang_jkt_central_1780048994/match3.html,939,21,P0,js-style-right,if (sp) { sp.style.right = '1px'; sp.style.left = 'auto'; },use CSS class toggling inset-inline-end
+games/nanyang_jkt_central_1780048994/match3.html,943,21,P0,js-style-left,if (sp) { sp.style.left = '1px'; sp.style.right = 'auto'; },use CSS class toggling inset-inline-start
+games/nanyang_jkt_central_1780048994/match3.html,943,44,P0,js-style-right,if (sp) { sp.style.left = '1px'; sp.style.right = 'auto'; },use CSS class toggling inset-inline-end
+games/nanyang_jkt_central_1780048994/match3.html,948,45,P0,js-style-left,if (sp) { sp.style.right = '1px'; sp.style.left = 'auto'; },use CSS class toggling inset-inline-start
+games/nanyang_jkt_central_1780048994/match3.html,948,21,P0,js-style-right,if (sp) { sp.style.right = '1px'; sp.style.left = 'auto'; },use CSS class toggling inset-inline-end
+games/nanyang_jkt_central_1780048994/match3.html,952,21,P0,js-style-left,if (sp) { sp.style.left = '1px'; sp.style.right = 'auto'; },use CSS class toggling inset-inline-start
+games/nanyang_jkt_central_1780048994/match3.html,952,44,P0,js-style-right,if (sp) { sp.style.left = '1px'; sp.style.right = 'auto'; },use CSS class toggling inset-inline-end
+games/nanyang_jkt_central_1780019750/match3.html,33,45,P0,left-positioning,#action-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:40;width:100%;max-width:460px;display:flex;justify-content:space-around;align-items:center;padding:10px 8px;backgroun...,inset-inline-start
+games/nanyang_jkt_central_1780019750/match3.html,186,51,P2,directional-arrow-unicode,"<button id=""btn-play"" class=""btn-primary"">▶ 开始</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780019750/match3.html,188,53,P2,directional-arrow-unicode,"<button id=""btn-resume"" class=""btn-success"">▶ 继续</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780019750/match3.html,193,57,P2,directional-arrow-unicode,"<button id=""btn-next-level"" class=""btn-success"">▶ 下一关</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780019750/match3.html,907,32,P2,directional-arrow-unicode,btnContinue.textContent = '▶ 继续游戏';,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780019750/match3.html,1166,32,P2,directional-arrow-unicode,nextBtn.textContent = '▶ 下一关';,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780019750/match3.html,1274,4,P0,js-style-left,pop.style.left = `${left}px`;,use CSS class toggling inset-inline-start
+games/nanyang_jkt_central_1780043345/match3.html,203,76,P0,left-positioning,"<div id=""pause_menu-screen"" class=""screen"" style=""position:fixed;top:0;left:0;right:0;bottom:0;z-50;background:rgba(0,0,0,0.85);justify-content:center;min-height:100vh;padding-bottom:0;"">",inset-inline-start
+games/nanyang_jkt_central_1780043345/match3.html,203,83,P0,right-positioning,"<div id=""pause_menu-screen"" class=""screen"" style=""position:fixed;top:0;left:0;right:0;bottom:0;z-50;background:rgba(0,0,0,0.85);justify-content:center;min-height:100vh;padding-bottom:0;"">",inset-inline-end
+games/nanyang_jkt_central_1780043345/match3.html,968,24,P2,directional-arrow-unicode,* Runs cascade→fill→match loop until board stabilizes. Returns total matched positions across all cycles.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780043345/match3.html,968,29,P2,directional-arrow-unicode,* Runs cascade→fill→match loop until board stabilizes. Returns total matched positions across all cycles.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,30,48,P0,right-positioning,.powerup-btn .badge{position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justi...,inset-inline-end
+games/nanyang_jkt_central_1780048942/match3.html,121,136,P2,directional-arrow-unicode,"<button id=""btn-levelselect-back"" data-action=""navigate"" data-target=""home"" class=""text-2xl mr-3 active:scale-90 transition-transform"">←</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,154,193,P2,directional-arrow-unicode,"<button id=""btn-resume"" data-action=""resume"" class=""w-full py-3.5 rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 text-white font-bold text-lg active:scale-95 transition-transform"">▶ 继续<...","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,165,133,P2,directional-arrow-unicode,"<button id=""btn-settings-back"" data-action=""navigate"" data-target=""home"" class=""text-2xl mr-3 active:scale-90 transition-transform"">←</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,178,129,P2,directional-arrow-unicode,"<button id=""btn-shop-back"" data-action=""navigate"" data-target=""home"" class=""text-2xl mr-3 active:scale-90 transition-transform"">←</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,193,205,P2,directional-arrow-unicode,"<button id=""btn-result-next"" data-action=""next_level"" class=""w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold text-lg active:scale-95 transition-transfor...","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,203,131,P2,directional-arrow-unicode,"<button id=""btn-scores-back"" data-action=""navigate"" data-target=""home"" class=""text-2xl mr-3 active:scale-90 transition-transform"">←</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048942/match3.html,1190,33,P0,translateX-positive,knob.style.transform = 'translateX(28px)';,translate with logical sign or use inset-inline-* 
+games/nanyang_jkt_central_1780047190/match3.html,34,13,P0,left-positioning,left: 0;,inset-inline-start
+games/nanyang_jkt_central_1780047190/match3.html,95,13,P0,left-positioning,left: 0;,inset-inline-start
+games/nanyang_jkt_central_1780047190/match3.html,96,13,P0,right-positioning,right: 0;,inset-inline-end
+games/nanyang_jkt_central_1780047190/match3.html,282,51,P2,directional-arrow-unicode,"<button id=""btn-play"" class=""btn-primary"">▶ 开始</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780047190/match3.html,288,53,P2,directional-arrow-unicode,"<button id=""btn-resume"" class=""btn-primary"">▶ 继续</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780047190/match3.html,291,57,P2,directional-arrow-unicode,"<button id=""btn-next-level"" class=""btn-success"">➡ 下一关</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780051006/match3.html,688,24,P2,directional-arrow-unicode,backBtn.textContent = '← 返回';,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780051006/match3.html,784,74,P2,directional-arrow-unicode,"class=""bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-full text-sm"">← 返回</button>`; }","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780029374/match3.html,28,45,P0,left-positioning,"#action-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;display:flex;justify-content:center;gap:.5rem;padding:.5rem 1rem;padding-bottom:max(.5rem,env(safe-area-inset-bottom));background:#0f0f...",inset-inline-start
+games/nanyang_jkt_central_1780029374/match3.html,28,52,P0,right-positioning,"#action-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;display:flex;justify-content:center;gap:.5rem;padding:.5rem 1rem;padding-bottom:max(.5rem,env(safe-area-inset-bottom));background:#0f0f...",inset-inline-end
+games/nanyang_jkt_central_1780029374/match3.html,125,76,P2,directional-arrow-unicode,"<button data-action=""NAVIGATE"" data-screen=""home"" class=""btn mt-5"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780029374/match3.html,140,69,P2,directional-arrow-unicode,"<button data-action=""RESUME"" class=""btn btn-gold w-44 mb-3"">▶ 继续</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780029374/match3.html,151,76,P2,directional-arrow-unicode,"<button data-action=""NAVIGATE"" data-screen=""home"" class=""btn mt-3"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780029374/match3.html,162,76,P2,directional-arrow-unicode,"<button data-action=""NAVIGATE"" data-screen=""home"" class=""btn mt-4"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780029374/match3.html,169,93,P2,directional-arrow-unicode,"<button data-action=""NEXT_LEVEL"" class=""btn btn-gold w-44 mb-3"" id=""btn-next-level"">▶ 下一关</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780029374/match3.html,177,76,P2,directional-arrow-unicode,"<button data-action=""NAVIGATE"" data-screen=""home"" class=""btn mt-5"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand_crv_fa3a6b/time_auction.html,11,33,P0,left-positioning,.screen{position:absolute;top:0;left:0;width:100%;min-height:100dvh;padding-bottom:72px;overflow-y:auto},inset-inline-start
+games/brand_crv_fa3a6b/time_auction.html,19,37,P0,left-positioning,".bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#1a1a2e;padding:10px 12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;box-shadow:0 -2px 12px rgba(0,0,0,.35)}",inset-inline-start
+games/brand_crv_fa3a6b/time_auction.html,19,44,P0,right-positioning,".bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#1a1a2e;padding:10px 12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;box-shadow:0 -2px 12px rgba(0,0,0,.35)}",inset-inline-end
+games/brand_crv_fa3a6b/time_auction.html,159,45,P2,directional-arrow-unicode,"<button id=""btn-play"" class=""btn-primary"">▶ 开始游戏</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand_crv_fa3a6b/time_auction.html,165,56,P2,directional-arrow-unicode,"<button id=""btn-back"" class=""btn-outline hidden-btn"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780043026/match3.html,12,41,P0,left-positioning,.screen{position:absolute;top:0;left:0;width:100%;height:100%;overflow-y:auto;padding-bottom:80px},inset-inline-start
+games/nanyang_jkt_central_1780043026/match3.html,19,45,P0,left-positioning,#bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#0f3460;border-top:2px solid #1a1a4e;padding:8px 12px;display:flex;justify-content:center;gap:10px;min-height:56px;align-ite...,inset-inline-start
+games/nanyang_jkt_central_1780043026/match3.html,19,52,P0,right-positioning,#bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#0f3460;border-top:2px solid #1a1a4e;padding:8px 12px;display:flex;justify-content:center;gap:10px;min-height:56px;align-ite...,inset-inline-end
+games/nanyang_jkt_central_1780043026/match3.html,684,31,P2,directional-arrow-unicode,* Runs the full match→remove→gravity→fill cycle repeatedly until no matches remain.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780043026/match3.html,684,38,P2,directional-arrow-unicode,* Runs the full match→remove→gravity→fill cycle repeatedly until no matches remain.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780043026/match3.html,684,46,P2,directional-arrow-unicode,* Runs the full match→remove→gravity→fill cycle repeatedly until no matches remain.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand_crv_025e73/time_auction.html,18,45,P0,left-positioning,.action-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; },inset-inline-start
+games/brand_crv_025e73/time_auction.html,18,54,P0,right-positioning,.action-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; },inset-inline-end
+games/brand_crv_025e73/time_auction.html,157,148,P2,directional-arrow-unicode,"<button id=""btn-action-back"" class=""px-4 py-2 bg-stone-600 text-stone-200 rounded-xl font-semibold text-sm hover:bg-stone-500 transition-colors"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,26,45,P0,left-positioning,.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; height: 56px; },inset-inline-start
+games/nanyang_jkt_central_1780022847/match3.html,26,54,P0,right-positioning,.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; height: 56px; },inset-inline-end
+games/nanyang_jkt_central_1780022847/match3.html,113,82,P2,directional-arrow-unicode,"<button id=""btn-level-back"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,161,85,P2,directional-arrow-unicode,"<button id=""btn-settings-back"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,179,81,P2,directional-arrow-unicode,"<button id=""btn-shop-back"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,200,83,P2,directional-arrow-unicode,"<button id=""btn-scores-back"" class=""px-4 py-2 bg-gray-700 rounded-lg text-sm"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,766,80,P2,directional-arrow-unicode,/** @param {object} state @returns {object} New state after full cascade (match→remove→gravity→fill loop) */,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,766,87,P2,directional-arrow-unicode,/** @param {object} state @returns {object} New state after full cascade (match→remove→gravity→fill loop) */,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022847/match3.html,766,95,P2,directional-arrow-unicode,/** @param {object} state @returns {object} New state after full cascade (match→remove→gravity→fill loop) */,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,111,91,P2,directional-arrow-unicode,"<button id=""btn-back-from-levels"" class=""mt-8 py-3 px-8 bg-gray-700 rounded-xl text-lg"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,144,93,P2,directional-arrow-unicode,"<button id=""btn-back-from-settings"" class=""mt-8 py-3 px-8 bg-gray-700 rounded-xl text-lg"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,161,89,P2,directional-arrow-unicode,"<button id=""btn-back-from-shop"" class=""mt-8 py-3 px-8 bg-gray-700 rounded-xl text-lg"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,175,91,P2,directional-arrow-unicode,"<button id=""btn-back-from-scores"" class=""mt-8 py-3 px-8 bg-gray-700 rounded-xl text-lg"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,869,45,P2,directional-arrow-unicode,* Full match-resolution loop: find matches → remove → gravity → fill → repeat until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,869,54,P2,directional-arrow-unicode,* Full match-resolution loop: find matches → remove → gravity → fill → repeat until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,869,64,P2,directional-arrow-unicode,* Full match-resolution loop: find matches → remove → gravity → fill → repeat until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023154/match3.html,869,71,P2,directional-arrow-unicode,* Full match-resolution loop: find matches → remove → gravity → fill → repeat until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand_crv_0ee07b/time_auction.html,162,107,P2,directional-arrow-unicode,"<button id=""btn-back-home"" class=""action-btn bg-gray-700 text-white px-4 py-2 rounded-lg text-sm"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand_crv_0ee07b/time_auction.html,1074,16,P0,js-style-left,pieceEl.style.left = col * cell + 'px';,use CSS class toggling inset-inline-start
+games/brand_crv_0ee07b/time_auction.html,1100,20,P0,js-style-left,highlightEl.style.left = col * cell + 'px';,use CSS class toggling inset-inline-start
+games/nanyang_jkt_central_1780022214/match3.html,120,82,P2,directional-arrow-unicode,"<button id=""btn-back-levelselect"" class=""mt-6 text-gray-400 underline text-sm"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022214/match3.html,165,79,P2,directional-arrow-unicode,"<button id=""btn-back-settings"" class=""mt-8 text-gray-400 underline text-sm"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022214/match3.html,177,75,P2,directional-arrow-unicode,"<button id=""btn-back-shop"" class=""mt-6 text-gray-400 underline text-sm"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022214/match3.html,194,81,P2,directional-arrow-unicode,"<button id=""btn-back-highscores"" class=""mt-6 text-gray-400 underline text-sm"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand_crv_b23863/time_auction.html,20,39,P0,left-positioning,.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;background:#1f2937;padding:6px 12px},inset-inline-start
+games/brand_crv_b23863/time_auction.html,20,46,P0,right-positioning,.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;background:#1f2937;padding:6px 12px},inset-inline-end
+games/brand-test/match3.html,173,135,P2,directional-arrow-unicode,"<button id=""btn-nav-back"" class=""hidden flex-col items-center text-xs text-gray-400 hover:text-white py-1 px-3""><span class=""text-xl"">←</span>返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand-test/match3.html,176,142,P2,directional-arrow-unicode,"<button id=""btn-nav-play"" class=""hidden flex-col items-center text-xs text-yellow-400 hover:text-yellow-300 py-1 px-3""><span class=""text-xl"">▶</span>开始</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand-test/match3.html,185,4,P2,ascii-box-drawing,/* ───────── GAME STATE ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,185,25,P2,ascii-box-drawing,/* ───────── GAME STATE ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,227,4,P2,ascii-box-drawing,/* ───────── SCREEN NAVIGATION ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,227,32,P2,ascii-box-drawing,/* ───────── SCREEN NAVIGATION ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,239,4,P2,ascii-box-drawing,/* ───────── PAUSE OVERLAY ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,239,28,P2,ascii-box-drawing,/* ───────── PAUSE OVERLAY ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,251,4,P2,ascii-box-drawing,/* ───────── MAIN RENDER ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,251,26,P2,ascii-box-drawing,/* ───────── MAIN RENDER ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,271,4,P2,ascii-box-drawing,/* ───────── ACTION HANDLER ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,271,29,P2,ascii-box-drawing,/* ───────── ACTION HANDLER ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,398,4,P2,ascii-box-drawing,/* ───────── STARTUP ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,398,22,P2,ascii-box-drawing,/* ───────── STARTUP ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,531,4,P2,ascii-box-drawing,/* ───────── BOARD HELPERS ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,531,28,P2,ascii-box-drawing,/* ───────── BOARD HELPERS ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,678,4,P2,ascii-box-drawing,/* ───────── RENDER HELPERS ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,678,29,P2,ascii-box-drawing,/* ───────── RENDER HELPERS ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,827,4,P2,ascii-box-drawing,/* ───────── GAME FLOW HELPERS ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,827,32,P2,ascii-box-drawing,/* ───────── GAME FLOW HELPERS ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,912,4,P2,ascii-box-drawing,/* ───────── EVENT: BOARD CLICK ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,912,33,P2,ascii-box-drawing,/* ───────── EVENT: BOARD CLICK ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,944,4,P2,ascii-box-drawing,/* ───────── BOOT ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-test/match3.html,944,19,P2,ascii-box-drawing,/* ───────── BOOT ───────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780020019/match3.html,31,37,P0,left-positioning,".bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px;background:rgba(15,15,35,.95);backdrop-filter:blur(8p...",inset-inline-start
+games/nanyang_jkt_central_1780020019/match3.html,31,44,P0,right-positioning,".bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px;background:rgba(15,15,35,.95);backdrop-filter:blur(8p...",inset-inline-end
+games/nanyang_jkt_central_1780020019/match3.html,171,43,P2,directional-arrow-unicode,"<button id=""btn-play"" class=""btn-primary"">▶ 开始</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780020019/match3.html,176,45,P2,directional-arrow-unicode,"<button id=""btn-resume"" class=""btn-primary"">▶ 继续</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780020019/match3.html,179,49,P2,directional-arrow-unicode,"<button id=""btn-next-level"" class=""btn-success"">➡ 下一关</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,154,10,P2,ascii-box-drawing,<!-- ─────────────────── SCREENS ─────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,154,38,P2,ascii-box-drawing,<!-- ─────────────────── SCREENS ─────────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,173,105,P2,directional-arrow-unicode,"<button data-action='{""type"":""NAVIGATE"",""screen"":""home""}' class=""btn-action btn-secondary mt-4"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,191,109,P2,directional-arrow-unicode,"<button data-action='{""type"":""RESUME""}' class=""btn-action btn-primary text-lg w-full max-w-xs py-3"">▶ 继续</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,205,105,P2,directional-arrow-unicode,"<button data-action='{""type"":""NAVIGATE"",""screen"":""home""}' class=""btn-action btn-secondary mt-6"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,217,105,P2,directional-arrow-unicode,"<button data-action='{""type"":""NAVIGATE"",""screen"":""home""}' class=""btn-action btn-secondary mt-3"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,226,121,P2,directional-arrow-unicode,"<button data-action='{""type"":""NEXT_LEVEL""}' id=""btn-next-level"" class=""btn-action btn-primary text-lg py-3"">▶ 下一关</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,238,105,P2,directional-arrow-unicode,"<button data-action='{""type"":""NAVIGATE"",""screen"":""home""}' class=""btn-action btn-secondary mt-4"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,241,10,P2,ascii-box-drawing,<!-- ─────────────── FIXED BOTTOM ACTION BAR ─────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,241,50,P2,ascii-box-drawing,<!-- ─────────────── FIXED BOTTOM ACTION BAR ─────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,245,135,P2,directional-arrow-unicode,"<button id=""btn-bottom-back"" data-action='{""type"":""NAVIGATE_BACK""}' class=""btn-action btn-secondary px-4 py-2 text-sm hidden"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780027867/match3.html,248,10,P2,ascii-box-drawing,<!-- ─────────────── SINGLE SCRIPT ─────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,248,40,P2,ascii-box-drawing,<!-- ─────────────── SINGLE SCRIPT ─────────────── -->,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,250,12,P2,ascii-box-drawing,/* ─── CONSTANTS ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,250,26,P2,ascii-box-drawing,/* ─── CONSTANTS ─── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,259,12,P2,ascii-box-drawing,/* ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,261,12,P2,ascii-box-drawing,────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,783,12,P2,ascii-box-drawing,/* ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,785,12,P2,ascii-box-drawing,────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,1194,12,P2,ascii-box-drawing,/* ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,1196,12,P2,ascii-box-drawing,────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,1395,12,P2,ascii-box-drawing,/* ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,1397,12,P2,ascii-box-drawing,────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,1450,12,P2,ascii-box-drawing,/* ──────────────────────────────────────────────,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/nanyang_jkt_central_1780027867/match3.html,1452,12,P2,ascii-box-drawing,────────────────────────────────────────────── */,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,120,21,P0,left-positioning,top: 0; left: 0; width: 100%; height: 100%;,inset-inline-start
+games/brand-9c7223a6/coffee-latte-art.html,395,8,P2,ascii-box-drawing,// ═══ NAVIGATION (deterministic -- never changes) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,395,56,P2,ascii-box-drawing,// ═══ NAVIGATION (deterministic -- never changes) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,407,8,P2,ascii-box-drawing,// ═══ STATE VARIABLES ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,407,28,P2,ascii-box-drawing,// ═══ STATE VARIABLES ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,411,8,P2,ascii-box-drawing,// ═══ GAME LIFECYCLE (deterministic -- before LLM modules for truncation safety) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,411,87,P2,ascii-box-drawing,// ═══ GAME LIFECYCLE (deterministic -- before LLM modules for truncation safety) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,484,8,P2,ascii-box-drawing,// ═══ INPUT HANDLER (deterministic skeleton) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,484,51,P2,ascii-box-drawing,// ═══ INPUT HANDLER (deterministic skeleton) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,503,8,P2,ascii-box-drawing,// ═══ MODULE: State (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,503,42,P2,ascii-box-drawing,// ═══ MODULE: State (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,568,8,P2,ascii-box-drawing,// ═══ MODULE: ValidateMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,568,33,P2,ascii-box-drawing,// ═══ MODULE: ValidateMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,574,8,P2,ascii-box-drawing,// ═══ END MODULE: ValidateMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,574,37,P2,ascii-box-drawing,// ═══ END MODULE: ValidateMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,576,8,P2,ascii-box-drawing,// ═══ MODULE: ApplyMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,576,30,P2,ascii-box-drawing,// ═══ MODULE: ApplyMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,906,8,P2,ascii-box-drawing,// ═══ END MODULE: ApplyMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,906,34,P2,ascii-box-drawing,// ═══ END MODULE: ApplyMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,908,8,P2,ascii-box-drawing,// ═══ MODULE: CheckWin ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,908,29,P2,ascii-box-drawing,// ═══ MODULE: CheckWin ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,939,8,P2,ascii-box-drawing,// ═══ END MODULE: CheckWin ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,939,33,P2,ascii-box-drawing,// ═══ END MODULE: CheckWin ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,941,8,P2,ascii-box-drawing,// ═══ MODULE: NextPlayer ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,941,31,P2,ascii-box-drawing,// ═══ MODULE: NextPlayer ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,949,8,P2,ascii-box-drawing,// ═══ END MODULE: NextPlayer ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,949,35,P2,ascii-box-drawing,// ═══ END MODULE: NextPlayer ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,951,8,P2,ascii-box-drawing,// ═══ MODULE: Logic (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,951,42,P2,ascii-box-drawing,// ═══ MODULE: Logic (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,969,8,P2,ascii-box-drawing,// ═══ END MODULE: Logic ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,969,30,P2,ascii-box-drawing,// ═══ END MODULE: Logic ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,971,8,P2,ascii-box-drawing,// ═══ CONTRACT GUARD (deterministic -- validates handleAction interface) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,971,79,P2,ascii-box-drawing,// ═══ CONTRACT GUARD (deterministic -- validates handleAction interface) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1019,91,P2,directional-arrow-unicode,console.info('[contract] adapted action type: ' + action.type + ' → ' + aliases[i]);,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand-9c7223a6/coffee-latte-art.html,1033,8,P2,ascii-box-drawing,// ═══ MODULE: RenderBoard ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1033,32,P2,ascii-box-drawing,// ═══ MODULE: RenderBoard ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1097,8,P2,ascii-box-drawing,// ═══ END MODULE: RenderBoard ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1097,36,P2,ascii-box-drawing,// ═══ END MODULE: RenderBoard ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1099,8,P2,ascii-box-drawing,// ═══ MODULE: RenderUI ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1099,29,P2,ascii-box-drawing,// ═══ MODULE: RenderUI ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1199,8,P2,ascii-box-drawing,// ═══ END MODULE: RenderUI ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1199,33,P2,ascii-box-drawing,// ═══ END MODULE: RenderUI ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1201,8,P2,ascii-box-drawing,// ═══ MODULE: Render (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1201,43,P2,ascii-box-drawing,// ═══ MODULE: Render (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1215,8,P2,ascii-box-drawing,// ═══ MODULE: EvalPosition ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1215,33,P2,ascii-box-drawing,// ═══ MODULE: EvalPosition ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1217,8,P2,ascii-box-drawing,// ═══ END MODULE: EvalPosition ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1217,37,P2,ascii-box-drawing,// ═══ END MODULE: EvalPosition ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1219,8,P2,ascii-box-drawing,// ═══ MODULE: SelectMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1219,31,P2,ascii-box-drawing,// ═══ MODULE: SelectMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1221,8,P2,ascii-box-drawing,// ═══ END MODULE: SelectMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1221,35,P2,ascii-box-drawing,// ═══ END MODULE: SelectMove ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1223,8,P2,ascii-box-drawing,"// ═══ MODULE: AI (LLM-generated, optional) ═══",render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1223,49,P2,ascii-box-drawing,"// ═══ MODULE: AI (LLM-generated, optional) ═══",render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1225,8,P2,ascii-box-drawing,// ═══ MODULE: Helpers (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1225,44,P2,ascii-box-drawing,// ═══ MODULE: Helpers (LLM-generated) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1227,8,P2,ascii-box-drawing,// ═══ EVENT BINDING (deterministic) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1227,42,P2,ascii-box-drawing,// ═══ EVENT BINDING (deterministic) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1249,12,P2,ascii-box-drawing,// ═══ BUTTON ROUTER (auto-generated from wireframe dom_hooks) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1249,72,P2,ascii-box-drawing,// ═══ BUTTON ROUTER (auto-generated from wireframe dom_hooks) ═══,render as <table>/<svg> instead; ASCII art doesn't mirror
+games/brand-9c7223a6/coffee-latte-art.html,1341,67,P2,directional-arrow-unicode,"// Detect piece ownership for string-encoded boards (e.g. 'r8'→player 0, 'b7'→player 1)","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand-9c7223a6/coffee-latte-art.html,1341,82,P2,directional-arrow-unicode,"// Detect piece ownership for string-encoded boards (e.g. 'r8'→player 0, 'b7'→player 1)","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/brand-9c7223a6/coffee_shop.html,767,92,P2,directional-arrow-unicode,"<button id=""back-to-shop-btn"" class=""px-4 py-2 bg-gray-600 text-white rounded"">← Back</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780022534/match3.html,13,41,P0,left-positioning,.screen{position:absolute;top:0;left:0;width:100%;height:100%;overflow-y:auto;padding-bottom:72px},inset-inline-start
+games/nanyang_jkt_central_1780022534/match3.html,172,99,P2,directional-arrow-unicode,"<button id=""btn-back"" class=""flex-1 py-2 bg-gray-700 rounded-xl text-sm font-bold hidden"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023476/match3.html,858,38,P2,directional-arrow-unicode,* Cascades: repeatedly find matches → remove → gravity → fill until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023476/match3.html,858,47,P2,directional-arrow-unicode,* Cascades: repeatedly find matches → remove → gravity → fill until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780023476/match3.html,858,57,P2,directional-arrow-unicode,* Cascades: repeatedly find matches → remove → gravity → fill until stable.,"use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780048602/match3.html,95,13,P0,left-positioning,left: 0;,inset-inline-start
+games/nanyang_jkt_central_1780048602/match3.html,96,13,P0,right-positioning,right: 0;,inset-inline-end
+games/nanyang_jkt_central_1780050034/match3.html,131,13,P0,left-positioning,left: 0;,inset-inline-start
+games/nanyang_jkt_central_1780050034/match3.html,132,13,P0,right-positioning,right: 0;,inset-inline-end
+games/nanyang_jkt_central_1780050034/match3.html,315,140,P2,directional-arrow-unicode,"<button id=""btn-back-from-scores"" class=""px-6 py-2 rounded-xl bg-slate-600 font-semibold active:scale-95 transition-transform"">← 返回</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
+games/nanyang_jkt_central_1780050034/match3.html,322,70,P2,directional-arrow-unicode,"<button id=""btn-nav-back"" class=""text-white"" aria-label=""返回"">⬅</button>","use icon class with .kix-icon-directional, or pair → with ← per dir"
