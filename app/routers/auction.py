@@ -546,40 +546,32 @@ def _apply_diversity_floor(
     ranked: list[tuple[float, int, float, float, dict[str, str]]],
     starved_brand_ids: set[str],
 ) -> list[tuple[float, int, float, float, dict[str, str]]]:
-    """Force candidates from starved brands into the top-K of the ranking.
+    """Promote one starved brand's candidate to the winner slot.
 
-    Promotes the highest-ranked candidate of each starved brand into the
-    top-K slots, displacing the lowest-ranked incumbent in those slots.
-    Preserves the overall sort below the displaced cutoff. Idempotent —
-    starved brands already in the top-K are left alone.
+    Diversity-floor semantics: when at least one brand in
+    ``starved_brand_ids`` has a candidate in this auction, move its
+    highest-ranked candidate to position 0. Top-3 inclusion alone does
+    not move the "won" counter — only winner-slot promotion converts
+    starvation back into actual share. The displaced items keep their
+    relative order below.
+
+    Idempotent: if a starved candidate is already at position 0, no
+    change. Stable: total item count and brand set are preserved.
     """
     if not starved_brand_ids or not ranked:
         return ranked
 
-    top_k = min(DIVERSITY_TOP_K, len(ranked))
-    head = ranked[:top_k]
-    tail = ranked[top_k:]
-    head_brands = {row[4].get("brand_id", "") for row in head}
-
-    promotions: list[tuple[float, int, float, float, dict[str, str]]] = []
-    keep_tail: list[tuple[float, int, float, float, dict[str, str]]] = []
-    promoted_brands: set[str] = set()
-    for row in tail:
-        b = row[4].get("brand_id", "")
-        if b and b in starved_brand_ids and b not in head_brands and b not in promoted_brands:
-            promotions.append(row)
-            promoted_brands.add(b)
-        else:
-            keep_tail.append(row)
-
-    if not promotions:
+    promote_idx: int | None = None
+    for i, row in enumerate(ranked):
+        if row[4].get("brand_id", "") in starved_brand_ids:
+            promote_idx = i
+            break
+    if promote_idx is None or promote_idx == 0:
         return ranked
 
-    head_sorted = sorted(head, key=lambda x: -x[0])
-    keep_count = max(0, top_k - len(promotions))
-    new_head = head_sorted[:keep_count] + promotions
-    new_head.sort(key=lambda x: -x[0])
-    return new_head + keep_tail
+    starved_row = ranked[promote_idx]
+    rest = ranked[:promote_idx] + ranked[promote_idx + 1:]
+    return [starved_row] + rest
 
 
 # ── Existing-customer exclusion (TikTok/Google/Facebook parity) ─────────
