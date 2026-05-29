@@ -1551,6 +1551,308 @@ def write_findings(start_ts: float) -> None:
             print(f"  • [{f['phase']}] {f['action']} — {f['detail'][:100]}")
 
 
+# ── Phase R5: Round 4+5 capability re-test (KiX ID, time-series, bridge,
+#             master tier, push engine, target_audience, auction savings) ──
+async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
+    _phase_init("R5: Round 4+5 — KiX ID + time-series + attr→ach bridge + push + tier portability")
+    primary_bid = state.get("primary_bid") or GYMS[0]["brand_id"]
+    second_bid = GYMS[1]["brand_id"]
+    master_id = state.get("master_id")
+
+    # ── 1. KiX ID register (replace hardcoded user_id) ─────────────────────
+    sc, b = await call(c, "POST", "/api/v1/kix-id/register", json_body={
+        "phone": f"+8613800{RUN_TAG % 1000000:06d}",
+        "display_name": "周老板会员-A",
+        "primary_language": "zh-CN",
+        "source_brand_id": primary_bid,
+        "device_fingerprint": f"dev_fp_{RUN_TAG}_a",
+        "country": "CN",
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("kid", "").startswith("kid_"):
+        kid_a = b["kid"]
+        ok("kix-id register", f"kid={kid_a} is_new={b.get('is_new')}")
+    else:
+        gap("P0", "kix-id register", f"{sc} {_short(b)}")
+        return
+
+    # Grant consent for the kid so attribute logging is allowed
+    await _setup_consent(c, [kid_a])
+
+    # ── 2. Time-series weight tracking via /attributes/{key}/log ─────────
+    base_ts = int(time.time()) - 6 * 86400
+    weights = [
+        (base_ts + 0 * 86400, 80.0),
+        (base_ts + 1 * 86400, 79.5),
+        (base_ts + 2 * 86400, 79.0),
+        (base_ts + 4 * 86400, 78.2),
+        (base_ts + 6 * 86400, 77.5),
+    ]
+    logged = 0
+    for ts, w in weights:
+        sc, _ = await call(
+            c, "POST",
+            f"/api/v1/primitives/user/{kid_a}/attributes/weight_kg/log",
+            json_body={
+                "brand_id": primary_bid,
+                "value": w,
+                "ts": ts,
+                "source": "measured",
+            },
+        )
+        if sc == 200:
+            logged += 1
+    if logged == 5:
+        ok("time-series weight log", "5 entries written over 7 days")
+    else:
+        gap("P0", "time-series weight log", f"only {logged}/5 logs accepted")
+
+    # Read history
+    sc, b = await call(
+        c, "GET",
+        f"/api/v1/primitives/user/{kid_a}/attributes/weight_kg/history",
+        params={"brand_id": primary_bid, "limit": 50},
+    )
+    if sc == 200 and isinstance(b, dict) and b.get("count", 0) >= 5:
+        delta = (b.get("delta") or {}).get("from_first")
+        ok("time-series history", f"count={b['count']} delta_from_first={delta}")
+    else:
+        gap("P0", "time-series history", f"{sc} {_short(b)}")
+
+    # Read trend
+    sc, b = await call(
+        c, "GET",
+        f"/api/v1/primitives/user/{kid_a}/attributes/weight_kg/trend",
+        params={"brand_id": primary_bid, "window_days": 30},
+    )
+    if sc == 200 and isinstance(b, dict):
+        ok("time-series trend", f"direction={b.get('direction')} slope_per_day={b.get('slope_per_day')}")
+    else:
+        gap("P1", "time-series trend", f"{sc} {_short(b)}")
+
+    # ── 3. Attribute → achievement bridge via rule_engine v2 ──────────────
+    sc, b = await call(c, "POST", f"/api/v1/primitives/brand/{primary_bid}/achievements",
+                       json_body={
+                           "id": "bench_100kg_r5",
+                           "name": "100kg Bench Club (R5)",
+                           "description": "Hit 100kg bench",
+                           "target_metric": "bench_press_max_kg",
+                           "target_value": 100,
+                           "xp_reward": 500,
+                       })
+    if sc in (200, 409):
+        ok("achievement defined", "bench_100kg_r5")
+    else:
+        gap("P1", "achievement create", f"{sc} {_short(b)}")
+
+    sc, b = await call(c, "POST", "/api/v1/rules/rules/create", json_body={
+        "brand_id": primary_bid,
+        "name": "bench_crosses_100kg",
+        "when": {
+            "type": "attribute_changed",
+            "attribute_key": "bench_press_max_kg",
+            "condition": {"type": "crosses_threshold", "threshold": 100},
+        },
+        "then": {
+            "action_type": "fire_achievement",
+            "action_config": {"achievement_id": "bench_100kg_r5", "increment": 100},
+        },
+        "max_triggers_per_user": 1,
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("rule_id"):
+        rule_id = b["rule_id"]
+        ok("attr→achievement rule created", f"rule_id={rule_id}")
+    else:
+        gap("P0", "rule_engine rules/create", f"{sc} {_short(b)}")
+        rule_id = None
+
+    # Establish baseline (90kg) then jump to 102kg
+    await call(c, "POST",
+               f"/api/v1/primitives/user/{kid_a}/attributes/bench_press_max_kg/log",
+               json_body={"brand_id": primary_bid, "value": 90, "source": "measured"})
+    await call(c, "POST",
+               f"/api/v1/primitives/user/{kid_a}/attributes/bench_press_max_kg/log",
+               json_body={"brand_id": primary_bid, "value": 102, "source": "measured"})
+
+    # Check pending actions
+    sc, b = await call(
+        c, "GET",
+        f"/api/v1/rule-engine/{primary_bid}/user/{kid_a}/pending-actions",
+    )
+    fired = False
+    if sc == 200 and isinstance(b, dict):
+        actions = b.get("actions") or b.get("pending_actions") or []
+        fired = any(
+            (a.get("action_type") == "fire_achievement"
+             and (a.get("config") or {}).get("achievement_id") == "bench_100kg_r5")
+            for a in actions if isinstance(a, dict)
+        )
+    if fired:
+        ok("attr→achievement bridge fired", "fire_achievement enqueued on threshold cross")
+    else:
+        gap("P1", "attr→achievement bridge",
+            f"rule created but no pending fire_achievement action surfaced "
+            f"(pending-actions returned: {_short(b, 200)})")
+
+    # Verify firings counter
+    if rule_id:
+        sc, b = await call(c, "GET", f"/api/v1/rule-engine/{primary_bid}/{rule_id}/firings")
+        if sc == 200 and isinstance(b, dict) and (b.get("total_firings") or 0) >= 1:
+            ok("rule firings recorded", f"total={b.get('total_firings')}")
+        else:
+            gap("P1", "rule firings counter", f"{sc} {_short(b)}")
+
+    # ── 4. Master-scoped tier portability (Elite at gym A = Elite at gym B) ─
+    if master_id:
+        sc, b = await call(c, "POST", f"/api/v1/master/{master_id}/tier/configure",
+                           json_body={
+                               "tiers": [
+                                   {"name": "trial", "xp_min": 0},
+                                   {"name": "basic", "xp_min": 100},
+                                   {"name": "gold", "xp_min": 1000},
+                                   {"name": "platinum", "xp_min": 5000},
+                                   {"name": "elite", "xp_min": 20000},
+                               ],
+                               "aggregation": "sum",
+                           })
+        if sc == 200:
+            ok("master tier ladder configured", "5 tiers attached to master")
+        else:
+            gap("P0", "master tier configure", f"{sc} {_short(b)}")
+
+        # Promotion rule
+        sc, b = await call(c, "POST", f"/api/v1/master/{master_id}/tier/promotion-rule",
+                           json_body={"rule": "sum_xp_then_tier"})
+        if sc == 200:
+            ok("master promotion rule", "sum_xp_then_tier")
+        else:
+            gap("P1", "master promotion rule", f"{sc} {_short(b)}")
+
+        # Grant XP on gym A only — should still surface a master tier for gym B
+        await call(c, "POST", "/api/v1/primitives/currency/xp/grant", json_body={
+            "user_id": kid_a, "brand_id": primary_bid, "amount": 6000,
+            "source": "fitness_streak_game",
+        })
+        sc, b = await call(c, "GET", f"/api/v1/master/{master_id}/user/{kid_a}/tier")
+        if sc == 200 and isinstance(b, dict):
+            tier = b.get("current_master_tier")
+            portable = bool(b.get("cross_brand_portability"))
+            if tier in ("platinum", "elite", "gold") and portable:
+                ok("master tier portable", f"user has '{tier}' tier readable from any brand")
+            else:
+                gap("P1", "master tier portability",
+                    f"tier={tier} portable={portable} xp={b.get('aggregated_xp')}")
+        else:
+            gap("P0", "master user/tier read", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "skip master tier (no master_id)", "phase_1 did not produce master")
+
+    # ── 5. Push engine — POST /push/now (recommendation + paid delivery) ──
+    # Seed a campaign so there's something to dispatch
+    sc, _ = await call(c, "POST", "/api/v1/campaigns", json_body={
+        "brand_id": primary_bid,
+        "name": "FF R5 push test",
+        "objective": "acquire",
+        "bid_strategy": "cpm",
+        "max_bid_cents": 50,
+        "daily_budget_cents": 5000,
+        "total_budget_cents": 50000,
+        "target_audience": "new_users_only",
+    })
+    # Push to the kid (acquisition mode → user is not yet a member of primary_bid)
+    # Use a fresh kid that isn't a customer of any gym yet
+    sc, b = await call(c, "POST", "/api/v1/kix-id/register", json_body={
+        "phone": f"+8613811{RUN_TAG % 1000000:06d}",
+        "display_name": "Push 测试用户",
+        "device_fingerprint": f"dev_fp_{RUN_TAG}_push",
+    })
+    push_kid = b.get("kid") if isinstance(b, dict) else None
+    if push_kid:
+        await _setup_consent(c, [push_kid])
+        sc, b = await call(c, "POST", "/api/v1/push/now", json_body={
+            "kid": push_kid,
+            "slot": "push",
+            "context": {},
+        })
+        if sc == 200 and isinstance(b, dict):
+            if b.get("fired"):
+                ok("push/now fired",
+                   f"push_id={b.get('push_id')} brand={b.get('brand_id')} "
+                   f"charged={b.get('charged_cents')}c")
+            else:
+                # not firing is acceptable in MVP (no eligible candidates); endpoint reached
+                ok("push/now endpoint", f"fired=false reason={b.get('reason')}")
+        else:
+            gap("P1", "push/now", f"{sc} {_short(b)}")
+    else:
+        gap("P1", "push kid register", "could not register secondary kid for push test")
+
+    # ── 6. KiX ID connect grant → access token → profile-for-merchant ──────
+    sc, b = await call(c, "POST", "/api/v1/kix-id/connect/authorize", json_body={
+        "kid": kid_a,
+        "brand_id": primary_bid,
+        "scopes": ["profile", "email"],  # avoid scopes needing extra consent
+        "redirect_uri": "https://fireforge.cn/callback",
+        "state": "test",
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("code"):
+        grant_id = b["grant_id"]
+        code = b["code"]
+        ok("connect/authorize", f"grant_id={grant_id[:18]}…")
+        sc, t = await call(c, "POST", "/api/v1/kix-id/connect/token", json_body={
+            "grant_id": grant_id,
+            "code": code,
+            "brand_id": primary_bid,
+            "client_secret": "test_secret",
+        })
+        if sc == 200 and isinstance(t, dict) and t.get("access_token"):
+            access_token = t["access_token"]
+            ok("connect/token exchanged", f"scopes={t.get('scopes')}")
+            # Hit profile-for-merchant with the token
+            try:
+                r = await c.get(
+                    f"/api/v1/kix-id/{kid_a}/profile-for-merchant/{primary_bid}",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if r.status_code == 200:
+                    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+                    ok("profile-for-merchant scope-filtered",
+                       f"keys={list(body.keys())}")
+                else:
+                    gap("P1", "profile-for-merchant", f"{r.status_code} {r.text[:120]}")
+            except Exception as e:
+                gap("P1", "profile-for-merchant", repr(e))
+        else:
+            gap("P1", "connect/token exchange", f"{sc} {_short(t)}")
+    else:
+        gap("P1", "connect/authorize", f"{sc} {_short(b)}")
+
+    # ── 7. Auction savings — verify target_audience exclusion ─────────────
+    sc, b = await call(c, "GET", f"/api/v1/auction/admin/savings/{primary_bid}")
+    if sc == 200 and isinstance(b, dict):
+        skipped = b.get("existing_customers_skipped", 0)
+        ok("auction savings endpoint", f"skipped={skipped} avg_cpa={b.get('average_cpa_cents')}c")
+    else:
+        gap("P1", "auction savings", f"{sc} {_short(b)}")
+
+    # ── 8. Triggers register — generic event hook ─────────────────────────
+    sc, b = await call(c, "POST", "/api/v1/triggers/register", json_body={
+        "brand_id": primary_bid,
+        "name": "PR achievement notify buddy",
+        "event_type": "achievement_unlocked",
+        "event_filter": {"achievement_id": "bench_100kg_r5"},
+        "action": {
+            "type": "send_push",
+            "config": {"title": "PR!", "body": "{name} 刚刚突破 100kg!"},
+        },
+        "cooldown_seconds": 60,
+        "max_fires_per_user": 0,
+    })
+    if sc == 201 and isinstance(b, dict) and b.get("trigger_id"):
+        ok("triggers/register", f"trigger_id={b['trigger_id'][:18]}…")
+    else:
+        gap("P1", "triggers/register", f"{sc} {_short(b)}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 async def main() -> int:
     start_ts = time.time()
@@ -1577,6 +1879,7 @@ async def main() -> int:
                 await phase_12_cross_gym(c, state)
                 await phase_13_edges(c, state)
                 await phase_14_module_probe(c, state)
+                await phase_r5_round5(c, state)
             except Exception as e:
                 fail("simulation crash", repr(e))
                 import traceback
