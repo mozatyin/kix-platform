@@ -307,6 +307,34 @@ class CheckPermissionBody(BaseModel):
     brand_id: str | None = Field(None, max_length=128)
 
 
+class AcceptInviteBody(BaseModel):
+    invite_id: str = Field(..., min_length=1, max_length=128)
+    user_id: str = Field(..., min_length=1, max_length=128)
+    name: str | None = Field(None, max_length=200)
+
+
+class TopupAllBody(BaseModel):
+    amount_cents_total: int = Field(..., gt=0, le=100_000_000)
+    allocation: dict[str, float] = Field(default_factory=dict)
+    payment_method: Literal["alipay", "wechat", "stripe", "paypal"]
+    payment_token: str | None = None
+
+    @field_validator("allocation")
+    @classmethod
+    def _alloc_sums(cls, v: dict[str, float]):
+        if not v:
+            raise ValueError("allocation must include at least one brand_id")
+        total = sum(v.values())
+        if not (0.99 <= total <= 1.01 or 99.0 <= total <= 101.0):
+            raise ValueError(
+                f"allocation must sum to 1.0 (fractions) or 100 (percent); got {total}"
+            )
+        for pct in v.values():
+            if pct < 0:
+                raise ValueError("allocation pct must be >= 0")
+        return v
+
+
 class GlobalBudgetBody(BaseModel):
     monthly_budget_cents: int = Field(..., ge=0)
     allocation: dict[str, float] = Field(default_factory=dict)
@@ -620,6 +648,119 @@ async def invite_member(
     }
 
 
+@router.get("/auth/invite/{invite_id}")
+async def get_invite(invite_id: str, r: aioredis.Redis = Depends(get_redis)):
+    """Return invite details so the prospective user can preview what
+    they're about to accept (company name, role, scope, expiry).
+
+    Invite records auto-expire after INVITE_TTL_SECONDS via Redis EXPIRE —
+    a missing/expired invite simply returns 404.
+    """
+    invite = await r.hgetall(_k_invite(invite_id))
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"invite_id={invite_id} not found or expired",
+        )
+
+    master_id = invite.get("master_id", "")
+    company_name = ""
+    if master_id:
+        master = await r.hgetall(_k_master(master_id))
+        company_name = master.get("company_name", "") if master else ""
+
+    ttl = await r.ttl(_k_invite(invite_id))
+    expires_at = None
+    if ttl and ttl > 0:
+        expires_at = datetime.fromtimestamp(
+            time.time() + ttl, tz=timezone.utc
+        ).isoformat()
+
+    return {
+        "invite_id": invite_id,
+        "master_id": master_id,
+        "company_name": company_name,
+        "role": invite.get("role"),
+        "brand_scope": _scope_to_response(invite.get("brand_scope", "all")),
+        "invited_email": invite.get("email"),
+        "created_at": invite.get("created_at"),
+        "expires_at": expires_at,
+        "status": invite.get("status", "pending"),
+    }
+
+
+@router.post("/auth/accept-invite", status_code=status.HTTP_201_CREATED)
+async def accept_invite(
+    body: AcceptInviteBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Convert a pending invite into a real Member.
+
+    One-shot: the invite hash is deleted on success so the link cannot be
+    re-used. Expired/missing invites return 404 (Redis TTL handles expiry
+    automatically — a hgetall on a vanished key returns {}).
+    """
+    invite_key = _k_invite(body.invite_id)
+    invite = await r.hgetall(invite_key)
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"invite_id={body.invite_id} not found or expired",
+        )
+
+    master_id = invite.get("master_id", "")
+    role = invite.get("role", "")
+    scope = invite.get("brand_scope", "all")
+    invited_email = invite.get("email", "")
+
+    if role not in VALID_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invite has invalid role={role}",
+        )
+
+    # Make sure the master still exists — a manager could have deleted it
+    # between invite and accept.
+    await _require_master(r, master_id)
+
+    member_id = f"mb_{uuid4().hex[:16]}"
+    now = _now_iso()
+    member_payload = {
+        "member_id": member_id,
+        "user_id": body.user_id,
+        "master_id": master_id,
+        "role": role,
+        "brand_scope": scope,
+        "email": invited_email,
+        "joined_at": now,
+    }
+    if body.name:
+        member_payload["name"] = body.name
+
+    pipe = r.pipeline()
+    pipe.hset(_k_member(member_id), mapping=member_payload)
+    pipe.sadd(_k_master_members(master_id), member_id)
+    pipe.sadd(_k_user_masters(body.user_id), master_id)
+    pipe.sadd(_k_user_members(body.user_id), member_id)
+    pipe.delete(invite_key)  # one-use
+    await pipe.execute()
+
+    logger.info(
+        "invite_accepted invite_id=%s master_id=%s user_id=%s role=%s",
+        body.invite_id,
+        master_id,
+        body.user_id,
+        role,
+    )
+    return {
+        "member_id": member_id,
+        "master_id": master_id,
+        "role": role,
+        "brand_scope": _scope_to_response(scope),
+        "joined_at": now,
+    }
+
+
 @router.post("/{master_id}/members/{member_id}/role")
 async def update_member_role(
     master_id: str,
@@ -850,17 +991,26 @@ async def set_global_budget(
     body: GlobalBudgetBody,
     r: aioredis.Redis = Depends(get_redis),
 ):
-    """Set master-level monthly budget + allocation map.
+    """Set master-level monthly budget + allocation map AND cascade to wallets.
 
-    The cascading-to-wallets step is intentionally deferred: a worker
-    (or wallet router callback) will read this state and reconcile
-    per-brand daily_budget on the next billing tick. We store the
-    intent here so the policy is durable and auditable.
+    For each (brand_id, pct) in allocation:
+      monthly_alloc_cents = monthly_budget_cents * pct
+      daily_budget_cents  = monthly_alloc_cents / 30  (calendar month avg)
+      → push to wallet:{brand_id}:daily_budget
+
+    If a brand_id has no wallet yet we still write the daily_budget key —
+    this auto-creates the wallet's budget side; the balance side stays 0
+    until a topup happens. This is intentional: budgets are policy, not
+    money, so they can be set ahead of the first topup.
 
     Validation:
       * allocation keys must all be attached brand_ids.
       * allocation values must sum to ~1.0 OR ~100 (auto-detected).
     """
+    # Local import to avoid a top-level cycle (wallet.py imports nothing
+    # from this module today, but keeping it lazy is defensive).
+    from app.routers.wallet import _k_daily_budget
+
     await _require_master(r, master_id)
     attached = await r.smembers(_k_master_brands(master_id))
 
@@ -877,12 +1027,24 @@ async def set_global_budget(
             detail=f"allocation references unattached brand_ids: {sorted(unknown)}",
         )
 
-    cascaded: dict[str, int] = {}
+    cascaded: list[dict] = []
+    pipe = r.pipeline()
     for bid, pct in alloc.items():
-        cascaded[bid] = int(round(body.monthly_budget_cents * pct))
+        monthly_alloc = int(round(body.monthly_budget_cents * pct))
+        # 30-day calendar approximation. Daily caps don't need leap-year
+        # precision — they're soft circuit breakers, not accounting.
+        daily_budget = int(round(monthly_alloc / 30))
+        pipe.set(_k_daily_budget(bid), daily_budget)
+        cascaded.append(
+            {
+                "brand_id": bid,
+                "monthly_alloc_cents": monthly_alloc,
+                "daily_budget_cents": daily_budget,
+            }
+        )
 
     now = _now_iso()
-    await r.hset(
+    pipe.hset(
         _k_master(master_id),
         mapping={
             "monthly_budget_cents": body.monthly_budget_cents,
@@ -890,22 +1052,150 @@ async def set_global_budget(
             "budget_updated_at": now,
         },
     )
+    await pipe.execute()
+
     logger.info(
-        "master_budget_set master_id=%s monthly_cents=%d brands=%d",
+        "master_budget_set master_id=%s monthly_cents=%d brands=%d cascaded=%d",
         master_id,
         body.monthly_budget_cents,
         len(alloc),
+        len(cascaded),
     )
     return {
         "master_id": master_id,
         "monthly_budget_cents": body.monthly_budget_cents,
         "allocation_fractions": alloc,
-        "cascaded_brand_budgets_cents": cascaded,
+        "cascaded": cascaded,
         "updated_at": now,
-        "note": (
-            "cascading_to_wallets_is_deferred; "
-            "wallet router or billing worker should reconcile on next tick"
-        ),
+    }
+
+
+@router.post("/{master_id}/wallet/topup-all", status_code=status.HTTP_201_CREATED)
+async def topup_all_from_master(
+    master_id: str,
+    body: TopupAllBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Top up the master account once, distribute to N child wallets.
+
+    The merchant supplies a single payment_token + total amount and an
+    allocation map; we fan out into per-brand confirmed topups. Each
+    child topup is an idempotent record keyed by topup_id so retries
+    of this endpoint don't double-credit (the master_topup_id is the
+    correlation key).
+
+    Validation:
+      * every brand_id in allocation must be attached to this master.
+      * allocation sums to ~1.0 or ~100 (auto-detected).
+    """
+    from app.routers.wallet import (
+        _k_balance,
+        _k_currency,
+        _k_last_topup,
+        _k_topup,
+        _k_tx_list,
+        DEFAULT_CURRENCY,
+        TX_LIST_MAX,
+    )
+
+    await _require_master(r, master_id)
+    attached = await r.smembers(_k_master_brands(master_id))
+
+    alloc = dict(body.allocation)
+    if alloc and sum(alloc.values()) > 1.5:
+        alloc = {k: v / 100.0 for k, v in alloc.items()}
+
+    unknown = set(alloc.keys()) - set(attached)
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"allocation references unattached brand_ids: {sorted(unknown)}",
+        )
+
+    master_topup_id = f"mtop_{uuid4().hex[:20]}"
+    now = time.time()
+    per_brand: list[dict] = []
+
+    # Distribute. We round each share and absorb the rounding delta into
+    # the last (alphabetically) brand so the sum exactly matches the
+    # total — accounting hates lost pennies.
+    sorted_brands = sorted(alloc.items())
+    shares: dict[str, int] = {}
+    running = 0
+    for bid, pct in sorted_brands[:-1]:
+        share = int(round(body.amount_cents_total * pct))
+        shares[bid] = share
+        running += share
+    last_bid = sorted_brands[-1][0]
+    shares[last_bid] = body.amount_cents_total - running
+
+    for bid, share_cents in shares.items():
+        try:
+            topup_id = f"{master_topup_id}_{bid}"
+            # Lock in currency on first use.
+            cur_existing = await r.get(_k_currency(bid))
+            currency = (cur_existing or DEFAULT_CURRENCY).upper()
+            if cur_existing is None:
+                await r.set(_k_currency(bid), currency)
+
+            pipe = r.pipeline()
+            pipe.hset(
+                _k_topup(topup_id),
+                mapping={
+                    "topup_id": topup_id,
+                    "brand_id": bid,
+                    "amount": share_cents,
+                    "currency": currency,
+                    "payment_method": body.payment_method,
+                    "payment_token": body.payment_token or "",
+                    "status": "confirmed",
+                    "created_at": now,
+                    "confirmed_at": now,
+                    "master_topup_id": master_topup_id,
+                },
+            )
+            pipe.incrby(_k_balance(bid), share_cents)
+            pipe.set(_k_last_topup(bid), now)
+            pipe.rpush(_k_tx_list(bid), topup_id)
+            pipe.ltrim(_k_tx_list(bid), -TX_LIST_MAX, -1)
+            await pipe.execute()
+
+            per_brand.append(
+                {
+                    "brand_id": bid,
+                    "amount": share_cents,
+                    "topup_id": topup_id,
+                    "status": "confirmed",
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "topup_all brand=%s failed master_topup_id=%s",
+                bid,
+                master_topup_id,
+            )
+            per_brand.append(
+                {
+                    "brand_id": bid,
+                    "amount": share_cents,
+                    "topup_id": None,
+                    "status": "failed",
+                    "error": str(exc),
+                }
+            )
+
+    logger.info(
+        "master_topup_all master_id=%s master_topup_id=%s total_cents=%d brands=%d",
+        master_id,
+        master_topup_id,
+        body.amount_cents_total,
+        len(per_brand),
+    )
+    return {
+        "master_topup_id": master_topup_id,
+        "master_id": master_id,
+        "amount_cents_total": body.amount_cents_total,
+        "per_brand": per_brand,
     }
 
 

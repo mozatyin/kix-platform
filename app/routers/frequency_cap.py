@@ -70,7 +70,7 @@ DEFAULT_CONFIG: dict[str, int] = {
     "pacing_hourly_cap": 0,
 }
 
-VALID_SLOTS = {"push", "feed", "interstitial"}
+VALID_SLOTS = {"push", "feed", "interstitial", "main", "banner", "geofence"}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────

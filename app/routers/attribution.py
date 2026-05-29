@@ -8,6 +8,25 @@ impossible.
 All state lives in Redis. Keys are brand-namespaced and event TTLs match
 the attribution window to keep memory bounded.
 
+Consent enforcement (GDPR / PIPL / PDP)
+---------------------------------------
+Every ``track_*`` endpoint that carries a ``user_id`` calls
+``consent.check_internal(user_id, "cross_brand_tracking", r)`` before
+persisting the event. If the user has no active grant for that scope the
+endpoint returns ``HTTP 403`` with body
+``{"error": "consent_required", "scope": "cross_brand_tracking",
+"reason": <reason>}`` and header ``Consent-Required:
+cross_brand_tracking`` so the SDK can drive the grant UX and retry.
+
+* Anonymous events (``device_fingerprint`` only, no ``user_id``) are
+  allowed through — there is no identifiable subject to check yet.
+* Setting the env var ``KIX_CONSENT_ENFORCEMENT=permissive`` switches the
+  middleware to log-only mode (a warning is emitted but the event still
+  persists). Default is strict.
+* If the consent router is unavailable at import time the enforcement
+  helper degrades open with a warning — billing must keep working even
+  if the consent service is missing in dev fixtures.
+
 Key schema
 ----------
     attr:{event_id}                    HASH   — the event record
@@ -29,12 +48,13 @@ import hashlib
 import json
 import logging
 import math
+import os
 import secrets
 import time
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
@@ -43,6 +63,78 @@ from app.redis_client import get_redis
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ── Consent enforcement ───────────────────────────────────────────────────
+#
+# Imported lazily and guarded so attribution still works in test fixtures
+# that omit the consent router. If the helper is missing the wrapper below
+# logs a warning and lets the event through (degrade-open is intentional
+# for the dev fallback path — production deployments always have consent).
+
+CONSENT_SCOPE_TRACKING = "cross_brand_tracking"
+CONSENT_ENFORCEMENT_ENV = "KIX_CONSENT_ENFORCEMENT"  # "strict" (default) | "permissive"
+
+try:
+    from app.routers.consent import check_internal as _consent_check  # type: ignore
+except Exception as _consent_import_err:  # noqa: BLE001 — wide on purpose
+    _consent_check = None  # type: ignore[assignment]
+    logger.warning(
+        "consent.check_internal unavailable — attribution will degrade open "
+        "(err=%s)", _consent_import_err,
+    )
+
+
+def _consent_mode_permissive() -> bool:
+    return (os.getenv(CONSENT_ENFORCEMENT_ENV) or "").lower() == "permissive"
+
+
+async def _enforce_consent(
+    user_id: str | None,
+    r: aioredis.Redis,
+    *,
+    endpoint: str,
+) -> None:
+    """Raise HTTP 403 if the user has not consented to cross_brand_tracking.
+
+    No-op when:
+      * user_id is empty / None (anonymous event — nothing to check yet).
+      * consent module is unavailable (degrade-open with warning).
+      * ``KIX_CONSENT_ENFORCEMENT=permissive`` (log-only mode).
+    """
+    if not user_id:
+        return
+    if _consent_check is None:
+        return
+    try:
+        allowed, reason = await _consent_check(
+            user_id, CONSENT_SCOPE_TRACKING, r
+        )
+    except Exception as exc:  # noqa: BLE001 — never let consent check break tracking
+        logger.warning(
+            "consent_check raised for uid=%s endpoint=%s err=%s — degrading open",
+            user_id, endpoint, exc,
+        )
+        return
+
+    if allowed:
+        return
+
+    if _consent_mode_permissive():
+        logger.warning(
+            "consent_missing uid=%s endpoint=%s reason=%s — permissive mode, allowing",
+            user_id, endpoint, reason,
+        )
+        return
+
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "error": "consent_required",
+            "scope": CONSENT_SCOPE_TRACKING,
+            "reason": reason,
+        },
+        headers={"Consent-Required": CONSENT_SCOPE_TRACKING},
+    )
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
@@ -604,6 +696,8 @@ async def track_impression(
     if not req.target_brand:
         raise HTTPException(status_code=400, detail="target_brand required")
 
+    await _enforce_consent(req.user_id, r, endpoint="track_impression")
+
     source_brand, source_user_id, campaign_id = await _resolve_invite(r, req.invite_token)
     meta = dict(req.context or {})
     if source_user_id:
@@ -639,6 +733,8 @@ async def track_click(
         raise HTTPException(status_code=400, detail="device_fingerprint or user_id required")
     if not req.target_brand:
         raise HTTPException(status_code=400, detail="target_brand required")
+
+    await _enforce_consent(req.user_id, r, endpoint="track_click")
 
     source_brand, source_user_id, campaign_id = await _resolve_invite(r, req.invite_token)
     meta = dict(req.context or {})
@@ -688,6 +784,8 @@ async def track_visit(
     Side-effect: registers user under brand's known-user set, marking
     the user as 'arrived' so future events can be cleanly attributed.
     """
+    await _enforce_consent(req.user_id, r, endpoint="track_visit")
+
     source_brand, source_user_id, campaign_id = await _resolve_invite(r, req.invite_token)
     meta = dict(req.context or {})
     if source_user_id:
@@ -750,6 +848,8 @@ async def track_conversion(
     7-day attribution window. If req.source_brand is provided, it acts
     as a forced override (for closed-loop reconciliation feeds).
     """
+    await _enforce_consent(req.user_id, r, endpoint="track_conversion")
+
     # Idempotency: same order_id + target_brand → reuse previously stored.
     idem_key = f"attr:order:{req.target_brand}:{req.order_id}"
     existing = await r.get(idem_key)
@@ -883,6 +983,8 @@ async def track_generic_event(
         raise HTTPException(status_code=400, detail="user_id or device_fingerprint required")
     if not req.brand_id:
         raise HTTPException(status_code=400, detail="brand_id required")
+
+    await _enforce_consent(req.user_id, r, endpoint="track_event")
 
     meta = {"event_type": req.event_type, "value": req.value}
     event_id, ts = await _persist_event(
@@ -1057,6 +1159,60 @@ async def attribution_health(r: aioredis.Redis = Depends(get_redis)):
         "window_seconds": ATTRIBUTION_WINDOW_SECONDS,
         "default_commission_rate": DEFAULT_COMMISSION_RATE,
         "default_kix_take_fraction": DEFAULT_KIX_TAKE_FRACTION,
+        "consent_enforcement": (
+            "permissive" if _consent_mode_permissive() else "strict"
+        ),
+        "consent_module_available": _consent_check is not None,
+    }
+
+
+@router.get("/consent-status/{user_id}")
+async def consent_status(
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Debugging helper: what consent scopes does this user have?
+
+    Returns ``{tracked: bool, scopes_granted: [...]}`` where ``tracked``
+    is true iff cross_brand_tracking consent is currently active. The
+    scopes list is derived from the raw ``consent:user:{uid}`` HASH and
+    reflects any scope with a non-revoked grant. This endpoint is for
+    SDK/dashboard debugging — production should call ``consent.check``
+    proper for authoritative decisions.
+    """
+    tracked = False
+    scopes_granted: list[str] = []
+    if _consent_check is not None:
+        try:
+            allowed, _ = await _consent_check(
+                user_id, CONSENT_SCOPE_TRACKING, r
+            )
+            tracked = bool(allowed)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "consent_status check failed uid=%s err=%s", user_id, exc
+            )
+
+    raw = await r.hgetall(f"consent:user:{user_id}") or {}
+    for scope, rec_raw in raw.items():
+        try:
+            rec = json.loads(rec_raw) if rec_raw else None
+        except (json.JSONDecodeError, TypeError):
+            rec = None
+        if not rec:
+            continue
+        if rec.get("revoked_at"):
+            continue
+        if rec.get("granted_at"):
+            scopes_granted.append(scope)
+
+    return {
+        "user_id": user_id,
+        "tracked": tracked,
+        "scopes_granted": scopes_granted,
+        "enforcement_mode": (
+            "permissive" if _consent_mode_permissive() else "strict"
+        ),
     }
 
 
@@ -1253,6 +1409,8 @@ async def track_conversion_multi(
     """
     if req.model not in SUPPORTED_MTA_MODELS:
         raise HTTPException(status_code=400, detail=f"unsupported model: {req.model}")
+
+    await _enforce_consent(req.user_id, r, endpoint="track_conversion_multi")
 
     idem_key = f"attr:order_mta:{req.target_brand}:{req.model}:{req.order_id}"
     existing = await r.get(idem_key)

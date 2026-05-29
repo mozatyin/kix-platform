@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <title>消消乐 - Match-3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --gem-0: #ff4757;
+            --gem-1: #ffa502;
+            --gem-2: #ffdd59;
+            --gem-3: #2ed573;
+            --gem-4: #1e90ff;
+            --gem-5: #a55eea;
+            --cell-size: 10vw;
+            --max-cell: 42px;
+        }
+        *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+        body{font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#1a1a2e;color:#eee;overflow-x:hidden;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+        .screen{display:none;width:100%;max-width:460px;min-height:100dvh;flex-direction:column;align-items:center;padding:16px 12px 80px}
+        .screen.active{display:flex}
+        .hidden{display:none!important}
+        #game-board{display:grid;gap:3px;padding:8px;background:rgba(255,255,255,.06);border-radius:16px;justify-content:center;align-content:center}
+        .gem-cell{width:var(--cell-size);height:var(--cell-size);max-width:var(--max-cell);max-height:var(--max-cell);border-radius:10px;cursor:pointer;transition:transform .12s,box-shadow .12s;display:flex;align-items:center;justify-content:center;font-size:clamp(16px,5vw,26px);box-shadow:0 3px 8px rgba(0,0,0,.35),inset 0 2px 0 rgba(255,255,255,.25);position:relative}
+        .gem-cell:active{transform:scale(.88)}
+        .gem-cell.selected{box-shadow:0 0 0 3px #fff,0 0 18px 4px #ffd700,0 4px 12px rgba(0,0,0,.4);z-index:2;animation:pulse .8s ease-in-out infinite}
+        .gem-cell.matched{animation:popOut .35s ease-out forwards}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 3px #fff,0 0 18px 4px #ffd700,0 4px 12px rgba(0,0,0,.4)}50%{box-shadow:0 0 0 5px #fff,0 0 26px 8px #ffd700,0 4px 16px rgba(0,0,0,.5)}}
+        @keyframes popOut{0%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.7}100%{transform:scale(0);opacity:0}}
+        @keyframes dropIn{0%{transform:translateY(-60px);opacity:.3}100%{transform:translateY(0);opacity:1}}
+        .gem-cell.dropping{animation:dropIn .28s ease-out}
+        #action-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:40;width:100%;max-width:460px;display:flex;justify-content:space-around;align-items:center;padding:10px 8px;background:rgba(20,20,40,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.08);gap:6px;flex-wrap:wrap}
+        #action-bar button{flex:1;min-width:48px;max-width:100px;padding:10px 8px;border-radius:12px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;color:#fff;letter-spacing:.3px;white-space:nowrap}
+        #action-bar button:active{transform:scale(.94);opacity:.85}
+        .btn-primary{background:linear-gradient(135deg,#ff6b6b,#ee5a24)}
+        .btn-secondary{background:linear-gradient(135deg,#4a4a6a,#2d2d4a)}
+        .btn-accent{background:linear-gradient(135deg,#ffd700,#f0a500);color:#1a1a2e!important}
+        .btn-success{background:linear-gradient(135deg,#2ed573,#1abc9c)}
+        .btn-danger{background:linear-gradient(135deg,#ff4757,#c0392b)}
+        .overlay-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:35;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+        .score-pop{position:absolute;font-weight:700;font-size:20px;color:#ffd700;pointer-events:none;animation:scoreFly .9s ease-out forwards;z-index:10}
+        @keyframes scoreFly{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-70px) scale(1.4)}}
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS — 南洋茶饮 */
+:root {
+  --kix-brand: #5B3A29;
+  --kix-accent: #D4A373;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #5B3A29, #2d1d14) !important;
+  --tw-gradient-from: #5B3A29 !important;
+  --tw-gradient-to: #2d1d14 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #5B3A29 !important;
+  background: #5B3A29 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #2d1d14 !important;
+  background: #2d1d14 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #5B3A29 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="flex flex-col items-center w-full min-h-dvh bg-[#1a1a2e]">
+
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="screen">
+        <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">南洋茶饮</h1>
+        <p class="text-gray-400 text-sm mb-8">Match-3 Puzzle</p>
+        <div id="home-menu" class="flex flex-col gap-4 w-full max-w-xs mt-4"></div>
+    </div>
+
+    <!-- LEVEL SELECT SCREEN -->
+    <div id="level_select-screen" class="screen">
+        <h2 class="text-2xl font-bold mt-4 mb-6">选择关卡</h2>
+        <div id="level-grid" class="grid grid-cols-4 gap-3 w-full max-w-sm"></div>
+    </div>
+
+    <!-- GAMEPLAY SCREEN -->
+    <div id="gameplay-screen" class="screen">
+        <div class="flex justify-between items-center w-full max-w-sm mb-3 px-2">
+            <span id="score-display" class="text-lg font-bold text-yellow-400">⭐ 0</span>
+            <span id="level-display" class="text-sm text-gray-400">关卡 1</span>
+            <span id="moves-display" class="text-lg font-bold text-cyan-300">🔁 30</span>
+        </div>
+        <div id="game-board" class="mx-auto"></div>
+        <div id="combo-indicator" class="h-7 text-center text-orange-400 font-bold text-sm mt-2"></div>
+    </div>
+
+    <!-- PAUSE MENU SCREEN -->
+    <div id="pause_menu-screen" class="screen">
+        <div class="overlay-mask"></div>
+        <div class="relative z-40 bg-[#1e1e3a] rounded-2xl p-8 flex flex-col items-center gap-5 mt-32 w-[85%] max-w-xs shadow-2xl border border-white/10">
+            <h2 class="text-2xl font-bold">暂停</h2>
+            <div id="pause-buttons" class="flex flex-col gap-3 w-full"></div>
+        </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div id="settings-screen" class="screen">
+        <h2 class="text-2xl font-bold mt-4 mb-8">设置</h2>
+        <div id="settings-options" class="flex flex-col gap-5 w-full max-w-xs"></div>
+    </div>
+
+    <!-- SHOP SCREEN -->
+    <div id="shop-screen" class="screen">
+        <h2 class="text-2xl font-bold mt-4 mb-2">商店</h2>
+        <span id="coins-display" class="text-yellow-400 font-bold text-lg mb-5">🪙 100</span>
+        <div id="shop-items" class="flex flex-col gap-4 w-full max-w-xs"></div>
+    </div>
+
+    <!-- GAME RESULT SCREEN -->
+    <div id="game_result-screen" class="screen">
+        <div class="overlay-mask"></div>
+        <div class="relative z-40 bg-[#1e1e3a] rounded-2xl p-8 flex flex-col items-center gap-4 mt-20 w-[85%] max-w-xs shadow-2xl border border-white/10">
+            <h2 id="result-title" class="text-3xl font-extrabold"></h2>
+            <p id="result-score" class="text-xl text-yellow-400"></p>
+            <div id="result-stars" class="flex gap-2 text-3xl"></div>
+            <div id="result-buttons" class="flex flex-col gap-3 w-full mt-2"></div>
+        </div>
+    </div>
+
+    <!-- HIGH SCORES SCREEN -->
+    <div id="high_scores-screen" class="screen">
+        <h2 class="text-2xl font-bold mt-4 mb-6">🏆 排行榜</h2>
+        <div id="scores-list" class="flex flex-col gap-2 w-full max-w-xs"></div>
+    </div>
+
+    <!-- FIXED BOTTOM ACTION BAR -->
+    <div id="action-bar">
+        <button id="btn-home" class="btn-secondary">🏠 主菜单</button>
+        <button id="btn-play" class="btn-primary">▶ 开始</button>
+        <button id="btn-pause" class="btn-accent">⏸ 暂停</button>
+        <button id="btn-resume" class="btn-success">▶ 继续</button>
+        <button id="btn-restart" class="btn-secondary">🔄 重来</button>
+        <button id="btn-settings" class="btn-secondary">⚙ 设置</button>
+        <button id="btn-shop" class="btn-accent">🛒 商店</button>
+        <button id="btn-scores" class="btn-secondary">🏆 排行</button>
+        <button id="btn-next-level" class="btn-success">▶ 下一关</button>
+        <button id="btn-quit" class="btn-danger">🚪 退出</button>
+    </div>
+
+    <script>
+        /* ======================== GAME STATE ======================== */
+        /** @type {object} */
+        let gameState;
+
+        /* ======================== CORE FUNCTIONS ======================== */
+
+        /** Initializes and returns the full default game state object.
+         *  @returns {object} */
+        function initState() { let initialLevels = [];
+let totalLevels = 20;
+for (let i = 0; i < totalLevels; i++) {
+  initialLevels.push({
+    unlocked: i === 0,
+    stars: 0,
+    bestScore: 0
+  });
+}
+let state = {
+  screen: 'home',
+  levels: initialLevels,
+  currentLevel: 1,
+  board: null,
+  rows: 8,
+  cols: 8,
+  gemTypes: 6,
+  moves: 30,
+  score: 0,
+  targetScore: 500,
+  combo: 0,
+  selectedCell: null,
+  isProcessing: false,
+  settings: { sound: true, music: true },
+  coins: 100,
+  highScores: [
+    { score: 200, level: 1, timestamp: 1700000000000 },
+    { score: 150, level: 1, timestamp: 1690000000000 },
+  ]
+};
+return state; }
+
+        /** Pure synchronous state reducer. Deep clones state, applies action, returns new state.
+         *  @param {object} state
+         *  @param {object} action - flat object, e.g. {type:'NAVIGATE', target:'gameplay'}
+         *  @returns {object} */
+        function handleAction(state, action) { let newState = JSON.parse(JSON.stringify(state));
+switch (action.type) {
+  case 'NAVIGATE': {
+    newState.screen = action.target;
+    if (newState.screen !== 'gameplay') {
+      newState.selected = null;
+    }
+    break;
+  }
+  case 'START_LEVEL': {
+    let level = action.level || newState.level || 1;
+    newState.level = level;
+    let data = generateLevelData(level);
+    newState.board = createBoard(data.rows, data.cols, data.gemTypes);
+    newState.score = 0;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+    newState.moves = data.moves;
+    newState.targetScore = data.targetScore;
+    newState.combo = 0;
+    newState.selected = null;
+    newState.gameStatus = 'playing';
+    newState.screen = 'gameplay';
+    break;
+  }
+  case 'BOARD_CLICK': {
+    if (newState.screen === 'gameplay' && newState.gameStatus === 'playing') {
+      newState = handleBoardClick(newState, action.row, action.col);
+    }
+    break;
+  }
+  case 'PAUSE': {
+    newState.previousScreen = newState.screen;
+    newState.screen = 'pause_menu';
+    break;
+  }
+  case 'RESUME': {
+    newState.screen = newState.previousScreen || 'gameplay';
+    newState.previousScreen = null;
+    break;
+  }
+  case 'RESTART': {
+    let data = generateLevelData(newState.level);
+    newState.board = createBoard(data.rows, data.cols, data.gemTypes);
+    newState.score = 0;
+    newState.moves = data.moves;
+    newState.targetScore = data.targetScore;
+    newState.combo = 0;
+    newState.selected = null;
+    newState.gameStatus = 'playing';
+    newState.screen = 'gameplay';
+    break;
+  }
+  case 'QUIT': {
+    newState.screen = 'home';
+    newState.selected = null;
+    newState.board = null;
+    newState.score = 0;
+    newState.moves = 0;
+    newState.gameStatus = null;
+    newState.combo = 0;
+    break;
+  }
+  case 'SETTINGS': {
+    newState.screen = 'settings';
+    break;
+  }
+  case 'SHOP': {
+    newState.screen = 'shop';
+    break;
+  }
+  case 'HIGH_SCORES': {
+    newState.screen = 'high_scores';
+    break;
+  }
+  case 'NEXT_LEVEL': {
+    if (newState.gameStatus === 'won') {
+      let nextLevel = newState.level + 1;
+      let data = generateLevelData(nextLevel);
+      newState.level = nextLevel;
+      newState.board = createBoard(data.rows, data.cols, data.gemTypes);
+      newState.score = 0;
+      newState.moves = data.moves;
+      newState.targetScore = data.targetScore;
+      newState.combo = 0;
+      newState.selected = null;
+      newState.gameStatus = 'playing';
+      newState.screen = 'gameplay';
+    }
+    break;
+  }
+  case 'TOGGLE_SOUND': {
+    if (!newState.settings) newState.settings = {};
+    newState.settings.soundEnabled = !newState.settings.soundEnabled;
+    break;
+  }
+  case 'TOGGLE_MUSIC': {
+    if (!newState.settings) newState.settings = {};
+    newState.settings.musicEnabled = !newState.settings.musicEnabled;
+    break;
+  }
+  case 'BUY_ITEM': {
+    let item = action.item;
+    let cost = 0;
+    if (item === 'moves') cost = 10;
+    else if (item === 'bomb') cost = 15;
+    if (newState.coins >= cost) {
+      newState.coins -= cost;
+      if (item === 'moves') {
+        newState.moves += 5;
+      }
+    }
+    break;
+  }
+  case 'ADD_HIGH_SCORE': {
+    if (!newState.highScores) newState.highScores = [];
+    newState.highScores.push({
+      score: action.score,
+      level: newState.level || 1,
+      date: new Date().toISOString()
+    });
+    newState.highScores.sort((a, b) => b.score - a.score);
+    if (newState.highScores.length > 10) {
+      newState.highScores = newState.highScores.slice(0, 10);
+    }
+    break;
+  }
+  default:
+    break;
+}
+return newState; }
+
+        /** Reads state.screen, builds all visible DOM content, calls showScreen.
+         *  @param {object} state */
+        function render(state) { showScreen(state.screen);
+updateActionBar(state.screen);
+
+switch (state.screen) {
+    case 'home':
+        renderHomeScreen(state);
+        break;
+    case 'level_select':
+        renderLevelSelect(state);
+        break;
+    case 'gameplay':
+        document.getElementById('score-display').textContent = '⭐ ' + state.score;
+        document.getElementById('level-display').textContent = '关卡 ' + state.level;
+        document.getElementById('moves-display').textContent = '🔁 ' + state.moves;
+        document.getElementById('combo-indicator').textContent = state.combo > 0 ? '🔥 连击 x' + state.combo : '';
+        renderBoard(state);
+        break;
+    case 'pause_menu':
+        renderPauseMenu(state);
+        break;
+    case 'settings':
+        renderSettings(state);
+        break;
+    case 'shop':
+        renderShop(state);
+        break;
+    case 'game_result':
+        renderGameResult(state);
+        break;
+    case 'high_scores':
+        renderHighScores(state);
+        break;
+    default:
+        break;
+} }
+
+        /** Shows the screen div whose ID is screenId + '-screen'. Hides all others.
+         *  @param {string} screenId - base name (e.g. 'home', 'gameplay') */
+        function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+for (let i = 0; i < screens.length; i++) {
+    screens[i].classList.remove('active');
+}
+let targetScreen = document.getElementById(screenId + '-screen');
+if (targetScreen) {
+    targetScreen.classList.add('active');
+} }
+
+        /** Entry point. Called once on DOMContentLoaded. Creates state, wires all button listeners, calls render. */
+        function startGame() { gameState = initState();
+render(gameState);
+
+document.getElementById('btn-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NAVIGATE', target: 'home'});
+    render(gameState);
+});
+
+document.getElementById('btn-play').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NAVIGATE', target: 'level_select'});
+    render(gameState);
+});
+
+document.getElementById('btn-pause').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'PAUSE'});
+    render(gameState);
+});
+
+document.getElementById('btn-resume').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'RESUME'});
+    render(gameState);
+});
+
+document.getElementById('btn-restart').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'RESTART'});
+    render(gameState);
+});
+
+document.getElementById('btn-settings').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NAVIGATE', target: 'settings'});
+    render(gameState);
+});
+
+document.getElementById('btn-shop').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NAVIGATE', target: 'shop'});
+    render(gameState);
+});
+
+document.getElementById('btn-scores').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NAVIGATE', target: 'high_scores'});
+    render(gameState);
+});
+
+document.getElementById('btn-next-level').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NEXT_LEVEL'});
+    render(gameState);
+});
+
+document.getElementById('btn-quit').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'QUIT'});
+    render(gameState);
+});
+
+render(gameState); }
+
+        /* ======================== BOARD & MATCH-3 HELPERS ======================== */
+
+        /** Renders the game board grid into #game-board based on state.board.
+         *  @param {object} state */
+        function renderBoard(state) { let boardEl = document.getElementById('game-board');
+boardEl.innerHTML = '';
+boardEl.style.gridTemplateColumns = `repeat(${state.cols}, auto)`;
+for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+        let cell = document.createElement('div');
+        cell.className = 'gem-cell';
+        if (state.selected && state.selected.row === r && state.selected.col === c) {
+            cell.classList.add('selected');
+        }
+        let gemType = state.board[r][c];
+        if (gemType !== -1) {
+            cell.style.backgroundColor = `var(--gem-${gemType})`;
+        } else {
+            cell.style.visibility = 'hidden';
+        }
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        boardEl.appendChild(cell);
+    }
+} }
+
+        /** Handles a click on a board cell at (row, col). Manages gem selection and swap initiation.
+         *  @param {object} state
+         *  @param {number} row
+         *  @param {number} col */
+        function handleBoardClick(state, row, col) { if (!state.selected) {
+    state.selected = { row, col };
+} else {
+    let sel = state.selected;
+    if (sel.row === row && sel.col === col) {
+        state.selected = null;
+    } else if (Math.abs(sel.row - row) + Math.abs(sel.col - col) === 1) {
+        // attempt swap
+        state.board = swapGems(state, sel.row, sel.col, row, col);
+        state.selected = null;
+        let matches = findMatches(state.board);
+        if (matches.length > 0) {
+            // valid swap – decrement moves and resolve cascade
+            state.moves -= 1;
+            let combo = 1;
+            let totalScoreToAdd = 0;
+            while (matches.length > 0) {
+                // build fast lookup for matched positions
+                let matchSet = new Set();
+                for (let m of matches) {
+                    matchSet.add(m.row + ',' + m.col);
+                }
+                // collect all horizontal and vertical groups of consecutive matches
+                let groups = [];
+                for (let r = 0; r < state.rows; r++) {
+                    let c = 0;
+                    while (c < state.cols) {
+                        if (matchSet.has(r + ',' + c)) {
+                            let group = [];
+                            while (c < state.cols && matchSet.has(r + ',' + c)) {
+                                group.push({ row: r, col: c });
+                                c++;
+                            }
+                            groups.push(group);
+                        } else {
+                            c++;
+                        }
+                    }
+                }
+                for (let c = 0; c < state.cols; c++) {
+                    let r = 0;
+                    while (r < state.rows) {
+                        if (matchSet.has(r + ',' + c)) {
+                            let group = [];
+                            while (r < state.rows && matchSet.has(r + ',' + c)) {
+                                group.push({ row: r, col: c });
+                                r++;
+                            }
+                            groups.push(group);
+                        } else {
+                            r++;
+                        }
+                    }
+                }
+                // score every group
+                for (let g of groups) {
+                    totalScoreToAdd += calculateScore(g.length, combo);
+                }
+                // remove matches, apply gravity, refill and check again
+                state.board = removeMatches(state.board, matches);
+                state.board = dropGems(state.board);
+                state.board = refillBoard(state.board, state.gemTypes);
+                matches = findMatches(state.board);
+                combo++;
+            }
+            state.score += totalScoreToAdd;
+        } else {
+            // invalid swap – revert
+            state.board = swapGems(state, sel.row, sel.col, row, col);
+        }
+    } else {
+        // non-adjacent selection – change selection
+        state.selected = { row, col };
+    }
+} }
+
+        /** Swaps two gems on the board immutably. Returns new board array.
+         *  @param {object} state
+         *  @param {number} row1
+         *  @param {number} col1
+         *  @param {number} row2
+         *  @param {number} col2
+         *  @returns {Array<Array<number>>} */
+        function swapGems(state, row1, col1, row2, col2) { let newBoard = state.board.map(row => [...row]);
+let temp = newBoard[row1][col1];
+newBoard[row1][col1] = newBoard[row2][col2];
+newBoard[row2][col2] = temp;
+return newBoard; }
+
+        /** Scans the entire board and returns an array of all matched cell positions.
+         *  @param {Array<Array<number>>} board
+         *  @returns {Array<{row:number,col:number}>} */
+        function findMatches(board) { let matches = new Set();
+let rows = board.length; /* could be 0 but will be >=1 */
+if (rows === 0) return [];
+let cols = board[0].length;
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        let gem = board[r][c];
+        if (gem === -1) continue;
+        // horizontal runs
+        let runLength = 1;
+        let c2 = c + 1;
+        while (c2 < cols && board[r][c2] === gem) {
+            runLength++;
+            c2++;
+        }
+        if (runLength >= 3) {
+            for (let i = 0; i < runLength; i++) {
+                matches.add(r + ',' + (c + i));
+            }
+        }
+        // vertical runs
+        runLength = 1;
+        let r2 = r + 1;
+        while (r2 < rows && board[r2][c] === gem) {
+            runLength++;
+            r2++;
+        }
+        if (runLength >= 3) {
+            for (let i = 0; i < runLength; i++) {
+                matches.add((r + i) + ',' + c);
+            }
+        }
+    }
+}
+return Array.from(matches).map(function(key) {
+    var [row, col] = key.split(',').map(Number);
+    return { row: row, col: col };
+}); }
+
+        /** Removes all gems at matched positions (sets to -1), returns new board.
+         *  @param {Array<Array<number>>} board
+         *  @param {Array<{row:number,col:number}>} matches
+         *  @returns {Array<Array<number>>} */
+        function removeMatches(board, matches) { let newBoard = board.map(row => [...row]);
+for (let { row, col } of matches) {
+    newBoard[row][col] = -1;
+}
+return newBoard; }
+
+        /** Applies gravity: gems above empty cells fall down. Returns new board.
+         *  @param {Array<Array<number>>} board
+         *  @returns {Array<Array<number>>} */
+        function dropGems(board) { let rows = board.length;
+let cols = board[0].length;
+let newBoard = board.map(row => [...row]);
+
+for (let col = 0; col < cols; col++) {
+    let writeRow = rows - 1;
+    for (let row = rows - 1; row >= 0; row--) {
+        if (newBoard[row][col] !== -1) {
+            if (row !== writeRow) {
+                newBoard[writeRow][col] = newBoard[row][col];
+                newBoard[row][col] = -1;
+            }
+            writeRow--;
+        }
+    }
+}
+
+return newBoard; }
+
+        /** Fills empty cells (-1) with random gem types. Returns new board.
+         *  @param {Array<Array<number>>} board
+         *  @param {number} gemTypes
+         *  @returns {Array<Array<number>>} */
+        function refillBoard(board, gemTypes) { let newBoard = board.map(row => row.slice());
+for (let r = 0; r < newBoard.length; r++) {
+    for (let c = 0; c < newBoard[r].length; c++) {
+        if (newBoard[r][c] === -1) {
+            newBoard[r][c] = Math.floor(Math.random() * gemTypes);
+        }
+    }
+}
+return newBoard; }
+
+        /** Calculates score awarded for a given number of matched gems.
+         *  @param {number} matchCount
+         *  @param {number} combo
+         *  @returns {number} */
+        function calculateScore(matchCount, combo) { return matchCount * 10 * (combo + 1); }
+
+        /** Checks if the game is over (won or lost) based on state.
+         *  @param {object} state
+         *  @returns {'playing'|'won'|'lost'} */
+        function checkGameOver(state) { if (!state.levelData) return 'playing';
+  if (state.score >= state.levelData.targetScore) return 'won';
+  if (state.moves <= 0) return 'lost';
+  return 'playing'; }
+
+        /** Creates an initial board with no pre-existing matches.
+         *  @param {number} rows
+         *  @param {number} cols
+         *  @param {number} gemTypes
+         *  @returns {Array<Array<number>>} */
+        function createBoard(rows, cols, gemTypes) { let board = [];
+for (let r = 0; r < rows; r++) {
+    board[r] = [];
+    for (let c = 0; c < cols; c++) {
+        let exclude = [];
+        if (c >= 2 && board[r][c - 1] === board[r][c - 2]) {
+            exclude.push(board[r][c - 1]);
+        }
+        if (r >= 2 && board[r - 1][c] === board[r - 2][c]) {
+            let type = board[r - 1][c];
+            if (!exclude.includes(type)) exclude.push(type);
+        }
+        let type;
+        do {
+            type = Math.floor(Math.random() * gemTypes);
+        } while (exclude.includes(type));
+        board[r][c] = type;
+    }
+}
+return board; }
+
+        /** Generates level configuration data for a given level number.
+         *  @param {number} level
+         *  @returns {{targetScore:number,moves:number,gemTypes:number,rows:number,cols:number}} */
+        function generateLevelData(level) { let targetScore;
+let moves;
+let gemTypes;
+let rows = 8;
+let cols = 8;
+
+if (level <= 3) {
+    gemTypes = 4;
+    moves = 20 + level * 2;
+    targetScore = 1000 + level * 500;
+} else if (level <= 6) {
+    gemTypes = 5;
+    moves = 24 + level * 2;
+    targetScore = 2000 + level * 600;
+} else {
+    gemTypes = 6;
+    moves = 30 + level;
+    targetScore = 3000 + level * 700;
+}
+
+return { targetScore, moves, gemTypes, rows, cols }; }
+
+        /* ======================== CHESS-STYLE PLACEHOLDER FUNCTIONS ======================== */
+
+        /** @param {object} state @param {number} row @param {number} col @param {string} color
+         *  @returns {Array<[number,number]>} */
+        function getGeneralMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+let piece = board[row] && board[row][col] ? board[row][col] : null;
+if (!piece || piece.type !== 'general') return moves;
+
+let isRed = piece.color === 'red';
+let palaceTop = isRed ? 7 : 0;
+let palaceBottom = isRed ? 9 : 2;
+let colLow = 3;
+let colHigh = 5;
+
+let dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+for (let i = 0; i < dirs.length; i++) {
+  let nr = row + dirs[i][0];
+  let nc = col + dirs[i][1];
+  if (nr >= palaceTop && nr <= palaceBottom && nc >= colLow && nc <= colHigh) {
+    let targetCell = board[nr] && board[nr][nc] ? board[nr][nc] : null;
+    if (!targetCell || targetCell.color !== piece.color) {
+      moves.push([nr, nc]);
+    }
+  }
+}
+return moves; }
+
+        /** @param {object} state @param {number} row @param {number} col @param {string} color
+         *  @returns {Array<[number,number]>} */
+        function getHorseMoves(state, row, col, color) { return []; }
+
+        /** @param {object} state @param {string} color @returns {boolean} */
+        function isInCheck(state, color) { if (!state || typeof state !== 'object') return false;
+let board = state.board;
+if (!board || !Array.isArray(board) || board.length === 0) return false;
+let rows = board.length;
+let cols = board[0].length;
+// Check if any gem of the given color is adjacent to a bomb or special threat gem
+// Also check if the color appears in a position that could lead to imminent game over
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        let gem = board[r][c];
+        if (typeof gem === 'object' && gem !== null) {
+            // If gem is an object with type and timer (bomb gem)
+            if (gem.type === color && gem.timer !== undefined && gem.timer <= 2) {
+                return true;
+            }
+            // If gem is a frozen/locked gem of this color
+            if (gem.type === color && (gem.locked || gem.frozen)) {
+                return true;
+            }
+        } else if (gem === color || (typeof gem === 'number' && gem === color)) {
+            // Simple gem of matching color - check adjacent for threats
+            let adjacentOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (let [dr, dc] of adjacentOffsets) {
+                let nr = r + dr;
+                let nc = c + dc;
+                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                    let neighbor = board[nr][nc];
+                    if (typeof neighbor === 'object' && neighbor !== null) {
+                        if (neighbor.bomb && neighbor.timer !== undefined && neighbor.timer <= 1) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+// Also consider move pressure: if moves are critically low relative to target
+if (state.moves !== undefined && state.targetScore !== undefined && state.score !== undefined) {
+    let remainingMoves = state.moves;
+    let scoreNeeded = state.targetScore - state.score;
+    if (remainingMoves <= 3 && scoreNeeded > remainingMoves * 50) {
+        return true;
+    }
+}
+return false; }
+
+        /** @param {object} state @param {string} color @returns {boolean} */
+        function isCheckmate(state, color) { if (!isInCheck(state, color)) return false;
+let board = state.board;
+let rows = board.length;
+let cols = board[0].length;
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        let piece = board[r][c];
+        if (!piece || piece.color !== color) continue;
+        let moves = [];
+        if (piece.type === 'general') {
+            moves = getGeneralMoves(state, r, c, color);
+        } else if (piece.type === 'horse') {
+            moves = getHorseMoves(state, r, c, color);
+        }
+        for (let m of moves) {
+            let [tr, tc] = m;
+            let newState = applyMove(state, [r, c], [tr, tc]);
+            if (!isInCheck(newState, color)) {
+                return false;
+            }
+        }
+    }
+}
+return true; }
+
+        /** @param {object} state @returns {{from:[number,number],to:[number,number]}} */
+        function getAIMove(state) { for (let r = 0; r < state.board.length; r++) {
+    for (let c = 0; c < state.board[r].length; c++) {
+        for (let [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            let nr = r + dr, nc = c + dc;
+            if (nr < 0 || nr >= state.board.length || nc < 0 || nc >= state.board[r].length) continue;
+            let boardCopy = state.board.map(row => [...row]);
+            let temp = boardCopy[r][c];
+            boardCopy[r][c] = boardCopy[nr][nc];
+            boardCopy[nr][nc] = temp;
+            let matches = findMatches(boardCopy);
+            if (matches.length > 0) {
+                return { from: [r, c], to: [nr, nc] };
+            }
+        }
+    }
+}
+return { from: [0, 0], to: [0, 1] }; }
+
+        /** @param {object} state @param {[number,number]} from @param {[number,number]} to
+         *  @returns {object} */
+        function applyMove(state, from, to) { let newState = JSON.parse(JSON.stringify(state));
+let { chessBoard, currentTurn } = newState;
+let [fromRow, fromCol] = from;
+let [toRow, toCol] = to;
+let piece = chessBoard[fromRow][fromCol];
+if (!piece) return state;
+chessBoard[toRow][toCol] = piece;
+chessBoard[fromRow][fromCol] = null;
+newState.lastMove = { from, to };
+newState.currentTurn = currentTurn === 'red' ? 'black' : 'red';
+return newState; }
+
+        /* ======================== UI HELPERS ======================== */
+
+        /** Renders the home screen menu buttons dynamically.
+         *  @param {object} state */
+        function renderHomeScreen(state) { let menu = document.getElementById('home-menu');
+menu.innerHTML = '';
+
+let btnNew = document.createElement('button');
+btnNew.className = 'btn-primary w-full py-3 text-base font-bold';
+btnNew.textContent = '🎮 新游戏';
+btnNew.addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'START_NEW_GAME' });
+    render(gameState);
+});
+menu.appendChild(btnNew);
+
+if (state.gameActive) {
+    let btnContinue = document.createElement('button');
+    btnContinue.className = 'btn-success w-full py-3 text-base font-bold';
+    btnContinue.textContent = '▶ 继续游戏';
+    btnContinue.addEventListener('click', function() {
+        gameState = handleAction(gameState, { type: 'RESUME_GAME' });
+        render(gameState);
+    });
+    menu.appendChild(btnContinue);
+}
+
+let btnLevels = document.createElement('button');
+btnLevels.className = 'btn-secondary w-full py-3 text-base font-bold';
+btnLevels.textContent = '🗺 关卡选择';
+btnLevels.addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAVIGATE', target: 'level_select' });
+    render(gameState);
+});
+menu.appendChild(btnLevels);
+
+let btnSettings = document.createElement('button');
+btnSettings.className = 'btn-secondary w-full py-3 text-base font-bold';
+btnSettings.textContent = '⚙ 设置';
+btnSettings.addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAVIGATE', target: 'settings' });
+    render(gameState);
+});
+menu.appendChild(btnSettings);
+
+let btnShop = document.createElement('button');
+btnShop.className = 'btn-accent w-full py-3 text-base font-bold';
+btnShop.textContent = '🛒 商店';
+btnShop.addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAVIGATE', target: 'shop' });
+    render(gameState);
+});
+menu.appendChild(btnShop);
+
+let btnScores = document.createElement('button');
+btnScores.className = 'btn-secondary w-full py-3 text-base font-bold';
+btnScores.textContent = '🏆 排行榜';
+btnScores.addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'NAVIGATE', target: 'high_scores' });
+    render(gameState);
+});
+menu.appendChild(btnScores); }
+
+        /** Renders the level select grid.
+         *  @param {object} state */
+        function renderLevelSelect(state) { let grid = document.getElementById('level-grid');
+grid.innerHTML = '';
+let levels = state.levels;
+if (!levels || levels.length === 0) {
+    levels = [];
+    for (let i = 1; i <= 10; i++) {
+        levels.push({ id: i, unlocked: i === 1, stars: 0 });
+    }
+}
+for (let i = 0; i < levels.length; i++) {
+    let lv = levels[i];
+    let btn = document.createElement('button');
+    btn.className = 'w-full aspect-square rounded-xl text-lg font-bold shadow transition flex flex-col items-center justify-center';
+    if (lv.unlocked) {
+        btn.className += ' bg-blue-600 text-white cursor-pointer';
+        btn.disabled = false;
+        btn.onclick = function() {
+            gameState = handleAction(gameState, { type: 'SELECT_LEVEL', level: lv.id });
+            render(gameState);
+        };
+    } else {
+        btn.className += ' bg-gray-700 text-gray-400 cursor-not-allowed';
+        btn.disabled = true;
+    }
+    let levelText = document.createElement('span');
+    levelText.textContent = lv.id;
+    btn.appendChild(levelText);
+    if (lv.stars > 0) {
+        let starsSpan = document.createElement('span');
+        starsSpan.className = 'text-yellow-400 text-xs mt-1';
+        let starsStr = '';
+        for (let s = 0; s < lv.stars; s++) {
+            starsStr += '★';
+        }
+        starsSpan.textContent = starsStr;
+        btn.appendChild(starsSpan);
+    }
+    grid.appendChild(btn);
+} }
+
+        /** Renders the pause menu buttons.
+         *  @param {object} state */
+        function renderPauseMenu(state) { let container = document.getElementById('pause-buttons');
+container.innerHTML = '';
+
+let buttons = [
+    { text: '继续', action: { type: 'NAVIGATE', target: 'gameplay' } },
+    { text: '重来', action: { type: 'RESTART' } },
+    { text: '设置', action: { type: 'NAVIGATE', target: 'settings' } },
+    { text: '退出', action: { type: 'NAVIGATE', target: 'home' } }
+];
+
+for (let i = 0; i < buttons.length; i++) {
+    let btn = document.createElement('button');
+    btn.textContent = buttons[i].text;
+    btn.className = 'btn-secondary w-full py-3 px-4 rounded-xl text-white font-semibold';
+    let action = buttons[i].action;
+    btn.addEventListener('click', () => {
+        gameState = handleAction(gameState, action);
+        render(gameState);
+    });
+    container.appendChild(btn);
+} }
+
+        /** Renders settings toggles.
+         *  @param {object} state */
+        function renderSettings(state) { let container = document.getElementById('settings-options');
+if (!container) return {};
+container.innerHTML = '';
+let settings = state.settings || { sound: true, music: true };
+let keys = ['sound', 'music'];
+for (let i = 0; i < keys.length; i++) {
+    let key = keys[i];
+    let value = settings[key];
+    let btn = document.createElement('button');
+    btn.className = 'w-full py-3 px-4 rounded-lg text-white font-semibold text-base transition-all ' + (value ? 'bg-green-600' : 'bg-gray-600');
+    btn.textContent = (key === 'sound' ? '🔊 音效' : '🎵 音乐') + ': ' + (value ? '开' : '关');
+    btn.addEventListener('click', function() {
+        gameState = handleAction(gameState, { type: 'TOGGLE_SETTING', setting: key });
+        render(gameState);
+    });
+    container.appendChild(btn);
+} }
+
+        /** Renders shop items.
+         *  @param {object} state */
+        function renderShop(state) { let coinsDisplay = document.getElementById('coins-display');
+if (coinsDisplay) {
+    coinsDisplay.textContent = '🪙 ' + (state.coins || 0);
+}
+
+let shopContainer = document.getElementById('shop-items');
+if (!shopContainer) return {};
+
+shopContainer.innerHTML = '';
+
+let items = state.shopItems;
+if (!items || items.length === 0) {
+    shopContainer.innerHTML = '<p class="text-gray-400 text-center py-6">商店暂无物品</p>';
+    return {};
+}
+
+for (let i = 0; i < items.length; i++) {
+    let item = items[i];
+    let itemCard = document.createElement('div');
+    itemCard.className = 'flex items-center justify-between bg-white/5 rounded-xl p-4 gap-3';
+
+    let infoWrap = document.createElement('div');
+    infoWrap.className = 'flex flex-col gap-1 flex-1';
+
+    let nameEl = document.createElement('span');
+    nameEl.className = 'font-bold text-white text-base';
+    nameEl.textContent = item.name;
+
+    let descEl = document.createElement('span');
+    descEl.className = 'text-xs text-gray-400';
+    descEl.textContent = item.description || '';
+
+    infoWrap.appendChild(nameEl);
+    infoWrap.appendChild(descEl);
+
+    let buyBtn = document.createElement('button');
+    buyBtn.className = 'px-4 py-2 rounded-lg text-sm font-bold min-w-[72px] transition-all';
+
+    let ownedCount = 0;
+    if (state.inventory && state.inventory[item.id] !== undefined) {
+        ownedCount = state.inventory[item.id];
+    }
+    let canAfford = (state.coins || 0) >= (item.cost || 0);
+
+    if (item.maxOwned && ownedCount >= item.maxOwned) {
+        buyBtn.textContent = '已满';
+        buyBtn.className += ' bg-gray-600 text-gray-400 cursor-not-allowed';
+        buyBtn.disabled = true;
+    } else if (!canAfford) {
+        buyBtn.textContent = '💰 ' + item.cost;
+        buyBtn.className += ' bg-gray-600 text-gray-400 cursor-not-allowed';
+        buyBtn.disabled = true;
+    } else {
+        buyBtn.textContent = '💰 ' + item.cost;
+        buyBtn.className += ' bg-gradient-to-r from-yellow-400 to-orange-400 text-gray-900 hover:brightness-110 active:scale-95';
+        buyBtn.style.cursor = 'pointer';
+        buyBtn.addEventListener('click', function() {
+            gameState = handleAction(gameState, {type: 'BUY_ITEM', itemId: item.id});
+            render(gameState);
+        });
+    }
+
+    itemCard.appendChild(infoWrap);
+    itemCard.appendChild(buyBtn);
+    shopContainer.appendChild(itemCard);
+} }
+
+        /** Renders the game result (win/lose) screen.
+         *  @param {object} state */
+        function renderGameResult(state) { let resultTitle = document.getElementById('result-title');
+let resultScore = document.getElementById('result-score');
+let resultStars = document.getElementById('result-stars');
+let resultButtons = document.getElementById('result-buttons');
+
+let isWon = state.gameStatus === 'won';
+let score = state.score || 0;
+let targetScore = state.targetScore || 1;
+let level = state.level || 1;
+
+if (resultTitle) {
+    if (isWon) {
+        resultTitle.textContent = '🎉 胜利！';
+        resultTitle.className = 'text-3xl font-extrabold text-yellow-400';
+    } else {
+        resultTitle.textContent = '💔 失败...';
+        resultTitle.className = 'text-3xl font-extrabold text-red-400';
+    }
+}
+
+if (resultScore) {
+    resultScore.textContent = '⭐ 得分: ' + score + ' / 目标: ' + targetScore;
+}
+
+if (resultStars) {
+    let starCount = state.stars;
+    if (starCount === undefined && isWon) {
+        let ratio = score / Math.max(targetScore, 1);
+        if (ratio >= 2) {
+            starCount = 3;
+        } else if (ratio >= 1.5) {
+            starCount = 2;
+        } else if (ratio >= 1) {
+            starCount = 1;
+        } else {
+            starCount = 0;
+        }
+    }
+    if (starCount === undefined) {
+        starCount = 0;
+    }
+    let starsHTML = '';
+    for (let i = 0; i < 3; i++) {
+        if (i < starCount) {
+            starsHTML += '<span class="text-yellow-400">⭐</span>';
+        } else {
+            starsHTML += '<span class="text-gray-600">☆</span>';
+        }
+    }
+    resultStars.innerHTML = starsHTML;
+}
+
+if (resultButtons) {
+    resultButtons.innerHTML = '';
+
+    if (isWon) {
+        let nextBtn = document.createElement('button');
+        nextBtn.className = 'btn-success w-full py-3 rounded-xl text-lg font-bold';
+        nextBtn.textContent = '▶ 下一关';
+        nextBtn.addEventListener('click', function() {
+            handleAction(gameState, {type: 'NEXT_LEVEL'});
+            render(gameState);
+        });
+        resultButtons.appendChild(nextBtn);
+
+        let replayBtn = document.createElement('button');
+        replayBtn.className = 'btn-secondary w-full py-3 rounded-xl text-lg font-bold';
+        replayBtn.textContent = '🔄 重玩本关';
+        replayBtn.addEventListener('click', function() {
+            handleAction(gameState, {type: 'RESTART_LEVEL'});
+            render(gameState);
+        });
+        resultButtons.appendChild(replayBtn);
+    } else {
+        let retryBtn = document.createElement('button');
+        retryBtn.className = 'btn-primary w-full py-3 rounded-xl text-lg font-bold';
+        retryBtn.textContent = '🔄 再试一次';
+        retryBtn.addEventListener('click', function() {
+            handleAction(gameState, {type: 'RESTART_LEVEL'});
+            render(gameState);
+        });
+        resultButtons.appendChild(retryBtn);
+    }
+
+    let quitBtn = document.createElement('button');
+    quitBtn.className = 'btn-danger w-full py-3 rounded-xl text-lg font-bold';
+    quitBtn.textContent = '🏠 返回主菜单';
+    quitBtn.addEventListener('click', function() {
+        handleAction(gameState, {type: 'NAVIGATE', target: 'home'});
+        render(gameState);
+    });
+    resultButtons.appendChild(quitBtn);
+} }
+
+        /** Renders the high scores list.
+         *  @param {object} state */
+        function renderHighScores(state) { let scoresList = document.getElementById('scores-list');
+if (!scoresList) return {};
+let scores = state.highScores || [];
+let html = '';
+if (scores.length === 0) {
+    html = '<div class="text-gray-500 text-center py-8">暂无记录</div>';
+} else {
+    let sorted = [...scores].sort((a, b) => b.score - a.score);
+    for (let i = 0; i < sorted.length; i++) {
+        let entry = sorted[i];
+        let rankDisplay = (i === 0) ? '🥇' : (i === 1) ? '🥈' : (i === 2) ? '🥉' : `${i + 1}`;
+        html += `<div class="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3">
+            <span class="text-lg font-bold w-8 text-center">${rankDisplay}</span>
+            <span class="flex-1 text-left ml-2">${entry.name || '玩家'}</span>
+            <span class="text-yellow-400 font-bold text-lg mr-2">${entry.score}</span>
+            <span class="text-sm text-gray-400">关卡 ${entry.level || 1}</span>
+        </div>`;
+    }
+}
+scoresList.innerHTML = html; }
+
+        /** Updates the visibility of action bar buttons based on current screen.
+         *  @param {string} screenId */
+        function updateActionBar(screenId) { const visibleMap = {
+  home: ['btn-play', 'btn-settings', 'btn-shop', 'btn-scores'],
+  level_select: ['btn-home', 'btn-play'],
+  gameplay: ['btn-pause', 'btn-restart', 'btn-quit'],
+  pause_menu: ['btn-resume', 'btn-restart', 'btn-quit'],
+  settings: ['btn-home'],
+  shop: ['btn-home'],
+  game_result: ['btn-next-level', 'btn-restart', 'btn-home'],
+  high_scores: ['btn-home']
+};
+
+let toShow = visibleMap[screenId] || [];
+let allIds = ['btn-home','btn-play','btn-pause','btn-resume','btn-restart','btn-settings','btn-shop','btn-scores','btn-next-level','btn-quit'];
+
+for (let id of allIds) {
+  let btn = document.getElementById(id);
+  if (!btn) continue;
+  if (toShow.includes(id)) {
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
+} }
+
+        /** Plays a simple haptic-like flash animation on an element.
+         *  @param {HTMLElement} el */
+        function flashElement(el) { if (!el) return {};
+el.animate([
+    { transform: 'scale(0.92)', opacity: 0.6 },
+    { transform: 'scale(1)', opacity: 1 }
+], { duration: 120, easing: 'ease-out' }); }
+
+        /** Shows a floating score popup at a board position.
+         *  @param {HTMLElement} boardEl
+         *  @param {number} row
+         *  @param {number} col
+         *  @param {number} points */
+        function showScorePopup(boardEl, row, col, points) { let cell = boardEl.querySelector(`.gem-cell[data-row="${row}"][data-col="${col}"]`);
+if (!cell) return {};
+boardEl.style.position = boardEl.style.position || 'relative';
+let boardRect = boardEl.getBoundingClientRect();
+let cellRect = cell.getBoundingClientRect();
+let left = cellRect.left + cellRect.width / 2 - boardRect.left;
+let top = cellRect.top - boardRect.top;
+let pop = document.createElement('div');
+pop.className = 'score-pop';
+pop.textContent = `+${points}`;
+pop.style.left = `${left}px`;
+pop.style.top = `${top}px`;
+boardEl.appendChild(pop);
+pop.addEventListener('animationend', () => { pop.remove(); }); }
+
+        /* ======================== BOOTSTRAP ======================== */
+        document.addEventListener('DOMContentLoaded', startGame);
+    
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

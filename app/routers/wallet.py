@@ -142,7 +142,11 @@ class ChargeRequest(BaseModel):
     reason: Literal[
         "cpa_conversion", "cps_commission", "cpm_impression", "cpv_visit"
     ]
-    reference_id: str = Field(..., min_length=1, max_length=128)
+    # Both optional — server auto-generates a UUID if neither is provided.
+    # `idempotency_key` is treated as an alias-fallback for `reference_id` so
+    # direct API callers can use whichever name matches their conventions.
+    reference_id: str | None = Field(default=None, max_length=128)
+    idempotency_key: str | None = Field(default=None, max_length=128)
     campaign_id: str | None = None
 
 
@@ -190,6 +194,9 @@ class DailyBudgetStatus(BaseModel):
     today_spent_cents: int
     today_budget_cents: int
     remaining_cents: int
+    # How much more we can still charge today before the cap blocks.
+    # Equals `remaining_cents` when a cap is set; -1 when no cap (unlimited).
+    would_block_charge_cents: int
     paused: bool
 
 
@@ -492,6 +499,11 @@ async def charge(
     daily_budget_key = _k_daily_budget(brand_id)
     total_key = _k_total_spent(brand_id)
 
+    # reference_id is optional for direct API users. Prefer the explicit
+    # `reference_id`; fall back to `idempotency_key`; otherwise mint a UUID
+    # so audit / refund flows always have a stable handle.
+    ref_id = body.reference_id or body.idempotency_key or uuid4().hex
+
     attempts = 0
     while attempts < MAX_WATCH_RETRIES:
         attempts += 1
@@ -523,9 +535,11 @@ async def charge(
                         status_code=status.HTTP_402_PAYMENT_REQUIRED,
                         detail={
                             "ok": False,
+                            "error": "daily_budget_exceeded",
                             "reason": "daily_budget_exceeded",
                             "daily_spent_cents": daily_spent,
                             "daily_budget_cents": daily_budget,
+                            "attempted": body.amount_cents,
                         },
                     )
 
@@ -544,7 +558,7 @@ async def charge(
                         "brand_id": brand_id,
                         "amount": body.amount_cents,
                         "reason": body.reason,
-                        "reference_id": body.reference_id,
+                        "reference_id": ref_id,
                         "campaign_id": body.campaign_id or "",
                         "ts": now,
                         "status": "completed",
@@ -821,10 +835,14 @@ async def daily_budget_status(
     budget = int(await r.get(_k_daily_budget(brand_id)) or 0)
     remaining = max(0, budget - spent) if budget > 0 else 0
     paused = budget > 0 and spent >= budget
+    # -1 sentinel = no cap (unlimited). Positive = max additional cents that
+    # would still pass the cap on the next /charge call.
+    would_block = remaining if budget > 0 else -1
     return DailyBudgetStatus(
         today_spent_cents=spent,
         today_budget_cents=budget,
         remaining_cents=remaining,
+        would_block_charge_cents=would_block,
         paused=paused,
     )
 

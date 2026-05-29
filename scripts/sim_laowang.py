@@ -284,12 +284,17 @@ async def phase_2_wallet(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     else:
         gap("P1", "set master global budget", f"{sc} {_short(b)}")
 
-    # Cascading: per the master_accounts module the cascade is deferred to a
-    # worker. So we must top up each store wallet manually — log as friction.
-    gap("P1", "cascading budget",
-        "POST /master/{id}/budget/global stores the intent but does NOT push "
-        "daily_budget down to per-brand wallets. Merchant must still manually "
-        "topup each of 10 wallets. This is a documented MVP gap in master_accounts.py.")
+    # Verify cascade actually happened — fetch one brand's daily_budget
+    sample_bid = STORES[0]["brand_id"]
+    sc, b = await call(c, "GET", f"/api/v1/wallet/{sample_bid}/daily-budget-status")
+    cascaded_budget = ((b or {}).get("today_budget_cents") or (b or {}).get("daily_budget_cents") or 0) if isinstance(b, dict) else 0
+    if cascaded_budget > 0:
+        ok("budget cascade verified",
+           f"daily_budget_cents={cascaded_budget} pushed to {sample_bid}")
+    else:
+        gap("P1", "cascading budget",
+            f"POST /master/{{id}}/budget/global didn't push daily_budget to brand "
+            f"wallets (sample {sample_bid} has {cascaded_budget})")
 
     # Top up each store wallet ¥350
     funded = 0

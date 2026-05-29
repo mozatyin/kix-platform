@@ -1034,13 +1034,23 @@ def _is_auto_approvable(
 ) -> bool:
     """Decide if a fresh campaign skips manual review.
 
-    `rules` is the flat Redis HASH (string values). An empty / unset rules
-    hash means "review everything".
+    `rules` is the flat Redis HASH (string values).
+
+    MVP default (permissive): when no auto-approve rules are configured
+    (empty/unset hash), every new campaign is auto-approved. Admins opt
+    INTO restrictive review by writing a rules hash via
+    ``POST /admin/auto-approve-rules`` — only then are trusted_brands /
+    max_bid / min_budget gates enforced.
     """
     if not rules:
-        return False
+        # No rules configured → permissive default: auto-approve all.
+        return True
+
+    # Rules ARE set → apply restrictive logic. An explicit empty
+    # trusted_brands list means "every brand passes the trust gate"
+    # (the gate is opt-in); a populated list restricts to listed brands.
     trusted = _safe_json_loads(rules.get("trusted_brands"), []) or []
-    if body.brand_id not in trusted:
+    if trusted and body.brand_id not in trusted:
         return False
     try:
         max_bid_cap = int(rules.get("max_bid_cents", "0"))
@@ -1258,6 +1268,96 @@ async def admin_reject(
         "status": STATUS_DISAPPROVED,
         "reason": body.reason,
     }
+
+
+@router.post("/{campaign_id}/submit-for-review")
+async def submit_for_review(
+    campaign_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Merchant-callable self-serve path out of ``pending_review``.
+
+    Re-evaluates the current auto-approve rules against the campaign and,
+    if the campaign would now pass, flips it to ``active`` (or
+    ``scheduled`` for future-dated start) without admin involvement.
+    Otherwise the campaign stays in ``pending_review`` and the merchant
+    sees the reason. This is the MVP escape hatch so merchants are never
+    blocked when default rules are permissive.
+    """
+    raw = await r.hgetall(_ck(campaign_id))
+    if not raw:
+        raise HTTPException(status_code=404, detail="campaign not found")
+    if raw.get("status") != STATUS_PENDING_REVIEW:
+        return {
+            "ok": True,
+            "campaign_id": campaign_id,
+            "status": raw.get("status"),
+            "no_changes": True,
+        }
+
+    # Reconstruct just enough of CampaignCreate to re-run the rule check.
+    try:
+        body = CampaignCreate(
+            brand_id=raw.get("brand_id", ""),
+            name=raw.get("name", ""),
+            objective=raw.get("objective", "acquire"),  # type: ignore[arg-type]
+            bid_strategy=raw.get("bid_strategy", "cpa"),  # type: ignore[arg-type]
+            max_bid_cents=int(raw.get("max_bid_cents", "1") or "1"),
+            daily_budget_cents=int(raw.get("daily_budget_cents", "1") or "1"),
+            total_budget_cents=int(raw.get("total_budget_cents", "1") or "1"),
+            targeting=Targeting(**_safe_json_loads(raw.get("targeting"), {})),
+            creative=Creative(**_safe_json_loads(raw.get("creative"), {})),
+            schedule=Schedule(**_safe_json_loads(raw.get("schedule"), {})),
+            quality_score=float(raw.get("quality_score", "0.5") or "0.5"),
+        )
+    except Exception as exc:  # noqa: BLE001 — defensive reconstruction
+        logger.warning(
+            "submit_for_review: cannot rebuild campaign body cid=%s err=%s",
+            campaign_id, exc,
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="campaign payload corrupted — admin review required",
+        ) from exc
+
+    rules = await r.hgetall(AUTO_APPROVE_RULES_KEY) or {}
+    if not _is_auto_approvable(body, rules):
+        return {
+            "ok": False,
+            "campaign_id": campaign_id,
+            "status": STATUS_PENDING_REVIEW,
+            "reason": "auto_approve_rules_not_satisfied",
+        }
+
+    sched = _safe_json_loads(raw.get("schedule"), {}) or {}
+    start_at = sched.get("start_at")
+    target = (
+        STATUS_SCHEDULED
+        if (start_at and start_at > _now())
+        else STATUS_ACTIVE
+    )
+
+    pipe = r.pipeline()
+    pipe.hset(_ck(campaign_id), mapping={
+        "status": target,
+        "updated_at": str(_now()),
+    })
+    if target == STATUS_ACTIVE:
+        pipe.sadd(ACTIVE_CAMPAIGNS_KEY, campaign_id)
+    pipe.zrem(REVIEW_QUEUE_KEY, campaign_id)
+    await pipe.execute()
+
+    await _log_approval(
+        r,
+        campaign_id=campaign_id,
+        action="approve",
+        actor_token_hash="self_serve",
+        extra={"notes": "submit_for_review", "to_status": target},
+    )
+    logger.info(
+        "campaign self-serve approved cid=%s → %s", campaign_id, target
+    )
+    return {"ok": True, "campaign_id": campaign_id, "status": target}
 
 
 @router.post("/admin/auto-approve-rules")
