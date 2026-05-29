@@ -139,10 +139,12 @@ async def _enforce_consent(
 # ── Constants ──────────────────────────────────────────────────────────────
 
 ATTRIBUTION_WINDOW_SECONDS = 7 * 24 * 60 * 60  # 7 days — default only
-# Hard upper bound for any custom window (90 days). Wedding/anniversary
-# booking funnels can run this long; anything beyond is sketchy.
-MAX_ATTRIBUTION_WINDOW_SECONDS = 90 * 24 * 60 * 60
-EVENT_TTL_SECONDS = MAX_ATTRIBUTION_WINDOW_SECONDS + 24 * 60 * 60  # +1 day grace
+# Hard upper bound for any custom window (365 days). Healthcare annual
+# boosters (老蔡 365d), travel honeymoon funnels (老梁 210d), real-estate
+# cycles (老陆 180d), medical aesthetics re-treatment (老沈 180d) all need
+# windows longer than the legacy 90d cap. Anything beyond a year is sketchy.
+MAX_ATTRIBUTION_WINDOW_SECONDS = 365 * 86400
+EVENT_TTL_SECONDS = MAX_ATTRIBUTION_WINDOW_SECONDS + 7 * 86400  # +1 week grace
 JOURNEY_MAX_LEN = 500  # cap LIST length per user/device
 
 STAGE_IMPRESSION = "impression"

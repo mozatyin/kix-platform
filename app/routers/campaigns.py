@@ -227,7 +227,7 @@ class CampaignCreate(BaseModel):
     # Attribution window in days. None = use system default (7 days).
     # Auction stores this on the impression token so report_conversion
     # uses the campaign-specific window, not the global default.
-    attribution_window_days: int | None = Field(default=None, ge=1, le=90)
+    attribution_window_days: int | None = Field(default=None, ge=1, le=365)
     # TikTok-style audience pool selector. Default = acquisition.
     target_audience: Literal[
         "new_users_only", "retargeting_only", "all"
@@ -249,7 +249,7 @@ class CampaignUpdate(BaseModel):
     )
     daily_budget_cents: int | None = Field(default=None, gt=0)
     total_budget_cents: int | None = Field(default=None, gt=0)
-    attribution_window_days: int | None = Field(default=None, ge=1, le=90)
+    attribution_window_days: int | None = Field(default=None, ge=1, le=365)
     target_audience: Literal[
         "new_users_only", "retargeting_only", "all"
     ] | None = None

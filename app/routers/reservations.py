@@ -128,6 +128,10 @@ def _k_brand_triggers(bid: str) -> str:
     return f"brand:{bid}:reservation_triggers"
 
 
+def _k_brand_res_by_resource(bid: str, resource_id: str) -> str:
+    return f"brand:{bid}:reservation:by_resource:{resource_id}"
+
+
 # ── Utils ─────────────────────────────────────────────────────────────────
 
 
@@ -177,6 +181,7 @@ def _hash_to_dict(state: dict[str, str]) -> dict[str, Any]:
         "recovery_voucher_id": state.get("recovery_voucher_id") or None,
         "cancellation_reason": state.get("cancellation_reason") or None,
         "cancellation_by": state.get("cancellation_by") or None,
+        "resource_id": state.get("resource_id") or None,
     }
 
 
@@ -201,6 +206,18 @@ class CreateReservationRequest(BaseModel):
     recovery_voucher_template_id: str | None = Field(None, max_length=128)
     cancellation_policy: CancellationPolicy | None = None
     check_in_grace_minutes: int | None = Field(None, ge=0, le=24 * 60)
+    resource_id: str | None = Field(
+        None,
+        max_length=128,
+        description=(
+            "Optional resource handle (stylist/doctor/room/property/agent/...) "
+            "that this reservation books — indexes into brand resource calendars."
+        ),
+    )
+    duration_minutes: int | None = Field(
+        None, ge=1, le=24 * 60 * 30,
+        description="Optional service length; used by resource availability views.",
+    )
 
 
 class CreateReservationResponse(BaseModel):
@@ -549,11 +566,20 @@ async def create_reservation(
         "cancellation_policy": _dumps(cancellation_policy),
         "recovery_voucher_template_id": recovery_template,
     }
+    if body.resource_id:
+        state["resource_id"] = body.resource_id
+    if body.duration_minutes is not None:
+        state["duration_minutes"] = str(body.duration_minutes)
 
     pipe = r.pipeline()
     pipe.hset(_k_res(rid), mapping=state)
     pipe.zadd(_k_brand_res(body.brand_id), {rid: body.scheduled_at})
     pipe.zadd(_k_user_res(body.user_id), {rid: body.scheduled_at})
+    if body.resource_id:
+        pipe.zadd(
+            _k_brand_res_by_resource(body.brand_id, body.resource_id),
+            {rid: body.scheduled_at},
+        )
     pipe.hincrby(_k_brand_stats(body.brand_id), "total_confirmed", 1)
     pipe.hincrby(_k_brand_stats(body.brand_id), "party_size_sum", body.party_size)
     pipe.hincrby(_k_brand_stats(body.brand_id), "party_size_count", 1)
@@ -733,6 +759,9 @@ async def cancel(
     )
     pipe.zrem(_k_brand_res(brand_id), rid)
     pipe.zrem(_k_user_res(user_id), rid)
+    resource_id = state.get("resource_id") or ""
+    if resource_id:
+        pipe.zrem(_k_brand_res_by_resource(brand_id, resource_id), rid)
     pipe.hincrby(_k_brand_stats(brand_id), f"total_{new_status}", 1)
     await pipe.execute()
 
@@ -802,6 +831,12 @@ async def reschedule(
     )
     pipe.zadd(_k_brand_res(brand_id), {rid: body.new_scheduled_at})
     pipe.zadd(_k_user_res(user_id), {rid: body.new_scheduled_at})
+    resource_id = state.get("resource_id") or ""
+    if resource_id:
+        pipe.zadd(
+            _k_brand_res_by_resource(brand_id, resource_id),
+            {rid: body.new_scheduled_at},
+        )
     pipe.hincrby(_k_brand_stats(brand_id), "total_rescheduled", 1)
     await pipe.execute()
 
@@ -870,19 +905,104 @@ async def list_brand_reservations(
     from_ts: int | None = Query(None, alias="from"),
     to_ts: int | None = Query(None, alias="to"),
     limit: int = Query(200, ge=1, le=2000),
+    resource_id: str | None = Query(
+        None,
+        description=(
+            "If set, results are restricted to a single resource's calendar "
+            "(uses the brand:{bid}:reservation:by_resource:{rid} index)."
+        ),
+    ),
     r: aioredis.Redis = Depends(get_redis),
 ) -> dict[str, Any]:
     if status and status not in _STATUSES:
         raise HTTPException(status_code=400, detail=f"unknown status: {status}")
+    index_key = (
+        _k_brand_res_by_resource(brand_id, resource_id)
+        if resource_id
+        else _k_brand_res(brand_id)
+    )
     items = await _list_by_index(
         r,
-        index_key=_k_brand_res(brand_id),
+        index_key=index_key,
         status_filter=status,
         from_ts=from_ts,
         to_ts=to_ts,
         limit=limit,
     )
-    return {"brand_id": brand_id, "count": len(items), "reservations": items}
+    return {
+        "brand_id": brand_id,
+        "resource_id": resource_id,
+        "count": len(items),
+        "reservations": items,
+    }
+
+
+@router.get(
+    "/brand/{brand_id}/resources/{resource_id}/availability",
+    summary="Calendar view: time slots booked for a specific resource",
+)
+async def resource_availability(
+    brand_id: str,
+    resource_id: str,
+    from_ts: int | None = Query(None, alias="from"),
+    to_ts: int | None = Query(None, alias="to"),
+    limit: int = Query(500, ge=1, le=5000),
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return time slots already booked against a resource.
+
+    Each slot has start_ts (= scheduled_at), end_ts (= scheduled_at +
+    duration_minutes if available, else scheduled_at), the reservation_id,
+    and current status. Cancelled / no_show entries are pruned from the
+    by-resource index, so what you see here are live commitments.
+    """
+    lo = from_ts if from_ts is not None else "-inf"
+    hi = to_ts if to_ts is not None else "+inf"
+    rids = await r.zrangebyscore(
+        _k_brand_res_by_resource(brand_id, resource_id),
+        lo, hi, start=0, num=limit,
+    )
+    slots: list[dict[str, Any]] = []
+    if rids:
+        pipe = r.pipeline()
+        for rid in rids:
+            pipe.hgetall(_k_res(rid))
+        rows = await pipe.execute()
+        for state in rows:
+            if not state:
+                continue
+            start_ts = int(state.get("scheduled_at") or 0)
+            dur_min = int(state.get("duration_minutes") or 0)
+            end_ts = start_ts + dur_min * 60 if dur_min > 0 else start_ts
+            slots.append(
+                {
+                    "reservation_id": state.get("reservation_id", ""),
+                    "user_id": state.get("user_id", ""),
+                    "status": state.get("status", "confirmed"),
+                    "start_ts": start_ts,
+                    "end_ts": end_ts,
+                    "duration_minutes": dur_min or None,
+                    "party_size": int(state.get("party_size") or 1),
+                    "type": state.get("type", "appointment"),
+                }
+            )
+    # Group by YYYY-MM-DD (UTC) for callers that want a date-keyed view.
+    import datetime as _dt
+    by_date: dict[str, list[dict[str, Any]]] = {}
+    for s in slots:
+        date_str = _dt.datetime.utcfromtimestamp(s["start_ts"]).strftime("%Y-%m-%d")
+        by_date.setdefault(date_str, []).append(s)
+    days = [
+        {"date": d, "slots": sorted(v, key=lambda x: x["start_ts"])}
+        for d, v in sorted(by_date.items())
+    ]
+    return {
+        "brand_id": brand_id,
+        "resource_id": resource_id,
+        "count": len(slots),
+        "slots": slots,
+        "days": days,
+    }
 
 
 @router.get("/user/{user_id}", summary="List reservations for a user")
@@ -981,6 +1101,11 @@ async def scan_no_shows(
             )
             pipe.zrem(_k_brand_res(brand_id), rid)
             pipe.zrem(_k_user_res(user_id), rid)
+            no_show_resource = state.get("resource_id") or ""
+            if no_show_resource:
+                pipe.zrem(
+                    _k_brand_res_by_resource(brand_id, no_show_resource), rid
+                )
             pipe.hincrby(_k_brand_stats(brand_id), "total_no_show", 1)
             await pipe.execute()
             marked_no_show += 1
@@ -1118,6 +1243,628 @@ async def register_trigger(
 
 
 # ── Geofence integration helper ───────────────────────────────────────────
+
+
+# ── Recurring reservation series (老韩 P0) ───────────────────────────────
+#
+# Many brands need the same user to come back at a regular cadence: a
+# 4-week haircut, a weekly fitness class, a monthly grooming appointment.
+# `/series/create` expands a single declaration into N concrete
+# reservations + a parent series record. The series can be cancelled or
+# re-cadenced wholesale via `/series/{sid}/cancel` and
+# `/series/{sid}/reschedule`.
+
+
+_K_SERIES_PREFIX = "reservation_series"
+_MAX_SERIES_COUNT = 104  # 2 years of weekly cadence, hard upper bound
+
+_CADENCE_PATTERNS: dict[str, int] = {
+    "weekly": 7,
+    "biweekly": 14,
+    "monthly": 30,
+}
+
+
+def _k_series(sid: str) -> str:
+    return f"{_K_SERIES_PREFIX}:{sid}"
+
+
+def _k_series_rids(sid: str) -> str:
+    return f"{_K_SERIES_PREFIX}:{sid}:reservations"
+
+
+def _k_brand_series(bid: str) -> str:
+    return f"brand:{bid}:reservation_series"
+
+
+def _new_sid() -> str:
+    return f"rsvs_{uuid4().hex[:14]}"
+
+
+def _resolve_cadence_days(
+    cadence_days: int | None, cadence_pattern: str | None
+) -> int:
+    if cadence_days is not None and cadence_days > 0:
+        return cadence_days
+    if cadence_pattern and cadence_pattern in _CADENCE_PATTERNS:
+        return _CADENCE_PATTERNS[cadence_pattern]
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "must supply either cadence_days>0 or "
+            f"cadence_pattern in {list(_CADENCE_PATTERNS)}"
+        ),
+    )
+
+
+class CreateSeriesRequest(BaseModel):
+    brand_id: str = Field(..., min_length=1, max_length=128)
+    user_id: str = Field(..., min_length=1, max_length=128)
+    resource_id: str | None = Field(None, max_length=128)
+    type: Literal[
+        "dining", "fitness_class", "appointment", "event", "tour", "service",
+        "grooming",
+    ] = "appointment"
+    first_scheduled_at: int = Field(..., gt=0)
+    cadence_days: int | None = Field(None, ge=1, le=365)
+    cadence_pattern: Literal["weekly", "biweekly", "monthly", "custom"] | None = None
+    count: int = Field(..., ge=1, le=_MAX_SERIES_COUNT)
+    party_size: int = Field(1, ge=1, le=1000)
+    duration_minutes: int | None = Field(None, ge=1, le=24 * 60 * 30)
+    recovery_voucher_template_id: str | None = Field(None, max_length=128)
+    cancellation_policy: CancellationPolicy | None = None
+    check_in_grace_minutes: int | None = Field(None, ge=0, le=24 * 60)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class CreateSeriesResponse(BaseModel):
+    series_id: str
+    reservation_ids: list[str]
+    cadence_days: int
+    count: int
+
+
+class SeriesRescheduleRequest(BaseModel):
+    from_index: int = Field(..., ge=0)
+    new_cadence_days: int | None = Field(None, ge=1, le=365)
+    new_first_at: int | None = Field(None, gt=0)
+
+
+class PreRemindersRequest(BaseModel):
+    hours_before: list[int] = Field(..., min_length=1, max_length=10)
+    push_template_id: str = Field(..., min_length=1, max_length=128)
+    auction_max_cents: int | None = Field(None, ge=0, le=10_000_000)
+
+
+async def _series_create_one(
+    r: aioredis.Redis,
+    *,
+    brand_id: str,
+    user_id: str,
+    scheduled_at: int,
+    party_size: int,
+    res_type: str,
+    metadata: dict[str, Any],
+    recovery_voucher_template_id: str | None,
+    cancellation_policy: dict[str, Any],
+    check_in_grace_minutes: int,
+    resource_id: str | None,
+    duration_minutes: int | None,
+    series_id: str,
+    series_index: int,
+) -> str:
+    """Internal helper — create a single reservation belonging to a series.
+
+    Returns the new reservation_id. Does not emit `reservation.confirmed`
+    (the parent series fires a series.created event instead).
+    """
+    rid = _new_rid()
+    now = _now()
+    state: dict[str, str] = {
+        "reservation_id": rid,
+        "brand_id": brand_id,
+        "user_id": user_id,
+        "scheduled_at": str(scheduled_at),
+        "party_size": str(party_size),
+        "type": res_type,
+        "status": "confirmed",
+        "created_at": str(now),
+        "updated_at": str(now),
+        "check_in_grace_minutes": str(check_in_grace_minutes),
+        "metadata": _dumps(metadata),
+        "cancellation_policy": _dumps(cancellation_policy),
+        "recovery_voucher_template_id": recovery_voucher_template_id or "",
+        "series_id": series_id,
+        "series_index": str(series_index),
+    }
+    if resource_id:
+        state["resource_id"] = resource_id
+    if duration_minutes is not None:
+        state["duration_minutes"] = str(duration_minutes)
+
+    pipe = r.pipeline()
+    pipe.hset(_k_res(rid), mapping=state)
+    pipe.zadd(_k_brand_res(brand_id), {rid: scheduled_at})
+    pipe.zadd(_k_user_res(user_id), {rid: scheduled_at})
+    if resource_id:
+        pipe.zadd(
+            _k_brand_res_by_resource(brand_id, resource_id),
+            {rid: scheduled_at},
+        )
+    pipe.hincrby(_k_brand_stats(brand_id), "total_confirmed", 1)
+    pipe.hincrby(_k_brand_stats(brand_id), "party_size_sum", party_size)
+    pipe.hincrby(_k_brand_stats(brand_id), "party_size_count", 1)
+    await pipe.execute()
+
+    await _emit_event(
+        r,
+        event_type="reservation.created",
+        reservation_id=rid,
+        brand_id=brand_id,
+        user_id=user_id,
+        extra={
+            "scheduled_at": scheduled_at,
+            "type": res_type,
+            "party_size": party_size,
+            "series_id": series_id,
+            "series_index": series_index,
+        },
+    )
+    return rid
+
+
+@router.post(
+    "/series/create",
+    response_model=CreateSeriesResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a recurring reservation series (e.g. 12 monthly haircuts)",
+)
+async def create_series(
+    body: CreateSeriesRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> CreateSeriesResponse:
+    now = _now()
+    if body.first_scheduled_at <= now:
+        raise HTTPException(
+            status_code=400, detail="first_scheduled_at must be in the future"
+        )
+    cadence_days = _resolve_cadence_days(body.cadence_days, body.cadence_pattern)
+
+    # Merge brand defaults for grace + policy + recovery voucher.
+    policy = await _load_brand_policy(r, body.brand_id)
+    grace = (
+        body.check_in_grace_minutes
+        if body.check_in_grace_minutes is not None
+        else int(policy.get("default_grace_minutes") or _DEFAULT_GRACE_MINUTES)
+    )
+    cancellation_policy = (
+        body.cancellation_policy.model_dump()
+        if body.cancellation_policy
+        else policy.get("default_cancellation_policy")
+        or CancellationPolicy().model_dump()
+    )
+    recovery_template = (
+        body.recovery_voucher_template_id
+        or policy.get("default_recovery_voucher_template_id")
+        or ""
+    )
+
+    sid = _new_sid()
+    cadence_seconds = cadence_days * 24 * 3600
+    reservation_ids: list[str] = []
+
+    # Persist series header before fan-out so partial failures still leave
+    # the parent record discoverable.
+    await r.hset(
+        _k_series(sid),
+        mapping={
+            "series_id": sid,
+            "brand_id": body.brand_id,
+            "user_id": body.user_id,
+            "resource_id": body.resource_id or "",
+            "type": body.type,
+            "cadence_days": str(cadence_days),
+            "cadence_pattern": body.cadence_pattern or "custom",
+            "first_scheduled_at": str(body.first_scheduled_at),
+            "count": str(body.count),
+            "party_size": str(body.party_size),
+            "duration_minutes": str(body.duration_minutes or 0),
+            "recovery_voucher_template_id": recovery_template,
+            "status": "active",
+            "created_at": str(now),
+            "updated_at": str(now),
+            "metadata": _dumps(body.metadata),
+        },
+    )
+    await r.sadd(_k_brand_series(body.brand_id), sid)
+
+    for i in range(body.count):
+        scheduled_at = body.first_scheduled_at + i * cadence_seconds
+        rid = await _series_create_one(
+            r,
+            brand_id=body.brand_id,
+            user_id=body.user_id,
+            scheduled_at=scheduled_at,
+            party_size=body.party_size,
+            res_type=body.type,
+            metadata=body.metadata,
+            recovery_voucher_template_id=recovery_template or None,
+            cancellation_policy=cancellation_policy,
+            check_in_grace_minutes=grace,
+            resource_id=body.resource_id,
+            duration_minutes=body.duration_minutes,
+            series_id=sid,
+            series_index=i,
+        )
+        reservation_ids.append(rid)
+        await r.rpush(_k_series_rids(sid), rid)
+
+    logger.info(
+        "reservation series created sid=%s brand=%s user=%s count=%s cadence=%sd",
+        sid, body.brand_id, body.user_id, body.count, cadence_days,
+    )
+
+    return CreateSeriesResponse(
+        series_id=sid,
+        reservation_ids=reservation_ids,
+        cadence_days=cadence_days,
+        count=body.count,
+    )
+
+
+@router.get("/series/{series_id}", summary="Get a reservation series header + child rids")
+async def get_series(
+    series_id: str, r: aioredis.Redis = Depends(get_redis)
+) -> dict[str, Any]:
+    state = await r.hgetall(_k_series(series_id))
+    if not state:
+        raise HTTPException(status_code=404, detail="series not found")
+    rids = await r.lrange(_k_series_rids(series_id), 0, -1)
+    return {
+        "series_id": series_id,
+        "brand_id": state.get("brand_id", ""),
+        "user_id": state.get("user_id", ""),
+        "resource_id": state.get("resource_id") or None,
+        "type": state.get("type", "appointment"),
+        "cadence_days": int(state.get("cadence_days") or 0),
+        "cadence_pattern": state.get("cadence_pattern") or None,
+        "first_scheduled_at": int(state.get("first_scheduled_at") or 0),
+        "count": int(state.get("count") or 0),
+        "party_size": int(state.get("party_size") or 1),
+        "duration_minutes": int(state.get("duration_minutes") or 0) or None,
+        "status": state.get("status", "active"),
+        "created_at": int(state.get("created_at") or 0),
+        "updated_at": int(state.get("updated_at") or 0),
+        "recovery_voucher_template_id": (
+            state.get("recovery_voucher_template_id") or None
+        ),
+        "metadata": _safe_loads(state.get("metadata"), {}),
+        "reservation_ids": rids,
+    }
+
+
+@router.post(
+    "/series/{series_id}/cancel",
+    summary="Cancel every future reservation in a series",
+)
+async def cancel_series(
+    series_id: str, r: aioredis.Redis = Depends(get_redis)
+) -> dict[str, Any]:
+    state = await r.hgetall(_k_series(series_id))
+    if not state:
+        raise HTTPException(status_code=404, detail="series not found")
+    if state.get("status") in ("cancelled",):
+        raise HTTPException(status_code=409, detail="series already cancelled")
+
+    rids = await r.lrange(_k_series_rids(series_id), 0, -1)
+    now = _now()
+    cancelled_rids: list[str] = []
+    skipped_rids: list[str] = []
+
+    for rid in rids:
+        rstate = await r.hgetall(_k_res(rid))
+        if not rstate:
+            skipped_rids.append(rid)
+            continue
+        if rstate.get("status") not in ("confirmed", "rescheduled"):
+            skipped_rids.append(rid)
+            continue
+        scheduled_at = int(rstate.get("scheduled_at") or 0)
+        if scheduled_at <= now:
+            # Past reservations stay where they are — let scan-no-shows
+            # decide. Only cancel forward-dated commitments.
+            skipped_rids.append(rid)
+            continue
+
+        brand_id = rstate.get("brand_id", "")
+        user_id = rstate.get("user_id", "")
+        resource_id = rstate.get("resource_id") or ""
+
+        pipe = r.pipeline()
+        pipe.hset(
+            _k_res(rid),
+            mapping={
+                "status": "cancelled_by_user",
+                "cancelled_at": str(now),
+                "updated_at": str(now),
+                "cancellation_reason": "series_cancelled",
+                "cancellation_by": "user",
+                "refund_pct": "100",
+            },
+        )
+        pipe.zrem(_k_brand_res(brand_id), rid)
+        pipe.zrem(_k_user_res(user_id), rid)
+        if resource_id:
+            pipe.zrem(_k_brand_res_by_resource(brand_id, resource_id), rid)
+        pipe.hincrby(_k_brand_stats(brand_id), "total_cancelled_by_user", 1)
+        await pipe.execute()
+
+        await _emit_event(
+            r,
+            event_type="reservation.cancelled_by_user",
+            reservation_id=rid,
+            brand_id=brand_id,
+            user_id=user_id,
+            extra={
+                "series_id": series_id,
+                "reason": "series_cancelled",
+                "penalty": False,
+                "refund_pct": 100,
+            },
+        )
+        cancelled_rids.append(rid)
+
+    await r.hset(
+        _k_series(series_id),
+        mapping={
+            "status": "cancelled",
+            "cancelled_at": str(now),
+            "updated_at": str(now),
+        },
+    )
+    return {
+        "series_id": series_id,
+        "status": "cancelled",
+        "cancelled_reservations": cancelled_rids,
+        "skipped_reservations": skipped_rids,
+    }
+
+
+@router.post(
+    "/series/{series_id}/reschedule",
+    summary="Re-cadence the upcoming portion of a series",
+)
+async def reschedule_series(
+    series_id: str,
+    body: SeriesRescheduleRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    state = await r.hgetall(_k_series(series_id))
+    if not state:
+        raise HTTPException(status_code=404, detail="series not found")
+    if state.get("status") != "active":
+        raise HTTPException(
+            status_code=409,
+            detail=f"cannot reschedule series in status={state.get('status')}",
+        )
+
+    rids = await r.lrange(_k_series_rids(series_id), 0, -1)
+    if body.from_index >= len(rids):
+        raise HTTPException(
+            status_code=400, detail="from_index >= series length"
+        )
+
+    now = _now()
+    old_cadence_days = int(state.get("cadence_days") or 7)
+    new_cadence_days = body.new_cadence_days or old_cadence_days
+    cadence_seconds = new_cadence_days * 24 * 3600
+
+    # Determine the anchor — first reservation's new time.
+    if body.new_first_at is not None:
+        if body.new_first_at <= now:
+            raise HTTPException(
+                status_code=400, detail="new_first_at must be in the future"
+            )
+        anchor = body.new_first_at
+    else:
+        # Keep first affected reservation's scheduled_at; only re-cadence rest.
+        first_rid = rids[body.from_index]
+        first_state = await r.hgetall(_k_res(first_rid))
+        anchor = int(first_state.get("scheduled_at") or now)
+
+    rescheduled: list[dict[str, Any]] = []
+    for offset_idx, rid in enumerate(rids[body.from_index :]):
+        rstate = await r.hgetall(_k_res(rid))
+        if not rstate:
+            continue
+        if rstate.get("status") not in ("confirmed", "rescheduled"):
+            continue
+        new_sched = anchor + offset_idx * cadence_seconds
+        if new_sched <= now:
+            # Skip past slots after re-anchoring.
+            continue
+
+        brand_id = rstate.get("brand_id", "")
+        user_id = rstate.get("user_id", "")
+        resource_id = rstate.get("resource_id") or ""
+        old_sched = int(rstate.get("scheduled_at") or 0)
+
+        pipe = r.pipeline()
+        pipe.hset(
+            _k_res(rid),
+            mapping={
+                "scheduled_at": str(new_sched),
+                "status": "confirmed",
+                "updated_at": str(now),
+            },
+        )
+        pipe.zadd(_k_brand_res(brand_id), {rid: new_sched})
+        pipe.zadd(_k_user_res(user_id), {rid: new_sched})
+        if resource_id:
+            pipe.zadd(
+                _k_brand_res_by_resource(brand_id, resource_id),
+                {rid: new_sched},
+            )
+        pipe.hincrby(_k_brand_stats(brand_id), "total_rescheduled", 1)
+        await pipe.execute()
+
+        await _emit_event(
+            r,
+            event_type="reservation.rescheduled",
+            reservation_id=rid,
+            brand_id=brand_id,
+            user_id=user_id,
+            extra={
+                "old_scheduled_at": old_sched,
+                "new_scheduled_at": new_sched,
+                "series_id": series_id,
+            },
+        )
+        rescheduled.append(
+            {
+                "reservation_id": rid,
+                "old_scheduled_at": old_sched,
+                "new_scheduled_at": new_sched,
+            }
+        )
+
+    await r.hset(
+        _k_series(series_id),
+        mapping={
+            "cadence_days": str(new_cadence_days),
+            "updated_at": str(now),
+        },
+    )
+    return {
+        "series_id": series_id,
+        "from_index": body.from_index,
+        "new_cadence_days": new_cadence_days,
+        "anchor": anchor,
+        "rescheduled_count": len(rescheduled),
+        "rescheduled": rescheduled,
+    }
+
+
+# ── Pre-event reminders ───────────────────────────────────────────────────
+
+
+@router.post(
+    "/{rid}/pre-reminders",
+    summary="Schedule pre-event push reminders for a reservation",
+)
+async def schedule_pre_reminders(
+    rid: str,
+    body: PreRemindersRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Schedule one push per ``hours_before`` entry, anchored on scheduled_at.
+
+    Uses the push_engine schedule primitive when available; falls back to
+    a queued record under ``reservation:{rid}:reminders`` so an
+    out-of-band worker can pick them up.
+    """
+    state = await r.hgetall(_k_res(rid))
+    if not state:
+        raise HTTPException(status_code=404, detail="reservation not found")
+    if state.get("status") not in ("confirmed", "rescheduled"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"cannot schedule reminders for status={state.get('status')}",
+        )
+
+    scheduled_at = int(state.get("scheduled_at") or 0)
+    brand_id = state.get("brand_id", "")
+    user_id = state.get("user_id", "")
+    now = _now()
+
+    # Attempt to use the push_engine for proper delivery.
+    push_schedule = None
+    try:
+        from app.routers.push_engine import (
+            AuctionParams,
+            ContextPredicate,
+            ScheduleRequest,
+            schedule_push,
+        )
+        push_schedule = (schedule_push, ScheduleRequest, ContextPredicate, AuctionParams)
+    except Exception as exc:  # pragma: no cover
+        logger.warning("push_engine unavailable for pre-reminders: %s", exc)
+
+    scheduled: list[dict[str, Any]] = []
+    fallback: list[dict[str, Any]] = []
+
+    for hours in sorted(set(body.hours_before), reverse=True):
+        fire_at = scheduled_at - int(hours) * 3600
+        if fire_at <= now:
+            # Skip reminders whose window already closed.
+            continue
+
+        if push_schedule is not None:
+            schedule_push_fn, ScheduleReq, _CtxP, _Auct = push_schedule
+            try:
+                req = ScheduleReq(
+                    kid=user_id,
+                    fire_at_ts=float(fire_at),
+                )
+                resp = await schedule_push_fn(req, r)
+                scheduled.append(
+                    {
+                        "hours_before": hours,
+                        "fire_at": fire_at,
+                        "schedule_id": getattr(resp, "schedule_id", None),
+                        "push_template_id": body.push_template_id,
+                    }
+                )
+                # Persist association so the worker knows what to render.
+                try:
+                    await r.hset(
+                        f"reservation:{rid}:reminder:{resp.schedule_id}",
+                        mapping={
+                            "reservation_id": rid,
+                            "brand_id": brand_id,
+                            "user_id": user_id,
+                            "push_template_id": body.push_template_id,
+                            "hours_before": str(hours),
+                            "fire_at": str(fire_at),
+                            "exempt_from_cap": "1",
+                        },
+                    )
+                    await r.expire(
+                        f"reservation:{rid}:reminder:{resp.schedule_id}",
+                        max(86400, fire_at - now + 86400),
+                    )
+                except Exception:  # pragma: no cover
+                    pass
+                continue
+            except Exception as exc:  # pragma: no cover
+                logger.warning(
+                    "push_engine schedule failed for rid=%s hours=%s: %s",
+                    rid, hours, exc,
+                )
+
+        # Fallback: queue the reminder under the reservation; a worker
+        # consumes ``reservation:{rid}:reminders`` to drive delivery.
+        payload = {
+            "reservation_id": rid,
+            "brand_id": brand_id,
+            "user_id": user_id,
+            "push_template_id": body.push_template_id,
+            "hours_before": hours,
+            "fire_at": fire_at,
+            "exempt_from_cap": True,
+        }
+        try:
+            await r.rpush(f"reservation:{rid}:reminders", _dumps(payload))
+        except Exception:  # pragma: no cover
+            pass
+        fallback.append(payload)
+
+    return {
+        "reservation_id": rid,
+        "scheduled_via_push_engine": scheduled,
+        "scheduled_via_fallback": fallback,
+        "skipped_past_count": len(set(body.hours_before)) - len(scheduled) - len(fallback),
+    }
 
 
 async def maybe_auto_check_in(

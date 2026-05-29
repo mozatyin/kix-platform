@@ -32,7 +32,7 @@ from uuid import uuid4
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.redis_client import get_redis
 
@@ -43,12 +43,41 @@ router = APIRouter()
 
 # ── Constants ────────────────────────────────────────────────────────────
 SUPPORTED_PAYMENT_METHODS = {"alipay", "wechat", "stripe", "paypal"}
-SUPPORTED_CHARGE_REASONS = {
-    "cpa_conversion",
-    "cps_commission",
-    "cpm_impression",
-    "cpv_visit",
+
+# Charge reason → category. The reason vocabulary deliberately spans far
+# beyond ad-spend (老田 P0) so commerce, ride-hailing, marketplace and
+# subscription flows can post against the same wallet primitive.
+REASON_CATEGORY_MAP: dict[str, str] = {
+    # Ad-spend
+    "cpa_conversion": "ad_spend",
+    "cps_commission": "ad_spend",
+    "cpm_impression": "ad_spend",
+    "cpv_visit": "ad_spend",
+    "cpe_engagement": "ad_spend",
+    # Consumer / marketplace revenue
+    "consumer_purchase": "consumer_revenue",
+    "marketplace_take_rate": "consumer_revenue",
+    "subscription_renewal": "consumer_revenue",
+    "deposit_hold": "consumer_revenue",
+    "ride_revenue": "consumer_revenue",
+    "rental_revenue": "consumer_revenue",
+    "service_revenue": "consumer_revenue",
+    # Settlements
+    "payout_to_merchant": "settlement",
+    "refund_to_consumer": "settlement",
+    "voucher_redemption": "settlement",
+    "dispute_resolution": "settlement",
+    # Fees
+    "fee_kix_platform": "fee",
+    "fee_payment_gateway": "fee",
+    "fee_other": "fee",
+    # Fallback
+    "other": "other",
 }
+
+SUPPORTED_CHARGE_REASONS = set(REASON_CATEGORY_MAP.keys())
+SUPPORTED_CATEGORIES = ("ad_spend", "consumer_revenue", "settlement", "fee", "other")
+
 DEFAULT_CURRENCY = "CNY"
 REFUND_WINDOW_SECONDS = 30 * 24 * 3600  # 30 days
 MAX_WATCH_RETRIES = 8
@@ -140,8 +169,39 @@ class TopupConfirmRequest(BaseModel):
 class ChargeRequest(BaseModel):
     amount_cents: int = Field(..., gt=0, le=10_000_000)
     reason: Literal[
-        "cpa_conversion", "cps_commission", "cpm_impression", "cpv_visit"
+        # Ad-spend (existing)
+        "cpa_conversion",
+        "cps_commission",
+        "cpm_impression",
+        "cpv_visit",
+        "cpe_engagement",
+        # Consumer / marketplace revenue
+        "consumer_purchase",
+        "marketplace_take_rate",
+        "subscription_renewal",
+        "deposit_hold",
+        "ride_revenue",
+        "rental_revenue",
+        "service_revenue",
+        # Settlements
+        "payout_to_merchant",
+        "refund_to_consumer",
+        "dispute_resolution",
+        "voucher_redemption",
+        # Internal fees
+        "fee_kix_platform",
+        "fee_payment_gateway",
+        "fee_other",
+        # Fallback
+        "other",
     ]
+    # Optional accounting category override; auto-derived from `reason`
+    # via REASON_CATEGORY_MAP when not supplied.
+    category: Literal[
+        "ad_spend", "consumer_revenue", "settlement", "fee", "other"
+    ] | None = None
+    # When reason="other", caller MUST supply reason_detail for audit trail.
+    reason_detail: str | None = Field(default=None, max_length=256)
     # Both optional — server auto-generates a UUID if neither is provided.
     # `idempotency_key` is treated as an alias-fallback for `reference_id` so
     # direct API callers can use whichever name matches their conventions.
@@ -149,12 +209,23 @@ class ChargeRequest(BaseModel):
     idempotency_key: str | None = Field(default=None, max_length=128)
     campaign_id: str | None = None
 
+    @model_validator(mode="after")
+    def _detail_required_for_other(self):
+        if self.reason == "other" and (
+            not self.reason_detail or not self.reason_detail.strip()
+        ):
+            raise ValueError(
+                "reason_detail is required when reason='other' (audit trail)"
+            )
+        return self
+
 
 class ChargeResponse(BaseModel):
     ok: bool
     new_balance_cents: int
     charge_id: str | None = None
     reason: str | None = None  # e.g. "insufficient_funds"
+    idempotent: bool = False   # true when reference_id replay returned cached charge
 
 
 class RefundRequest(BaseModel):
@@ -207,6 +278,8 @@ class Transaction(BaseModel):
     ts: float
     status: str
     reason: str | None = None
+    category: str | None = None
+    reason_detail: str | None = None
     reference_id: str | None = None
     campaign_id: str | None = None
     payment_method: str | None = None
@@ -504,6 +577,26 @@ async def charge(
     # so audit / refund flows always have a stable handle.
     ref_id = body.reference_id or body.idempotency_key or uuid4().hex
 
+    # Idempotency guard (老田 bug): same reference_id must NOT produce two
+    # distinct charges. We index ref_id → charge_id in Redis for 24h and
+    # short-circuit replays before touching the WATCH/MULTI loop. Only
+    # applied when the caller supplied an explicit reference_id or
+    # idempotency_key (auto-minted UUIDs are never replays).
+    explicit_ref = bool(body.reference_id or body.idempotency_key)
+    idem_key = f"wallet:{brand_id}:charge_idem:{ref_id}" if explicit_ref else None
+    if idem_key is not None:
+        existing_charge_id = await r.get(idem_key)
+        if existing_charge_id:
+            existing = await r.hgetall(_k_charge(existing_charge_id))
+            if existing:
+                current_balance = int(await r.get(balance_key) or 0)
+                return ChargeResponse(
+                    ok=True,
+                    new_balance_cents=current_balance,
+                    charge_id=existing_charge_id,
+                    idempotent=True,
+                )
+
     attempts = 0
     while attempts < MAX_WATCH_RETRIES:
         attempts += 1
@@ -545,6 +638,9 @@ async def charge(
 
                 charge_id = uuid4().hex
                 now = time.time()
+                category = body.category or REASON_CATEGORY_MAP.get(
+                    body.reason, "other"
+                )
 
                 pipe.multi()
                 pipe.decrby(balance_key, body.amount_cents)
@@ -558,6 +654,8 @@ async def charge(
                         "brand_id": brand_id,
                         "amount": body.amount_cents,
                         "reason": body.reason,
+                        "category": category,
+                        "reason_detail": body.reason_detail or "",
                         "reference_id": ref_id,
                         "campaign_id": body.campaign_id or "",
                         "ts": now,
@@ -576,6 +674,17 @@ async def charge(
                     body.reason,
                     new_balance,
                 )
+
+                # Claim the idempotency key now that the charge committed.
+                # SET NX so a concurrent racer that lost the WATCH loop but
+                # already claimed the ref_id wins; we leave the loser's
+                # charge_id intact (the duplicate row will be garbage-
+                # collected by ops alerts on idempotent=False replays).
+                if idem_key is not None:
+                    try:
+                        await r.set(idem_key, charge_id, nx=True, ex=86400)
+                    except Exception as exc:  # never break the charge path
+                        logger.warning("charge_idem claim failed: %s", exc)
 
                 # Best-effort: fire auto-recharge check outside the txn.
                 try:
@@ -757,6 +866,9 @@ async def list_transactions(
     tx_type: Literal["topup", "charge", "refund"] | None = Query(
         None, alias="type"
     ),
+    category: Literal[
+        "ad_spend", "consumer_revenue", "settlement", "fee", "other"
+    ] | None = Query(None),
     limit: int = Query(100, ge=1, le=1000),
     r: aioredis.Redis = Depends(get_redis),
 ) -> list[Transaction]:
@@ -792,6 +904,14 @@ async def list_transactions(
         if to_ts is not None and ts > to_ts:
             continue
 
+        # Resolve category: persisted field, else derive from reason, else None.
+        reason_val = tx.get("reason")
+        cat = tx.get("category") or (
+            REASON_CATEGORY_MAP.get(reason_val) if reason_val else None
+        )
+        if category and cat != category:
+            continue
+
         results.append(
             Transaction(
                 id=tx_id,
@@ -799,7 +919,9 @@ async def list_transactions(
                 amount_cents=int(tx.get("amount") or 0),
                 ts=ts,
                 status=tx.get("status", "unknown"),
-                reason=tx.get("reason"),
+                reason=reason_val,
+                category=cat,
+                reason_detail=tx.get("reason_detail") or None,
                 reference_id=tx.get("reference_id"),
                 campaign_id=tx.get("campaign_id") or None,
                 payment_method=tx.get("payment_method") or None,
@@ -822,6 +944,91 @@ async def _load_tx(
         if h:
             return h, kind
     return None, ""
+
+
+# ── GET /{brand_id}/summary ──────────────────────────────────────────────
+class WalletSummary(BaseModel):
+    brand_id: str
+    by_category: dict[str, int]
+    net: int
+    tx_scanned: int
+
+
+@router.get("/{brand_id}/summary", response_model=WalletSummary)
+async def wallet_summary(
+    brand_id: str,
+    from_ts: float | None = Query(None, alias="from"),
+    to_ts: float | None = Query(None, alias="to"),
+    scan_limit: int = Query(TX_LIST_MAX, ge=1, le=TX_LIST_MAX),
+    r: aioredis.Redis = Depends(get_redis),
+) -> WalletSummary:
+    """Aggregate by accounting category (sign-aware).
+
+    Sign convention (treasury POV — money leaving the brand wallet is
+    negative, money flowing in is positive):
+        charge      → negative (debits balance)
+        topup       → positive (credits balance)
+        refund      → positive (credits balance)
+    Categories only apply to charge tx; topup/refund roll under their own
+    pseudo-categories ``topup`` and ``refund`` so the rollup is lossless.
+    """
+    # Pull as much of the tail as the caller permits.
+    ids = await r.lrange(_k_tx_list(brand_id), -scan_limit, -1)
+    ids.reverse()  # newest first
+
+    by_category: dict[str, int] = {c: 0 for c in SUPPORTED_CATEGORIES}
+    by_category["topup"] = 0
+    by_category["refund"] = 0
+    scanned = 0
+
+    for tx_id in ids:
+        tx, kind = await _load_tx(r, tx_id)
+        if tx is None:
+            continue
+        ts = float(tx.get("ts") or tx.get("created_at") or 0.0)
+        if from_ts is not None and ts < from_ts:
+            continue
+        if to_ts is not None and ts > to_ts:
+            continue
+
+        amount = int(tx.get("amount") or 0)
+        scanned += 1
+
+        if kind == "charge":
+            if tx.get("status") != "completed":
+                # Refunded / failed charges don't count toward category spend.
+                continue
+            reason_val = tx.get("reason")
+            cat = tx.get("category") or (
+                REASON_CATEGORY_MAP.get(reason_val, "other")
+                if reason_val
+                else "other"
+            )
+            by_category[cat] = by_category.get(cat, 0) - amount
+        elif kind == "topup":
+            if tx.get("status") != "confirmed":
+                continue
+            by_category["topup"] += amount
+        elif kind == "refund":
+            if tx.get("status") not in ("completed", "refunded"):
+                continue
+            by_category["refund"] += amount
+
+    net = sum(by_category.values())
+    # Strip categories with zero movement for a cleaner payload, but always
+    # keep the canonical ad_spend / consumer_revenue / settlement / fee
+    # buckets so dashboards have stable keys.
+    canonical = set(SUPPORTED_CATEGORIES)
+    by_category = {
+        k: v for k, v in by_category.items() if v != 0 or k in canonical
+    }
+
+    return WalletSummary(
+        brand_id=brand_id,
+        by_category=by_category,
+        net=net,
+        tx_scanned=scanned,
+    )
 
 
 # ── GET /{brand_id}/daily-budget-status ──────────────────────────────────
@@ -911,4 +1118,284 @@ async def forecast(
         avg_daily_spend_cents=avg_daily,
         days_until_empty=days_left,
         recommendation=rec,
+    )
+
+
+# ── Marketplace take-rate (老胡 P0) ───────────────────────────────────────
+#
+# For C2C / marketplace brands. Configure a per-category take-rate (basis
+# points) plus a minimum fee. On every consumer-to-platform sale, the
+# marketplace calls /marketplace-charge with the gross amount; the seller's
+# user wallet is debited by `take_amount` and the marketplace brand wallet
+# is credited the same amount as platform revenue.
+
+_DEFAULT_TAKE_RATE_BPS = 200       # 2%
+_DEFAULT_MIN_FEE_CENTS = 10
+_MAX_TAKE_RATE_BPS = 10_000        # 100% guard rail
+
+
+def _k_take_rate_config(brand_id: str) -> str:
+    return f"wallet:{brand_id}:take_rate"
+
+
+def _k_user_balance(user_id: str) -> str:
+    """Per-user wallet balance — sellers' funds for marketplace settlement."""
+    return f"wallet:user:{user_id}:balance"
+
+
+def _k_user_tx_list(user_id: str) -> str:
+    return f"wallet:user:{user_id}:transactions"
+
+
+class TakeRateConfigureRequest(BaseModel):
+    default_rate_bps: int = Field(_DEFAULT_TAKE_RATE_BPS, ge=0, le=_MAX_TAKE_RATE_BPS)
+    category_rates: dict[str, int] = Field(default_factory=dict)
+    minimum_fee_cents: int = Field(_DEFAULT_MIN_FEE_CENTS, ge=0, le=10_000_000)
+
+    @field_validator("category_rates")
+    @classmethod
+    def _cat_rates(cls, v: dict[str, int]) -> dict[str, int]:
+        for cat, bps in v.items():
+            if not isinstance(bps, int) or bps < 0 or bps > _MAX_TAKE_RATE_BPS:
+                raise ValueError(
+                    f"category_rates[{cat}] must be int 0..{_MAX_TAKE_RATE_BPS}"
+                )
+            if not cat or len(cat) > 64:
+                raise ValueError("category names must be 1..64 chars")
+        return v
+
+
+class TakeRateConfigResponse(BaseModel):
+    brand_id: str
+    default_rate_bps: int
+    category_rates: dict[str, int]
+    minimum_fee_cents: int
+
+
+class MarketplaceChargeRequest(BaseModel):
+    transaction_id: str = Field(..., min_length=1, max_length=128)
+    listing_id: str = Field(..., min_length=1, max_length=128)
+    seller_user_id: str = Field(..., min_length=1, max_length=128)
+    buyer_user_id: str = Field(..., min_length=1, max_length=128)
+    gross_amount_cents: int = Field(..., ge=0, le=10_000_000_000)
+    category: str | None = Field(None, max_length=64)
+
+
+class MarketplaceChargeResponse(BaseModel):
+    ok: bool
+    charge_id: str
+    transaction_id: str
+    listing_id: str
+    take_amount_cents: int
+    seller_net_cents: int
+    take_rate_bps_applied: int
+    minimum_fee_applied: bool
+    idempotent: bool = False
+    seller_balance_cents: int
+    marketplace_balance_cents: int
+
+
+async def _load_take_rate_config(
+    r: aioredis.Redis, brand_id: str
+) -> dict[str, Any]:
+    raw = await r.hgetall(_k_take_rate_config(brand_id))
+    if not raw:
+        return {
+            "default_rate_bps": _DEFAULT_TAKE_RATE_BPS,
+            "category_rates": {},
+            "minimum_fee_cents": _DEFAULT_MIN_FEE_CENTS,
+        }
+    import json as _json
+    try:
+        cat_rates = _json.loads(raw.get("category_rates") or "{}")
+    except (ValueError, TypeError):
+        cat_rates = {}
+    return {
+        "default_rate_bps": int(raw.get("default_rate_bps") or _DEFAULT_TAKE_RATE_BPS),
+        "category_rates": cat_rates,
+        "minimum_fee_cents": int(raw.get("minimum_fee_cents") or _DEFAULT_MIN_FEE_CENTS),
+    }
+
+
+@router.post(
+    "/{brand_id}/take-rate/configure",
+    response_model=TakeRateConfigResponse,
+    summary="Configure marketplace take-rate (basis points) per category + minimum fee",
+)
+async def configure_take_rate(
+    brand_id: str,
+    body: TakeRateConfigureRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> TakeRateConfigResponse:
+    import json as _json
+    await r.hset(
+        _k_take_rate_config(brand_id),
+        mapping={
+            "default_rate_bps": str(body.default_rate_bps),
+            "category_rates": _json.dumps(body.category_rates),
+            "minimum_fee_cents": str(body.minimum_fee_cents),
+            "updated_at": str(time.time()),
+        },
+    )
+    return TakeRateConfigResponse(
+        brand_id=brand_id,
+        default_rate_bps=body.default_rate_bps,
+        category_rates=body.category_rates,
+        minimum_fee_cents=body.minimum_fee_cents,
+    )
+
+
+@router.get(
+    "/{brand_id}/take-rate",
+    response_model=TakeRateConfigResponse,
+    summary="Get the configured take-rate for a marketplace brand",
+)
+async def get_take_rate(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> TakeRateConfigResponse:
+    cfg = await _load_take_rate_config(r, brand_id)
+    return TakeRateConfigResponse(
+        brand_id=brand_id,
+        default_rate_bps=cfg["default_rate_bps"],
+        category_rates=cfg["category_rates"],
+        minimum_fee_cents=cfg["minimum_fee_cents"],
+    )
+
+
+@router.post(
+    "/{brand_id}/marketplace-charge",
+    response_model=MarketplaceChargeResponse,
+    summary="C2C sale: debit seller's user-wallet, credit marketplace's brand-wallet by take amount",
+)
+async def marketplace_charge(
+    brand_id: str,
+    body: MarketplaceChargeRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> MarketplaceChargeResponse:
+    """Settle a consumer-to-platform sale.
+
+    Computes::
+
+        take_amount = max(gross × rate_bps / 10_000, minimum_fee_cents)
+        seller_net  = gross_amount - take_amount
+
+    Side-effects:
+      * decrements ``wallet:user:{seller}:balance`` by ``take_amount``
+      * increments ``wallet:{brand}:balance`` by ``take_amount``
+      * records charge under ``wallet:charge:{charge_id}`` with
+        reason ``marketplace_take_rate`` + category=consumer_revenue
+      * idempotent on ``transaction_id`` via
+        ``wallet:{brand}:marketplace_idem:{tx_id}`` (24h TTL)
+
+    Note: the seller's *gross* proceeds (gross - take) are not credited
+    here — payment-rail settlement to the seller belongs in payouts.
+    What we touch is the seller's marketplace fee balance: the convention
+    is that sellers maintain a positive user wallet balance to absorb
+    take-rate fees; if the balance can't cover the fee, we still post the
+    charge (going negative is allowed for accounting) but emit a warning.
+    """
+    cfg = await _load_take_rate_config(r, brand_id)
+    rate_bps = cfg["default_rate_bps"]
+    if body.category and body.category in cfg["category_rates"]:
+        rate_bps = int(cfg["category_rates"][body.category])
+    minimum_fee = int(cfg["minimum_fee_cents"])
+
+    raw_take = (body.gross_amount_cents * rate_bps) // 10_000
+    take_amount = max(raw_take, minimum_fee)
+    # Never take more than gross.
+    if take_amount > body.gross_amount_cents:
+        take_amount = body.gross_amount_cents
+    seller_net = body.gross_amount_cents - take_amount
+    min_fee_applied = take_amount == minimum_fee and raw_take < minimum_fee
+
+    # Idempotency on transaction_id.
+    idem_key = f"wallet:{brand_id}:marketplace_idem:{body.transaction_id}"
+    existing_charge_id = await r.get(idem_key)
+    if existing_charge_id:
+        existing = await r.hgetall(_k_charge(existing_charge_id))
+        if existing:
+            seller_bal = int(await r.get(_k_user_balance(body.seller_user_id)) or 0)
+            mp_bal = int(await r.get(_k_balance(brand_id)) or 0)
+            return MarketplaceChargeResponse(
+                ok=True,
+                charge_id=existing_charge_id,
+                transaction_id=body.transaction_id,
+                listing_id=body.listing_id,
+                take_amount_cents=int(existing.get("amount") or take_amount),
+                seller_net_cents=seller_net,
+                take_rate_bps_applied=rate_bps,
+                minimum_fee_applied=min_fee_applied,
+                idempotent=True,
+                seller_balance_cents=seller_bal,
+                marketplace_balance_cents=mp_bal,
+            )
+
+    charge_id = uuid4().hex
+    now = time.time()
+    today = _today_str()
+
+    pipe = r.pipeline()
+    pipe.decrby(_k_user_balance(body.seller_user_id), take_amount)
+    pipe.incrby(_k_balance(brand_id), take_amount)
+    pipe.incrby(_k_daily_spent(brand_id, today), 0)  # daily_spent is ad-spend
+    pipe.hset(
+        _k_charge(charge_id),
+        mapping={
+            "charge_id": charge_id,
+            "brand_id": brand_id,
+            "amount": take_amount,
+            "reason": "marketplace_take_rate",
+            "category": "consumer_revenue",
+            "reference_id": body.transaction_id,
+            "listing_id": body.listing_id,
+            "seller_user_id": body.seller_user_id,
+            "buyer_user_id": body.buyer_user_id,
+            "gross_amount_cents": body.gross_amount_cents,
+            "seller_net_cents": seller_net,
+            "take_rate_bps": rate_bps,
+            "minimum_fee_applied": "1" if min_fee_applied else "0",
+            "ts": now,
+            "status": "completed",
+        },
+    )
+    pipe.rpush(_k_tx_list(brand_id), charge_id)
+    pipe.ltrim(_k_tx_list(brand_id), -TX_LIST_MAX, -1)
+    pipe.rpush(_k_user_tx_list(body.seller_user_id), charge_id)
+    pipe.ltrim(_k_user_tx_list(body.seller_user_id), -TX_LIST_MAX, -1)
+    results = await pipe.execute()
+    seller_balance_after = int(results[0])
+    marketplace_balance_after = int(results[1])
+
+    # Claim idempotency now that the charge committed.
+    try:
+        await r.set(idem_key, charge_id, nx=True, ex=86400)
+    except Exception as exc:
+        logger.warning("marketplace_charge idem claim failed: %s", exc)
+
+    if seller_balance_after < 0:
+        logger.warning(
+            "marketplace_charge: seller wallet went negative seller=%s balance=%s",
+            body.seller_user_id, seller_balance_after,
+        )
+
+    logger.info(
+        "marketplace_charge brand=%s tx=%s listing=%s seller=%s "
+        "gross=%s take=%s rate_bps=%s",
+        brand_id, body.transaction_id, body.listing_id, body.seller_user_id,
+        body.gross_amount_cents, take_amount, rate_bps,
+    )
+
+    return MarketplaceChargeResponse(
+        ok=True,
+        charge_id=charge_id,
+        transaction_id=body.transaction_id,
+        listing_id=body.listing_id,
+        take_amount_cents=take_amount,
+        seller_net_cents=seller_net,
+        take_rate_bps_applied=rate_bps,
+        minimum_fee_applied=min_fee_applied,
+        idempotent=False,
+        seller_balance_cents=seller_balance_after,
+        marketplace_balance_cents=marketplace_balance_after,
     )

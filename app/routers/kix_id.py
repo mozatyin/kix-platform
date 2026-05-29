@@ -125,6 +125,16 @@ SESSION_TTL_SECONDS = 30 * 86400   # 30 days — KiX App session lifetime
 
 IDENTITY_HISTORY_MAX = 200
 
+# Device-fingerprint velocity guard (老田 fraud bug). A sockpuppet ring
+# registered 10 phones against one device in <2s and walked off with
+# deposit promos. We rate-limit kid creation per device fingerprint:
+#   * > DEVICE_VELOCITY_MAX_BURST kids in DEVICE_VELOCITY_BURST_SECONDS → 429
+#   * > DEVICE_VELOCITY_MAX_TOTAL kids ever (24h) → 403 + fraud log
+DEVICE_VELOCITY_BURST_SECONDS = 60
+DEVICE_VELOCITY_MAX_BURST = 3
+DEVICE_VELOCITY_MAX_TOTAL = 10
+DEVICE_VELOCITY_TTL_SECONDS = 86400  # ZSET retention window
+
 # Admin token gate for protected admin-only endpoints. Production should
 # replace this with a proper RBAC check; we mirror the simple guard pattern
 # used in sibling routers (consent / payouts).
@@ -528,19 +538,80 @@ async def register(
     returned with ``is_new=False``. Otherwise a fresh ``kid_xxxxxx`` is
     minted. Device fingerprint alone is also accepted as the bottom-tier
     anchor for anonymous-to-known linking.
+
+    Includes a device-fingerprint velocity guard to block sockpuppet
+    deposit-promo abuse (老田 fraud bug): >3 new kids in 60s from the
+    same device → 429; >10 kids ever from one device → 403 + fraud log.
+    Returning users that resolve to an existing kid are NOT counted.
     """
     _validate_language(body.primary_language)
+
+    device_fp = body.device_fingerprint
+    velocity_key = f"kid:device_velocity:{device_fp}" if device_fp else None
+
+    # Pre-mint velocity check. We do this BEFORE ensure_kid so a flood of
+    # sockpuppet phones can't slip through under the cap; idempotent
+    # re-registers of an existing phone/email will still resolve cleanly
+    # because we only ZADD when is_new=True below.
+    if velocity_key is not None:
+        now_ts = time.time()
+        # Trim entries outside the retention window.
+        await r.zremrangebyscore(
+            velocity_key, "-inf", now_ts - DEVICE_VELOCITY_TTL_SECONDS
+        )
+
+        recent = await r.zcount(
+            velocity_key, now_ts - DEVICE_VELOCITY_BURST_SECONDS, "+inf"
+        )
+        if recent >= DEVICE_VELOCITY_MAX_BURST:
+            logger.warning(
+                "device_velocity_exceeded device_fp=%s recent=%s",
+                device_fp, recent,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": "device_velocity_exceeded",
+                    "kids_in_window": int(recent),
+                    "window_seconds": DEVICE_VELOCITY_BURST_SECONDS,
+                },
+            )
+
+        total = await r.zcard(velocity_key)
+        if total >= DEVICE_VELOCITY_MAX_TOTAL:
+            logger.warning(
+                "device_kid_limit_reached device_fp=%s total=%s — fraud signal",
+                device_fp, total,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "device_kid_limit_reached",
+                    "total_kids": int(total),
+                    "limit": DEVICE_VELOCITY_MAX_TOTAL,
+                },
+            )
 
     kid, is_new = await ensure_kid(
         r,
         phone=body.phone,
         email=body.email,
-        device_fp=body.device_fingerprint,
+        device_fp=device_fp,
         display_name=body.display_name,
         primary_language=body.primary_language,
         source_brand_id=body.source_brand_id,
         country=body.country,
     )
+
+    # Track only freshly-minted kids — returning users that resolve to an
+    # existing kid are not new registrations and don't count toward the cap.
+    if is_new and velocity_key is not None:
+        try:
+            await r.zadd(velocity_key, {kid: time.time()})
+            await r.expire(velocity_key, DEVICE_VELOCITY_TTL_SECONDS)
+        except Exception as exc:  # never break the register path
+            logger.warning("device_velocity ZADD failed: %s", exc)
+
     profile = await _load_kid(r, kid)
     created_at = int(profile.get("created_at", _now())) if profile else _now()
 
@@ -568,6 +639,56 @@ async def lookup(
         kid = await resolve_kid_from_device(r, body.device_fingerprint)
 
     return LookupResponse(kid=kid, found=bool(kid))
+
+
+@router.get("/admin/device-velocity/{device_fp}")
+async def admin_device_velocity(
+    device_fp: str,
+    x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Admin: inspect device-fingerprint registration velocity.
+
+    Returns burst (last 60s), total (24h retention), the full kid list,
+    and a ``suspicious`` flag set when either threshold is breached. Used
+    by fraud ops to triage sockpuppet rings flagged by the register-time
+    velocity guard.
+    """
+    _check_admin(x_admin_token)
+
+    velocity_key = f"kid:device_velocity:{device_fp}"
+    now_ts = time.time()
+
+    # Trim stale entries so the counts reflect the live retention window.
+    await r.zremrangebyscore(
+        velocity_key, "-inf", now_ts - DEVICE_VELOCITY_TTL_SECONDS
+    )
+
+    recent_60s = await r.zcount(
+        velocity_key, now_ts - DEVICE_VELOCITY_BURST_SECONDS, "+inf"
+    )
+    total_24h = await r.zcard(velocity_key)
+    all_kids = await r.zrange(velocity_key, 0, -1, withscores=True)
+
+    suspicious = bool(
+        recent_60s >= DEVICE_VELOCITY_MAX_BURST
+        or total_24h >= DEVICE_VELOCITY_MAX_TOTAL
+    )
+
+    return {
+        "device_fp": device_fp,
+        "recent_60s": int(recent_60s),
+        "total_24h": int(total_24h),
+        "all_kids": [
+            {"kid": k, "registered_at": float(ts)} for k, ts in all_kids
+        ],
+        "suspicious": suspicious,
+        "thresholds": {
+            "burst_seconds": DEVICE_VELOCITY_BURST_SECONDS,
+            "max_burst": DEVICE_VELOCITY_MAX_BURST,
+            "max_total": DEVICE_VELOCITY_MAX_TOTAL,
+        },
+    }
 
 
 @router.get("/{kid}")

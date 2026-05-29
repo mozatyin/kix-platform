@@ -303,6 +303,14 @@ KiX = TikTok Ads for Gamification.
         consent.router, prefix="/api/v1/consent", tags=["consent"]
     )
 
+    # ── Compliance: ad-creative scanner + sensitive-PI audit (PIPL §51) ─
+    from app.routers import compliance
+    app.include_router(
+        compliance.router,
+        prefix="/api/v1/compliance",
+        tags=["compliance"],
+    )
+
     # ── Campaign Manager + Auction Engine (Google-Ads-style) ───────────
     from app.routers import campaigns, auction
     app.include_router(
@@ -376,6 +384,14 @@ KiX = TikTok Ads for Gamification.
         reservations.router,
         prefix="/api/v1/reservations",
         tags=["reservations"],
+    )
+
+    # ── Listings: C2C marketplace (闲鱼 / 淘宝 / eBay) ────────────────────
+    from app.routers import listings
+    app.include_router(
+        listings.router,
+        prefix="/api/v1/listings",
+        tags=["listings"],
     )
 
     # ── KiX ID: universal identity + OAuth-like merchant Connect ───────

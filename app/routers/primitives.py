@@ -39,6 +39,7 @@ Redis key scheme
 from __future__ import annotations
 
 import json
+import logging
 import math
 import statistics
 import time
@@ -52,7 +53,48 @@ from pydantic import BaseModel, Field
 from app.redis_client import get_redis
 from app.routers.progression import xp_to_level
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+async def _fire_attribute_changed(
+    r: aioredis.Redis,
+    *,
+    user_id: str,
+    brand_id: str | None,
+    key: str,
+    old_value: Any,
+    new_value: Any,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    """Best-effort dispatch into rule_engine's attribute-watch rules.
+
+    Failures are swallowed so a misbehaving rule cannot break the
+    underlying attribute write. ``brand_id`` is normalised to "" for
+    the global scope (matches rule_engine's brand key contract).
+    """
+    try:
+        from app.routers.rule_engine import on_attribute_changed
+    except ImportError:
+        return
+    try:
+        await on_attribute_changed(
+            r,
+            user_id=user_id,
+            brand_id=brand_id or "",
+            key=key,
+            old_value=old_value,
+            new_value=new_value,
+            meta=meta or {},
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "on_attribute_changed failed for uid=%s key=%s: %s",
+            user_id,
+            key,
+            e,
+        )
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -1174,7 +1216,27 @@ async def set_user_attributes(
         raise HTTPException(422, detail="attrs must be non-empty")
     key = _attr_hash_key(user_id, body.brand_id)
     mapping = {k: _serialize_attr_value(v) for k, v in body.attrs.items()}
+
+    # Snapshot prior values so we can fire attribute-watch rules with
+    # both old + new. Order matches mapping iteration.
+    prior_raw = await r.hmget(key, *mapping.keys()) if mapping else []
+    prior = {
+        field: prior_raw[i] for i, field in enumerate(mapping.keys())
+    }
+
     await r.hset(key, mapping=mapping)
+
+    for field, new_val in mapping.items():
+        await _fire_attribute_changed(
+            r,
+            user_id=user_id,
+            brand_id=body.brand_id,
+            key=field,
+            old_value=prior.get(field),
+            new_value=new_val,
+            meta=None,
+        )
+
     return {
         "ok": True,
         "user_id": user_id,
@@ -1232,12 +1294,24 @@ async def set_user_attribute(
     """Set a single attribute, optionally with a TTL."""
     value = _serialize_attr_value(body.value)
     hkey = _attr_hash_key(user_id, brand_id)
+    old_value = await r.hget(hkey, key)
     pipe = r.pipeline()
     pipe.hset(hkey, key, value)
     if body.ttl_seconds:
         side = _attr_sidecar_key(user_id, brand_id, key)
         pipe.set(side, value, ex=body.ttl_seconds)
     await pipe.execute()
+
+    await _fire_attribute_changed(
+        r,
+        user_id=user_id,
+        brand_id=brand_id,
+        key=key,
+        old_value=old_value,
+        new_value=value,
+        meta=None,
+    )
+
     return {
         "ok": True,
         "user_id": user_id,
@@ -1411,12 +1485,25 @@ async def log_user_attribute(
     hash_key = _attr_hash_key(user_id, body.brand_id)
     stats_key = _attr_log_stats_key(user_id, body.brand_id, key)
 
+    # Snapshot previous current value for rule_engine dispatch.
+    old_value = await r.hget(hash_key, key)
+
     pipe = r.pipeline()
     pipe.lpush(log_key, json.dumps(entry))
     pipe.ltrim(log_key, 0, _ATTR_LOG_MAX_ENTRIES - 1)
     pipe.hset(hash_key, key, serialized_value)
     pipe.delete(stats_key)  # invalidate cached stats
     await pipe.execute()
+
+    await _fire_attribute_changed(
+        r,
+        user_id=user_id,
+        brand_id=body.brand_id,
+        key=key,
+        old_value=old_value,
+        new_value=serialized_value,
+        meta=body.meta or {},
+    )
 
     return {
         "ok": True,
@@ -1659,6 +1746,7 @@ async def get_user_attribute_trend(
 #   user:{uid}:relationship_by_type:{type}            SET of related_uids
 
 _RELATIONSHIP_REVERSE_MAP: dict[str, str] = {
+    # ── Existing core ────────────────────────────────────────────────
     "parent_of": "child_of",
     "child_of": "parent_of",
     "spouse": "spouse",
@@ -1671,6 +1759,31 @@ _RELATIONSHIP_REVERSE_MAP: dict[str, str] = {
     "buddy": "buddy",
     "emergency_contact": "primary_user",
     "primary_user": "emergency_contact",
+    # ── Service relationships (agent/doctor/teacher/trainer/stylist) ──
+    "agent_of": "client_of",
+    "client_of": "agent_of",
+    "doctor_of": "patient_of",
+    "patient_of": "doctor_of",
+    "teacher_of": "student_of",
+    "student_of": "teacher_of",
+    "trainer_of": "trainee_of",
+    "trainee_of": "trainer_of",
+    "stylist_of": "client_of",  # polymorphic: stylist→client (also doctor→client)
+    # ── Logistics ────────────────────────────────────────────────────
+    "sender_of": "recipient_of",
+    "recipient_of": "sender_of",
+    "courier_of": "delivery_for",
+    "delivery_for": "courier_of",
+    # ── Ownership (human→entity, also generic) ───────────────────────
+    "owns": "owned_by",
+    "owned_by": "owns",
+    # ── B2B ──────────────────────────────────────────────────────────
+    "supplier_of": "buyer_of",
+    "buyer_of": "supplier_of",
+    "partner_with": "partner_with",  # symmetric
+    # ── Pet / Entity (alt naming) ────────────────────────────────────
+    "guardian_of": "ward_of",
+    "ward_of": "guardian_of",
 }
 
 _VALID_RELATIONSHIPS = set(_RELATIONSHIP_REVERSE_MAP.keys())
@@ -1876,6 +1989,641 @@ async def lookup_user_relationships(
         "relationship": body.relationship,
         "related_user_ids": sorted(members or []),
         "count": len(members or []),
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 5d-bis. RESOURCES  (stylist / doctor / property / agent / room / vehicle)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# A *resource* is a bookable, brand-owned slot of capacity — a stylist's
+# chair, a doctor's calendar, a hotel room, a car. Decoupled from the
+# reservations module: reservations *reference* resources by id, but
+# resources are usable for any availability/scheduling primitive (waitlists,
+# capacity caps, etc.).
+#
+# Keys
+#   brand:{bid}:resources                       SET of resource_ids
+#   brand:{bid}:resources:by_type:{type}        SET of resource_ids
+#   resource:{rid}                              HASH (full state)
+#   resource:{rid}:stats                        HASH counters (bookings_30d, ...)
+
+_VALID_RESOURCE_TYPES = {
+    "stylist", "doctor", "property", "agent",
+    "trainer", "room", "vehicle", "slot", "other",
+}
+
+
+def _resource_key(rid: str) -> str:
+    return f"resource:{rid}"
+
+
+def _resource_stats_key(rid: str) -> str:
+    return f"resource:{rid}:stats"
+
+
+def _brand_resources_key(bid: str) -> str:
+    return f"brand:{bid}:resources"
+
+
+def _brand_resources_by_type_key(bid: str, rtype: str) -> str:
+    return f"brand:{bid}:resources:by_type:{rtype}"
+
+
+class ResourceCreate(BaseModel):
+    resource_id: str = Field(..., min_length=1, max_length=128)
+    type: str = Field(..., min_length=1, max_length=64)
+    name: str = Field("", max_length=256)
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    schedule: dict[str, Any] = Field(default_factory=dict)
+    active: bool = True
+
+
+class ResourceStatsUpdate(BaseModel):
+    bookings_30d: int | None = Field(None, ge=0)
+    utilization_pct: float | None = Field(None, ge=0.0, le=100.0)
+    avg_rating: float | None = Field(None, ge=0.0, le=5.0)
+    no_show_rate: float | None = Field(None, ge=0.0, le=1.0)
+
+
+def _resource_hash_to_dict(raw: dict[str, str]) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        attrs = json.loads(raw.get("attributes") or "{}")
+    except Exception:
+        attrs = {}
+    try:
+        schedule = json.loads(raw.get("schedule") or "{}")
+    except Exception:
+        schedule = {}
+    return {
+        "resource_id": raw.get("resource_id", ""),
+        "brand_id": raw.get("brand_id", ""),
+        "type": raw.get("type", ""),
+        "name": raw.get("name", ""),
+        "attributes": attrs,
+        "schedule": schedule,
+        "active": raw.get("active", "1") == "1",
+        "created_at": int(raw.get("created_at") or 0),
+        "updated_at": int(raw.get("updated_at") or 0),
+    }
+
+
+@router.post("/brand/{brand_id}/resources")
+async def create_resource(
+    brand_id: str,
+    body: ResourceCreate,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Register a bookable resource under a brand.
+
+    The ``type`` is free-form but should normally be one of
+    ``stylist|doctor|property|agent|trainer|room|vehicle|slot|other``.
+    """
+    # Soft validation: unknown types accepted so brands can introduce
+    # vocabulary, but normal types should match _VALID_RESOURCE_TYPES.
+    if await r.hexists(_resource_key(body.resource_id), "resource_id"):
+        raise HTTPException(
+            409,
+            detail=f"resource {body.resource_id} already exists",
+        )
+
+    now = int(time.time())
+    state = {
+        "resource_id": body.resource_id,
+        "brand_id": brand_id,
+        "type": body.type,
+        "name": body.name,
+        "attributes": json.dumps(body.attributes),
+        "schedule": json.dumps(body.schedule),
+        "active": "1" if body.active else "0",
+        "created_at": str(now),
+        "updated_at": str(now),
+    }
+    pipe = r.pipeline()
+    pipe.hset(_resource_key(body.resource_id), mapping=state)
+    pipe.sadd(_brand_resources_key(brand_id), body.resource_id)
+    pipe.sadd(_brand_resources_by_type_key(brand_id, body.type), body.resource_id)
+    await pipe.execute()
+    return {
+        "ok": True,
+        "brand_id": brand_id,
+        "resource_id": body.resource_id,
+        "type": body.type,
+        "active": body.active,
+    }
+
+
+@router.get("/brand/{brand_id}/resources")
+async def list_resources(
+    brand_id: str,
+    type: str | None = None,
+    active: bool | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """List a brand's resources, optionally filtered by type and active flag."""
+    if type:
+        members = await r.smembers(_brand_resources_by_type_key(brand_id, type))
+    else:
+        members = await r.smembers(_brand_resources_key(brand_id))
+    out: list[dict[str, Any]] = []
+    for rid in members or []:
+        raw = await r.hgetall(_resource_key(rid))
+        if not raw:
+            continue
+        item = _resource_hash_to_dict(raw)
+        if active is not None and item.get("active") != active:
+            continue
+        out.append(item)
+    out.sort(key=lambda d: d.get("resource_id", ""))
+    return {
+        "brand_id": brand_id,
+        "type": type,
+        "count": len(out),
+        "resources": out,
+    }
+
+
+@router.get("/brand/{brand_id}/resources/{resource_id}")
+async def get_resource(
+    brand_id: str,
+    resource_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    raw = await r.hgetall(_resource_key(resource_id))
+    if not raw:
+        raise HTTPException(404, detail=f"resource {resource_id} not found")
+    out = _resource_hash_to_dict(raw)
+    if out.get("brand_id") and out["brand_id"] != brand_id:
+        raise HTTPException(
+            404,
+            detail=f"resource {resource_id} not owned by brand {brand_id}",
+        )
+    return out
+
+
+@router.delete("/brand/{brand_id}/resources/{resource_id}")
+async def delete_resource(
+    brand_id: str,
+    resource_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    raw = await r.hgetall(_resource_key(resource_id))
+    if not raw:
+        return {"ok": True, "deleted": False, "reason": "not_found"}
+    if raw.get("brand_id") and raw["brand_id"] != brand_id:
+        raise HTTPException(
+            404,
+            detail=f"resource {resource_id} not owned by brand {brand_id}",
+        )
+    rtype = raw.get("type", "")
+    pipe = r.pipeline()
+    pipe.delete(_resource_key(resource_id))
+    pipe.delete(_resource_stats_key(resource_id))
+    pipe.srem(_brand_resources_key(brand_id), resource_id)
+    if rtype:
+        pipe.srem(_brand_resources_by_type_key(brand_id, rtype), resource_id)
+    res = await pipe.execute()
+    return {
+        "ok": True,
+        "deleted": bool(res[0]),
+        "resource_id": resource_id,
+    }
+
+
+@router.post("/brand/{brand_id}/resources/{resource_id}/stats")
+async def update_resource_stats(
+    brand_id: str,
+    resource_id: str,
+    body: ResourceStatsUpdate,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Upsert operational stats for a resource.
+
+    Stats live on a side-car hash so callers can refresh them on a schedule
+    without touching the resource definition.
+    """
+    raw = await r.hgetall(_resource_key(resource_id))
+    if not raw:
+        raise HTTPException(404, detail=f"resource {resource_id} not found")
+    if raw.get("brand_id") and raw["brand_id"] != brand_id:
+        raise HTTPException(
+            404,
+            detail=f"resource {resource_id} not owned by brand {brand_id}",
+        )
+    mapping: dict[str, str] = {"updated_at": str(int(time.time()))}
+    if body.bookings_30d is not None:
+        mapping["bookings_30d"] = str(body.bookings_30d)
+    if body.utilization_pct is not None:
+        mapping["utilization_pct"] = f"{body.utilization_pct:.4f}"
+    if body.avg_rating is not None:
+        mapping["avg_rating"] = f"{body.avg_rating:.4f}"
+    if body.no_show_rate is not None:
+        mapping["no_show_rate"] = f"{body.no_show_rate:.4f}"
+    if len(mapping) == 1:
+        raise HTTPException(422, detail="no stat fields supplied")
+    await r.hset(_resource_stats_key(resource_id), mapping=mapping)
+    stats_raw = await r.hgetall(_resource_stats_key(resource_id))
+    return {
+        "ok": True,
+        "brand_id": brand_id,
+        "resource_id": resource_id,
+        "stats": {
+            "bookings_30d": int(stats_raw.get("bookings_30d") or 0),
+            "utilization_pct": float(stats_raw.get("utilization_pct") or 0.0),
+            "avg_rating": float(stats_raw.get("avg_rating") or 0.0),
+            "no_show_rate": float(stats_raw.get("no_show_rate") or 0.0),
+            "updated_at": int(stats_raw.get("updated_at") or 0),
+        },
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 5d-ter. ENTITIES  (non-human subjects: pets, vehicles, properties, ...)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# A KiX ID (``kid_xxx``) addresses a human (and burns one phone-number slot).
+# Pets, vehicles, devices, packages, and so on need identity + attributes
+# but should NOT consume the human namespace. Entities mint their own
+# ``eid_xxx`` and are always rooted at an owning user (the human responsible).
+#
+# Keys
+#   entity:{eid}                                 HASH (full state)
+#   entity:{eid}:attributes                      HASH (current values)
+#   entity:{eid}:attr_log:{key}                  LIST (time-series, lpush)
+#   entity:{eid}:reservations                    ZSET score=scheduled_at
+#   user:{uid}:entities                          SET of eids
+#   user:{uid}:entities:by_type:{type}           SET of eids
+#
+# Ownership is also recorded as a relationship edge:
+#     user --owns--> entity         (forward)
+#     entity --owned_by--> user     (reverse, lives on entity side only)
+
+_VALID_ENTITY_TYPES = {
+    "pet", "vehicle", "property", "device", "package", "other",
+}
+
+
+def _entity_key(eid: str) -> str:
+    return f"entity:{eid}"
+
+
+def _entity_attrs_key(eid: str) -> str:
+    return f"entity:{eid}:attributes"
+
+
+def _entity_attr_log_key(eid: str, key: str) -> str:
+    return f"entity:{eid}:attr_log:{key}"
+
+
+def _entity_reservations_key(eid: str) -> str:
+    return f"entity:{eid}:reservations"
+
+
+def _user_entities_key(uid: str) -> str:
+    return f"user:{uid}:entities"
+
+
+def _user_entities_by_type_key(uid: str, etype: str) -> str:
+    return f"user:{uid}:entities:by_type:{etype}"
+
+
+def _new_eid() -> str:
+    return f"eid_{uuid.uuid4().hex[:12]}"
+
+
+class EntityRegister(BaseModel):
+    entity_type: str = Field(..., min_length=1, max_length=64)
+    owner_user_id: str = Field(..., min_length=1, max_length=128)
+    name: str | None = Field(None, max_length=256)
+    species: str | None = Field(None, max_length=128)
+    breed: str | None = Field(None, max_length=128)
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class EntityUpdate(BaseModel):
+    name: str | None = Field(None, max_length=256)
+    species: str | None = Field(None, max_length=128)
+    breed: str | None = Field(None, max_length=128)
+    attributes: dict[str, Any] | None = None
+
+
+class EntityTransfer(BaseModel):
+    new_owner_user_id: str = Field(..., min_length=1, max_length=128)
+    evidence: dict[str, Any] | None = None
+
+
+class EntityAttrSet(BaseModel):
+    value: Any
+    log: bool = Field(
+        False,
+        description="If true, also append a time-series log entry for this key.",
+    )
+    history: bool = False  # alias for log
+    trend: bool = False    # alias for log (semantic hint)
+    source: Literal["self_declared", "measured", "inferred"] = "self_declared"
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    meta: dict[str, Any] | None = None
+    ttl_seconds: int | None = Field(default=None, ge=1)
+
+
+def _entity_hash_to_dict(raw: dict[str, str]) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        attrs = json.loads(raw.get("attributes") or "{}")
+    except Exception:
+        attrs = {}
+    return {
+        "entity_id": raw.get("entity_id", ""),
+        "entity_type": raw.get("entity_type", ""),
+        "owner_user_id": raw.get("owner_user_id", ""),
+        "name": raw.get("name") or None,
+        "species": raw.get("species") or None,
+        "breed": raw.get("breed") or None,
+        "attributes": attrs,
+        "created_at": int(raw.get("created_at") or 0),
+        "updated_at": int(raw.get("updated_at") or 0),
+    }
+
+
+@router.post("/entities/register")
+async def register_entity(
+    body: EntityRegister,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Mint an ``eid_xxx`` for a non-human subject and root it under an owner.
+
+    Automatically writes an ``owns`` relationship edge from the owner to the
+    new entity (and an ``owned_by`` reverse edge on the entity side so the
+    same relationship API can navigate human↔entity).
+    """
+    owner_uid = await resolve_canonical(r, body.owner_user_id)
+    eid = _new_eid()
+    now = int(time.time())
+    state: dict[str, str] = {
+        "entity_id": eid,
+        "entity_type": body.entity_type,
+        "owner_user_id": owner_uid,
+        "attributes": json.dumps(body.attributes),
+        "created_at": str(now),
+        "updated_at": str(now),
+    }
+    if body.name is not None:
+        state["name"] = body.name
+    if body.species is not None:
+        state["species"] = body.species
+    if body.breed is not None:
+        state["breed"] = body.breed
+
+    pipe = r.pipeline()
+    pipe.hset(_entity_key(eid), mapping=state)
+    pipe.sadd(_user_entities_key(owner_uid), eid)
+    pipe.sadd(_user_entities_by_type_key(owner_uid, body.entity_type), eid)
+    # owner → entity "owns" edge (reuse relationship index so callers can
+    # lookup via /users/{uid}/relationships?relationship=owns).
+    rel_payload_owns = {
+        "relationship_id": uuid.uuid4().hex[:16],
+        "relationship": "owns",
+        "meta": {"entity_type": body.entity_type},
+        "created_at": now,
+    }
+    pipe.hset(_rel_hash_key(owner_uid), eid, json.dumps(rel_payload_owns))
+    pipe.sadd(_rel_index_key(owner_uid, "owns"), eid)
+    # entity → owner "owned_by" reverse (lives on entity's own rel hash so the
+    # entity can answer "who owns me?" via the same machinery).
+    rel_payload_owned = {
+        "relationship_id": uuid.uuid4().hex[:16],
+        "relationship": "owned_by",
+        "meta": {"entity_type": body.entity_type},
+        "created_at": now,
+    }
+    pipe.hset(_rel_hash_key(eid), owner_uid, json.dumps(rel_payload_owned))
+    pipe.sadd(_rel_index_key(eid, "owned_by"), owner_uid)
+    await pipe.execute()
+
+    return {
+        "ok": True,
+        "entity_id": eid,
+        "entity_type": body.entity_type,
+        "owner_user_id": owner_uid,
+        "owns_edge_created": True,
+    }
+
+
+@router.get("/entities/{eid}")
+async def get_entity(eid: str, r: aioredis.Redis = Depends(get_redis)):
+    raw = await r.hgetall(_entity_key(eid))
+    if not raw:
+        raise HTTPException(404, detail=f"entity {eid} not found")
+    return _entity_hash_to_dict(raw)
+
+
+@router.post("/entities/{eid}/update")
+async def update_entity(
+    eid: str,
+    body: EntityUpdate,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    raw = await r.hgetall(_entity_key(eid))
+    if not raw:
+        raise HTTPException(404, detail=f"entity {eid} not found")
+    mapping: dict[str, str] = {"updated_at": str(int(time.time()))}
+    if body.name is not None:
+        mapping["name"] = body.name
+    if body.species is not None:
+        mapping["species"] = body.species
+    if body.breed is not None:
+        mapping["breed"] = body.breed
+    if body.attributes is not None:
+        # Merge instead of overwrite: callers expect partial updates here.
+        try:
+            existing = json.loads(raw.get("attributes") or "{}")
+        except Exception:
+            existing = {}
+        if not isinstance(existing, dict):
+            existing = {}
+        existing.update(body.attributes)
+        mapping["attributes"] = json.dumps(existing)
+    if len(mapping) == 1:
+        raise HTTPException(422, detail="no fields supplied")
+    await r.hset(_entity_key(eid), mapping=mapping)
+    new_raw = await r.hgetall(_entity_key(eid))
+    return {"ok": True, "entity_id": eid, **_entity_hash_to_dict(new_raw)}
+
+
+@router.post("/entities/{eid}/transfer-ownership")
+async def transfer_entity_ownership(
+    eid: str,
+    body: EntityTransfer,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Move ownership from current owner to new owner.
+
+    Rewrites:
+      * ``entity:{eid}`` owner field
+      * ``user:{old}:entities`` / ``user:{new}:entities`` (and by-type sets)
+      * ``user:{old} --owns--> eid`` edge → ``user:{new} --owns--> eid``
+      * ``entity:{eid} --owned_by--> user`` reverse edge
+    Idempotent if old and new are the same.
+    """
+    raw = await r.hgetall(_entity_key(eid))
+    if not raw:
+        raise HTTPException(404, detail=f"entity {eid} not found")
+    old_owner = raw.get("owner_user_id", "")
+    new_owner = await resolve_canonical(r, body.new_owner_user_id)
+    if old_owner == new_owner:
+        return {
+            "ok": True,
+            "entity_id": eid,
+            "owner_user_id": new_owner,
+            "noop": True,
+        }
+    etype = raw.get("entity_type", "")
+    now = int(time.time())
+
+    pipe = r.pipeline()
+    pipe.hset(
+        _entity_key(eid),
+        mapping={"owner_user_id": new_owner, "updated_at": str(now)},
+    )
+    if old_owner:
+        pipe.srem(_user_entities_key(old_owner), eid)
+        if etype:
+            pipe.srem(_user_entities_by_type_key(old_owner, etype), eid)
+        pipe.hdel(_rel_hash_key(old_owner), eid)
+        pipe.srem(_rel_index_key(old_owner, "owns"), eid)
+    pipe.sadd(_user_entities_key(new_owner), eid)
+    if etype:
+        pipe.sadd(_user_entities_by_type_key(new_owner, etype), eid)
+    rel_payload_owns = {
+        "relationship_id": uuid.uuid4().hex[:16],
+        "relationship": "owns",
+        "meta": {
+            "entity_type": etype,
+            "transferred_from": old_owner,
+            "evidence": body.evidence or {},
+        },
+        "created_at": now,
+    }
+    pipe.hset(_rel_hash_key(new_owner), eid, json.dumps(rel_payload_owns))
+    pipe.sadd(_rel_index_key(new_owner, "owns"), eid)
+    # Rewrite owned_by reverse on entity side.
+    rel_payload_owned = {
+        "relationship_id": uuid.uuid4().hex[:16],
+        "relationship": "owned_by",
+        "meta": {"entity_type": etype, "transferred_from": old_owner},
+        "created_at": now,
+    }
+    pipe.delete(_rel_hash_key(eid))  # wipe — owner is the only edge here
+    pipe.hset(_rel_hash_key(eid), new_owner, json.dumps(rel_payload_owned))
+    if old_owner:
+        pipe.srem(_rel_index_key(eid, "owned_by"), old_owner)
+    pipe.sadd(_rel_index_key(eid, "owned_by"), new_owner)
+    await pipe.execute()
+
+    return {
+        "ok": True,
+        "entity_id": eid,
+        "old_owner_user_id": old_owner,
+        "owner_user_id": new_owner,
+        "transferred_at": now,
+    }
+
+
+@router.get("/users/{uid}/entities")
+async def list_user_entities(
+    uid: str,
+    entity_type: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """List entities owned by a user, optionally filtered by ``entity_type``."""
+    uid = await resolve_canonical(r, uid)
+    if entity_type:
+        members = await r.smembers(_user_entities_by_type_key(uid, entity_type))
+    else:
+        members = await r.smembers(_user_entities_key(uid))
+    out: list[dict[str, Any]] = []
+    for eid in members or []:
+        raw = await r.hgetall(_entity_key(eid))
+        if not raw:
+            continue
+        out.append(_entity_hash_to_dict(raw))
+    out.sort(key=lambda d: d.get("entity_id", ""))
+    return {
+        "user_id": uid,
+        "entity_type": entity_type,
+        "count": len(out),
+        "entities": out,
+    }
+
+
+@router.post("/entities/{eid}/attributes")
+async def set_entity_attribute(
+    eid: str,
+    body: dict[str, Any],
+    key: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Set a single attribute on an entity.
+
+    Body accepts the same shape as :class:`EntityAttrSet` plus an optional
+    ``key`` (top-level) — when ``key`` is omitted in the query string, the
+    body must contain ``key``. Time-series append happens iff any of
+    ``log`` / ``history`` / ``trend`` is true.
+    """
+    if not await r.exists(_entity_key(eid)):
+        raise HTTPException(404, detail=f"entity {eid} not found")
+    attr_key = key or body.get("key")
+    if not attr_key or not isinstance(attr_key, str):
+        raise HTTPException(422, detail="missing 'key'")
+    if "value" not in body:
+        raise HTTPException(422, detail="missing 'value'")
+    try:
+        parsed = EntityAttrSet(**{k: v for k, v in body.items() if k != "key"})
+    except Exception as exc:
+        raise HTTPException(422, detail=f"invalid body: {exc}") from exc
+
+    value_str = _serialize_attr_value(parsed.value)
+    now = int(time.time())
+    do_log = parsed.log or parsed.history or parsed.trend
+
+    pipe = r.pipeline()
+    pipe.hset(_entity_attrs_key(eid), attr_key, value_str)
+    pipe.hset(
+        _entity_key(eid), mapping={"updated_at": str(now)},
+    )
+    if parsed.ttl_seconds:
+        # Sidecar TTL (mirrors user-attr pattern at the entity scope).
+        pipe.set(
+            f"entity:{eid}:attribute:{attr_key}",
+            value_str,
+            ex=parsed.ttl_seconds,
+        )
+    if do_log:
+        entry = {
+            "entry_id": uuid.uuid4().hex[:16],
+            "ts": now,
+            "value": value_str,
+            "source": parsed.source,
+        }
+        if parsed.confidence is not None:
+            entry["confidence"] = round(float(parsed.confidence), 4)
+        if parsed.meta:
+            entry["meta"] = parsed.meta
+        log_key = _entity_attr_log_key(eid, attr_key)
+        pipe.lpush(log_key, json.dumps(entry))
+        pipe.ltrim(log_key, 0, _ATTR_LOG_MAX_ENTRIES - 1)
+    await pipe.execute()
+
+    return {
+        "ok": True,
+        "entity_id": eid,
+        "key": attr_key,
+        "value": value_str,
+        "logged": do_log,
+        "ts": now,
     }
 
 
