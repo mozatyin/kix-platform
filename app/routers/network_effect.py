@@ -354,6 +354,30 @@ async def _store_invite(
         DAILY_COUNTER_TTL_SECONDS,
     )
     await pipe.execute()
+    # Locale-aware viral-invite email (additive — best-effort).
+    # Sends to the *inviter* as a confirmation that their invite is
+    # live and that the invitee will see it. The actual invitee-side
+    # delivery happens when they tap the share link (separate flow).
+    try:
+        from app.services.email_template_service import enqueue_email
+        locale_raw = await r.get(f"brand:{brand_id}:locale")
+        if isinstance(locale_raw, (bytes, bytearray)):
+            locale_raw = locale_raw.decode()
+        locale = locale_raw or "en-SG"
+        await enqueue_email(
+            r,
+            brand_id=brand_id,
+            template_id="viral_invite_received",
+            locale=locale,
+            user_name=from_user_id,
+            inviter_name=from_user_id,
+            invite_url=f"invite://{token}",
+        )
+    except Exception as _exc:  # pragma: no cover — never block invite
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "viral_invite_email enqueue failed brand=%s: %s", brand_id, _exc
+        )
     return record
 
 

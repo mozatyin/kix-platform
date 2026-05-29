@@ -26,6 +26,9 @@ dependencies = [
     # Locale-aware number/date/currency formatting (CLDR-backed).
     # Wired through app.i18n.formatting & app.i18n.currency.
     "babel>=2.14",
+    # Email/push template rendering (Jinja2 fragments per locale).
+    # See app/email_templates/ + app/services/email_template_service.py.
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]

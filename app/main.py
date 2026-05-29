@@ -368,6 +368,14 @@ and the shim helpers in `app.api_standards`.
         i18n_router.router, prefix="/api/v1/i18n", tags=["i18n"]
     )
 
+    # ── i18n glossary — terminology manager for the LLM translator ──────
+    from app.routers import i18n_glossary as i18n_glossary_router
+    app.include_router(
+        i18n_glossary_router.router,
+        prefix="/api/v1/i18n/glossary",
+        tags=["i18n"],
+    )
+
     # ── Disputes + Refund: merchant challenges fraud/fake conversions ──
     from app.routers import disputes
     app.include_router(
@@ -536,6 +544,14 @@ and the shim helpers in `app.api_standards`.
         push_engine.router,
         prefix="/api/v1/push",
         tags=["push"],
+    )
+
+    # ── Email + push template admin (locale-aware) ─────────────────────
+    from app.routers import email_admin
+    app.include_router(
+        email_admin.router,
+        prefix="/api/v1/admin",
+        tags=["email-admin"],
     )
 
     # ── Transactions: universal commerce ledger (purchase/refund/...) ──
