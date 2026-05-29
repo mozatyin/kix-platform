@@ -219,10 +219,22 @@ def create_app() -> FastAPI:
         wallet.router, prefix="/api/v1/wallet", tags=["wallet"]
     )
 
+    # ── Disputes + Refund: merchant challenges fraud/fake conversions ──
+    from app.routers import disputes
+    app.include_router(
+        disputes.router, prefix="/api/v1/disputes", tags=["disputes"]
+    )
+
     # ── Geofence: Location-Based Discovery (store geo + push triggers) ─
     from app.routers import geofence
     app.include_router(
         geofence.router, prefix="/api/v1/geofence", tags=["geofence"]
+    )
+
+    # ── Consent / Privacy: GDPR/PIPL/Indonesia-PDP legal spine ─────────
+    from app.routers import consent
+    app.include_router(
+        consent.router, prefix="/api/v1/consent", tags=["consent"]
     )
 
     # ── Campaign Manager + Auction Engine (Google-Ads-style) ───────────
@@ -232,6 +244,56 @@ def create_app() -> FastAPI:
     )
     app.include_router(
         auction.router, prefix="/api/v1/auction", tags=["auction"]
+    )
+
+    # ── Audiences: Custom + Lookalike for retargeting / exclusion ──────
+    from app.routers import audiences
+    app.include_router(
+        audiences.router, prefix="/api/v1/audiences", tags=["audiences"]
+    )
+
+    # ── Frequency Cap + Pacing: protect users from ad burn-out ─────────
+    from app.routers import frequency_cap
+    app.include_router(
+        frequency_cap.router,
+        prefix="/api/v1/frequency-cap",
+        tags=["frequency-cap"],
+    )
+
+    # ── Conversion Pixel: GA-style JS pixel for merchant websites ──────
+    from app.routers import pixel
+    app.include_router(
+        pixel.router, prefix="/api/v1/pixel", tags=["pixel"]
+    )
+
+    # ── Payouts & Settlement: bank accounts, payouts, invoices, cron ───
+    from app.routers import payouts
+    app.include_router(
+        payouts.router, prefix="/api/v1/payouts", tags=["payouts"]
+    )
+
+    # ── Creative Generator: ELTM-powered on-demand HTML game creatives ─
+    from app.routers import creative_gen
+    app.include_router(
+        creative_gen.router,
+        prefix="/api/v1/creative-gen",
+        tags=["creative_gen"],
+    )
+
+    # ── Master Accounts + RBAC (corp-level ownership + per-role scopes) ─
+    from app.routers import master_accounts
+    app.include_router(
+        master_accounts.router,
+        prefix="/api/v1/master",
+        tags=["master_accounts"],
+    )
+
+    # ── Storefront: public brand profile pages + reviews + discover ────
+    from app.routers import storefront
+    app.include_router(
+        storefront.router,
+        prefix="/api/v1/storefront",
+        tags=["storefront"],
     )
 
     # ── Root redirect to Landing Page ──────────────────────────────────
@@ -244,6 +306,11 @@ def create_app() -> FastAPI:
     _landing_dir = _os.path.join(_os.path.dirname(__file__), "..", "landing")
     if _os.path.isdir(_landing_dir):
         app.mount("/landing", StaticFiles(directory=_landing_dir), name="landing")
+        # Expose JS SDKs (kix.js, kix-pixel.js) at a stable /sdk/* URL so the
+        # merchant embed snippet stays short and version-independent.
+        _sdk_dir = _os.path.join(_landing_dir, "sdk")
+        if _os.path.isdir(_sdk_dir):
+            app.mount("/sdk", StaticFiles(directory=_sdk_dir), name="sdk")
 
     return app
 

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title id="page-title">Brand on KiX</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#00FC00;
+  --dark:#0a0a0a;
+  --card:#111;
+  --card-hover:#161616;
+  --border:#1e1e1e;
+  --text:#fff;
+  --text-dim:rgba(255,255,255,.65);
+  --text-muted:rgba(255,255,255,.4);
+  --radius:14px;
+  --radius-sm:10px;
+}
+html,body{font-family:'Inter',system-ui,sans-serif;background:var(--dark);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+
+/* ── Hero ─────────────────────────────────────────── */
+.storefront-hero{
+  position:relative;width:100%;height:280px;
+  background:#222;overflow:hidden;
+}
+.storefront-hero img.bg{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;opacity:.45;
+}
+.hero-overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:flex-end;padding:20px 20px 24px;gap:8px;
+  background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.85) 100%);
+}
+.hero-overlay .logo{
+  width:64px;height:64px;border-radius:50%;background:#222;
+  border:3px solid var(--brand);object-fit:cover;
+}
+.hero-overlay h1{font-size:24px;font-weight:800;line-height:1.1}
+.hero-overlay p{font-size:13px;color:var(--text-dim);line-height:1.45;max-width:90%}
+.hero-meta{display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:4px}
+.hero-meta span b{color:var(--text);font-weight:600}
+.follow-btn{
+  position:absolute;top:16px;right:16px;
+  padding:8px 16px;border-radius:20px;
+  background:var(--brand);color:#000;font-weight:700;font-size:13px;
+  transition:transform .15s ease,opacity .15s ease;
+}
+.follow-btn:active{transform:scale(.96)}
+.follow-btn.following{background:#222;color:var(--text-dim);border:1px solid var(--border)}
+
+/* ── Tabs ─────────────────────────────────────────── */
+.storefront-tabs{
+  display:flex;gap:4px;padding:0 12px;border-bottom:1px solid var(--border);
+  background:var(--dark);position:sticky;top:0;z-index:10;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+.storefront-tabs button{
+  background:transparent;color:var(--text-dim);
+  padding:14px 16px;font-size:14px;font-weight:600;
+  border-bottom:2px solid transparent;white-space:nowrap;
+  transition:color .15s,border-color .15s;
+}
+.storefront-tabs button.active{color:var(--brand);border-bottom-color:var(--brand)}
+
+/* ── Content ──────────────────────────────────────── */
+#storefront-content{padding:16px 12px 80px;min-height:200px}
+.loading,.empty{padding:48px 20px;text-align:center;color:var(--text-muted);font-size:14px}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;margin-bottom:10px;
+  transition:background .15s;
+}
+.card:active{background:var(--card-hover)}
+.card h3{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.card .badge{
+  display:inline-block;padding:2px 6px;border-radius:4px;
+  background:var(--brand);color:#000;font-size:10px;font-weight:700;
+}
+.card p{font-size:13px;color:var(--text-dim);line-height:1.5;margin-bottom:10px}
+.card .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card .meta{font-size:11px;color:var(--text-muted)}
+.card button{
+  padding:8px 14px;border-radius:8px;
+  background:var(--brand);color:#000;font-weight:700;font-size:13px;
+}
+
+/* ── Review-specific ──────────────────────────────── */
+.reviews-summary{
+  display:flex;align-items:center;gap:14px;padding:14px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:12px;
+}
+.reviews-summary .avg{font-size:36px;font-weight:800;color:var(--brand)}
+.reviews-summary .meta{font-size:12px;color:var(--text-dim)}
+.review-item{padding:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px}
+.review-item .head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:6px}
+.review-item .stars{color:var(--brand);font-size:13px;letter-spacing:1px}
+.review-item .body{font-size:13px;line-height:1.5}
+
+.write-review{
+  margin-top:14px;padding:14px;background:var(--card);
+  border:1px dashed var(--border);border-radius:var(--radius-sm);
+}
+.write-review h4{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-dim)}
+.write-review .rating-pick{display:flex;gap:4px;margin-bottom:8px;font-size:24px}
+.write-review .rating-pick span{cursor:pointer;color:var(--text-muted);transition:color .12s}
+.write-review .rating-pick span.on{color:var(--brand)}
+.write-review textarea{
+  width:100%;background:var(--dark);color:var(--text);
+  border:1px solid var(--border);border-radius:8px;
+  padding:10px;font-size:13px;font-family:inherit;
+  min-height:64px;resize:vertical;
+}
+.write-review .submit{margin-top:8px;padding:9px 16px;border-radius:8px;background:var(--brand);color:#000;font-weight:700;font-size:13px}
+
+/* ── Stores ───────────────────────────────────────── */
+.store-item .addr{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.store-item .geo{font-size:11px;color:var(--text-muted)}
+
+/* ── Toast ────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--brand);color:#000;padding:10px 20px;border-radius:24px;
+  font-weight:700;font-size:13px;z-index:1000;
+  animation:toast-in .25s ease;
+}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+</style>
+</head>
+<body>
+  <div class="storefront-hero" id="hero">
+    <div class="loading">加载中...</div>
+  </div>
+  <div class="storefront-tabs" id="tabs">
+    <button data-tab="games" class="active">游戏</button>
+    <button data-tab="vouchers">优惠券</button>
+    <button data-tab="stores">门店</button>
+    <button data-tab="reviews">评价</button>
+  </div>
+  <div id="storefront-content"><div class="loading">加载中...</div></div>
+
+  <script src="/landing/sdk/kix-pixel.js" data-pixel="STOREFRONT_PIXEL"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const brandId = params.get('b');
+    let profile = null;
+
+    function toast(msg){
+      const t=document.createElement('div');t.className='toast';t.textContent=msg;
+      document.body.appendChild(t);
+      setTimeout(()=>t.remove(),1800);
+    }
+
+    function escapeHtml(s){
+      return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function load(){
+      if(!brandId){
+        document.getElementById('hero').innerHTML='<div class="loading">缺少 brand 参数 (?b=...)</div>';
+        document.getElementById('storefront-content').innerHTML='';
+        return;
+      }
+      try{
+        profile = await fetch(`/api/v1/storefront/${brandId}`).then(r=>{
+          if(!r.ok) throw new Error('not found');
+          return r.json();
+        });
+      }catch(e){
+        document.getElementById('hero').innerHTML='<div class="loading">店铺不存在</div>';
+        document.getElementById('storefront-content').innerHTML='';
+        return;
+      }
+      document.getElementById('page-title').textContent=(profile.display_name||brandId)+' · KiX';
+      if(profile.brand_color){
+        document.documentElement.style.setProperty('--brand',profile.brand_color);
+      }
+      renderHero();
+      loadTab('games');
+    }
+
+    function renderHero(){
+      const followBtn = isFollowing()
+        ? '<button class="follow-btn following" onclick="toggleFollow()">已关注</button>'
+        : '<button class="follow-btn" onclick="toggleFollow()">+ 关注</button>';
+      document.getElementById('hero').innerHTML = `
+        ${profile.hero_image_url ? `<img class="bg" src="${escapeHtml(profile.hero_image_url)}" alt="">` : ''}
+        ${followBtn}
+        <div class="hero-overlay">
+          ${profile.logo_url ? `<img class="logo" src="${escapeHtml(profile.logo_url)}" alt="">` : ''}
+          <h1>${escapeHtml(profile.display_name)}</h1>
+          ${profile.bio ? `<p>${escapeHtml(profile.bio)}</p>` : ''}
+          <div class="hero-meta">
+            <span><b>${profile.follower_count||0}</b> 粉丝</span>
+            <span><b>${(profile.avg_rating||0).toFixed(1)}</b> ★ (${profile.rating_count||0})</span>
+            ${profile.country?`<span>${escapeHtml(profile.country)}</span>`:''}
+          </div>
+        </div>`;
+    }
+
+    function isFollowing(){
+      const followed = JSON.parse(localStorage.getItem('_kix_followed_brands')||'[]');
+      return followed.includes(brandId);
+    }
+
+    async function toggleFollow(){
+      let userId = localStorage.getItem('_kix_uid');
+      if(!userId){
+        userId = prompt('请输入注册时使用的 user_id');
+        if(!userId) return;
+        localStorage.setItem('_kix_uid', userId);
+      }
+      const following = isFollowing();
+      const url = `/api/v1/storefront/${brandId}/${following?'unfollow':'follow'}`;
+      try{
+        await fetch(url,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({user_id:userId})
+        });
+        const followed = JSON.parse(localStorage.getItem('_kix_followed_brands')||'[]');
+        const set = new Set(followed);
+        if(following) set.delete(brandId); else set.add(brandId);
+        localStorage.setItem('_kix_followed_brands',JSON.stringify([...set]));
+        profile.follower_count = (profile.follower_count||0) + (following ? -1 : 1);
+        renderHero();
+        toast(following ? '已取消关注' : '已关注');
+      }catch(e){
+        toast('操作失败');
+      }
+    }
+
+    async function loadTab(tab){
+      const c = document.getElementById('storefront-content');
+      c.innerHTML = '<div class="loading">加载中...</div>';
+      try{
+        const data = await fetch(`/api/v1/storefront/${brandId}/${tab}`).then(r=>r.json());
+        if(tab==='reviews'){ renderReviews(data); return; }
+        const items = data.games || data.vouchers || data.stores || [];
+        if(!items.length){ c.innerHTML='<div class="empty">暂无内容</div>'; return; }
+        c.innerHTML = items.map(item => renderItem(tab, item)).join('');
+      }catch(e){
+        c.innerHTML='<div class="empty">加载失败</div>';
+      }
+    }
+
+    function renderItem(tab, item){
+      if(tab==='games'){
+        return `<div class="card">
+          <h3>${escapeHtml(item.name||item.game_slug||'-')}${item.featured?'<span class="badge">精选</span>':''}</h3>
+          ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
+          <div class="row">
+            <span class="meta">${escapeHtml(item.game_slug||'')}</span>
+            <button onclick="play('${encodeURIComponent(item.game_slug||item.id)}')">玩</button>
+          </div>
+        </div>`;
+      }
+      if(tab==='vouchers'){
+        const value = item.value!=null ? `${item.value}${item.currency?' '+item.currency:''}` : '';
+        return `<div class="card">
+          <h3>${escapeHtml(item.title||'-')}${item.featured?'<span class="badge">精选</span>':''}</h3>
+          ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
+          <div class="row">
+            <span class="meta">${escapeHtml(value)}</span>
+            <button onclick="claim('${escapeHtml(item.id)}')">领取</button>
+          </div>
+        </div>`;
+      }
+      if(tab==='stores'){
+        return `<div class="card store-item">
+          <h3>${escapeHtml(item.name||'-')}</h3>
+          ${item.address?`<div class="addr">${escapeHtml(item.address)}</div>`:''}
+          ${item.lat!=null?`<div class="geo">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)} · ${item.radius_meters||0}m</div>`:''}
+        </div>`;
+      }
+      return '';
+    }
+
+    function renderReviews(data){
+      const c = document.getElementById('storefront-content');
+      const reviews = data.reviews || [];
+      const summary = `<div class="reviews-summary">
+        <div class="avg">${(data.avg_rating||0).toFixed(1)}</div>
+        <div>
+          <div class="stars">${stars(data.avg_rating||0)}</div>
+          <div class="meta">${data.count||0} 条评价</div>
+        </div>
+      </div>`;
+      const list = reviews.length
+        ? reviews.map(rv => `<div class="review-item">
+            <div class="head">
+              <span>${escapeHtml(rv.user_id)}</span>
+              <span class="stars">${stars(rv.rating)}</span>
+            </div>
+            ${rv.comment?`<div class="body">${escapeHtml(rv.comment)}</div>`:''}
+          </div>`).join('')
+        : '<div class="empty">还没有评价 — 第一个评价吧</div>';
+      const form = `<div class="write-review">
+        <h4>写一条评价</h4>
+        <div class="rating-pick" id="rating-pick">
+          ${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="pickRating(${n})">★</span>`).join('')}
+        </div>
+        <textarea id="review-text" placeholder="说说你的体验..."></textarea>
+        <button class="submit" onclick="submitReview()">提交</button>
+      </div>`;
+      c.innerHTML = summary + list + form;
+    }
+
+    let pickedRating = 0;
+    function pickRating(n){
+      pickedRating = n;
+      document.querySelectorAll('#rating-pick span').forEach(s=>{
+        s.classList.toggle('on', parseInt(s.dataset.n,10) <= n);
+      });
+    }
+
+    async function submitReview(){
+      if(!pickedRating){ toast('请先选择星级'); return; }
+      let userId = localStorage.getItem('_kix_uid');
+      if(!userId){
+        userId = prompt('请输入注册时使用的 user_id');
+        if(!userId) return;
+        localStorage.setItem('_kix_uid', userId);
+      }
+      const comment = document.getElementById('review-text').value.trim();
+      try{
+        const resp = await fetch(`/api/v1/storefront/${brandId}/review`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({user_id:userId, rating:pickedRating, comment, anonymous:false})
+        });
+        if(!resp.ok) throw new Error('fail');
+        toast('已提交');
+        pickedRating = 0;
+        loadTab('reviews');
+      }catch(e){
+        toast('提交失败');
+      }
+    }
+
+    function stars(n){
+      const full = Math.round(n);
+      return '★'.repeat(full) + '☆'.repeat(Math.max(0, 5-full));
+    }
+
+    function play(gameSlug){
+      window.location.href = `/landing/play.html?brand=${encodeURIComponent(brandId)}&game=${gameSlug}`;
+    }
+
+    function claim(voucherId){
+      window.location.href = `/landing/play.html?brand=${encodeURIComponent(brandId)}&voucher=${encodeURIComponent(voucherId)}`;
+    }
+
+    document.querySelectorAll('.storefront-tabs button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        document.querySelectorAll('.storefront-tabs button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        loadTab(b.dataset.tab);
+      });
+    });
+
+    load();
+  </script>
+</body>
+</html>

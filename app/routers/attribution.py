@@ -69,6 +69,23 @@ FRAUD_SIGNAL_LOG_MAX = 200
 DEFAULT_COMMISSION_RATE = 0.10        # 10% of conversion to platform+source
 DEFAULT_KIX_TAKE_FRACTION = 0.30      # KiX keeps 30% of commission
 
+# Multi-touch attribution
+SUPPORTED_MTA_MODELS = {
+    "last_touch", "first_touch", "linear",
+    "time_decay", "position_based", "data_driven",
+}
+TIME_DECAY_HALF_LIFE_SECONDS = 86400 * 2  # 2 days
+VIEW_THROUGH_WEIGHT = 0.3                 # 30% credit for impression-only touchpoints
+
+# Take rate ladder defaults — used when no custom ladder is configured
+DEFAULT_TAKE_RATE_LADDER = [
+    {"min_gmv_cents": 0,           "commission_rate": 0.10, "kix_take": 0.30, "label": "starter"},
+    {"min_gmv_cents": 1_000_000,   "commission_rate": 0.08, "kix_take": 0.25, "label": "growth"},
+    {"min_gmv_cents": 10_000_000,  "commission_rate": 0.06, "kix_take": 0.20, "label": "premium"},
+    {"min_gmv_cents": 100_000_000, "commission_rate": 0.05, "kix_take": 0.15, "label": "enterprise"},
+]
+TAKE_RATE_LADDER_KEY = "attribution:take_rate_ladder"
+
 
 # ── Pydantic models ────────────────────────────────────────────────────────
 
@@ -801,9 +818,12 @@ async def track_conversion(
     except json.JSONDecodeError:
         campaign_id = None
 
-    commission_rate = DEFAULT_COMMISSION_RATE
+    # Take-rate ladder: brand-tier-based commission, falls back to defaults.
+    tier = await _pick_take_rate_tier(r, src)
+    commission_rate = tier["commission_rate"]
+    kix_fraction = tier["kix_take"]
     commission_cents = int(round(req.amount_cents * commission_rate))
-    kix_take_cents = int(round(commission_cents * DEFAULT_KIX_TAKE_FRACTION))
+    kix_take_cents = int(round(commission_cents * kix_fraction))
     source_brand_take_cents = commission_cents - kix_take_cents
 
     # Roll up per-brand commission accounting (audit trail).
@@ -811,6 +831,9 @@ async def track_conversion(
     pipe.hincrby(f"brand:{src}:commission_owed", "cents", source_brand_take_cents)
     pipe.hincrby("kix:commission_collected", "cents", kix_take_cents)
     pipe.hincrby(f"brand:{req.target_brand}:commission_paid", "cents", commission_cents)
+    # Lifetime GMV is keyed off the *source* brand — that's what the ladder
+    # tiers against (acquisition-driver volume).
+    pipe.incrby(f"brand:{src}:gmv_lifetime", req.amount_cents)
     await pipe.execute()
 
     return ConversionCheckResponse(
@@ -1035,3 +1058,655 @@ async def attribution_health(r: aioredis.Redis = Depends(get_redis)):
         "default_commission_rate": DEFAULT_COMMISSION_RATE,
         "default_kix_take_fraction": DEFAULT_KIX_TAKE_FRACTION,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Multi-Touch Attribution
+# ═══════════════════════════════════════════════════════════════════════════
+
+class MultiTouchConversionRequest(BaseModel):
+    user_id: str
+    target_brand: str
+    order_id: str
+    amount_cents: int = Field(ge=0)
+    model: Literal[
+        "linear", "time_decay", "position_based",
+        "first_touch", "last_touch", "data_driven",
+    ] = "linear"
+    window_seconds: int = ATTRIBUTION_WINDOW_SECONDS
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class MultiTouchSplit(BaseModel):
+    source_brand: str
+    touchpoint_id: str
+    stage: str
+    weight: float
+    view_through: bool = False
+    kix_take_cents: int
+    source_brand_take_cents: int
+    commission_cents: int
+
+
+class MultiTouchConversionResponse(BaseModel):
+    attributed: bool
+    event_id: str
+    model: str
+    splits: list[MultiTouchSplit]
+    total_kix_take_cents: int
+    total_commission_cents: int
+
+
+def compute_weights(tps: list[dict[str, Any]], model: str) -> list[float]:
+    """Pure weight computation. Inputs assumed chronological (first → last)."""
+    n = len(tps)
+    if n == 0:
+        return []
+    if model == "last_touch":
+        return [0.0] * (n - 1) + [1.0]
+    if model == "first_touch":
+        return [1.0] + [0.0] * (n - 1)
+    if model == "linear":
+        return [1.0 / n] * n
+    if model == "position_based":
+        if n == 1:
+            return [1.0]
+        if n == 2:
+            return [0.5, 0.5]
+        middle = (n - 2)
+        return [0.4] + [0.2 / middle] * middle + [0.4]
+    if model == "time_decay":
+        now = time.time()
+        raw = [
+            math.exp(-(now - float(t.get("timestamp", now) or now)) / TIME_DECAY_HALF_LIFE_SECONDS)
+            for t in tps
+        ]
+        s = sum(raw) or 1.0
+        return [w / s for w in raw]
+    if model == "data_driven":
+        # Shapley-ish: each touchpoint's weight ∝ a static stage lift prior,
+        # boosted by historical conversion lift for its source_brand if known.
+        stage_prior = {
+            STAGE_CLICK: 1.0,
+            STAGE_VISIT: 0.7,
+            STAGE_INSTALL: 0.6,
+            STAGE_IMPRESSION: 0.3,
+        }
+        raw: list[float] = []
+        for t in tps:
+            base = stage_prior.get(t.get("stage", ""), 0.5)
+            lift = float(t.get("_dd_lift", 1.0))
+            raw.append(base * lift)
+        s = sum(raw) or 1.0
+        return [w / s for w in raw]
+    # default fall-through: linear
+    return [1.0 / n] * n
+
+
+async def _enrich_with_data_driven_lift(
+    r: aioredis.Redis, tps: list[dict[str, Any]]
+) -> None:
+    """For 'data_driven' model: lookup per-source lift = conv/exposure ratio."""
+    for t in tps:
+        src = t.get("source_brand")
+        if not src:
+            t["_dd_lift"] = 1.0
+            continue
+        gmv = await r.get(f"brand:{src}:gmv_lifetime")
+        # crude proxy: log scale of lifetime GMV (more historical lift → higher weight).
+        try:
+            gmv_v = int(gmv) if gmv else 0
+        except (TypeError, ValueError):
+            gmv_v = 0
+        t["_dd_lift"] = 1.0 + math.log1p(gmv_v) / 20.0
+
+
+def _is_view_through(tp: dict[str, Any]) -> bool:
+    """Impression-only touchpoint (never followed by a click for that source)."""
+    return tp.get("stage") == STAGE_IMPRESSION
+
+
+async def attribute_multitouch(
+    user_id: str,
+    target_brand: str,
+    model: str,
+    r: aioredis.Redis,
+    window: int = ATTRIBUTION_WINDOW_SECONDS,
+) -> list[tuple[dict[str, Any], float]] | None:
+    """Collect attributable touchpoints, compute weights, return zipped list.
+
+    Returns None if no valid touchpoints exist in the window.
+    """
+    journey = await r.lrange(f"user:{user_id}:attr_journey", 0, 200)
+    touchpoints: list[dict[str, Any]] = []
+    now = _now()
+
+    # Walk reverse-chrono; stop at first out-of-window event.
+    click_sources: set[str] = set()
+    candidates: list[dict[str, Any]] = []
+    for eid in journey:
+        e = await r.hgetall(f"attr:{eid}")
+        if not e:
+            continue
+        try:
+            ts = float(e.get("timestamp", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if now - ts > window:
+            break
+        if e.get("stage") not in ATTRIBUTABLE_STAGES:
+            continue
+        src = e.get("source_brand") or ""
+        if not src or src == target_brand:
+            continue
+        candidates.append(e)
+        if e.get("stage") == STAGE_CLICK:
+            click_sources.add(src)
+
+    if not candidates:
+        return None
+
+    # Flag view-through: an impression for a source that never produced a click.
+    for c in candidates:
+        c["_view_through"] = (
+            c.get("stage") == STAGE_IMPRESSION
+            and (c.get("source_brand") or "") not in click_sources
+        )
+
+    # Chronological order: first → last.
+    candidates.reverse()
+
+    if model == "data_driven":
+        await _enrich_with_data_driven_lift(r, candidates)
+
+    weights = compute_weights(candidates, model)
+
+    # Apply view-through downweighting *after* normalization, then renormalize.
+    adjusted: list[float] = []
+    for tp, w in zip(candidates, weights):
+        if tp.get("_view_through"):
+            adjusted.append(w * VIEW_THROUGH_WEIGHT)
+        else:
+            adjusted.append(w)
+    s = sum(adjusted)
+    if s > 0:
+        adjusted = [a / s for a in adjusted]
+    else:
+        adjusted = weights
+
+    return list(zip(candidates, adjusted))
+
+
+@router.post(
+    "/track/conversion-multi",
+    response_model=MultiTouchConversionResponse,
+)
+async def track_conversion_multi(
+    req: MultiTouchConversionRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Records a conversion and splits credit across multiple touchpoints.
+
+    Does NOT replace /track/conversion — runs in parallel. Idempotency key
+    is namespaced to the model so the same order may have a last-touch
+    *and* a linear record without colliding.
+    """
+    if req.model not in SUPPORTED_MTA_MODELS:
+        raise HTTPException(status_code=400, detail=f"unsupported model: {req.model}")
+
+    idem_key = f"attr:order_mta:{req.target_brand}:{req.model}:{req.order_id}"
+    existing = await r.get(idem_key)
+    if existing:
+        cached_payload = await r.get(f"attr:mta_result:{existing}")
+        if cached_payload:
+            try:
+                return MultiTouchConversionResponse(**json.loads(cached_payload))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    attributed = await attribute_multitouch(
+        req.user_id, req.target_brand, req.model, r, req.window_seconds
+    )
+
+    meta = dict(req.context or {})
+    meta["order_id"] = req.order_id
+    meta["mta_model"] = req.model
+
+    event_id, _ts = await _persist_event(
+        r,
+        stage=STAGE_CONVERSION,
+        user_id=req.user_id,
+        target_brand=req.target_brand,
+        value_cents=req.amount_cents,
+        meta=meta,
+    )
+
+    if not attributed:
+        resp = MultiTouchConversionResponse(
+            attributed=False,
+            event_id=event_id,
+            model=req.model,
+            splits=[],
+            total_kix_take_cents=0,
+            total_commission_cents=0,
+        )
+        await r.set(idem_key, event_id, ex=EVENT_TTL_SECONDS)
+        await r.set(f"attr:mta_result:{event_id}", resp.json(), ex=EVENT_TTL_SECONDS)
+        return resp
+
+    splits: list[MultiTouchSplit] = []
+    total_kix = 0
+    total_commission = 0
+    pipe = r.pipeline(transaction=True)
+    for tp, weight in attributed:
+        src = tp.get("source_brand") or ""
+        if not src or weight <= 0:
+            continue
+        tier = await _pick_take_rate_tier(r, src)
+        share_amount = int(round(req.amount_cents * weight))
+        commission = int(round(share_amount * tier["commission_rate"]))
+        kix_cents = int(round(commission * tier["kix_take"]))
+        src_cents = commission - kix_cents
+
+        splits.append(MultiTouchSplit(
+            source_brand=src,
+            touchpoint_id=tp.get("event_id", ""),
+            stage=tp.get("stage", ""),
+            weight=round(float(weight), 6),
+            view_through=bool(tp.get("_view_through")),
+            commission_cents=commission,
+            kix_take_cents=kix_cents,
+            source_brand_take_cents=src_cents,
+        ))
+        total_kix += kix_cents
+        total_commission += commission
+
+        pipe.hincrby(f"brand:{src}:commission_owed", "cents", src_cents)
+        pipe.hincrby(f"brand:{src}:gmv_lifetime", 0)  # touch key for tiering
+        pipe.incrby(f"brand:{src}:gmv_lifetime", share_amount)
+        if tp.get("_view_through"):
+            pipe.hincrby(f"brand:{src}:view_through_conversions", "count", 1)
+        else:
+            pipe.hincrby(f"brand:{src}:click_conversions", "count", 1)
+
+    pipe.hincrby("kix:commission_collected", "cents", total_kix)
+    pipe.hincrby(f"brand:{req.target_brand}:commission_paid", "cents", total_commission)
+    await pipe.execute()
+
+    resp = MultiTouchConversionResponse(
+        attributed=True,
+        event_id=event_id,
+        model=req.model,
+        splits=splits,
+        total_kix_take_cents=total_kix,
+        total_commission_cents=total_commission,
+    )
+    await r.set(idem_key, event_id, ex=EVENT_TTL_SECONDS)
+    await r.set(f"attr:mta_result:{event_id}", resp.json(), ex=EVENT_TTL_SECONDS)
+    return resp
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Take Rate Ladder
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TakeRateTier(BaseModel):
+    min_gmv_cents: int = Field(ge=0)
+    commission_rate: float = Field(ge=0.0, le=1.0)
+    kix_take: float = Field(ge=0.0, le=1.0)
+    label: str
+
+
+class TakeRateConfigureRequest(BaseModel):
+    tiers: list[TakeRateTier]
+
+
+class TakeRateConfigureResponse(BaseModel):
+    ok: bool
+    tiers: list[TakeRateTier]
+
+
+class BrandTakeRateResponse(BaseModel):
+    brand_id: str
+    gmv_lifetime_cents: int
+    current_tier: TakeRateTier
+    next_tier: TakeRateTier | None = None
+    gmv_to_next_tier_cents: int | None = None
+
+
+async def _get_take_rate_ladder(r: aioredis.Redis) -> list[dict[str, Any]]:
+    """Return the configured ladder (sorted by min_gmv asc), or defaults."""
+    raw = await r.lrange(TAKE_RATE_LADDER_KEY, 0, -1)
+    if not raw:
+        return list(DEFAULT_TAKE_RATE_LADDER)
+    tiers: list[dict[str, Any]] = []
+    for item in raw:
+        try:
+            tiers.append(json.loads(item))
+        except json.JSONDecodeError:
+            continue
+    if not tiers:
+        return list(DEFAULT_TAKE_RATE_LADDER)
+    tiers.sort(key=lambda t: int(t.get("min_gmv_cents", 0)))
+    return tiers
+
+
+async def _pick_take_rate_tier(
+    r: aioredis.Redis, brand_id: str | None
+) -> dict[str, Any]:
+    """Pick the tier for this brand based on lifetime GMV."""
+    if not brand_id:
+        return {
+            "min_gmv_cents": 0,
+            "commission_rate": DEFAULT_COMMISSION_RATE,
+            "kix_take": DEFAULT_KIX_TAKE_FRACTION,
+            "label": "default",
+        }
+    tiers = await _get_take_rate_ladder(r)
+    gmv_raw = await r.get(f"brand:{brand_id}:gmv_lifetime")
+    try:
+        gmv = int(gmv_raw) if gmv_raw else 0
+    except (TypeError, ValueError):
+        gmv = 0
+    chosen = tiers[0]
+    for tier in tiers:
+        if gmv >= int(tier.get("min_gmv_cents", 0)):
+            chosen = tier
+        else:
+            break
+    return chosen
+
+
+@router.post(
+    "/admin/take-rate/configure",
+    response_model=TakeRateConfigureResponse,
+)
+async def configure_take_rate(
+    req: TakeRateConfigureRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Set the global brand-tier take-rate ladder.
+
+    Replaces any existing ladder. Tiers are stored sorted by min_gmv_cents.
+    """
+    if not req.tiers:
+        raise HTTPException(status_code=400, detail="at least one tier required")
+    sorted_tiers = sorted(req.tiers, key=lambda t: t.min_gmv_cents)
+    pipe = r.pipeline(transaction=True)
+    pipe.delete(TAKE_RATE_LADDER_KEY)
+    for tier in sorted_tiers:
+        pipe.rpush(TAKE_RATE_LADDER_KEY, json.dumps(tier.dict(), separators=(",", ":")))
+    await pipe.execute()
+    return TakeRateConfigureResponse(ok=True, tiers=sorted_tiers)
+
+
+@router.get("/admin/take-rate", response_model=TakeRateConfigureResponse)
+async def get_take_rate(r: aioredis.Redis = Depends(get_redis)):
+    tiers = await _get_take_rate_ladder(r)
+    return TakeRateConfigureResponse(
+        ok=True,
+        tiers=[TakeRateTier(**t) for t in tiers],
+    )
+
+
+@router.get(
+    "/brand/{brand_id}/take-rate-tier",
+    response_model=BrandTakeRateResponse,
+)
+async def brand_take_rate_tier(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    tiers = await _get_take_rate_ladder(r)
+    gmv_raw = await r.get(f"brand:{brand_id}:gmv_lifetime")
+    try:
+        gmv = int(gmv_raw) if gmv_raw else 0
+    except (TypeError, ValueError):
+        gmv = 0
+    current = tiers[0]
+    nxt: dict[str, Any] | None = None
+    for tier in tiers:
+        if gmv >= int(tier.get("min_gmv_cents", 0)):
+            current = tier
+        else:
+            nxt = tier
+            break
+    return BrandTakeRateResponse(
+        brand_id=brand_id,
+        gmv_lifetime_cents=gmv,
+        current_tier=TakeRateTier(**current),
+        next_tier=TakeRateTier(**nxt) if nxt else None,
+        gmv_to_next_tier_cents=(
+            int(nxt["min_gmv_cents"]) - gmv if nxt else None
+        ),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# View-Through Summary
+# ═══════════════════════════════════════════════════════════════════════════
+
+class ViewThroughSummaryResponse(BaseModel):
+    brand_id: str
+    click_conversions: int
+    view_through_conversions: int
+    total_conversions: int
+    view_through_rate: float
+
+
+@router.get(
+    "/brand/{brand_id}/view-through-summary",
+    response_model=ViewThroughSummaryResponse,
+)
+async def view_through_summary(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    click_raw = await r.hget(f"brand:{brand_id}:click_conversions", "count")
+    vt_raw = await r.hget(f"brand:{brand_id}:view_through_conversions", "count")
+    try:
+        clicks = int(click_raw) if click_raw else 0
+    except (TypeError, ValueError):
+        clicks = 0
+    try:
+        vt = int(vt_raw) if vt_raw else 0
+    except (TypeError, ValueError):
+        vt = 0
+    total = clicks + vt
+    rate = (vt / total) if total > 0 else 0.0
+    return ViewThroughSummaryResponse(
+        brand_id=brand_id,
+        click_conversions=clicks,
+        view_through_conversions=vt,
+        total_conversions=total,
+        view_through_rate=round(rate, 6),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Incrementality A/B Tests
+# ═══════════════════════════════════════════════════════════════════════════
+
+class IncrementalityCreateRequest(BaseModel):
+    brand_id: str
+    name: str
+    holdout_pct: float = Field(ge=0.0, le=0.5, default=0.10)
+
+
+class IncrementalityCreateResponse(BaseModel):
+    test_id: str
+    brand_id: str
+    name: str
+    holdout_pct: float
+    created_at: float
+
+
+class IncrementalityResultsResponse(BaseModel):
+    test_id: str
+    brand_id: str
+    name: str
+    holdout_pct: float
+    treatment_users: int
+    control_users: int
+    treatment_conversions: int
+    control_conversions: int
+    treatment_conversion_rate: float
+    control_conversion_rate: float
+    lift_pct: float
+    statistical_significance: float  # z-score p-value proxy in (0,1]
+
+
+def _bucket_for_fingerprint(fingerprint: str, modulo: int = 10) -> int:
+    """Stable bucket assignment: hex digest → int → mod."""
+    h = hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()
+    return int(h[:8], 16) % modulo
+
+
+def _assign_arm(fingerprint: str, holdout_pct: float) -> str:
+    """Return 'control' or 'treatment'."""
+    bucket = _bucket_for_fingerprint(fingerprint, modulo=1000)
+    cutoff = int(round(holdout_pct * 1000))
+    return "control" if bucket < cutoff else "treatment"
+
+
+@router.post(
+    "/incrementality/create",
+    response_model=IncrementalityCreateResponse,
+)
+async def incrementality_create(
+    req: IncrementalityCreateRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    test_id = uuid4().hex[:16]
+    now = _now()
+    mapping = {
+        "test_id": test_id,
+        "brand_id": req.brand_id,
+        "name": req.name,
+        "holdout_pct": str(req.holdout_pct),
+        "created_at": f"{now:.6f}",
+        "status": "active",
+    }
+    pipe = r.pipeline(transaction=True)
+    pipe.hset(f"incrementality:{test_id}", mapping=mapping)
+    pipe.sadd(f"brand:{req.brand_id}:incrementality_tests", test_id)
+    await pipe.execute()
+    return IncrementalityCreateResponse(
+        test_id=test_id,
+        brand_id=req.brand_id,
+        name=req.name,
+        holdout_pct=req.holdout_pct,
+        created_at=now,
+    )
+
+
+@router.post("/incrementality/{test_id}/assign")
+async def incrementality_assign(
+    test_id: str,
+    user_id: str,
+    fingerprint: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Assign a user to control/treatment for this test.
+
+    Bucketing is deterministic from `fingerprint` (falls back to user_id),
+    so the same user always lands in the same arm.
+    """
+    cfg = await r.hgetall(f"incrementality:{test_id}")
+    if not cfg:
+        raise HTTPException(status_code=404, detail="test not found")
+    try:
+        holdout_pct = float(cfg.get("holdout_pct", "0.1"))
+    except (TypeError, ValueError):
+        holdout_pct = 0.1
+
+    key_basis = fingerprint or user_id
+    arm = _assign_arm(key_basis, holdout_pct)
+
+    pipe = r.pipeline(transaction=True)
+    if arm == "control":
+        pipe.sadd(f"incrementality:{test_id}:control", user_id)
+        pipe.srem(f"incrementality:{test_id}:treatment", user_id)
+    else:
+        pipe.sadd(f"incrementality:{test_id}:treatment", user_id)
+        pipe.srem(f"incrementality:{test_id}:control", user_id)
+    await pipe.execute()
+
+    return {
+        "test_id": test_id,
+        "user_id": user_id,
+        "arm": arm,
+        "suppress_ads": arm == "control",
+    }
+
+
+@router.post("/incrementality/{test_id}/record-conversion")
+async def incrementality_record_conversion(
+    test_id: str,
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Mark that a user (in either arm) converted. Idempotent per (test,user)."""
+    in_t = await r.sismember(f"incrementality:{test_id}:treatment", user_id)
+    in_c = await r.sismember(f"incrementality:{test_id}:control", user_id)
+    if not (in_t or in_c):
+        raise HTTPException(status_code=404, detail="user not enrolled in test")
+    arm = "treatment" if in_t else "control"
+    added = await r.sadd(f"incrementality:{test_id}:converted:{arm}", user_id)
+    return {"test_id": test_id, "user_id": user_id, "arm": arm, "new": bool(added)}
+
+
+def _approx_p_value(z: float) -> float:
+    """Two-sided p-value from a z-score using the error function."""
+    return max(0.0, min(1.0, math.erfc(abs(z) / math.sqrt(2))))
+
+
+@router.get(
+    "/incrementality/{test_id}/results",
+    response_model=IncrementalityResultsResponse,
+)
+async def incrementality_results(
+    test_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    cfg = await r.hgetall(f"incrementality:{test_id}")
+    if not cfg:
+        raise HTTPException(status_code=404, detail="test not found")
+
+    t_users = await r.scard(f"incrementality:{test_id}:treatment")
+    c_users = await r.scard(f"incrementality:{test_id}:control")
+    t_conv = await r.scard(f"incrementality:{test_id}:converted:treatment")
+    c_conv = await r.scard(f"incrementality:{test_id}:converted:control")
+
+    t_rate = (t_conv / t_users) if t_users > 0 else 0.0
+    c_rate = (c_conv / c_users) if c_users > 0 else 0.0
+    lift_pct = ((t_rate - c_rate) / c_rate * 100.0) if c_rate > 0 else 0.0
+
+    # Two-proportion z-test
+    pooled = (t_conv + c_conv) / (t_users + c_users) if (t_users + c_users) > 0 else 0.0
+    if pooled > 0 and pooled < 1 and t_users > 0 and c_users > 0:
+        se = math.sqrt(pooled * (1 - pooled) * (1 / t_users + 1 / c_users))
+        z = (t_rate - c_rate) / se if se > 0 else 0.0
+    else:
+        z = 0.0
+    p_value = _approx_p_value(z)
+
+    try:
+        holdout_pct = float(cfg.get("holdout_pct", "0.1"))
+    except (TypeError, ValueError):
+        holdout_pct = 0.1
+
+    return IncrementalityResultsResponse(
+        test_id=test_id,
+        brand_id=cfg.get("brand_id", ""),
+        name=cfg.get("name", ""),
+        holdout_pct=holdout_pct,
+        treatment_users=t_users,
+        control_users=c_users,
+        treatment_conversions=t_conv,
+        control_conversions=c_conv,
+        treatment_conversion_rate=round(t_rate, 6),
+        control_conversion_rate=round(c_rate, 6),
+        lift_pct=round(lift_pct, 4),
+        statistical_significance=round(1.0 - p_value, 6),
+    )
