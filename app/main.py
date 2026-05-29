@@ -20,6 +20,16 @@ async def lifespan(app: FastAPI):
     r = await get_redis()
     await load_lua_scripts(r)
 
+    # Load Recipe Library seed catalog into Redis
+    try:
+        from app.routers.recipes import load_seed_recipes
+        await load_seed_recipes(r)
+    except Exception as _exc:  # pragma: no cover — never fail startup
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "recipes seed load failed: %s", _exc
+        )
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────
@@ -167,6 +177,26 @@ def create_app() -> FastAPI:
     from app.routers import multiplayer
     app.include_router(
         multiplayer.router, prefix="/api/v1/multiplayer", tags=["multiplayer"]
+    )
+
+    # ── Recipe Library: pre-built gamification blueprints ──────────────
+    from app.routers import recipes
+    app.include_router(
+        recipes.router, prefix="/api/v1/recipes", tags=["recipes"]
+    )
+
+    # ── Recipe Generator: NL → Recipe (LLM-driven) ─────────────────────
+    from app.routers import recipe_generator
+    app.include_router(
+        recipe_generator.router,
+        prefix="/api/v1/recipe-gen",
+        tags=["recipe-generator"],
+    )
+
+    # ── Tutorials: Recipe → step-by-step guided Portal setup ───────────
+    from app.routers import tutorials
+    app.include_router(
+        tutorials.router, prefix="/api/v1/tutorials", tags=["tutorials"]
     )
 
     # ── Root redirect to Landing Page ──────────────────────────────────

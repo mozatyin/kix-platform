@@ -1,0 +1,405 @@
+[
+  {
+    "id": "starbucks_loyalty",
+    "name": "Starbucks-style Loyalty",
+    "name_cn": "星巴克式忠诚度",
+    "description_en": "Stars accumulate to unlock Green/Gold tiers with personalized daily challenges and birthday rewards.",
+    "description_cn": "积分累积升级 Green/Gold 等级，附带每日个性化挑战与生日券。",
+    "icon": "☕",
+    "category": "loyalty",
+    "tags": ["tier", "streak", "voucher", "quest"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 2, "milestones": [7, 30, 100]}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "green", "name": "Green", "threshold_xp": 500, "perks": ["birthday_drink"]},
+        {"id": "gold", "name": "Gold", "threshold_xp": 5000, "perks": ["mobile_order_skip", "double_stars"]}
+      ]}},
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 3}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "green_birthday", "value": {"type": "free_item", "amount": 1}, "conditions": {"tier_required": "green", "valid_dates": "birthday_week"}}
+      ]}},
+      {"id": "progression", "params": {"xp_per_action": {"purchase_made": 10}}}
+    ],
+    "rules": [
+      {
+        "name": "Award stars on purchase",
+        "trigger_event": "purchase_made",
+        "conditions": {"type": "value", "metric": "purchase_amount_cents", "op": ">=", "value": 100},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 10}}]
+      },
+      {
+        "name": "Refresh daily quests at login",
+        "trigger_event": "user_login",
+        "actions": [{"module": "smartquests", "method": "generate", "params": {"count": 3}}]
+      }
+    ],
+    "metadata": {
+      "source": "Starbucks Rewards 2009-present",
+      "original_users": "30M+",
+      "key_metric": "revenue_lift",
+      "key_metric_value": "+11% YoY"
+    }
+  },
+  {
+    "id": "pinduoduo_groupbuy",
+    "name": "Pinduoduo Group Buy",
+    "name_cn": "拼多多拼团",
+    "description_en": "Viral price-cut + group-buy + share-to-win loop that turns every buyer into a recruiter.",
+    "description_cn": "砍一刀 + 拼团 + 分享赢的病毒裂变循环，让每个买家变成拉新员。",
+    "icon": "🛒",
+    "category": "viral",
+    "tags": ["groupbuy", "pricecut", "share"],
+    "modules": [
+      {"id": "group_actions", "params": {"buy": {"min_size": 2, "expiry_hours": 24, "discount_pct": 30}}},
+      {"id": "pricecut", "params": {"min_cuts": 5, "max_cuts": 20, "decay_curve": "exponential"}},
+      {"id": "share_to_win", "params": {"reward_currency": "coins", "reward_amount": 50}},
+      {"id": "network_effect", "params": {"viral_coefficient_target": 1.2}}
+    ],
+    "rules": [
+      {
+        "name": "Open group buy on add-to-cart",
+        "trigger_event": "add_to_cart",
+        "actions": [{"module": "group_actions", "method": "create_buy", "params": {"size": 2}}]
+      },
+      {
+        "name": "Reward share that recruits",
+        "trigger_event": "share_recruited",
+        "actions": [{"module": "progression", "method": "award_currency", "params": {"currency": "coins", "amount": 50}}]
+      }
+    ],
+    "metadata": {
+      "source": "Pinduoduo 2015-present",
+      "original_users": "800M+",
+      "key_metric": "CAC_reduction",
+      "key_metric_value": "-70% vs paid"
+    }
+  },
+  {
+    "id": "duolingo_streak",
+    "name": "Duolingo Streak Engine",
+    "name_cn": "多邻国连击引擎",
+    "description_en": "Daily streak + leagues + life system + smart quests — the world's most replicated retention loop.",
+    "description_cn": "每日连击 + 联赛 + 生命系统 + 智能任务，全球最被复制的留存循环。",
+    "icon": "🦉",
+    "category": "engagement",
+    "tags": ["streak", "league", "lives", "quest"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 1, "milestones": [3, 7, 30, 100, 365]}},
+      {"id": "league", "params": {"tiers": ["bronze", "silver", "gold", "sapphire", "ruby", "diamond"], "cycle_days": 7, "promote_top": 10, "demote_bottom": 10}},
+      {"id": "lives", "params": {"max_lives": 5, "refill_minutes": 30}},
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 3}}
+    ],
+    "rules": [
+      {
+        "name": "Streak-rescue notification at 23h",
+        "trigger_event": "streak_at_risk",
+        "actions": [{"module": "network_effect", "method": "streak_rescue", "params": {}}]
+      },
+      {
+        "name": "Promote at end of league cycle",
+        "trigger_event": "league_cycle_end",
+        "actions": [{"module": "league", "method": "cycle", "params": {}}]
+      }
+    ],
+    "metadata": {
+      "source": "Duolingo 2012-present",
+      "original_users": "100M+ DAU",
+      "key_metric": "D30_retention",
+      "key_metric_value": "55%"
+    }
+  },
+  {
+    "id": "barq_spin",
+    "name": "Barq-style Daily Spin",
+    "name_cn": "Barq 每日转盘",
+    "description_en": "Reward roulette with daily rate-limit feeding a redemption store. Pure dopamine loop.",
+    "description_cn": "每日限次抽奖转盘 + 兑换商店，纯粹的多巴胺循环。",
+    "icon": "🎰",
+    "category": "engagement",
+    "tags": ["roulette", "ratelimit", "store"],
+    "modules": [
+      {"id": "roulette", "params": {"slots": [
+        {"id": "common", "weight": 60, "reward": {"currency": "coins", "amount": 10}},
+        {"id": "rare", "weight": 30, "reward": {"currency": "coins", "amount": 50}},
+        {"id": "epic", "weight": 9, "reward": {"currency": "coins", "amount": 200}},
+        {"id": "jackpot", "weight": 1, "reward": {"currency": "coins", "amount": 2000}}
+      ]}},
+      {"id": "rate_limit", "params": {"spins_per_day": 3}},
+      {"id": "redemption_store", "params": {"items": [
+        {"id": "voucher_5", "cost_coins": 500, "reward": {"type": "voucher", "value_cents": 500}},
+        {"id": "voucher_20", "cost_coins": 1800, "reward": {"type": "voucher", "value_cents": 2000}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Daily spin reset",
+        "trigger_event": "day_rollover",
+        "actions": [{"module": "rate_limit", "method": "reset", "params": {"key": "spins"}}]
+      }
+    ],
+    "metadata": {
+      "source": "Barq MENA 2021-present",
+      "key_metric": "session_frequency",
+      "key_metric_value": "2.4/day"
+    }
+  },
+  {
+    "id": "fortnite_battlepass",
+    "name": "Fortnite Battle Pass",
+    "name_cn": "堡垒之夜战令",
+    "description_en": "Seasonal pass with free + premium tracks, quest-driven XP, and FOMO limited drops.",
+    "description_cn": "赛季战令双轨（免费/付费）、任务驱动XP、限时掉落FOMO。",
+    "icon": "🎖️",
+    "category": "engagement",
+    "tags": ["pass", "quest", "limited"],
+    "modules": [
+      {"id": "pass", "params": {"season_days": 70, "tiers": 100, "premium_price_coins": 950, "free_track_rewards_every": 5}},
+      {"id": "smartquests", "params": {"refresh_daily": true, "count": 3, "refresh_weekly": true, "weekly_count": 7}},
+      {"id": "collection", "params": {"set_name": "season_1", "items": [], "completion_bonus_xp": 10000}}
+    ],
+    "rules": [
+      {
+        "name": "Award pass XP on quest complete",
+        "trigger_event": "quest_completed",
+        "actions": [{"module": "pass", "method": "award_xp", "params": {"amount": 100}}]
+      }
+    ],
+    "metadata": {
+      "source": "Fortnite 2017-present",
+      "key_metric": "ARPPU",
+      "key_metric_value": "$84/season"
+    }
+  },
+  {
+    "id": "strava_social",
+    "name": "Strava Social Fitness",
+    "name_cn": "Strava 社交运动",
+    "description_en": "Friend graph + activity feed + auto-share + segment leaderboards. Network-effect retention.",
+    "description_cn": "好友图谱 + 动态信息流 + 自动分享 + 路段排行榜，网络效应留存。",
+    "icon": "🏃",
+    "category": "viral",
+    "tags": ["social", "feed", "leaderboard", "share"],
+    "modules": [
+      {"id": "social_graph", "params": {"follow_model": "mutual_optional", "max_follows": 5000}},
+      {"id": "social_feed", "params": {"sources": ["follows", "segments_nearby"], "ttl_days": 14}},
+      {"id": "auto_share", "params": {"channels": ["instagram", "facebook", "twitter"], "default_on": true}},
+      {"id": "leaderboard", "params": {"scopes": ["global", "friends", "local"], "cycles": ["weekly", "all_time"]}}
+    ],
+    "rules": [
+      {
+        "name": "Auto-share PR activity",
+        "trigger_event": "activity_completed",
+        "conditions": {"type": "value", "metric": "is_personal_record", "op": "==", "value": true},
+        "actions": [{"module": "network_effect", "method": "auto_share", "params": {"template": "pr_celebration"}}]
+      }
+    ],
+    "metadata": {
+      "source": "Strava 2009-present",
+      "original_users": "100M+",
+      "key_metric": "social_retention_lift",
+      "key_metric_value": "+3.5x vs solo"
+    }
+  },
+  {
+    "id": "nike_run_streak",
+    "name": "Nike Run Streak",
+    "name_cn": "Nike 跑步连击",
+    "description_en": "Daily run streak with achievement badges and auto-share to social. Habit-forming health loop.",
+    "description_cn": "每日跑步连击、成就徽章、社交自动分享，健康习惯养成循环。",
+    "icon": "👟",
+    "category": "engagement",
+    "tags": ["streak", "achievement", "share"],
+    "modules": [
+      {"id": "streak", "params": {"max_freeze": 0, "milestones": [7, 30, 100, 365]}},
+      {"id": "achievement", "params": {"badges": [
+        {"id": "first_5k", "name": "First 5K", "trigger": "distance_km>=5"},
+        {"id": "first_10k", "name": "First 10K", "trigger": "distance_km>=10"},
+        {"id": "marathon", "name": "Marathon", "trigger": "distance_km>=42.2"}
+      ]}},
+      {"id": "auto_share", "params": {"channels": ["instagram", "twitter"], "default_on": false}}
+    ],
+    "rules": [
+      {
+        "name": "Streak +1 on completed run",
+        "trigger_event": "run_completed",
+        "conditions": {"type": "value", "metric": "distance_km", "op": ">=", "value": 1},
+        "actions": [{"module": "streak", "method": "check", "params": {}}]
+      },
+      {
+        "name": "Auto-share on milestone",
+        "trigger_event": "streak_milestone",
+        "actions": [{"module": "network_effect", "method": "auto_share", "params": {"template": "streak_milestone"}}]
+      }
+    ],
+    "metadata": {
+      "source": "Nike Run Club 2010-present",
+      "key_metric": "D30_retention_active_runners",
+      "key_metric_value": "62%"
+    }
+  },
+  {
+    "id": "pokemon_raid",
+    "name": "Pokemon GO Raid",
+    "name_cn": "宝可梦 GO 团战",
+    "description_en": "Cooperative raid groups + tier difficulty + trading post for caught items. Location-social hybrid.",
+    "description_cn": "合作团战副本 + 阶级难度 + 物品交易市集，地理社交混合。",
+    "icon": "⚔️",
+    "category": "viral",
+    "tags": ["raid", "tier", "trading", "coop"],
+    "modules": [
+      {"id": "raid", "params": {"min_party": 2, "max_party": 20, "tiers": [1, 3, 5, "mega"], "duration_minutes": 45}},
+      {"id": "tier", "params": {"tiers": [
+        {"id": "novice", "name": "Novice", "threshold_xp": 0, "perks": []},
+        {"id": "ace", "name": "Ace", "threshold_xp": 5000, "perks": ["raid_pass_bonus"]},
+        {"id": "veteran", "name": "Veteran", "threshold_xp": 50000, "perks": ["rare_drop_2x"]}
+      ]}},
+      {"id": "trading_post", "params": {"max_trades_per_day": 100, "rare_trade_unlock_tier": "ace"}}
+    ],
+    "rules": [
+      {
+        "name": "XP reward on raid completion",
+        "trigger_event": "raid_completed",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 1000}}]
+      }
+    ],
+    "metadata": {
+      "source": "Pokemon GO 2016-present",
+      "original_users": "150M+",
+      "key_metric": "DAU_during_event",
+      "key_metric_value": "+200%"
+    }
+  },
+  {
+    "id": "mcd_monopoly",
+    "name": "McDonald's Monopoly",
+    "name_cn": "麦当劳大富翁",
+    "description_en": "Collect-em-all promo with limited-drop rare pieces converting to vouchers. Classic 6-week sprint.",
+    "description_cn": "集卡式促销，稀有卡限时掉落兑换券，经典6周冲刺活动。",
+    "icon": "🎲",
+    "category": "commerce",
+    "tags": ["collection", "limited", "voucher"],
+    "modules": [
+      {"id": "collection", "params": {"set_name": "monopoly_2026", "items": [
+        {"id": "park_place", "rarity": "rare", "drop_rate": 0.0001},
+        {"id": "boardwalk", "rarity": "rare", "drop_rate": 0.0001},
+        {"id": "mediterranean", "rarity": "common", "drop_rate": 0.05},
+        {"id": "baltic", "rarity": "common", "drop_rate": 0.05}
+      ], "completion_bonus": {"type": "voucher", "value_cents": 100000}}},
+      {"id": "limited_drop", "params": {"window_days": 42, "start_date": "2026-09-01"}},
+      {"id": "voucher_builder", "params": {"templates": [
+        {"id": "free_fries", "value": {"type": "free_item", "amount": 1}, "conditions": {"item_required": "mediterranean"}}
+      ]}}
+    ],
+    "rules": [
+      {
+        "name": "Draw piece on purchase",
+        "trigger_event": "purchase_made",
+        "conditions": {"type": "value", "metric": "purchase_amount_cents", "op": ">=", "value": 500},
+        "actions": [{"module": "collection", "method": "draw", "params": {"set": "monopoly_2026"}}]
+      }
+    ],
+    "metadata": {
+      "source": "McDonald's Monopoly 1987-present",
+      "key_metric": "transaction_lift",
+      "key_metric_value": "+5.6%"
+    }
+  },
+  {
+    "id": "dropbox_referral",
+    "name": "Dropbox Tiered Referral",
+    "name_cn": "Dropbox 阶梯推荐",
+    "description_en": "1/5/25-tier referral ladder rewarding storage currency. The original $0 CAC growth hack.",
+    "description_cn": "1/5/25 阶梯推荐，存储空间作为奖励货币，原始零获客成本增长黑客。",
+    "icon": "📦",
+    "category": "viral",
+    "tags": ["referral", "ladder", "currency"],
+    "modules": [
+      {"id": "ladder_climb", "params": {"milestones": [1, 5, 25], "rewards": [
+        {"at": 1, "currency": "storage_gb", "amount": 0.5},
+        {"at": 5, "currency": "storage_gb", "amount": 3},
+        {"at": 25, "currency": "storage_gb", "amount": 16}
+      ]}},
+      {"id": "currency", "params": {"id": "storage_gb", "decimals": 2}},
+      {"id": "share_to_win", "params": {"reward_currency": "storage_gb", "reward_amount": 0.5}}
+    ],
+    "rules": [
+      {
+        "name": "Credit referrer on signup",
+        "trigger_event": "referral_completed",
+        "actions": [{"module": "network_effect", "method": "ladder_climb", "params": {"milestone_key": "referrals"}}]
+      }
+    ],
+    "metadata": {
+      "source": "Dropbox 2008",
+      "original_users": "0 to 100M in 30 months",
+      "key_metric": "signup_lift",
+      "key_metric_value": "+60%"
+    }
+  },
+  {
+    "id": "uber_driver_tier",
+    "name": "Uber Driver Pro Tier",
+    "name_cn": "Uber 司机 Pro 阶级",
+    "description_en": "Driver-side tier (Blue/Gold/Platinum/Diamond) + league + weekly quests. Supply-side retention.",
+    "description_cn": "司机端阶级（Blue/Gold/Platinum/Diamond）+ 联赛 + 周任务，供给侧留存。",
+    "icon": "🚗",
+    "category": "engagement",
+    "tags": ["tier", "league", "quest", "supply"],
+    "modules": [
+      {"id": "tier", "params": {"tiers": [
+        {"id": "blue", "name": "Blue", "threshold_xp": 0, "perks": []},
+        {"id": "gold", "name": "Gold", "threshold_xp": 500, "perks": ["priority_support"]},
+        {"id": "platinum", "name": "Platinum", "threshold_xp": 1000, "perks": ["airport_priority"]},
+        {"id": "diamond", "name": "Diamond", "threshold_xp": 1800, "perks": ["airport_priority", "tuition_match", "phone_support"]}
+      ]}},
+      {"id": "league", "params": {"tiers": ["bronze", "silver", "gold"], "cycle_days": 7, "promote_top": 20, "demote_bottom": 20}},
+      {"id": "smartquests", "params": {"refresh_weekly": true, "weekly_count": 5}}
+    ],
+    "rules": [
+      {
+        "name": "Award points per trip",
+        "trigger_event": "trip_completed",
+        "conditions": {"type": "value", "metric": "rating", "op": ">=", "value": 4.7},
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 1}}]
+      }
+    ],
+    "metadata": {
+      "source": "Uber Pro 2018-present",
+      "key_metric": "driver_retention_90d",
+      "key_metric_value": "+12%"
+    }
+  },
+  {
+    "id": "wechat_hongbao",
+    "name": "WeChat Red Packet",
+    "name_cn": "微信红包",
+    "description_en": "First-come-first-served random gift-sending in group chats. The viral mechanic that built WeChat Pay.",
+    "description_cn": "群聊先到先得的随机红包发送，造就微信支付的病毒机制。",
+    "icon": "🧧",
+    "category": "viral",
+    "tags": ["fcfs", "gift", "group", "payment"],
+    "modules": [
+      {"id": "fcfs", "params": {"max_claimers_default": 10, "default_window_seconds": 86400}},
+      {"id": "gift_sending", "params": {"min_amount_cents": 1, "max_amount_cents": 20000, "random_split": true}},
+      {"id": "group_reward", "params": {"distribution": "random_pareto", "max_size": 500}}
+    ],
+    "rules": [
+      {
+        "name": "Award sender XP per packet sent",
+        "trigger_event": "hongbao_sent",
+        "actions": [{"module": "progression", "method": "award_xp", "params": {"amount": 5}}]
+      },
+      {
+        "name": "Track viral coefficient",
+        "trigger_event": "hongbao_claimed",
+        "actions": [{"module": "network_effect", "method": "track", "params": {"metric": "claim"}}]
+      }
+    ],
+    "metadata": {
+      "source": "WeChat 2014 CNY",
+      "original_users": "5M packets sent on launch eve",
+      "key_metric": "wechat_pay_signup_lift",
+      "key_metric_value": "+200M users in 2 days"
+    }
+  }
+]

@@ -608,6 +608,220 @@ textarea.form-input{
 @media(min-width:768px){
   .modules-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 }
+
+/* ── Recipes Marketplace ────────────────────────────────────────────── */
+.page-title{font-size:22px;font-weight:800;margin-bottom:4px;letter-spacing:-.5px}
+.page-subtitle{color:var(--text-dim);font-size:13px;margin-bottom:20px}
+.card.highlighted{
+  background:linear-gradient(135deg,rgba(0,252,0,.06),rgba(0,252,0,.01) 60%,transparent);
+  border:1px solid var(--green-border);
+}
+.card.highlighted h3{font-size:15px;font-weight:700;color:var(--text)}
+.card.highlighted textarea{
+  width:100%;padding:12px 14px;background:var(--dark);
+  border:1px solid var(--border-light);border-radius:var(--radius-sm);
+  color:var(--text);font-size:13px;font-family:var(--font);
+  resize:vertical;outline:none;transition:border-color .2s;
+  box-sizing:border-box;
+}
+.card.highlighted textarea:focus{border-color:var(--green)}
+.card.highlighted select{
+  flex:0 0 auto;padding:8px 30px 8px 12px;background:var(--dark);
+  border:1px solid var(--border-light);border-radius:var(--radius-xs);
+  color:var(--text);font-size:13px;outline:none;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+.btn-primary{background:var(--green);color:var(--dark);border:none}
+.btn-primary:hover{box-shadow:0 0 16px rgba(0,252,0,.2)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
+
+#generated-recipe-preview{
+  padding:14px;background:var(--card);
+  border:1px solid var(--border-light);border-radius:var(--radius-sm);
+}
+#generated-recipe-preview h4{font-size:13px;font-weight:700;margin-bottom:6px;color:var(--green)}
+#generated-recipe-preview p{font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.5}
+
+.recipes-grid{
+  display:grid;grid-template-columns:1fr;
+  gap:12px;
+}
+@media(min-width:640px){.recipes-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.recipes-grid{grid-template-columns:repeat(3,1fr)}}
+
+.recipe-card{
+  position:relative;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;cursor:pointer;transition:var(--transition);
+  display:flex;flex-direction:column;gap:8px;
+}
+.recipe-card:hover{border-color:var(--border-light);transform:translateY(-1px)}
+.recipe-card.applied{
+  border-color:var(--green-border);
+  background:linear-gradient(135deg,rgba(0,252,0,.04),transparent 60%);
+}
+.recipe-icon{font-size:32px;line-height:1}
+.recipe-card h4{font-size:15px;font-weight:700;margin:0;color:var(--text)}
+.recipe-card p{font-size:12px;color:var(--text-dim);margin:0;line-height:1.5}
+.recipe-card .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.recipe-card .tag{
+  display:inline-block;padding:2px 8px;border-radius:100px;
+  font-size:10px;font-weight:600;
+  background:rgba(255,255,255,.05);color:var(--text-dim);
+  border:1px solid var(--border);
+}
+.recipe-card .btn-mini{
+  align-self:flex-start;margin-top:6px;
+  padding:6px 14px;border-radius:100px;border:none;
+  background:var(--green);color:var(--dark);
+  font-size:12px;font-weight:700;cursor:pointer;
+  transition:var(--transition);
+}
+.recipe-card .btn-mini:hover{box-shadow:0 0 12px rgba(0,252,0,.25)}
+.recipe-card .status-pill{
+  align-self:flex-start;margin-top:6px;
+  padding:4px 10px;border-radius:100px;
+  background:var(--green-bg);color:var(--green);
+  border:1px solid var(--green-border);
+  font-size:11px;font-weight:700;
+}
+
+.recipe-categories{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;
+}
+.recipe-categories .cat{
+  padding:6px 14px;border-radius:100px;
+  background:var(--card);border:1px solid var(--border);
+  color:var(--text-dim);font-size:12px;font-weight:600;
+  cursor:pointer;transition:var(--transition);
+}
+.recipe-categories .cat:hover{color:var(--text);border-color:var(--border-light)}
+.recipe-categories .cat.active{
+  background:var(--green-bg);color:var(--green);
+  border-color:var(--green-border);
+}
+
+.modal-card.large{max-width:640px}
+.modal-card.large .modal-body h4{
+  font-size:13px;font-weight:700;color:var(--text);
+  margin:16px 0 8px;letter-spacing:.3px;
+}
+.modal-card.large .modal-body ul{
+  list-style:none;padding:0;margin:0;
+}
+.modal-card.large .modal-body ul li{
+  padding:8px 12px;background:var(--dark);
+  border:1px solid var(--border);border-radius:var(--radius-xs);
+  font-size:12px;color:var(--text-dim);margin-bottom:6px;
+  line-height:1.5;word-break:break-word;
+}
+.modal-card.large .modal-body ul li code{
+  background:rgba(0,252,0,.08);color:var(--green);
+  padding:1px 6px;border-radius:3px;font-size:11px;
+}
+.modal-card.large .modal-body ul li strong{color:var(--text)}
+.modal-card.large .modal-body #recipe-modal-metadata small{
+  display:inline-block;padding:4px 10px;
+  background:rgba(255,255,255,.04);border-radius:100px;
+  color:var(--text-muted);font-size:11px;
+}
+.modal-card.large .modal-head h3{font-size:16px;font-weight:700;flex:1}
+.modal-card.large .modal-head button{
+  background:none;border:none;color:var(--text-muted);
+  font-size:20px;cursor:pointer;padding:4px 8px;
+}
+.modal-card.large .modal-head button:hover{color:var(--text)}
+
+/* ─── Tutorial Engine ─────────────────────────────────────────── */
+#tut-overlay {
+  position: fixed; inset: 0;
+  z-index: 99998;
+  pointer-events: none;
+}
+#tut-overlay.active { pointer-events: auto; }
+#tut-mask {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  -webkit-mask: var(--tut-mask, none);
+  mask: var(--tut-mask, none);
+  transition: -webkit-mask 0.3s, mask 0.3s;
+}
+#tut-spotlight {
+  position: absolute;
+  border: 3px solid var(--green);
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.7), 0 0 20px rgba(0,252,0,0.5);
+  pointer-events: none;
+  transition: all 0.3s;
+  z-index: 99999;
+}
+#tut-tooltip {
+  position: absolute;
+  background: var(--card);
+  border: 2px solid var(--green);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 360px;
+  z-index: 100000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#tut-tooltip h4 { margin: 0 0 8px; color: var(--green); font-size: 16px; }
+#tut-tooltip p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }
+#tut-tooltip .tut-progress {
+  font-size: 12px; color: var(--text-dim);
+  margin-bottom: 12px;
+}
+#tut-tooltip .tut-progress-bar {
+  width: 100%; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+#tut-tooltip .tut-progress-fill {
+  height: 100%;
+  background: var(--green);
+  transition: width 0.3s;
+}
+#tut-tooltip .tut-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+#tut-tooltip button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--dark);
+  color: var(--text);
+}
+#tut-tooltip .tut-next {
+  background: var(--green);
+  color: var(--dark);
+  border-color: var(--green);
+  font-weight: 600;
+}
+#tut-tooltip .tut-skip { color: var(--text-dim); }
+#tut-tooltip .tut-exit { margin-left: auto; }
+
+/* Pointer */
+#tut-tooltip::before {
+  content: '';
+  position: absolute;
+  background: var(--card);
+  border: 2px solid var(--green);
+  border-right: none;
+  border-bottom: none;
+  width: 12px; height: 12px;
+  transform: rotate(-45deg);
+}
+#tut-tooltip[data-pos="bottom"]::before { top: -8px; left: 30px; }
+#tut-tooltip[data-pos="top"]::before { bottom: -8px; left: 30px; transform: rotate(135deg); }
+#tut-tooltip[data-pos="right"]::before { top: 30px; left: -8px; transform: rotate(-135deg); }
+#tut-tooltip[data-pos="left"]::before { top: 30px; right: -8px; transform: rotate(45deg); }
+#tut-tooltip[data-pos="center"]::before { display: none; }
 </style>
 </head>
 <body>
@@ -962,6 +1176,83 @@ textarea.form-input{
       </div>
     </div>
 
+    <!-- ─── Recipes / 配方市场 ─────────────────────────────────────── -->
+    <div id="view-recipes" class="view">
+      <h2 class="page-title">Recipes / 配方市场</h2>
+      <p class="page-subtitle">业界最佳 gamification 模板，一键应用 / Best-in-class templates, 1-click apply</p>
+
+      <!-- NL Input -->
+      <div class="section">
+        <div class="card highlighted">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:24px">&#10024;</span>
+            <h3 style="margin:0">描述你想要的功能 / Describe what you want</h3>
+          </div>
+          <textarea id="recipe-description" rows="3" placeholder="例如：我想让用户邀请10个朋友才能解锁一张50元免费咖啡券..."></textarea>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+            <select id="recipe-style">
+              <option value="">通用风格 / Generic</option>
+              <option value="viral">病毒增长 / Viral</option>
+              <option value="loyalty">忠诚度 / Loyalty</option>
+              <option value="premium">高端 / Premium</option>
+              <option value="casual">休闲 / Casual</option>
+            </select>
+            <button class="btn btn-primary" onclick="generateRecipe(event)">&#10024; AI 生成配方</button>
+          </div>
+          <div id="generated-recipe-preview" style="margin-top:12px;display:none"></div>
+        </div>
+      </div>
+
+      <!-- Active Recipes -->
+      <div class="section">
+        <div class="section-title">&#9989; 已应用 / Active</div>
+        <div id="active-recipes" class="recipes-grid">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- Recipe Catalog -->
+      <div class="section">
+        <div class="section-title">&#128218; 配方市场 / Marketplace</div>
+        <div class="recipe-categories">
+          <button class="cat active" data-cat="all">全部 / All</button>
+          <button class="cat" data-cat="loyalty">忠诚度 / Loyalty</button>
+          <button class="cat" data-cat="viral">病毒增长 / Viral</button>
+          <button class="cat" data-cat="engagement">互动 / Engagement</button>
+          <button class="cat" data-cat="commerce">商业转化 / Commerce</button>
+          <button class="cat" data-cat="gaming">游戏化 / Gaming</button>
+        </div>
+        <div id="recipes-catalog" class="recipes-grid">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recipe Detail Modal -->
+    <div id="recipe-modal" class="modal-overlay" style="display:none">
+      <div class="modal-card large">
+        <div class="modal-head">
+          <h3 id="recipe-modal-title">Recipe Details</h3>
+          <button onclick="closeRecipeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="recipe-modal-desc" style="color:var(--text-dim);font-size:13px;line-height:1.6;margin-bottom:10px"></p>
+          <div id="recipe-modal-metadata"></div>
+          <h4>&#128230; 包含的模块 / Modules Included</h4>
+          <ul id="recipe-modal-modules"></ul>
+          <h4>&#9881;&#65039; 规则 / Rules</h4>
+          <ul id="recipe-modal-rules"></ul>
+          <h4>&#128161; 原型示例 / Inspired By</h4>
+          <div id="recipe-modal-inspired" style="font-size:12px;color:var(--text-dim);line-height:1.6"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-outline" onclick="previewRecipe()">预览 Preview</button>
+          <button class="btn btn-outline" onclick="walkThroughRecipe()">教程模式 / Walk me through it</button>
+          <button class="btn btn-primary" onclick="applyRecipe()">应用 Apply</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Engagement / 互动配置 ──────────────────────────────────── -->
     <div id="view-engagement" class="view">
       <h2 class="page-title">Engagement / 互动配置</h2>
@@ -1015,6 +1306,10 @@ textarea.form-input{
     <div class="nav-item" data-view="games" onclick="navigate('games')">
       <svg viewBox="0 0 24 24"><path d="M6 12h4m-2-2v4m7-1h.01M18 12h.01M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Games</span>
+    </div>
+    <div class="nav-item" data-view="recipes" onclick="navigate('recipes')">
+      <svg viewBox="0 0 24 24"><path d="M4 4a2 2 0 012-2h11a3 3 0 013 3v15a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 7h7M8 11h7M8 15h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Recipes</span>
     </div>
     <div class="nav-item" data-view="engagement" onclick="navigate('engagement')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
@@ -1750,6 +2045,7 @@ function navigate(view){
     case'locations':loadLocations();break;
     case'settings':loadSettings();break;
     case'engagement':renderEngagement();break;
+    case'recipes':renderRecipes();break;
   }
 }
 
@@ -1758,7 +2054,7 @@ function showApp(){
   document.getElementById('app-shell').className='active';
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes'];
   navigate(validViews.includes(hash)?hash:'dashboard');
 }
 
@@ -2973,7 +3269,7 @@ function renderMarketplace(category){
     const active=engagementState.activeModules[m.id];
     const isEnabled=!!(active&&active.enabled);
     const isBuiltin=!!m.builtin;
-    return `<div class="module-card${isEnabled?' enabled':''}${isBuiltin?' builtin':''}">
+    return `<div class="module-card${isEnabled?' enabled':''}${isBuiltin?' builtin':''}" data-module-id="${esc(m.id)}">
       ${isBuiltin?'<div class="module-builtin-tag">Built-in</div>':(isEnabled?'<div class="module-check">&#10003;</div>':'')}
       <div class="module-card-head">
         <div class="module-icon">${m.icon}</div>
@@ -2987,10 +3283,10 @@ function renderMarketplace(category){
         ${isBuiltin
           ?'<button class="btn btn-outline btn-sm" disabled style="opacity:.6;cursor:not-allowed">Always on / 始终启用</button>'
           :(isEnabled
-              ?`<button class="btn btn-outline btn-sm" onclick="openConfigModal('${esc(m.id)}')">Configure / 配置</button>
-                <button class="btn btn-danger btn-sm" onclick="toggleModule('${esc(m.id)}',false)">Disable</button>`
-              :`<button class="btn btn-green btn-sm" onclick="toggleModule('${esc(m.id)}',true)">Enable / 启用</button>
-                <button class="btn btn-outline btn-sm" onclick="openConfigModal('${esc(m.id)}')">Configure</button>`
+              ?`<button class="btn btn-outline btn-sm" data-action="configure" onclick="openConfigModal('${esc(m.id)}')">Configure / 配置</button>
+                <button class="btn btn-danger btn-sm" data-action="toggle" onclick="toggleModule('${esc(m.id)}',false)">Disable</button>`
+              :`<button class="btn btn-green btn-sm" data-action="toggle" onclick="toggleModule('${esc(m.id)}',true)">Enable / 启用</button>
+                <button class="btn btn-outline btn-sm" data-action="configure" onclick="openConfigModal('${esc(m.id)}')">Configure</button>`
             )
         }
       </div>
@@ -3114,6 +3410,425 @@ function esc(s){
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// RECIPES MARKETPLACE
+// ═══════════════════════════════════════════════════════════════════════
+let _currentRecipeId=null;
+let _recipeCategoryBound=false;
+
+async function renderRecipes(){
+  await Promise.all([loadActiveRecipes(),loadRecipeCatalog('all')]);
+  bindRecipeCategories();
+}
+
+function bindRecipeCategories(){
+  if(_recipeCategoryBound)return;
+  _recipeCategoryBound=true;
+  document.querySelectorAll('#view-recipes .recipe-categories .cat').forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll('#view-recipes .recipe-categories .cat').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadRecipeCatalog(btn.dataset.cat);
+    };
+  });
+}
+
+async function loadActiveRecipes(){
+  const container=document.getElementById('active-recipes');
+  try{
+    const res=await apiFetch('/api/v1/brands/'+state.brandId+'/recipes/applied',{noAuth:true});
+    if(!res.ok)throw new Error('load_failed');
+    const data=await res.json();
+    const list=(data&&data.applied)||[];
+    container.innerHTML=list.length
+      ? list.map(r=>renderRecipeCard(r,true)).join('')
+      : '<p style="color:var(--text-dim);font-size:13px;grid-column:1/-1">No recipes applied yet / 暂无应用配方</p>';
+  }catch(e){
+    container.innerHTML='<p style="color:var(--text-dim);font-size:13px;grid-column:1/-1">No recipes applied yet / 暂无应用配方</p>';
+  }
+}
+
+async function loadRecipeCatalog(category){
+  const container=document.getElementById('recipes-catalog');
+  container.innerHTML='<div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>';
+  const url=category==='all'
+    ? '/api/v1/recipes'
+    : '/api/v1/recipes?category='+encodeURIComponent(category);
+  try{
+    const res=await apiFetch(url,{noAuth:true});
+    if(!res.ok)throw new Error('load_failed');
+    const data=await res.json();
+    const recipes=Array.isArray(data)?data:(data.recipes||[]);
+    container.innerHTML=recipes.length
+      ? recipes.map(r=>renderRecipeCard(r,false)).join('')
+      : '<p style="color:var(--text-dim);font-size:13px;grid-column:1/-1">No recipes in this category / 此分类暂无配方</p>';
+  }catch(e){
+    container.innerHTML='<p style="color:var(--text-dim);font-size:13px;grid-column:1/-1">Failed to load recipes / 加载失败</p>';
+  }
+}
+
+function renderRecipeCard(r,applied){
+  const name=esc(r.name_cn||r.name||r.name_en||'Recipe');
+  const desc=esc(r.description_cn||r.description_en||r.description||'');
+  const icon=esc(r.icon||'🎮');
+  const tags=(r.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('');
+  const id=esc(r.id||'');
+  return '<div class="recipe-card '+(applied?'applied':'')+'" onclick="openRecipeModal(\''+id+'\')">'
+    +'<div class="recipe-icon">'+icon+'</div>'
+    +'<h4>'+name+'</h4>'
+    +'<p>'+desc+'</p>'
+    +'<div class="tags">'+tags+'</div>'
+    +(applied?'<span class="status-pill">✓ 已应用</span>':'<button class="btn-mini" onclick="event.stopPropagation();openRecipeModal(\''+id+'\')">应用 Apply</button>')
+    +'</div>';
+}
+
+async function openRecipeModal(id){
+  if(!id)return;
+  try{
+    const res=await apiFetch('/api/v1/recipes/'+encodeURIComponent(id),{noAuth:true});
+    if(!res.ok)throw new Error('load_failed');
+    const r=await res.json();
+    _currentRecipeId=id;
+
+    document.getElementById('recipe-modal-title').textContent=r.name_cn||r.name||r.name_en||'Recipe';
+    document.getElementById('recipe-modal-desc').textContent=r.description_cn||r.description_en||r.description||'';
+
+    const metaEl=document.getElementById('recipe-modal-metadata');
+    if(r.metadata){
+      const m=r.metadata;
+      const parts=[];
+      if(m.source)parts.push(esc(m.source));
+      if(m.key_metric)parts.push(esc(m.key_metric)+': '+esc(m.key_metric_value||''));
+      metaEl.innerHTML=parts.length?'<small>'+parts.join(' • ')+'</small>':'';
+    }else{
+      metaEl.innerHTML='';
+    }
+
+    const modules=Array.isArray(r.modules)?r.modules:[];
+    document.getElementById('recipe-modal-modules').innerHTML=modules.length
+      ? modules.map(m=>{
+          const params=m.params?JSON.stringify(m.params):'';
+          const trunc=params.length>80?params.slice(0,80)+'...':params;
+          return '<li><strong>'+esc(m.id||m.module_id||'?')+'</strong>'+(trunc?': <code>'+esc(trunc)+'</code>':'')+'</li>';
+        }).join('')
+      : '<li style="color:var(--text-muted)">No modules listed</li>';
+
+    const rules=Array.isArray(r.rules)?r.rules:[];
+    document.getElementById('recipe-modal-rules').innerHTML=rules.length
+      ? rules.map(rule=>{
+          const trig=esc(rule.trigger_event||rule.trigger||'event');
+          const nActions=Array.isArray(rule.actions)?rule.actions.length:0;
+          return '<li>When <code>'+trig+'</code> → '+nActions+' action'+(nActions===1?'':'s')+'</li>';
+        }).join('')
+      : '<li style="color:var(--text-muted)">No rules listed</li>';
+
+    const inspired=document.getElementById('recipe-modal-inspired');
+    if(r.inspired_by){
+      inspired.textContent=Array.isArray(r.inspired_by)?r.inspired_by.join(', '):String(r.inspired_by);
+    }else if(r.metadata&&r.metadata.source){
+      inspired.textContent=r.metadata.source;
+    }else{
+      inspired.textContent='—';
+    }
+
+    document.getElementById('recipe-modal').style.display='flex';
+  }catch(e){
+    showToast('Failed to load recipe / 加载失败','error');
+  }
+}
+
+function closeRecipeModal(){
+  document.getElementById('recipe-modal').style.display='none';
+  _currentRecipeId=null;
+}
+
+function previewRecipe(){
+  showToast('Preview coming soon / 预览功能即将上线');
+}
+
+async function applyRecipe(){
+  if(!_currentRecipeId)return;
+  try{
+    const res=await apiFetch('/api/v1/recipes/'+encodeURIComponent(_currentRecipeId)+'/apply',{
+      method:'POST',
+      json:{brand_id:state.brandId},
+      noAuth:true
+    });
+    if(!res.ok)throw new Error('apply_failed');
+    const result=await res.json();
+    const applied=(result.applied||[]).length;
+    const skipped=(result.skipped||[]).length;
+    showToast('Applied: '+applied+' modules, '+skipped+' skipped / 已应用 '+applied+' 个模块');
+    closeRecipeModal();
+    await renderRecipes();
+  }catch(e){
+    showToast('Apply failed / 应用失败','error');
+  }
+}
+
+async function generateRecipe(evt){
+  const desc=document.getElementById('recipe-description').value.trim();
+  if(!desc){showToast('请描述你想要的功能 / Please describe','error');return;}
+  const style=document.getElementById('recipe-style').value;
+  const btn=evt&&evt.target?evt.target:null;
+  const origLabel=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='✨ 生成中...';}
+
+  try{
+    const body={brand_id:state.brandId,description:desc};
+    if(style)body.style=style;
+    const res=await apiFetch('/api/v1/recipe-gen/from-description',{
+      method:'POST',json:body,noAuth:true
+    });
+    if(!res.ok)throw new Error('gen_failed');
+    const data=await res.json();
+
+    const preview=document.getElementById('generated-recipe-preview');
+    preview.style.display='block';
+    const conf=typeof data.confidence==='number'?(data.confidence*100).toFixed(0):'?';
+    const modulesUsed=Array.isArray(data.modules_used)?data.modules_used.join(', '):'';
+    const explanation=esc(data.explanation_cn||data.explanation||data.explanation_en||'');
+    const recipeId=(data.recipe&&data.recipe.id)||'tmp';
+    preview.innerHTML='<h4>✨ 生成的配方 (置信度 '+conf+'%)</h4>'
+      +'<p>'+explanation+'</p>'
+      +(modulesUsed?'<p style="font-size:12px"><strong>使用模块:</strong> '+esc(modulesUsed)+'</p>':'')
+      +'<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-primary" onclick="applyGenerated(\''+esc(recipeId)+'\')">应用这个配方 Apply</button>'
+      +'<button class="btn btn-outline" onclick="applyGeneratedAsTutorial()">教程模式 / Walk through</button>'
+      +'<button class="btn btn-outline" onclick="refineRecipe()">优化 Refine</button>'
+      +'</div>';
+    window._lastGeneratedRecipe=data.recipe;
+  }catch(e){
+    showToast('Generation failed / 生成失败','error');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=origLabel||'✨ AI 生成配方';}
+  }
+}
+
+async function applyGenerated(recipeId){
+  const recipe=window._lastGeneratedRecipe;
+  if(!recipe){showToast('No recipe to apply / 无配方可应用','error');return;}
+  try{
+    const saveRes=await apiFetch('/api/v1/recipes/create',{
+      method:'POST',json:recipe,noAuth:true
+    });
+    if(!saveRes.ok)throw new Error('save_failed');
+    const saved=await saveRes.json();
+
+    const applyRes=await apiFetch('/api/v1/recipes/'+encodeURIComponent(saved.id)+'/apply',{
+      method:'POST',json:{brand_id:state.brandId},noAuth:true
+    });
+    if(!applyRes.ok)throw new Error('apply_failed');
+
+    showToast('配方已应用！/ Recipe applied!');
+    document.getElementById('generated-recipe-preview').style.display='none';
+    document.getElementById('recipe-description').value='';
+    await renderRecipes();
+  }catch(e){
+    showToast('Apply failed / 应用失败','error');
+  }
+}
+
+function refineRecipe(){
+  showToast('Refine coming soon / 优化功能即将上线');
+}
+
+// Close recipe modal on overlay click
+document.addEventListener('click',(e)=>{
+  if(e.target&&e.target.id==='recipe-modal')closeRecipeModal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// TUTORIAL ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+const TutorialEngine = {
+  state: { active: false, tutorial_id: null, plan: null, current_step: 0 },
+
+  async start(tutorialId) {
+    const res = await apiFetch(`/api/v1/tutorials/${tutorialId}`);
+    if (!res.ok) return showToast('Tutorial not found / 教程未找到', 'error');
+    const data = await res.json();
+    this.state = { active: true, tutorial_id: tutorialId, plan: data, current_step: data.current_step || 0 };
+    this.persist();
+    document.getElementById('tut-overlay').classList.add('active');
+    this.renderStep();
+  },
+
+  async startFromRecipe(recipeId) {
+    const res = await apiFetch('/api/v1/tutorials/from-recipe', {
+      method:'POST',
+      json: { brand_id: state.brandId, recipe_id: recipeId, language: 'cn' }
+    });
+    if (!res.ok) return showToast('Failed to generate tutorial / 生成教程失败', 'error');
+    const data = await res.json();
+    this.start(data.tutorial_id);
+  },
+
+  async startFromGeneratedRecipe(recipe) {
+    const res = await apiFetch('/api/v1/tutorials/from-recipe-json', {
+      method:'POST',
+      json: { brand_id: state.brandId, recipe, language: 'cn' }
+    });
+    if (!res.ok) return showToast('Failed to generate tutorial / 生成教程失败', 'error');
+    const data = await res.json();
+    this.start(data.tutorial_id);
+  },
+
+  renderStep() {
+    const step = this.state.plan.steps[this.state.current_step];
+    if (!step) return this.complete();
+
+    // Handle navigation steps automatically
+    if (step.type === 'navigate' && step.target_view) {
+      navigate(step.target_view);
+    }
+
+    // Update progress
+    const total = this.state.plan.steps.length;
+    const progress = ((this.state.current_step + 1) / total) * 100;
+    document.getElementById('tut-progress-text').textContent = `Step ${this.state.current_step + 1} of ${total}`;
+    document.getElementById('tut-progress-fill').style.width = `${progress}%`;
+    document.getElementById('tut-title').textContent = step.title_cn || step.title || 'Step';
+    document.getElementById('tut-instruction').textContent = step.instruction_cn || step.instruction || '';
+
+    // Spotlight target element
+    setTimeout(() => this.spotlight(step.target_selector), 150);
+  },
+
+  spotlight(selector) {
+    const spotlightEl = document.getElementById('tut-spotlight');
+    const tooltipEl = document.getElementById('tut-tooltip');
+
+    if (!selector) {
+      spotlightEl.style.display = 'none';
+      // Center tooltip
+      tooltipEl.style.display = 'block';
+      tooltipEl.style.top = '50%';
+      tooltipEl.style.left = '50%';
+      tooltipEl.style.transform = 'translate(-50%, -50%)';
+      tooltipEl.dataset.pos = 'center';
+      return;
+    }
+
+    const target = document.querySelector(selector);
+    if (!target) {
+      console.warn('Tutorial target not found:', selector);
+      return this.skip();
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const rect = target.getBoundingClientRect();
+
+    spotlightEl.style.display = 'block';
+    spotlightEl.style.top = `${rect.top - 8}px`;
+    spotlightEl.style.left = `${rect.left - 8}px`;
+    spotlightEl.style.width = `${rect.width + 16}px`;
+    spotlightEl.style.height = `${rect.height + 16}px`;
+
+    // Position tooltip below or above target
+    tooltipEl.style.display = 'block';
+    const tooltipHeight = 220; // estimate including padding
+    const placeBelow = rect.bottom + tooltipHeight + 20 < window.innerHeight;
+    if (placeBelow) {
+      tooltipEl.style.top = `${rect.bottom + 20}px`;
+      tooltipEl.style.left = `${Math.max(20, rect.left)}px`;
+      tooltipEl.style.transform = 'none';
+      tooltipEl.dataset.pos = 'bottom';
+    } else {
+      tooltipEl.style.top = `${Math.max(20, rect.top - tooltipHeight - 20)}px`;
+      tooltipEl.style.left = `${Math.max(20, rect.left)}px`;
+      tooltipEl.style.transform = 'none';
+      tooltipEl.dataset.pos = 'top';
+    }
+  },
+
+  async next() {
+    const step = this.state.plan.steps[this.state.current_step];
+    // Validate (optional)
+    if (step && step.validation) {
+      try {
+        const valRes = await apiFetch(`/api/v1/tutorials/${this.state.tutorial_id}/validate-current`);
+        if (valRes.ok) {
+          const v = await valRes.json();
+          if (!v.valid) return showToast(v.fix_hint || v.reason || 'Step not complete / 步骤未完成', 'error');
+        }
+      } catch (e) { /* ignore validation errors, allow progression */ }
+    }
+    // Advance backend
+    try {
+      await apiFetch(`/api/v1/tutorials/${this.state.tutorial_id}/advance`, { method:'POST', json: {} });
+    } catch (e) { /* ignore */ }
+    this.state.current_step++;
+    this.persist();
+    if (this.state.current_step >= this.state.plan.steps.length) {
+      this.complete();
+    } else {
+      this.renderStep();
+    }
+  },
+
+  async skip() {
+    try {
+      await apiFetch(`/api/v1/tutorials/${this.state.tutorial_id}/skip`, { method:'POST', json: {} });
+    } catch (e) { /* ignore */ }
+    this.state.current_step++;
+    this.persist();
+    if (this.state.current_step >= this.state.plan.steps.length) {
+      this.complete();
+    } else {
+      this.renderStep();
+    }
+  },
+
+  exit() {
+    document.getElementById('tut-overlay').classList.remove('active');
+    document.getElementById('tut-spotlight').style.display = 'none';
+    document.getElementById('tut-tooltip').style.display = 'none';
+    this.state.active = false;
+    this.persist();
+  },
+
+  complete() {
+    document.getElementById('tut-spotlight').style.display = 'none';
+    document.getElementById('tut-tooltip').style.display = 'none';
+    showToast('🎉 Tutorial completed! / 教程完成!');
+    document.getElementById('tut-overlay').classList.remove('active');
+    this.state.active = false;
+    localStorage.removeItem('kix_tutorial');
+  },
+
+  persist() {
+    try { localStorage.setItem('kix_tutorial', JSON.stringify(this.state)); } catch(e) {}
+  },
+
+  restore() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('kix_tutorial') || 'null');
+      if (saved && saved.active && saved.tutorial_id) {
+        this.start(saved.tutorial_id);
+      }
+    } catch (e) {}
+  }
+};
+
+window.tutorialNext = () => TutorialEngine.next();
+window.tutorialSkip = () => TutorialEngine.skip();
+window.tutorialExit = () => TutorialEngine.exit();
+
+async function walkThroughRecipe() {
+  if (!_currentRecipeId) return;
+  const id = _currentRecipeId;
+  closeRecipeModal();
+  await TutorialEngine.startFromRecipe(id);
+}
+
+async function applyGeneratedAsTutorial() {
+  if (!window._lastGeneratedRecipe) {
+    showToast('No recipe to walk through / 无配方可教程', 'error');
+    return;
+  }
+  await TutorialEngine.startFromGeneratedRecipe(window._lastGeneratedRecipe);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════
 (function init(){
@@ -3141,6 +3856,9 @@ function esc(s){
     }
   }
 
+  // Auto-resume tutorial if one was active
+  setTimeout(() => { try { TutorialEngine.restore(); } catch(e){} }, 500);
+
   // Handle browser back/forward
   window.addEventListener('hashchange',()=>{
     const hash=location.hash.replace('#','');
@@ -3152,12 +3870,31 @@ function esc(s){
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }
   });
 })();
 </script>
+
+<!-- ─── Tutorial Engine Overlay ─────────────────────────────────────── -->
+<div id="tut-overlay">
+  <div id="tut-mask"></div>
+  <div id="tut-spotlight" style="display:none"></div>
+  <div id="tut-tooltip" style="display:none">
+    <div class="tut-progress">
+      <span id="tut-progress-text">Step 1 of 1</span>
+      <div class="tut-progress-bar"><div id="tut-progress-fill" class="tut-progress-fill" style="width:0%"></div></div>
+    </div>
+    <h4 id="tut-title">Step Title</h4>
+    <p id="tut-instruction">Instruction here</p>
+    <div class="tut-actions">
+      <button class="tut-next" onclick="tutorialNext()">Next →</button>
+      <button class="tut-skip" onclick="tutorialSkip()">Skip / 跳过</button>
+      <button class="tut-exit" onclick="tutorialExit()">Exit / 退出</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
