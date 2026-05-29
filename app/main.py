@@ -305,6 +305,14 @@ def create_app() -> FastAPI:
         tags=["storefront"],
     )
 
+    # ── Partnerships: cross-brand voucher / joint-campaign agreements ──
+    from app.routers import partnerships
+    app.include_router(
+        partnerships.router,
+        prefix="/api/v1/partnerships",
+        tags=["partnerships"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():

@@ -67,8 +67,30 @@ CAMPAIGN_TOTAL_SPEND_KEY = "campaign:{cid}:budget_spent_total"
 
 DAILY_SPEND_TTL = 86400 * 2  # keep yesterday around briefly for reporting
 
-VALID_OBJECTIVES = {"acquire", "sales", "awareness", "geo_visit"}
-VALID_BID_STRATEGIES = {"cpa", "cps", "cpm", "cpv", "cpc"}
+VALID_OBJECTIVES = {
+    "acquire", "sales", "awareness", "geo_visit",
+    # Engagement / retention lifecycle objectives — subscription &
+    # community merchants need these to honestly declare campaign intent
+    # (rather than declaring `acquire` for engagement spend).
+    "engagement", "retention", "activation", "win_back",
+}
+VALID_BID_STRATEGIES = {"cpa", "cps", "cpm", "cpv", "cpc", "cpe"}
+
+# Attribution window bounds (campaign-configurable). System default = 7 days
+# (604800 s) when not set on the campaign.
+ATTRIBUTION_WINDOW_MIN_DAYS = 1
+ATTRIBUTION_WINDOW_MAX_DAYS = 90
+ATTRIBUTION_WINDOW_DEFAULT_SECONDS = 7 * 86400
+
+# CPS percent-of-order bid bounds (basis points). 1 bps = 0.01%; 5000 bps = 50%.
+CPS_BPS_MIN = 1
+CPS_BPS_MAX = 5000
+
+# Valid engagement types for CPE charging.
+ENGAGEMENT_TYPES = {
+    "game_play_30s", "video_complete", "voucher_claim",
+    "level_up", "streak_milestone",
+}
 
 STATUS_ACTIVE = "active"
 STATUS_PAUSED = "paused"
@@ -142,11 +164,23 @@ class Schedule(BaseModel):
 class CampaignCreate(BaseModel):
     brand_id: str
     name: str
-    objective: Literal["acquire", "sales", "awareness", "geo_visit"]
-    bid_strategy: Literal["cpa", "cps", "cpm", "cpv", "cpc"]
+    objective: Literal[
+        "acquire", "sales", "awareness", "geo_visit",
+        "engagement", "retention", "activation", "win_back",
+    ]
+    bid_strategy: Literal["cpa", "cps", "cpm", "cpv", "cpc", "cpe"]
     max_bid_cents: int = Field(gt=0)
+    # CPS percent-of-order bid (basis points). When set with bid_strategy=cps,
+    # commission = conversion_value × bid_percent_bps / 10000 — i.e. true
+    # GMV revenue share. When unset, CPS falls back to fixed max_bid_cents
+    # (legacy semantics). Range 1..5000 = 0.01%..50%.
+    bid_percent_bps: int | None = Field(default=None, ge=1, le=5000)
     daily_budget_cents: int = Field(gt=0)
     total_budget_cents: int = Field(gt=0)
+    # Attribution window in days. None = use system default (7 days).
+    # Auction stores this on the impression token so report_conversion
+    # uses the campaign-specific window, not the global default.
+    attribution_window_days: int | None = Field(default=None, ge=1, le=90)
     targeting: Targeting = Field(default_factory=Targeting)
     creative: Creative = Field(default_factory=Creative)
     schedule: Schedule = Field(default_factory=Schedule)
@@ -156,8 +190,10 @@ class CampaignCreate(BaseModel):
 class CampaignUpdate(BaseModel):
     name: str | None = None
     max_bid_cents: int | None = Field(default=None, gt=0)
+    bid_percent_bps: int | None = Field(default=None, ge=1, le=5000)
     daily_budget_cents: int | None = Field(default=None, gt=0)
     total_budget_cents: int | None = Field(default=None, gt=0)
+    attribution_window_days: int | None = Field(default=None, ge=1, le=90)
     targeting: Targeting | None = None
     creative: Creative | None = None
     schedule: Schedule | None = None
@@ -233,15 +269,20 @@ def _total_spend_key(cid: str) -> str:
 
 def _serialise_campaign(c: CampaignCreate, campaign_id: str) -> dict[str, str]:
     """Convert nested Pydantic → flat dict of strings for HSET."""
-    return {
+    payload = {
         "campaign_id": campaign_id,
         "brand_id": c.brand_id,
         "name": c.name,
         "objective": c.objective,
         "bid_strategy": c.bid_strategy,
         "max_bid_cents": str(c.max_bid_cents),
+        # CPS percent-bid: 0 = unset (fall back to fixed max_bid_cents).
+        # Storing 0 keeps the Redis HASH shape stable across all campaigns.
+        "bid_percent_bps": str(c.bid_percent_bps or 0),
         "daily_budget_cents": str(c.daily_budget_cents),
         "total_budget_cents": str(c.total_budget_cents),
+        # 0 = use system default attribution window (7d) in auction.
+        "attribution_window_days": str(c.attribution_window_days or 0),
         "targeting": c.targeting.model_dump_json(),
         "creative": c.creative.model_dump_json(),
         "schedule": c.schedule.model_dump_json(),
@@ -250,6 +291,7 @@ def _serialise_campaign(c: CampaignCreate, campaign_id: str) -> dict[str, str]:
         "created_at": str(_now()),
         "updated_at": str(_now()),
     }
+    return payload
 
 
 def _safe_json_loads(s: str | None, default: Any) -> Any:
@@ -404,8 +446,10 @@ def _to_response(raw: dict[str, str], stats: dict[str, Any]) -> dict[str, Any]:
         "objective": raw.get("objective"),
         "bid_strategy": raw.get("bid_strategy"),
         "max_bid_cents": int(raw.get("max_bid_cents", 0)),
+        "bid_percent_bps": int(raw.get("bid_percent_bps", 0)),
         "daily_budget_cents": int(raw.get("daily_budget_cents", 0)),
         "total_budget_cents": int(raw.get("total_budget_cents", 0)),
+        "attribution_window_days": int(raw.get("attribution_window_days", 0)),
         "targeting": _safe_json_loads(raw.get("targeting"), {}),
         "creative": _safe_json_loads(raw.get("creative"), {}),
         "schedule": _safe_json_loads(raw.get("schedule"), {}),
@@ -551,10 +595,14 @@ async def update_campaign(
         patch["name"] = body.name
     if body.max_bid_cents is not None:
         patch["max_bid_cents"] = str(body.max_bid_cents)
+    if body.bid_percent_bps is not None:
+        patch["bid_percent_bps"] = str(body.bid_percent_bps)
     if body.daily_budget_cents is not None:
         patch["daily_budget_cents"] = str(body.daily_budget_cents)
     if body.total_budget_cents is not None:
         patch["total_budget_cents"] = str(body.total_budget_cents)
+    if body.attribution_window_days is not None:
+        patch["attribution_window_days"] = str(body.attribution_window_days)
     if body.targeting is not None:
         patch["targeting"] = body.targeting.model_dump_json()
     if body.creative is not None:
@@ -1303,8 +1351,14 @@ async def submit_for_review(
             objective=raw.get("objective", "acquire"),  # type: ignore[arg-type]
             bid_strategy=raw.get("bid_strategy", "cpa"),  # type: ignore[arg-type]
             max_bid_cents=int(raw.get("max_bid_cents", "1") or "1"),
+            bid_percent_bps=(
+                int(raw.get("bid_percent_bps", "0") or "0") or None
+            ),
             daily_budget_cents=int(raw.get("daily_budget_cents", "1") or "1"),
             total_budget_cents=int(raw.get("total_budget_cents", "1") or "1"),
+            attribution_window_days=(
+                int(raw.get("attribution_window_days", "0") or "0") or None
+            ),
             targeting=Targeting(**_safe_json_loads(raw.get("targeting"), {})),
             creative=Creative(**_safe_json_loads(raw.get("creative"), {})),
             schedule=Schedule(**_safe_json_loads(raw.get("schedule"), {})),

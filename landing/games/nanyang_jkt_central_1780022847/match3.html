@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>消消乐 - Match-3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Fix: Add !important to prevent Tailwind from overriding display */
+  .screen { position: fixed; inset: 0; z-index: 10; overflow-y: auto; display: none !important; }
+  .screen.active { display: block !important; }
+  .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.85); display: none; }
+  .overlay.active { display: flex; }
+  #game-board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 2px; aspect-ratio: 1/1; max-width: 100%; }
+  .piece { border-radius: 12px; aspect-ratio: 1/1; cursor: pointer; transition: transform .15s; }
+  .piece:active { transform: scale(.9); }
+  .piece.selected { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #fbbf24; transform: scale(1.05); z-index: 2; }
+  .piece.red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+  .piece.blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+  .piece.green { background: linear-gradient(135deg, #22c55e, #15803d); }
+  .piece.yellow { background: linear-gradient(135deg, #eab308, #a16207); }
+  .piece.purple { background: linear-gradient(135deg, #a855f7, #6b21a8); }
+  .piece.orange { background: linear-gradient(135deg, #f97316, #c2410c); }
+  .piece.matched { animation: pop .3s ease-out forwards; }
+  @keyframes pop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; height: 56px; }
+</style>
+<style>
+/* KiX Brand CSS —  */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #00704A, #003825) !important;
+  --tw-gradient-from: #00704A !important;
+  --tw-gradient-to: #003825 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #00704A !important;
+  background: #00704A !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #003825 !important;
+  background: #003825 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #00704A !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-900 text-white font-sans overflow-hidden">
+
+<!-- HOME SCREEN -->
+<div id="home-screen" class="screen active flex flex-col items-center justify-center gap-6 p-6">
+  <div style="font-size:48px;margin-bottom:8px">⭐</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px"></h1>
+  <p class="text-gray-300 text-lg">Match-3 Puzzle</p>
+  <div class="flex flex-col gap-3 w-48 mt-4">
+    <button id="btn-play" class="w-full py-3 bg-green-500 rounded-xl font-bold text-lg">开始游戏</button>
+    <button id="btn-level-select" class="w-full py-3 bg-blue-500 rounded-xl font-bold">选关</button>
+    <button id="btn-shop" class="w-full py-3 bg-purple-500 rounded-xl font-bold">商店</button>
+    <button id="btn-high-scores" class="w-full py-3 bg-yellow-500 rounded-xl font-bold">排行榜</button>
+    <button id="btn-settings" class="w-full py-3 bg-gray-600 rounded-xl font-bold">设置</button>
+  </div>
+</div>
+
+<!-- LEVEL SELECT SCREEN -->
+<div id="level_select-screen" class="screen flex-col p-4">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-level-back" class="px-4 py-2 bg-gray-700 rounded-lg text-sm">← 返回</button>
+    <h2 class="text-xl font-bold">选择关卡</h2>
+  </div>
+  <div id="level-grid" class="grid grid-cols-5 gap-3 flex-1"></div>
+</div>
+
+<!-- GAMEPLAY SCREEN -->
+<div id="gameplay-screen" class="screen flex-col p-3">
+  <div class="flex items-center justify-between mb-2 px-2">
+    <button id="btn-pause" class="px-3 py-1 bg-gray-700 rounded-lg text-sm">⏸ 暂停</button>
+    <div class="text-center">
+      <span class="text-xs text-gray-400">关卡</span>
+      <div id="gp-level" class="font-bold text-lg">1</div>
+    </div>
+    <div class="text-center">
+      <span class="text-xs text-gray-400">分数</span>
+      <div id="gp-score" class="font-bold text-lg text-yellow-400">0</div>
+    </div>
+    <div class="text-center">
+      <span class="text-xs text-gray-400">步数</span>
+      <div id="gp-moves" class="font-bold text-lg">30</div>
+    </div>
+    <div class="text-center">
+      <span class="text-xs text-gray-400">目标</span>
+      <div id="gp-target" class="font-bold text-lg text-green-400">1000</div>
+    </div>
+  </div>
+  <div class="flex-1 flex items-center justify-center p-1">
+    <div id="game-board" class="w-full max-w-[400px]"></div>
+  </div>
+  <div id="combo-indicator" class="text-center text-sm text-orange-400 h-6"></div>
+  <div class="flex gap-2 justify-center mt-1">
+    <button id="btn-hint" class="px-4 py-2 bg-cyan-600 rounded-lg text-sm">💡 提示</button>
+    <button id="btn-bomb" class="px-4 py-2 bg-red-600 rounded-lg text-sm">💣 炸弹</button>
+  </div>
+</div>
+
+<!-- PAUSE OVERLAY -->
+<div id="pause_overlay" class="overlay flex-col items-center justify-center gap-5 p-6">
+  <h2 class="text-2xl font-bold">游戏暂停</h2>
+  <button id="btn-resume" class="w-48 py-3 bg-green-500 rounded-xl font-bold text-lg">继续游戏</button>
+  <button id="btn-restart" class="w-48 py-3 bg-yellow-500 rounded-xl font-bold text-lg">重新开始</button>
+  <button id="btn-quit" class="w-48 py-3 bg-red-500 rounded-xl font-bold text-lg">退出</button>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div id="settings-screen" class="screen flex-col p-4">
+  <div class="flex items-center gap-3 mb-6">
+    <button id="btn-settings-back" class="px-4 py-2 bg-gray-700 rounded-lg text-sm">← 返回</button>
+    <h2 class="text-xl font-bold">设置</h2>
+  </div>
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between bg-gray-800 p-4 rounded-xl">
+      <span>音效</span>
+      <button id="btn-toggle-sound" class="px-5 py-2 bg-blue-500 rounded-lg text-sm">开</button>
+    </div>
+    <div class="flex items-center justify-between bg-gray-800 p-4 rounded-xl">
+      <span>音乐</span>
+      <button id="btn-toggle-music" class="px-5 py-2 bg-blue-500 rounded-lg text-sm">开</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP SCREEN -->
+<div id="shop-screen" class="screen flex-col p-4">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-shop-back" class="px-4 py-2 bg-gray-700 rounded-lg text-sm">← 返回</button>
+    <h2 class="text-xl font-bold">商店</h2>
+    <span class="ml-auto text-yellow-400 font-bold">🪙 <span id="shop-coins">0</span></span>
+  </div>
+  <div id="shop-items" class="grid grid-cols-2 gap-3 flex-1"></div>
+</div>
+
+<!-- GAME RESULT OVERLAY -->
+<div id="game_result_overlay" class="overlay flex-col items-center justify-center gap-5 p-6">
+  <div id="result-icon" class="text-6xl"></div>
+  <h2 id="result-title" class="text-3xl font-bold"></h2>
+  <p id="result-score" class="text-xl text-yellow-400"></p>
+  <div class="flex gap-3 mt-4">
+    <button id="btn-next-level" class="px-6 py-3 bg-green-500 rounded-xl font-bold">下一关</button>
+    <button id="btn-result-home" class="px-6 py-3 bg-gray-600 rounded-xl font-bold">返回主页</button>
+  </div>
+</div>
+
+<!-- HIGH SCORES SCREEN -->
+<div id="high_scores-screen" class="screen flex-col p-4">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-scores-back" class="px-4 py-2 bg-gray-700 rounded-lg text-sm">← 返回</button>
+    <h2 class="text-xl font-bold">🏆 排行榜</h2>
+  </div>
+  <div id="scores-list" class="flex-1 overflow-y-auto space-y-2"></div>
+</div>
+
+<!-- BOTTOM ACTION BAR -->
+<div id="bottom-bar" class="bottom-bar bg-gray-800 flex items-center justify-around px-4 hidden">
+  <button id="bbtn-home" class="flex flex-col items-center text-xs text-gray-400">
+    <span class="text-lg">🏠</span>首页
+  </button>
+  <button id="bbtn-levels" class="flex flex-col items-center text-xs text-gray-400">
+    <span class="text-lg">📋</span>关卡
+  </button>
+  <button id="bbtn-shop" class="flex flex-col items-center text-xs text-gray-400">
+    <span class="text-lg">🛒</span>商店
+  </button>
+</div>
+
+<script>
+/* ========== GAME STATE ========== */
+
+/** @returns {object} Initial game state */
+function initState() {
+  let board = [];
+  for (let r = 0; r < 8; r++) {
+    let row = [];
+    for (let c = 0; c < 8; c++) {
+      row.push(generatePiece());
+    }
+    board.push(row);
+  }
+  return {
+    screen: 'home',
+    overlay: null,
+    board: board,
+    selected: null,
+    level: 1,
+    moves: 30,
+    targetScore: 1000,
+    score: 0,
+    combo: 0,
+    coins: 0,
+    items: { bomb: 0, hint: 0 },
+    highScores: [],
+    soundOn: true,
+    musicOn: true,
+    result: null,
+    hintSwap: null,
+    shopItems: [
+      { id: 'hint', name: '提示', description: '显示一个可交换的位置', price: 50 },
+      { id: 'bomb', name: '炸弹', description: '消除选中的颜色', price: 100 }
+    ]
+  };
+}
+
+/** @param {object} obj @returns {object} Deep clone via JSON */
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+/* ========== SCREEN NAVIGATION ========== */
+
+/** @param {string} screenId Base screen name (e.g. 'home', 'gameplay') */
+function showScreen(screenId) {
+  let allScreens = document.querySelectorAll('.screen');
+  for (let el of allScreens) {
+    el.classList.remove('active');
+  }
+  let target = document.getElementById(screenId + '-screen');
+  if (target) {
+    target.classList.add('active');
+  }
+}
+
+/* ========== CORE GAME LOOP ========== */
+
+/** @param {object} state @param {object} action @returns {object} New state */
+function handleAction(state, action) {
+  switch (action.type) {
+    case 'home':
+      return { ...state, screen: 'home', overlay: null, selectedPiece: null, hintSwap: null };
+    case 'level_select':
+      return { ...state, screen: 'level_select', overlay: null };
+    case 'shop':
+      return { ...state, screen: 'shop', overlay: null };
+    case 'high_scores':
+      return { ...state, screen: 'high_scores', overlay: null };
+    case 'settings':
+      return { ...state, screen: 'settings', overlay: null };
+    case 'play':
+      return startLevel(state, state.level || 1);
+    case 'select_level':
+      return startLevel(state, action.level);
+    case 'pause':
+      return { ...state, overlay: 'pause_menu' };
+    case 'resume':
+      return { ...state, overlay: null };
+    case 'restart':
+      return startLevel(state, state.level);
+    case 'quit': {
+      let newState = { ...state, screen: 'home', overlay: null, selectedPiece: null, hintSwap: null };
+      newState = submitHighScore(newState);
+      return newState;
+    }
+    case 'next_level': {
+      let nextLevel = (state.level || 1) + 1;
+      return startLevel(state, nextLevel);
+    }
+    case 'result_home': {
+      let resultState = { ...state, screen: 'home', overlay: null, hintSwap: null };
+      resultState = submitHighScore(resultState);
+      return resultState;
+    }
+    case 'board_click':
+      return handleBoardClick(state, action.row, action.col);
+    case 'hint': {
+      let newState = useItem(state, 'hint');
+      if (newState.items.hint < state.items.hint) {
+        let hint = getHint(newState);
+        if (hint) {
+          newState = { ...newState, hintSwap: hint };
+        } else {
+          newState = { ...newState, hintSwap: null };
+        }
+      }
+      return newState;
+    }
+    case 'bomb':
+      return useItem(state, 'bomb');
+    case 'toggle_sound':
+      return { ...state, soundOn: !state.soundOn };
+    case 'toggle_music':
+      return { ...state, musicOn: !state.musicOn };
+    case 'buy_item':
+      return buyItem(state, action.itemId);
+    default:
+      return state;
+  }
+}
+
+/** @param {object} state Updates all DOM to reflect state */
+function render(state) {
+  // Main screen visibility
+  if (state.screen === 'pause_menu' || state.screen === 'game_result') {
+    // These are overlays now, keep current screen visible
+  } else {
+    showScreen(state.screen);
+  }
+
+  // Bottom bar visibility
+  let bottomBar = document.getElementById('bottom-bar');
+  if (state.screen === 'gameplay' || state.screen === 'level_select' || state.screen === 'shop') {
+    bottomBar.classList.remove('hidden');
+  } else {
+    bottomBar.classList.add('hidden');
+  }
+
+  // Gameplay HUD
+  if (state.screen === 'gameplay') {
+    document.getElementById('gp-level').textContent = state.level;
+    document.getElementById('gp-score').textContent = state.score;
+    document.getElementById('gp-moves').textContent = state.moves;
+    document.getElementById('gp-target').textContent = state.targetScore;
+
+    let comboEl = document.getElementById('combo-indicator');
+    if (state.combo > 1) {
+      comboEl.textContent = '连击 x' + state.combo + '!';
+    } else {
+      comboEl.textContent = '';
+    }
+
+    renderBoard(state);
+  } else if (state.screen === 'shop') {
+    document.getElementById('shop-coins').textContent = state.coins;
+    let shopItemsContainer = document.getElementById('shop-items');
+    shopItemsContainer.innerHTML = '';
+    let shopItems = state.shopItems || [];
+    for (let item of shopItems) {
+      let itemDiv = document.createElement('div');
+      itemDiv.className = 'bg-gray-800 p-3 rounded-xl flex flex-col items-center gap-1';
+      let owned = (state.items && state.items[item.id]) ? state.items[item.id] : 0;
+      itemDiv.innerHTML =
+        '<div class="font-bold">' + item.name + '</div>' +
+        '<div class="text-xs text-gray-400">' + (item.description || '') + '</div>' +
+        '<div class="text-yellow-400 text-sm">🪙 ' + item.price + '</div>' +
+        '<button class="px-3 py-1 bg-blue-600 rounded text-sm buy-item-btn" data-item-id="' + item.id + '">' +
+        (owned > 0 ? '已拥有 (' + owned + ')' : '购买') + '</button>';
+      shopItemsContainer.appendChild(itemDiv);
+    }
+  } else if (state.screen === 'high_scores') {
+    let scoresList = document.getElementById('scores-list');
+    scoresList.innerHTML = '';
+    let scores = state.highScores || [];
+    for (let i = 0; i < scores.length; i++) {
+      let s = scores[i];
+      let entry = document.createElement('div');
+      entry.className = 'flex justify-between bg-gray-800 p-3 rounded-xl';
+      entry.innerHTML = '<span>#' + (i + 1) + ' ' + (s.name || '玩家') + '</span><span class="text-yellow-400">' + s.score + '</span>';
+      scoresList.appendChild(entry);
+    }
+  } else if (state.screen === 'settings') {
+    document.getElementById('btn-toggle-sound').textContent = state.soundOn ? '开' : '关';
+    document.getElementById('btn-toggle-music').textContent = state.musicOn ? '开' : '关';
+  }
+
+  // Overlay management
+  let pauseOverlay = document.getElementById('pause_overlay');
+  let resultOverlay = document.getElementById('game_result_overlay');
+
+  if (state.overlay === 'pause_menu') {
+    pauseOverlay.classList.add('active');
+    resultOverlay.classList.remove('active');
+  } else if (state.overlay === 'game_result') {
+    pauseOverlay.classList.remove('active');
+    resultOverlay.classList.add('active');
+    // Update result info
+    let result = state.result || {};
+    let iconEl = document.getElementById('result-icon');
+    let titleEl = document.getElementById('result-title');
+    let scoreEl = document.getElementById('result-score');
+    if (result.win) {
+      iconEl.textContent = '🎉';
+      titleEl.textContent = '胜利!';
+    } else {
+      iconEl.textContent = '😢';
+      titleEl.textContent = '失败';
+    }
+    scoreEl.textContent = '得分: ' + result.score;
+  } else {
+    pauseOverlay.classList.remove('active');
+    resultOverlay.classList.remove('active');
+  }
+}
+
+/** Initializes game state, wires all button listeners, shows initial screen */
+function startGame() {
+  let gameState = initState();
+
+  document.getElementById('btn-play').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'play'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-level-select').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'level_select'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-shop').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'shop'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-high-scores').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'high_scores'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-settings').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'settings'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-level-back').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'home'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-pause').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'pause'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-hint').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'hint'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-bomb').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'bomb'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-resume').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'resume'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-restart').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'restart'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-quit').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'quit'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-settings-back').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'home'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-toggle-sound').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'toggle_sound'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-toggle-music').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'toggle_music'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-shop-back').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'home'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-next-level').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'next_level'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-result-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'result_home'});
+    render(gameState);
+  });
+
+  document.getElementById('btn-scores-back').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'home'});
+    render(gameState);
+  });
+
+  document.getElementById('bbtn-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'home'});
+    render(gameState);
+  });
+
+  document.getElementById('bbtn-levels').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'level_select'});
+    render(gameState);
+  });
+
+  document.getElementById('bbtn-shop').addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'shop'});
+    render(gameState);
+  });
+
+  // Board click delegation
+  document.getElementById('game-board').addEventListener('click', function(e) {
+    let piece = e.target.closest('.piece');
+    if (!piece) return;
+    let row = parseInt(piece.getAttribute('data-row'));
+    let col = parseInt(piece.getAttribute('data-col'));
+    if (isNaN(row) || isNaN(col)) return;
+    gameState = handleAction(gameState, {type: 'board_click', row: row, col: col});
+    render(gameState);
+  });
+
+  // Shop buy button delegation
+  document.getElementById('shop-items').addEventListener('click', function(e) {
+    let btn = e.target.closest('.buy-item-btn');
+    if (!btn) return;
+    let itemId = btn.getAttribute('data-item-id');
+    gameState = handleAction(gameState, {type: 'buy_item', itemId: itemId});
+    render(gameState);
+  });
+
+  render(gameState);
+}
+
+/* ========== BOARD RENDERING ========== */
+
+/** @param {object} state Renders the 8x8 game board into #game-board */
+function renderBoard(state) {
+  let boardEl = document.getElementById('game-board');
+  boardEl.innerHTML = '';
+  let board = state.board;
+  let sel = state.selected;
+  let selRow = sel ? sel.row : null;
+  let selCol = sel ? sel.col : null;
+  for (let r = 0; r < board.length; r++) {
+    let row = board[r];
+    for (let c = 0; c < row.length; c++) {
+      let pieceType = row[c];
+      if (pieceType) {
+        let piece = document.createElement('div');
+        piece.className = 'piece ' + pieceType;
+        if (r === selRow && c === selCol) {
+          piece.classList.add('selected');
+        }
+        piece.setAttribute('data-row', r);
+        piece.setAttribute('data-col', c);
+        boardEl.appendChild(piece);
+      }
+    }
+  }
+}
+
+/** @param {object} state @param {number} row @param {number} col Handles piece selection and swap logic */
+function handleBoardClick(state, row, col) {
+  let newState = deepClone(state);
+  if (!newState.selected) {
+    newState.selected = { row, col };
+    return newState;
+  }
+  let { row: sr, col: sc } = newState.selected;
+  if (sr === row && sc === col) {
+    newState.selected = null;
+    return newState;
+  }
+  let rowDiff = Math.abs(sr - row);
+  let colDiff = Math.abs(sc - col);
+  if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
+    if (isValidSwap(sr, sc, row, col)) {
+      newState = performSwap(newState, sr, sc, row, col);
+      newState = cascadeBoard(newState);
+      newState.moves = (newState.moves || 0) - 1;
+      newState.selected = null;
+
+      // Ensure board always has valid moves after cascade (auto-shuffle if none)
+      newState = ensureMovesExist(newState);
+
+      // Check game over after move
+      if (newState.score >= newState.targetScore) {
+        newState.overlay = 'game_result';
+        newState.result = { win: true, score: newState.score };
+      } else if (newState.moves <= 0) {
+        newState.overlay = 'game_result';
+        newState.result = { win: false, score: newState.score };
+      }
+      return newState;
+    } else {
+      newState.selected = null;
+      return newState;
+    }
+  } else {
+    newState.selected = { row, col };
+    return newState;
+  }
+}
+
+/* ========== MATCH-3 BOARD LOGIC ========== */
+
+/** @param {object} state @returns {Array<Array<{row:number,col:number}>>} All match groups */
+function findMatches(state) {
+  let board = state.board;
+  let rows = board.length;
+  let cols = board[0].length;
+  let matches = [];
+
+  // Horizontal matches
+  for (let r = 0; r < rows; r++) {
+    let currentType = null;
+    let count = 0;
+    let startCol = 0;
+    for (let c = 0; c < cols; c++) {
+      let type = board[r][c];
+      if (type === currentType) {
+        count++;
+      } else {
+        if (count >= 3 && currentType !== null) {
+          let group = [];
+          for (let k = startCol; k < c; k++) {
+            group.push({ row: r, col: k });
+          }
+          matches.push(group);
+        }
+        currentType = type;
+        count = 1;
+        startCol = c;
+      }
+    }
+    if (count >= 3 && currentType !== null) {
+      let group = [];
+      for (let k = startCol; k < cols; k++) {
+        group.push({ row: r, col: k });
+      }
+      matches.push(group);
+    }
+  }
+
+  // Vertical matches
+  for (let c = 0; c < cols; c++) {
+    let currentType = null;
+    let count = 0;
+    let startRow = 0;
+    for (let r = 0; r < rows; r++) {
+      let type = board[r][c];
+      if (type === currentType) {
+        count++;
+      } else {
+        if (count >= 3 && currentType !== null) {
+          let group = [];
+          for (let k = startRow; k < r; k++) {
+            group.push({ row: k, col: c });
+          }
+          matches.push(group);
+        }
+        currentType = type;
+        count = 1;
+        startRow = r;
+      }
+    }
+    if (count >= 3 && currentType !== null) {
+      let group = [];
+      for (let k = startRow; k < rows; k++) {
+        group.push({ row: k, col: c });
+      }
+      matches.push(group);
+    }
+  }
+
+  return matches;
+}
+
+/** @param {object} state @param {Array<Array<{row:number,col:number}>>} matches @returns {object} New state with matches removed */
+function removeMatches(state, matches) {
+  let newState = deepClone(state);
+  let board = newState.board;
+  for (let matchGroup of matches) {
+    for (let {row, col} of matchGroup) {
+      board[row][col] = null;
+    }
+  }
+  return newState;
+}
+
+/** @param {object} state @returns {object} New state after gravity pulls pieces down */
+function applyGravity(state) {
+  let newBoard = state.board.map(row => [...row]);
+  let SIZE = 8;
+
+  for (let col = 0; col < SIZE; col++) {
+    let pieces = [];
+    for (let row = SIZE - 1; row >= 0; row--) {
+      if (newBoard[row][col] !== null && newBoard[row][col] !== undefined) {
+        pieces.push(newBoard[row][col]);
+      }
+    }
+    for (let row = SIZE - 1; row >= 0; row--) {
+      let pieceIndex = SIZE - 1 - row;
+      if (pieceIndex < pieces.length) {
+        newBoard[row][col] = pieces[pieceIndex];
+      } else {
+        newBoard[row][col] = null;
+      }
+    }
+  }
+
+  return { ...state, board: newBoard };
+}
+
+/** @param {object} state @returns {object} New state with empty cells filled */
+function fillBoard(state) {
+  let newState = deepClone(state);
+  let board = newState.board;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (!board[r][c]) {
+        board[r][c] = generatePiece();
+      }
+    }
+  }
+  return newState;
+}
+
+/** @param {object} state @returns {object} New state after full cascade (match→remove→gravity→fill loop) */
+function cascadeBoard(state) {
+  let board = state.board;
+  let score = state.score;
+  let combo = 1;
+  while (true) {
+    let tempState = { ...state, board };
+    let matches = findMatches(tempState);
+    if (matches.length === 0) break;
+    score += calculateScore(matches, combo);
+    combo++;
+    tempState = removeMatches(tempState, matches);
+    board = tempState.board;
+    tempState = applyGravity(tempState);
+    board = tempState.board;
+    tempState = fillBoard(tempState);
+    board = tempState.board;
+  }
+  return { ...state, board, score, combo };
+}
+
+/** @param {number} row1 @param {number} col1 @param {number} row2 @param {number} col2 @returns {boolean} */
+function isValidSwap(row1, col1, row2, col2) {
+  if (row1 < 0 || row1 > 7 || col1 < 0 || col1 > 7 || row2 < 0 || row2 > 7 || col2 < 0 || col2 > 7) return false;
+  return (Math.abs(row1 - row2) + Math.abs(col1 - col2)) === 1;
+}
+
+/** @param {object} state @param {number} row1 @param {number} col1 @param {number} row2 @param {number} col2 @returns {object} New state */
+function performSwap(state, row1, col1, row2, col2) {
+  let newState = deepClone(state);
+  let board = newState.board;
+  let piece1 = board[row1][col1];
+  board[row1][col1] = board[row2][col2];
+  board[row2][col2] = piece1;
+  newState.selected = null;
+  return newState;
+}
+
+/** @returns {string} Random piece type */
+function generatePiece() {
+  let types = ['red','blue','green','yellow','purple','orange'];
+  let idx = Math.floor(Math.random() * types.length);
+  return types[idx];
+}
+
+/* ========== SCORING ========== */
+
+/** @param {Array<Array<{row:number,col:number}>>} matches @param {number} combo @returns {number} */
+function calculateScore(matches, combo) {
+  let totalScore = 0;
+  for (let group of matches) {
+    let count = group.length;
+    if (count >= 3) {
+      totalScore += (count - 2) * 10;
+    }
+  }
+  return totalScore * combo;
+}
+
+/* ========== HINT & HELPERS ========== */
+
+/** @param {object} state @returns {{row1:number,col1:number,row2:number,col2:number}|null} A valid swap or null */
+function getHint(state) {
+  let board = state.board;
+
+  function hasRunOf3(arr) {
+    for (let i = 0; i <= arr.length - 3; i++) {
+      if (arr[i] && arr[i] === arr[i + 1] && arr[i + 1] === arr[i + 2]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function wouldMatch(r1, c1, r2, c2) {
+    let type1 = board[r1][c1];
+    let type2 = board[r2][c2];
+
+    // Horizontal swap
+    if (r1 === r2 && Math.abs(c1 - c2) === 1) {
+      // check row
+      let row = [];
+      for (let cc = 0; cc < 8; cc++) {
+        if (cc === c1) row.push(type2);
+        else if (cc === c2) row.push(type1);
+        else row.push(board[r1][cc]);
+      }
+      if (hasRunOf3(row)) return true;
+
+      // check column c1
+      let col1 = [];
+      for (let rr = 0; rr < 8; rr++) {
+        if (rr === r1) col1.push(type2);
+        else col1.push(board[rr][c1]);
+      }
+      if (hasRunOf3(col1)) return true;
+
+      // check column c2
+      let col2 = [];
+      for (let rr = 0; rr < 8; rr++) {
+        if (rr === r2) col2.push(type1);
+        else col2.push(board[rr][c2]);
+      }
+      if (hasRunOf3(col2)) return true;
+
+      return false;
+    }
+
+    // Vertical swap
+    if (c1 === c2 && Math.abs(r1 - r2) === 1) {
+      // check column
+      let col = [];
+      for (let rr = 0; rr < 8; rr++) {
+        if (rr === r1) col.push(type2);
+        else if (rr === r2) col.push(type1);
+        else col.push(board[rr][c1]);
+      }
+      if (hasRunOf3(col)) return true;
+
+      // check row r1
+      let row1 = [];
+      for (let cc = 0; cc < 8; cc++) {
+        if (cc === c1) row1.push(type2);
+        else row1.push(board[r1][cc]);
+      }
+      if (hasRunOf3(row1)) return true;
+
+      // check row r2
+      let row2 = [];
+      for (let cc = 0; cc < 8; cc++) {
+        if (cc === c2) row2.push(type1);
+        else row2.push(board[r2][cc]);
+      }
+      if (hasRunOf3(row2)) return true;
+
+      return false;
+    }
+
+    return false;
+  }
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (c < 7 && wouldMatch(r, c, r, c + 1)) {
+        return { row1: r, col1: c, row2: r, col2: c + 1 };
+      }
+      if (r < 7 && wouldMatch(r, c, r + 1, c)) {
+        return { row1: r, col1: c, row2: r + 1, col2: c };
+      }
+    }
+  }
+
+  return null;
+}
+
+/** @param {object} state @returns {object} New state with board shuffled */
+function shuffleBoard(state) {
+  let newState = deepClone(state);
+  let types = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+  let board = [];
+  for (let r = 0; r < 8; r++) {
+    board[r] = [];
+    for (let c = 0; c < 8; c++) {
+      let forbidden = [];
+      if (c >= 2 && board[r][c - 1] === board[r][c - 2]) {
+        forbidden.push(board[r][c - 1]);
+      }
+      if (r >= 2 && board[r - 1][c] === board[r - 2][c]) {
+        forbidden.push(board[r - 1][c]);
+      }
+      let allowed = types.filter(t => !forbidden.includes(t));
+      let pick = allowed[Math.floor(Math.random() * allowed.length)];
+      board[r][c] = pick;
+    }
+  }
+  newState.board = board;
+  newState.selected = null;
+  return newState;
+}
+
+/** @param {object} state @returns {object} Ensures at least one valid move exists, shuffling if needed */
+function ensureMovesExist(state) {
+  let newState = state;
+  let attempts = 0;
+  while (getHint(newState) === null && attempts < 20) {
+    newState = shuffleBoard(newState);
+    attempts++;
+  }
+  return newState;
+}
+
+/* ========== ITEMS / POWER-UPS ========== */
+
+/** @param {object} state @param {string} itemId @returns {object} New state after using item */
+function useItem(state, itemId) {
+  let newState = deepClone(state);
+  if (!newState.items) { return newState; }
+  let items = newState.items;
+  if (!items[itemId] || items[itemId] <= 0) { return newState; }
+  if (itemId === 'bomb') {
+    if (newState.selected) {
+      let type = newState.board[newState.selected.row] && newState.board[newState.selected.row][newState.selected.col];
+      if (type) {
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 8; c++) {
+            if (newState.board[r][c] === type) {
+              newState.board[r][c] = null;
+            }
+          }
+        }
+        newState.selected = null;
+        newState = cascadeBoard(newState);
+        newState = ensureMovesExist(newState);
+      }
+    }
+  } else if (itemId === 'hint') {
+    let hint = getHint(state);
+    if (hint) {
+      newState.hintSwap = { from: { row: hint.row1, col: hint.col1 }, to: { row: hint.row2, col: hint.col2 } };
+    }
+  } else if (itemId === 'shuffle') {
+    newState = shuffleBoard(newState);
+    newState = ensureMovesExist(newState);
+  }
+  items[itemId] = (items[itemId] || 0) - 1;
+  return newState;
+}
+
+/** @param {object} state @param {string} itemId @returns {object} New state after purchasing item */
+function buyItem(state, itemId) {
+  let prices = { hint: 50, bomb: 100 };
+  if (prices[itemId] === undefined) return state;
+  if (state.coins < prices[itemId]) return state;
+  let newState = deepClone(state);
+  newState.coins -= prices[itemId];
+  newState.items[itemId] = (newState.items[itemId] || 0) + 1;
+  return newState;
+}
+
+/* ========== HIGH SCORES ========== */
+
+/** @param {object} state @returns {object} New state with current score submitted */
+function submitHighScore(state) {
+  let newState = deepClone(state);
+  if (!newState.highScores) {
+    newState.highScores = [];
+  }
+  newState.highScores.push({
+    score: newState.score,
+    level: newState.level,
+    timestamp: Date.now()
+  });
+  newState.highScores.sort((a, b) => b.score - a.score);
+  if (newState.highScores.length > 10) {
+    newState.highScores.length = 10;
+  }
+  return newState;
+}
+
+/* ========== LEVEL MANAGEMENT ========== */
+
+/** @param {object} state @param {number} level @returns {object} New state initialized for given level */
+function startLevel(state, level) {
+  let newState = deepClone(state);
+  newState.screen = 'gameplay';
+  newState.overlay = null;
+  newState.level = level;
+  newState.score = 0;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+  newState.combo = 0;
+  newState.selected = null;
+  newState.moves = Math.max(5, 30 - (level - 1) * 2);
+  newState.targetScore = 1000 + (level - 1) * 500;
+  newState.board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  newState = fillBoard(newState);
+  // Guarantee that the starting board has at least one valid move
+  newState = ensureMovesExist(newState);
+  return newState;
+}
+
+/* ========== INITIALIZATION ========== */
+document.addEventListener('DOMContentLoaded', startGame);
+
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+
+</body>
+</html>

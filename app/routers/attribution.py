@@ -138,8 +138,11 @@ async def _enforce_consent(
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
-ATTRIBUTION_WINDOW_SECONDS = 7 * 24 * 60 * 60  # 7 days
-EVENT_TTL_SECONDS = ATTRIBUTION_WINDOW_SECONDS + 24 * 60 * 60  # +1 day grace
+ATTRIBUTION_WINDOW_SECONDS = 7 * 24 * 60 * 60  # 7 days — default only
+# Hard upper bound for any custom window (90 days). Wedding/anniversary
+# booking funnels can run this long; anything beyond is sketchy.
+MAX_ATTRIBUTION_WINDOW_SECONDS = 90 * 24 * 60 * 60
+EVENT_TTL_SECONDS = MAX_ATTRIBUTION_WINDOW_SECONDS + 24 * 60 * 60  # +1 day grace
 JOURNEY_MAX_LEN = 500  # cap LIST length per user/device
 
 STAGE_IMPRESSION = "impression"
@@ -230,6 +233,14 @@ class ConversionCheckRequest(BaseModel):
     amount_cents: int = Field(ge=0)
     source_brand: str | None = None
     context: dict[str, Any] = Field(default_factory=dict)
+    # Optional per-conversion attribution window override (seconds).
+    # If omitted, falls back to impression_token's stored window, then
+    # campaign window, then the default 7 days.
+    window_seconds: int | None = Field(default=None, ge=60, le=MAX_ATTRIBUTION_WINDOW_SECONDS)
+    # Optional impression_token to look up the window stored at auction time
+    # (wedding / anniversary funnels need 30-90 days).
+    impression_token: str | None = None
+    campaign_id: str | None = None
 
 
 class ConversionCheckResponse(BaseModel):
@@ -475,8 +486,83 @@ async def _persist_event(
     if source_brand:
         pipe.zadd(f"brand:{source_brand}:attr_outgoing", {event_id: ts})
 
+    # First-touch timestamp per (user, brand) — used to bucket cohort
+    # membership. SET NX so the first event wins permanently; subsequent
+    # events leave it untouched.
+    if user_id and target_brand:
+        pipe.set(
+            f"user:{user_id}:first_brand_touch:{target_brand}",
+            f"{ts:.6f}",
+            ex=EVENT_TTL_SECONDS,
+            nx=True,
+        )
+
     await pipe.execute()
     return event_id, ts
+
+
+def _clamp_window(window_seconds: int | None) -> int:
+    """Return a sane window in seconds. None/<=0 → default; cap at MAX."""
+    if not window_seconds or window_seconds <= 0:
+        return ATTRIBUTION_WINDOW_SECONDS
+    return min(int(window_seconds), MAX_ATTRIBUTION_WINDOW_SECONDS)
+
+
+async def _campaign_attribution_window(
+    r: aioredis.Redis, campaign_id: str | None
+) -> int | None:
+    """Read campaign-level attribution_window_seconds override, if any."""
+    if not campaign_id:
+        return None
+    raw = await r.hget(f"campaign:{campaign_id}", "attribution_window_seconds")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _impression_token_window(
+    r: aioredis.Redis, impression_token: str | None
+) -> int | None:
+    """Look up the per-impression window stored at auction time."""
+    if not impression_token:
+        return None
+    # The auction agent is adding window_seconds to impression metadata —
+    # we read it from a stable key shape and fall back gracefully if absent.
+    raw = await r.hget(f"impression:{impression_token}", "window_seconds")
+    if raw is None:
+        # legacy fallback: some auction paths persisted into attr:{event_id}.
+        raw = await r.hget(f"attr:{impression_token}", "window_seconds")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _resolve_effective_window(
+    r: aioredis.Redis,
+    *,
+    explicit: int | None = None,
+    impression_token: str | None = None,
+    campaign_id: str | None = None,
+) -> int:
+    """Resolve the attribution window, precedence:
+    explicit arg > impression_token's stored window > campaign override > default.
+    Always clamped to [1, MAX_ATTRIBUTION_WINDOW_SECONDS].
+    """
+    if explicit is not None and explicit > 0:
+        return _clamp_window(explicit)
+    tok_win = await _impression_token_window(r, impression_token)
+    if tok_win:
+        return _clamp_window(tok_win)
+    camp_win = await _campaign_attribution_window(r, campaign_id)
+    if camp_win:
+        return _clamp_window(camp_win)
+    return ATTRIBUTION_WINDOW_SECONDS
 
 
 async def find_attribution(
@@ -493,6 +579,7 @@ async def find_attribution(
     where source_brand is set and != target_brand and within window.
     Falls back to device journey if user has none.
     """
+    window_seconds = _clamp_window(window_seconds)
     now = _now()
     journeys: list[str] = []
     if user_id:
@@ -858,6 +945,14 @@ async def track_conversion(
         if cached:
             return _conversion_from_event(cached, req)
 
+    # Resolve effective attribution window for this conversion.
+    effective_window = await _resolve_effective_window(
+        r,
+        explicit=req.window_seconds,
+        impression_token=req.impression_token,
+        campaign_id=req.campaign_id,
+    )
+
     # Forced override path
     attributed_event: dict[str, str] | None = None
     if req.source_brand and req.source_brand != req.target_brand:
@@ -868,7 +963,7 @@ async def track_conversion(
         }
     else:
         attributed_event = await find_attribution(
-            r, req.user_id, req.target_brand, ATTRIBUTION_WINDOW_SECONDS
+            r, req.user_id, req.target_brand, effective_window
         )
 
     # Reject obvious fraud
@@ -906,6 +1001,7 @@ async def track_conversion(
         return ConversionCheckResponse(
             attributed=False,
             event_id=event_id,
+            window_seconds=effective_window,
         )
 
     src = attributed_event.get("source_brand")
@@ -946,6 +1042,7 @@ async def track_conversion(
         kix_take_cents=kix_take_cents,
         source_brand_take_cents=source_brand_take_cents,
         attributed_event_id=attributed_event.get("event_id"),
+        window_seconds=effective_window,
     )
 
 
@@ -1231,6 +1328,10 @@ class MultiTouchConversionRequest(BaseModel):
     ] = "linear"
     window_seconds: int = ATTRIBUTION_WINDOW_SECONDS
     context: dict[str, Any] = Field(default_factory=dict)
+    # Optional override sources (mirrors single-touch). When provided we
+    # resolve the effective window via the same precedence rules.
+    impression_token: str | None = None
+    campaign_id: str | None = None
 
 
 class MultiTouchSplit(BaseModel):
@@ -1328,11 +1429,18 @@ async def attribute_multitouch(
     model: str,
     r: aioredis.Redis,
     window: int = ATTRIBUTION_WINDOW_SECONDS,
+    *,
+    window_seconds: int | None = None,
 ) -> list[tuple[dict[str, Any], float]] | None:
     """Collect attributable touchpoints, compute weights, return zipped list.
 
-    Returns None if no valid touchpoints exist in the window.
+    Returns None if no valid touchpoints exist in the window. ``window_seconds``
+    (kwarg) takes precedence over the positional ``window`` if both are given,
+    so callers can pass a per-conversion override.
     """
+    if window_seconds is not None:
+        window = window_seconds
+    window = _clamp_window(window)
     journey = await r.lrange(f"user:{user_id}:attr_journey", 0, 200)
     touchpoints: list[dict[str, Any]] = []
     now = _now()
@@ -1422,8 +1530,23 @@ async def track_conversion_multi(
             except (json.JSONDecodeError, TypeError):
                 pass
 
+    # Resolve effective window: explicit req.window_seconds wins, otherwise
+    # look up via impression_token / campaign_id, then fall back to default.
+    explicit = (
+        req.window_seconds
+        if req.window_seconds and req.window_seconds != ATTRIBUTION_WINDOW_SECONDS
+        else None
+    )
+    effective_window = await _resolve_effective_window(
+        r,
+        explicit=explicit,
+        impression_token=req.impression_token,
+        campaign_id=req.campaign_id,
+    )
+
     attributed = await attribute_multitouch(
-        req.user_id, req.target_brand, req.model, r, req.window_seconds
+        req.user_id, req.target_brand, req.model, r,
+        window_seconds=effective_window,
     )
 
     meta = dict(req.context or {})
@@ -1867,4 +1990,406 @@ async def incrementality_results(
         control_conversion_rate=round(c_rate, 6),
         lift_pct=round(lift_pct, 4),
         statistical_significance=round(1.0 - p_value, 6),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Cohort / Retention Reports
+#
+# 老李's #1 pain point: 3-month churn invisible. Without these reports
+# nobody can tell which week's acquired users are sticking around. Cohort
+# data changes slowly (it only really moves with each new day of data) so
+# results are cached in `brand:{bid}:cohort_cache:{period}` for 1h.
+# ═══════════════════════════════════════════════════════════════════════════
+
+COHORT_BUCKETS_DAYS = (0, 1, 7, 14, 30, 60, 90)
+COHORT_CACHE_TTL_SECONDS = 3600
+
+
+class CohortRetention(BaseModel):
+    cohort_start_ts: float
+    cohort_label: str
+    initial_users: int
+    retention: dict[str, int]
+
+
+class CohortReportResponse(BaseModel):
+    brand_id: str
+    cohort_period: Literal["daily", "weekly", "monthly"]
+    from_ts: float
+    to_ts: float
+    cohorts: list[CohortRetention]
+
+
+class RetentionSummaryResponse(BaseModel):
+    brand_id: str
+    window_days: int
+    avg_d1_retention: float
+    avg_d7_retention: float
+    avg_d30_retention: float
+    churn_rate_30d: float
+    lifetime_value_estimate_cents: int
+    cohort_count: int
+
+
+class UserRecencyBucket(BaseModel):
+    bucket: str
+    user_count: int
+    label: str
+
+
+class UserRecencyResponse(BaseModel):
+    brand_id: str
+    total_users: int
+    buckets: list[UserRecencyBucket]
+
+
+def _cohort_label(period: str, ts: float) -> tuple[str, float]:
+    """Bucket a timestamp into (label, cohort_start_ts) for the given period."""
+    import datetime as _dt
+    dt = _dt.datetime.fromtimestamp(ts, tz=_dt.timezone.utc)
+    if period == "daily":
+        start = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        return start.strftime("%Y-%m-%d"), start.timestamp()
+    if period == "weekly":
+        iso_year, iso_week, _ = dt.isocalendar()
+        # Monday of that ISO week.
+        monday = _dt.datetime.fromisocalendar(iso_year, iso_week, 1).replace(
+            tzinfo=_dt.timezone.utc
+        )
+        return f"{iso_year}-W{iso_week:02d}", monday.timestamp()
+    # monthly
+    start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return start.strftime("%Y-%m"), start.timestamp()
+
+
+async def _scan_brand_users_with_first_touch(
+    r: aioredis.Redis,
+    brand_id: str,
+    from_ts: float,
+    to_ts: float,
+) -> dict[str, float]:
+    """Return {user_id: first_touch_ts} for users whose first touch on
+    this brand falls in [from_ts, to_ts].
+
+    Implementation: SCAN over `user:*:first_brand_touch:{brand_id}` keys.
+    """
+    pattern = f"user:*:first_brand_touch:{brand_id}"
+    out: dict[str, float] = {}
+    async for key in r.scan_iter(match=pattern, count=200):
+        # key shape: user:{user_id}:first_brand_touch:{brand_id}
+        try:
+            after_user = key.split("user:", 1)[1]
+            user_id = after_user.split(":first_brand_touch:", 1)[0]
+        except (IndexError, AttributeError):
+            continue
+        raw = await r.get(key)
+        if raw is None:
+            continue
+        try:
+            ts = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if from_ts <= ts <= to_ts:
+            out[user_id] = ts
+    return out
+
+
+async def _user_active_days(
+    r: aioredis.Redis, user_id: str, brand_id: str, from_ts: float, to_ts: float
+) -> list[float]:
+    """Return timestamps of attribution events for (user, brand) in window."""
+    # Pull journey then filter; cheaper than per-event hgetall for huge users.
+    journey = await r.lrange(f"user:{user_id}:attr_journey", 0, JOURNEY_MAX_LEN - 1)
+    out: list[float] = []
+    for eid in journey:
+        e = await r.hgetall(f"attr:{eid}")
+        if not e:
+            continue
+        # Either the user touched the brand as target, or the brand drove them.
+        if e.get("target_brand") != brand_id and e.get("source_brand") != brand_id:
+            continue
+        try:
+            ts = float(e.get("timestamp", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if from_ts <= ts <= to_ts:
+            out.append(ts)
+    return out
+
+
+@router.get(
+    "/brand/{brand_id}/cohorts",
+    response_model=CohortReportResponse,
+)
+async def brand_cohorts(
+    brand_id: str,
+    period: Literal["daily", "weekly", "monthly"] = Query(default="weekly"),
+    from_ts: float | None = Query(default=None, alias="from"),
+    to_ts: float | None = Query(default=None, alias="to"),
+    size: int = Query(default=30, ge=1, le=180),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Cohort retention matrix for the brand.
+
+    Cohort membership is defined by ``user:{uid}:first_brand_touch:{brand_id}``.
+    Retention at day-N counts users who had any attribution event for the
+    brand in the [cohort_start + N*day, cohort_start + (N+1)*day) bucket.
+
+    Results are cached for 1h in ``brand:{bid}:cohort_cache:{period}``.
+    """
+    now = _now()
+    # Default window scales with period × size.
+    period_secs = {"daily": 86400, "weekly": 7 * 86400, "monthly": 30 * 86400}[period]
+    if to_ts is None:
+        to_ts = now
+    if from_ts is None:
+        from_ts = to_ts - size * period_secs
+
+    # Cache lookup
+    cache_key = f"brand:{brand_id}:cohort_cache:{period}"
+    cache_field = f"{int(from_ts)}:{int(to_ts)}:{size}"
+    cached_raw = await r.hget(cache_key, cache_field)
+    if cached_raw:
+        try:
+            return CohortReportResponse(**json.loads(cached_raw))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+    # Discover cohort members
+    members = await _scan_brand_users_with_first_touch(r, brand_id, from_ts, to_ts)
+
+    # Bucket users into cohorts.
+    cohort_users: dict[str, list[tuple[str, float]]] = {}
+    cohort_starts: dict[str, float] = {}
+    for uid, ts in members.items():
+        label, start = _cohort_label(period, ts)
+        cohort_users.setdefault(label, []).append((uid, ts))
+        cohort_starts[label] = start
+
+    cohorts: list[CohortRetention] = []
+    # Sort labels by cohort_start_ts asc.
+    for label in sorted(cohort_starts, key=lambda L: cohort_starts[L]):
+        users = cohort_users[label]
+        start_ts = cohort_starts[label]
+        retention: dict[str, int] = {f"d{b}": 0 for b in COHORT_BUCKETS_DAYS}
+        # d0 is by definition the initial cohort size (the first-touch event).
+        retention["d0"] = len(users)
+        # For each bucket day d>0, count users with any activity in
+        # [start + d*day, start + (d+1)*day).
+        for uid, _first_ts in users:
+            # Pull activity once per user.
+            activity = await _user_active_days(
+                r, uid, brand_id, start_ts, now
+            )
+            for d in COHORT_BUCKETS_DAYS:
+                if d == 0:
+                    continue
+                lo = start_ts + d * 86400
+                hi = lo + 86400
+                if any(lo <= a < hi for a in activity):
+                    retention[f"d{d}"] += 1
+        cohorts.append(CohortRetention(
+            cohort_start_ts=start_ts,
+            cohort_label=label,
+            initial_users=len(users),
+            retention=retention,
+        ))
+
+    resp = CohortReportResponse(
+        brand_id=brand_id,
+        cohort_period=period,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        cohorts=cohorts,
+    )
+    # Cache
+    try:
+        await r.hset(cache_key, cache_field, resp.json())
+        await r.expire(cache_key, COHORT_CACHE_TTL_SECONDS)
+    except Exception as exc:  # noqa: BLE001 — cache write is best-effort
+        logger.warning("cohort cache write failed: %s", exc)
+    return resp
+
+
+@router.get(
+    "/brand/{brand_id}/retention-summary",
+    response_model=RetentionSummaryResponse,
+)
+async def brand_retention_summary(
+    brand_id: str,
+    window_days: int = Query(default=30, ge=1, le=180),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Roll-up of retention KPIs across recent cohorts.
+
+    Pulls weekly cohorts spanning ``window_days`` and averages their d1/d7/d30
+    retention. ``churn_rate_30d = 1 - avg_d30_retention``. LTV estimate is a
+    crude (gmv_lifetime / unique_users)·d30_retention proxy that gives the
+    merchant Portal *something* to render until the billing service ships
+    a proper LTV model.
+    """
+    now = _now()
+    from_ts = now - window_days * 86400
+    # Reuse the cohort endpoint logic (without HTTP round-trip).
+    members = await _scan_brand_users_with_first_touch(r, brand_id, from_ts, now)
+
+    cohort_users: dict[str, list[tuple[str, float]]] = {}
+    cohort_starts: dict[str, float] = {}
+    for uid, ts in members.items():
+        label, start = _cohort_label("weekly", ts)
+        cohort_users.setdefault(label, []).append((uid, ts))
+        cohort_starts[label] = start
+
+    d1_rates: list[float] = []
+    d7_rates: list[float] = []
+    d30_rates: list[float] = []
+    for label, users in cohort_users.items():
+        if not users:
+            continue
+        start_ts = cohort_starts[label]
+        c1 = c7 = c30 = 0
+        for uid, _ts in users:
+            activity = await _user_active_days(r, uid, brand_id, start_ts, now)
+            if any(start_ts + 86400 <= a < start_ts + 2 * 86400 for a in activity):
+                c1 += 1
+            if any(start_ts + 7 * 86400 <= a < start_ts + 8 * 86400 for a in activity):
+                c7 += 1
+            if any(start_ts + 30 * 86400 <= a < start_ts + 31 * 86400 for a in activity):
+                c30 += 1
+        n = len(users)
+        d1_rates.append(c1 / n)
+        d7_rates.append(c7 / n)
+        d30_rates.append(c30 / n)
+
+    def _avg(xs: list[float]) -> float:
+        return sum(xs) / len(xs) if xs else 0.0
+
+    avg_d1 = _avg(d1_rates)
+    avg_d7 = _avg(d7_rates)
+    avg_d30 = _avg(d30_rates)
+    churn_30 = max(0.0, 1.0 - avg_d30)
+
+    # LTV proxy
+    gmv_raw = await r.get(f"brand:{brand_id}:gmv_lifetime")
+    try:
+        gmv = int(gmv_raw) if gmv_raw else 0
+    except (TypeError, ValueError):
+        gmv = 0
+    unique_users = await r.scard(f"brand:{brand_id}:users")
+    ltv_cents = 0
+    if unique_users > 0:
+        # Per-user-GMV scaled by d30 retention as a (very) rough survival proxy.
+        ltv_cents = int(round((gmv / unique_users) * (1.0 + avg_d30)))
+
+    return RetentionSummaryResponse(
+        brand_id=brand_id,
+        window_days=window_days,
+        avg_d1_retention=round(avg_d1, 6),
+        avg_d7_retention=round(avg_d7, 6),
+        avg_d30_retention=round(avg_d30, 6),
+        churn_rate_30d=round(churn_30, 6),
+        lifetime_value_estimate_cents=ltv_cents,
+        cohort_count=len(cohort_users),
+    )
+
+
+@router.get(
+    "/brand/{brand_id}/user-recency",
+    response_model=UserRecencyResponse,
+)
+async def brand_user_recency(
+    brand_id: str,
+    segment_buckets: str = Query(
+        default="7,30,60,90,180",
+        description="Comma-separated day boundaries (asc). Example: 7,30,60,90,180",
+    ),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """User segmentation by days since last activity on this brand.
+
+    Drives the "at-risk / dormant / churned" view 老李 needs to spot
+    accounts before they fall off the 90-day cliff.
+    """
+    try:
+        boundaries = sorted({int(x.strip()) for x in segment_buckets.split(",") if x.strip()})
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="segment_buckets must be ints")
+    if not boundaries:
+        boundaries = [7, 30, 60, 90, 180]
+
+    # Discover users via the brand's known-users SET (populated on first
+    # visit). Iterate via SSCAN for memory friendliness.
+    user_ids: list[str] = []
+    async for uid in r.sscan_iter(f"brand:{brand_id}:users", count=200):
+        user_ids.append(uid)
+
+    now = _now()
+    # Compute days_since_last for each user.
+    days_since: list[int] = []
+    for uid in user_ids:
+        # Fast path: most recent journey event timestamp for this brand.
+        last_ts: float | None = None
+        journey = await r.lrange(f"user:{uid}:attr_journey", 0, 50)
+        for eid in journey:
+            e = await r.hgetall(f"attr:{eid}")
+            if not e:
+                continue
+            if e.get("target_brand") != brand_id and e.get("source_brand") != brand_id:
+                continue
+            try:
+                ts = float(e.get("timestamp", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if last_ts is None or ts > last_ts:
+                last_ts = ts
+        if last_ts is None:
+            # Fall back to first_brand_touch.
+            raw = await r.get(f"user:{uid}:first_brand_touch:{brand_id}")
+            try:
+                last_ts = float(raw) if raw else None
+            except (TypeError, ValueError):
+                last_ts = None
+        if last_ts is None:
+            continue
+        days_since.append(int((now - last_ts) // 86400))
+
+    # Build buckets: [0..b0], (b0..b1], (b1..b2], ..., (bN-1..bN], (bN..∞)
+    labels_by_max_day = [
+        (7, "active"),
+        (30, "engaged"),
+        (60, "at_risk"),
+        (90, "dormant"),
+        (180, "churned"),
+    ]
+    label_lookup = {k: v for k, v in labels_by_max_day}
+
+    buckets: list[UserRecencyBucket] = []
+    prev = 0
+    for b in boundaries:
+        # bucket "(prev+1)-b d" except first which is "0-b"
+        if prev == 0:
+            label_range = f"0-{b}d"
+        else:
+            label_range = f"{prev + 1}-{b}d"
+        count = sum(1 for d in days_since if (prev if prev == 0 else prev + 1) <= d <= b) \
+            if prev == 0 else sum(1 for d in days_since if prev < d <= b)
+        buckets.append(UserRecencyBucket(
+            bucket=label_range,
+            user_count=count,
+            label=label_lookup.get(b, "engaged"),
+        ))
+        prev = b
+    # Tail bucket
+    tail_count = sum(1 for d in days_since if d > prev)
+    buckets.append(UserRecencyBucket(
+        bucket=f"{prev}d+",
+        user_count=tail_count,
+        label="lost",
+    ))
+
+    return UserRecencyResponse(
+        brand_id=brand_id,
+        total_users=len(days_since),
+        buckets=buckets,
     )

@@ -829,30 +829,449 @@ async def _compute_tier(
     return current, nxt
 
 
+async def _read_user_xp(
+    r: aioredis.Redis, user_id: str, brand_id: str | None
+) -> tuple[int, str | None]:
+    """Read user XP. Source-of-truth = brand-scoped currency XP.
+
+    Resolution order:
+      1. brand_id given → ``user:{uid}:currency:{brand_id}:xp``
+      2. No brand → aggregate across all brands the user has currency XP in.
+      3. Fall back to legacy global ``user:{uid}:xp`` if no brand-scoped XP
+         exists (back-compat with achievement/quest endpoints that still
+         increment the legacy key).
+
+    Returns (xp, resolved_brand_id). When aggregating, resolved_brand_id is
+    None.
+    """
+    if brand_id:
+        # Prefer brand-scoped currency XP; fall back to legacy global XP if
+        # the brand has none yet (so freshly-onboarded users with quest XP
+        # still tier correctly).
+        scoped = int(await r.get(_currency_key(user_id, brand_id, "xp")) or 0)
+        if scoped > 0:
+            return scoped, brand_id
+        legacy = int(await r.get(f"user:{user_id}:xp") or 0)
+        return legacy, brand_id
+
+    # Aggregate across brands by scanning currency keys.
+    total = 0
+    cursor = 0
+    pattern = f"user:{user_id}:currency:*:xp"
+    while True:
+        cursor, batch = await r.scan(cursor=cursor, match=pattern, count=100)
+        for k in batch:
+            try:
+                total += int(await r.get(k) or 0)
+            except (TypeError, ValueError):
+                continue
+        if cursor == 0:
+            break
+    if total == 0:
+        # Final fall-back to legacy global XP.
+        total = int(await r.get(f"user:{user_id}:xp") or 0)
+    return total, None
+
+
+async def _read_tier_config(
+    r: aioredis.Redis, brand_id: str
+) -> list[dict[str, Any]]:
+    """Read configured tier thresholds.
+
+    Two stores are consulted, in order:
+      1. ``tier_config:{brand_id}`` HASH (canonical, set via
+         /primitives/tier/configure)
+      2. legacy ``brand:{brand_id}:tiers`` HASH (Tier objects)
+
+    Returns a list of dicts ``{name, xp_min, perks}`` sorted ascending.
+    """
+    out: list[dict[str, Any]] = []
+    raw_cfg = await r.hgetall(f"tier_config:{brand_id}")
+    if raw_cfg:
+        for v in raw_cfg.values():
+            try:
+                d = json.loads(v)
+                out.append(
+                    {
+                        "name": d.get("name", ""),
+                        "xp_min": int(d.get("xp_min", 0)),
+                        "perks": d.get("perks", []),
+                    }
+                )
+            except Exception:
+                continue
+    else:
+        raw_legacy = await r.hgetall(f"brand:{brand_id}:tiers")
+        for v in raw_legacy.values():
+            try:
+                t = json.loads(v)
+                out.append(
+                    {
+                        "name": t.get("name") or t.get("id", ""),
+                        "xp_min": int(t.get("threshold_xp", 0)),
+                        "perks": t.get("perks", []),
+                    }
+                )
+            except Exception:
+                continue
+    out.sort(key=lambda d: d["xp_min"])
+    return out
+
+
+def _resolve_tier_from_config(
+    tiers: list[dict[str, Any]], xp: int
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Returns (current, next) tier dicts for the given xp."""
+    if not tiers:
+        return None, None
+    current: dict[str, Any] | None = None
+    nxt: dict[str, Any] | None = None
+    for t in tiers:
+        if xp >= t["xp_min"]:
+            current = t
+        else:
+            nxt = t
+            break
+    return current, nxt
+
+
+# Global default tier ladder used when neither tier_config:{brand_id} nor
+# brand:{brand_id}:tiers is configured. Keeps the endpoint useful for
+# brand-agnostic / cross-brand aggregate lookups.
+_DEFAULT_TIER_LADDER = [
+    {"name": "guest", "xp_min": 0, "perks": []},
+    {"name": "silver", "xp_min": 100, "perks": []},
+    {"name": "gold", "xp_min": 1000, "perks": []},
+    {"name": "vip", "xp_min": 10000, "perks": []},
+]
+
+
 @router.get("/user/{user_id}/tier")
 async def get_user_tier(
-    user_id: str, brand_id: str, r: aioredis.Redis = Depends(get_redis)
+    user_id: str,
+    brand_id: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
 ):
-    """Return current tier + next + xp_to_next. Auto-promotes if XP qualifies."""
-    xp = int(await r.get(f"user:{user_id}:xp") or 0)
-    current, nxt = await _compute_tier(r, brand_id, xp)
+    """Return current tier + next + progress.
 
-    # Persist current tier; detect promotion vs stored
-    stored_key = f"user:{user_id}:tier:{brand_id}"
-    stored = await r.get(stored_key)
+    XP source-of-truth is brand-scoped: ``user:{uid}:currency:{brand_id}:xp``
+    (written by /currency/xp/grant). If ``brand_id`` is omitted, XP is
+    aggregated across every brand the user has XP in. Tier thresholds come
+    from ``tier_config:{brand_id}`` (or legacy ``brand:{bid}:tiers``); a
+    sensible global default is used when neither is configured.
+
+    Auto-promotes the stored ``user:{uid}:tier:{brand_id}`` pointer if the
+    current XP qualifies for a higher tier than the last known one.
+    """
+    xp, resolved_brand = await _read_user_xp(r, user_id, brand_id)
+
+    tiers: list[dict[str, Any]] = []
+    if resolved_brand:
+        tiers = await _read_tier_config(r, resolved_brand)
+    if not tiers:
+        tiers = _DEFAULT_TIER_LADDER
+
+    current, nxt = _resolve_tier_from_config(tiers, xp)
+
+    # Persist current tier pointer + detect promotion (only when scoped).
     promoted = False
-    if current and current.id != stored:
-        await r.set(stored_key, current.id)
-        promoted = stored is not None  # promotion only if user had a prior tier
+    if resolved_brand and current:
+        stored_key = f"user:{user_id}:tier:{resolved_brand}"
+        stored = await r.get(stored_key)
+        if current["name"] != stored:
+            await r.set(stored_key, current["name"])
+            promoted = stored is not None
+
+    # Progress toward next tier.
+    if nxt and current:
+        span = max(nxt["xp_min"] - current["xp_min"], 1)
+        progress_pct = min(100.0, max(0.0, ((xp - current["xp_min"]) / span) * 100.0))
+    elif nxt and not current:
+        progress_pct = min(100.0, max(0.0, (xp / max(nxt["xp_min"], 1)) * 100.0))
+    else:
+        progress_pct = 100.0
+
+    next_threshold = nxt["xp_min"] if nxt else None
 
     return {
         "user_id": user_id,
-        "brand_id": brand_id,
+        "brand_id": resolved_brand,
         "xp": xp,
-        "current_tier": current.model_dump() if current else None,
-        "next_tier": nxt.model_dump() if nxt else None,
-        "xp_to_next": (nxt.threshold_xp - xp) if nxt else 0,
+        "tier": current["name"] if current else None,
+        "current_tier": current,
+        "next_tier": nxt,
+        "next_tier_threshold": next_threshold,
+        "xp_to_next": (nxt["xp_min"] - xp) if nxt else 0,
+        "progress_pct": round(progress_pct, 2),
         "promoted": promoted,
+    }
+
+
+# ── Tier configuration (canonical) ───────────────────────────────────────
+
+
+class TierThreshold(BaseModel):
+    name: str
+    xp_min: int = Field(ge=0)
+    perks: list[str] = Field(default_factory=list)
+
+
+class TierConfigure(BaseModel):
+    brand_id: str
+    tiers: list[TierThreshold]
+
+
+@router.post("/tier/configure")
+async def configure_tiers(
+    body: TierConfigure, r: aioredis.Redis = Depends(get_redis)
+):
+    """Set the tier ladder for a brand.
+
+    Stored at ``tier_config:{brand_id}`` HASH keyed by tier name. Overwrites
+    any previous configuration for the brand. Use this instead of
+    /brand/{brand_id}/tiers when you want the lightweight {name, xp_min}
+    contract that /user/{uid}/tier consumes.
+    """
+    if not body.tiers:
+        raise HTTPException(422, detail="at least one tier required")
+    seen_names: set[str] = set()
+    seen_thresholds: set[int] = set()
+    for t in body.tiers:
+        if t.name in seen_names:
+            raise HTTPException(422, detail=f"duplicate tier name: {t.name}")
+        if t.xp_min in seen_thresholds:
+            raise HTTPException(422, detail=f"duplicate xp_min: {t.xp_min}")
+        seen_names.add(t.name)
+        seen_thresholds.add(t.xp_min)
+
+    key = f"tier_config:{body.brand_id}"
+    # Replace, don't merge.
+    await r.delete(key)
+    mapping = {t.name: json.dumps(t.model_dump()) for t in body.tiers}
+    await r.hset(key, mapping=mapping)
+    return {
+        "ok": True,
+        "brand_id": body.brand_id,
+        "tier_count": len(body.tiers),
+        "tiers": [t.model_dump() for t in body.tiers],
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 5b. USER ATTRIBUTES  (free-form key/value + lifecycle stage)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# Used for life-stage segmentation ("new_mom_0_3mo"), declared preferences,
+# inferred traits, etc. All values are stored as strings — clients serialize
+# objects/lists themselves (Redis HASH constraint). Two scopes:
+#   * Global:        user:{uid}:attributes
+#   * Brand-scoped:  user:{uid}:attributes:{brand_id}
+#
+# Per-key TTLs (used by /attributes/{key} POST) are tracked in a sidecar
+# string key user:{uid}:attribute:{scope}:{key} that mirrors the value and
+# expires; the HASH copy is best-effort and the sidecar wins on read when
+# present.
+
+
+class AttributesSet(BaseModel):
+    brand_id: str | None = None
+    attrs: dict[str, Any]
+
+
+class AttributeSet(BaseModel):
+    value: Any
+    ttl_seconds: int | None = Field(default=None, ge=1)
+
+
+class LifecycleStageSet(BaseModel):
+    stage: str
+    source: str = "self_declared"  # self_declared | inferred | verified
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+_VALID_LIFECYCLE_SOURCES = {"self_declared", "inferred", "verified"}
+
+
+def _attr_hash_key(user_id: str, brand_id: str | None) -> str:
+    if brand_id:
+        return f"user:{user_id}:attributes:{brand_id}"
+    return f"user:{user_id}:attributes"
+
+
+def _attr_sidecar_key(user_id: str, brand_id: str | None, key: str) -> str:
+    if brand_id:
+        return f"user:{user_id}:attribute:{brand_id}:{key}"
+    return f"user:{user_id}:attribute:global:{key}"
+
+
+def _serialize_attr_value(value: Any) -> str:
+    """Coerce a JSON-ish value to its stored string form."""
+    if isinstance(value, str):
+        return value
+    return json.dumps(value)
+
+
+@router.post("/user/{user_id}/attributes")
+async def set_user_attributes(
+    user_id: str,
+    body: AttributesSet,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Bulk-set arbitrary attributes. Values are always stored as strings."""
+    if not body.attrs:
+        raise HTTPException(422, detail="attrs must be non-empty")
+    key = _attr_hash_key(user_id, body.brand_id)
+    mapping = {k: _serialize_attr_value(v) for k, v in body.attrs.items()}
+    await r.hset(key, mapping=mapping)
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "brand_id": body.brand_id,
+        "scope": "brand" if body.brand_id else "global",
+        "attrs_set": list(mapping.keys()),
+        "count": len(mapping),
+    }
+
+
+@router.get("/user/{user_id}/attributes")
+async def get_user_attributes(
+    user_id: str,
+    brand_id: str | None = None,
+    key: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Get all attrs (or a single key) for a user under a given scope."""
+    hkey = _attr_hash_key(user_id, brand_id)
+    if key:
+        # Prefer sidecar (carries TTL) when present.
+        sidecar = await r.get(_attr_sidecar_key(user_id, brand_id, key))
+        if sidecar is not None:
+            return {
+                "user_id": user_id,
+                "brand_id": brand_id,
+                "key": key,
+                "value": sidecar,
+            }
+        v = await r.hget(hkey, key)
+        return {
+            "user_id": user_id,
+            "brand_id": brand_id,
+            "key": key,
+            "value": v,
+        }
+    raw = await r.hgetall(hkey) or {}
+    return {
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "scope": "brand" if brand_id else "global",
+        "attrs": raw,
+        "count": len(raw),
+    }
+
+
+@router.post("/user/{user_id}/attributes/{key}")
+async def set_user_attribute(
+    user_id: str,
+    key: str,
+    body: AttributeSet,
+    brand_id: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Set a single attribute, optionally with a TTL."""
+    value = _serialize_attr_value(body.value)
+    hkey = _attr_hash_key(user_id, brand_id)
+    pipe = r.pipeline()
+    pipe.hset(hkey, key, value)
+    if body.ttl_seconds:
+        side = _attr_sidecar_key(user_id, brand_id, key)
+        pipe.set(side, value, ex=body.ttl_seconds)
+    await pipe.execute()
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "key": key,
+        "value": value,
+        "ttl_seconds": body.ttl_seconds,
+    }
+
+
+@router.delete("/user/{user_id}/attributes/{key}")
+async def delete_user_attribute(
+    user_id: str,
+    key: str,
+    brand_id: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Remove a single attribute (HASH field + any sidecar)."""
+    hkey = _attr_hash_key(user_id, brand_id)
+    pipe = r.pipeline()
+    pipe.hdel(hkey, key)
+    pipe.delete(_attr_sidecar_key(user_id, brand_id, key))
+    res = await pipe.execute()
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "key": key,
+        "removed": bool(res[0]) if res else False,
+    }
+
+
+@router.post("/user/{user_id}/attributes/lifecycle-stage")
+async def set_lifecycle_stage(
+    user_id: str,
+    body: LifecycleStageSet,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Typed shortcut for life-stage segmentation.
+
+    Common stages used by maternity / family brands:
+      new_mom_0_3mo, new_mom_3_6mo, new_mom_6_12mo,
+      toddler_1_2yr, kid_2_5yr, kid_5_10yr, teen, adult
+
+    The value is free-form so brands can introduce their own taxonomy.
+    """
+    if body.source not in _VALID_LIFECYCLE_SOURCES:
+        raise HTTPException(
+            422,
+            detail=f"source must be one of {sorted(_VALID_LIFECYCLE_SOURCES)}",
+        )
+    payload = {
+        "stage": body.stage,
+        "source": body.source,
+        "confidence": (
+            f"{body.confidence:.4f}" if body.confidence is not None else ""
+        ),
+        "set_at": str(int(time.time())),
+    }
+    await r.hset(f"user:{user_id}:lifecycle_stage", mapping=payload)
+    return {
+        "ok": True,
+        "user_id": user_id,
+        **payload,
+        "confidence": body.confidence,
+    }
+
+
+@router.get("/user/{user_id}/attributes/lifecycle-stage")
+async def get_lifecycle_stage(
+    user_id: str, r: aioredis.Redis = Depends(get_redis)
+):
+    raw = await r.hgetall(f"user:{user_id}:lifecycle_stage")
+    if not raw:
+        return {"user_id": user_id, "stage": None}
+    confidence = raw.get("confidence")
+    try:
+        confidence_val = float(confidence) if confidence else None
+    except (TypeError, ValueError):
+        confidence_val = None
+    return {
+        "user_id": user_id,
+        "stage": raw.get("stage"),
+        "source": raw.get("source"),
+        "confidence": confidence_val,
+        "set_at": int(raw.get("set_at", 0) or 0),
     }
 
 

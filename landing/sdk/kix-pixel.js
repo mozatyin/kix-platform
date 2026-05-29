@@ -1,10 +1,14 @@
 /*!
- * KiX Conversion Pixel SDK v1.0.0
- * Google-Analytics-style pixel for merchant websites.
+ * KiX Conversion Pixel SDK v1.1.0
+ * Google-Analytics-style pixel for merchant websites + mobile apps.
  * (c) 2026 KiX. MIT License.
  *
- * Embed:
+ * Embed (web):
  *   <script async src="https://api.kix.gg/sdk/kix-pixel.js" data-pixel="px_xxx"></script>
+ *
+ * Embed (WeChat Mini-Program): bundle this file into your subpackage; auto-
+ * detected via `typeof wx !== 'undefined'`. Exposes window.kix._mp for the
+ * mini-program-native code path (wx.request, no fetch/localStorage).
  *
  * Public API (window.kix):
  *   kix.identify(user_id)
@@ -12,6 +16,9 @@
  *   kix.purchase(orderId, amountCents, currency?)   currency defaults to 'CNY'
  *   kix.signup(newUserId)
  *   kix.addToCart(productId, valueCents?)
+ *   kix.refund(orderId, reason?)                    reverse a paid commission
+ *   kix.return(orderId, refundCents?)               same, with refunded amount
+ *   kix.batch([{event_type, ...}, ...])             up to 100 events per call
  *   kix.fp()                                        returns device fingerprint
  *   kix.ready                                       true once pageview sent
  */
@@ -40,6 +47,8 @@
     } catch (e) { /* ignore */ }
     return 'https://api.kix.gg/api/v1/pixel/event';
   })();
+  // Batch endpoint lives alongside the single-event endpoint.
+  var BATCH_URL = EVENT_URL.replace(/\/event$/, '/events/batch');
 
   if (!PIXEL_ID) {
     if (window.console) console.warn('[KiX Pixel] missing data-pixel attribute; SDK disabled.');
@@ -191,8 +200,148 @@
       });
     },
 
+    // Refund / return — server uses these to reverse commission on a
+    // previously attributed purchase (looked up by order_id).
+    refund: function (orderId, reason) {
+      if (!orderId) {
+        if (window.console) console.warn('[KiX Pixel] refund requires orderId');
+        return;
+      }
+      return send('refund', {
+        order_id: String(orderId),
+        meta: { reason: reason != null ? String(reason) : null }
+      });
+    },
+
+    'return': function (orderId, refundCents) {
+      if (!orderId) {
+        if (window.console) console.warn('[KiX Pixel] return requires orderId');
+        return;
+      }
+      return send('return', {
+        order_id: String(orderId),
+        amount_cents: refundCents != null ? (parseInt(refundCents, 10) || 0) : null
+      });
+    },
+
+    // Batch up to 100 events into one HTTP round-trip (mobile / high-volume).
+    // Server enforces max 100 and per-event validation; we just package +
+    // attach defaults so merchants don't have to repeat boilerplate.
+    batch: function (events) {
+      if (!events || !events.length) return;
+      var uid = currentUserId();
+      var enriched = [];
+      for (var i = 0; i < events.length && i < 100; i++) {
+        var e = events[i] || {};
+        var packed = {
+          event_type: e.event_type || e.type || 'custom',
+          user_id: e.user_id != null ? e.user_id : uid,
+          device_fingerprint: e.device_fingerprint || FP,
+          origin: e.origin || location.origin,
+          referrer: e.referrer != null ? e.referrer : (document.referrer || null),
+          url: e.url != null ? e.url : location.href
+        };
+        // Copy through optional event fields verbatim.
+        var passthrough = ['order_id', 'amount_cents', 'currency', 'meta'];
+        for (var p = 0; p < passthrough.length; p++) {
+          var key = passthrough[p];
+          if (e[key] !== undefined) packed[key] = e[key];
+        }
+        enriched.push(packed);
+      }
+      var body = {
+        pixel_id: PIXEL_ID,
+        origin: location.origin,
+        events: enriched
+      };
+      var json = JSON.stringify(body);
+      try {
+        if (window.fetch) {
+          return fetch(BATCH_URL, {
+            method: 'POST',
+            mode: 'cors',
+            credentials: 'omit',
+            headers: { 'Content-Type': 'application/json' },
+            body: json,
+            keepalive: true
+          }).catch(function () { /* swallow */ });
+        }
+      } catch (e2) { /* fall through */ }
+      try {
+        if (navigator.sendBeacon) {
+          var blob = new Blob([json], { type: 'application/json' });
+          navigator.sendBeacon(BATCH_URL, blob);
+          return;
+        }
+      } catch (e3) { /* fall through */ }
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BATCH_URL, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(json);
+      } catch (e4) { /* swallow */ }
+    },
+
     fp: function () { return FP; }
   };
+
+  // ── WeChat Mini-Program adapter ────────────────────────────────────────
+  // Different code path: no fetch, no localStorage, no document.location.
+  // Mini-programs call `wx.request` and identify themselves with their
+  // App-ID via `wx<appid>` origin format. Exposed as window.kix._mp for
+  // sites that bundle this file into a hybrid wrapper; pure mini-program
+  // builds typically inline a trimmed copy.
+  if (typeof wx !== 'undefined' && wx.request) {
+    var MP_APPID = (typeof __wxConfig !== 'undefined' && __wxConfig.appId)
+      ? __wxConfig.appId
+      : 'unknown';
+    var MP_ORIGIN = 'wx' + MP_APPID;
+    window.kix._mp = {
+      origin: MP_ORIGIN,
+      send: function (eventType, params) {
+        var data = {
+          pixel_id: PIXEL_ID,
+          event_type: eventType,
+          device_fingerprint: FP,
+          origin: MP_ORIGIN
+        };
+        if (params) {
+          for (var k in params) {
+            if (Object.prototype.hasOwnProperty.call(params, k)) data[k] = params[k];
+          }
+        }
+        wx.request({
+          url: EVENT_URL,
+          method: 'POST',
+          header: { 'content-type': 'application/json' },
+          data: data
+        });
+      },
+      batch: function (events) {
+        if (!events || !events.length) return;
+        var enriched = [];
+        for (var i = 0; i < events.length && i < 100; i++) {
+          var e = events[i] || {};
+          enriched.push({
+            event_type: e.event_type || e.type || 'custom',
+            user_id: e.user_id != null ? e.user_id : null,
+            device_fingerprint: e.device_fingerprint || FP,
+            order_id: e.order_id,
+            amount_cents: e.amount_cents,
+            currency: e.currency,
+            meta: e.meta,
+            origin: MP_ORIGIN
+          });
+        }
+        wx.request({
+          url: BATCH_URL,
+          method: 'POST',
+          header: { 'content-type': 'application/json' },
+          data: { pixel_id: PIXEL_ID, origin: MP_ORIGIN, events: enriched }
+        });
+      }
+    };
+  }
 
   // Drain pre-load command queue (Segment/GTM style).
   try {

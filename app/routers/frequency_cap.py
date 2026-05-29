@@ -27,6 +27,7 @@ All state lives in Redis with appropriate TTLs (day = 86400s, week =
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from datetime import datetime, timezone
@@ -57,6 +58,19 @@ K_BRAND_LAST = "freq:user:{uid}:brand:{bid}:last"
 K_PAUSED = "freq:user:{uid}:paused"  # SET of brand_ids paused for today
 K_PACING_HOUR = "freq:pacing:brand:{bid}:hour:{date}:{hour}"  # counter
 K_CONFIG = "freq:config"  # HASH
+K_USER_TIER_BRAND = "user:{uid}:tier:{bid}"  # STRING — per-brand tier
+K_USER_TIER_GLOBAL = "user:{uid}:tier"  # STRING — global fallback tier
+K_USER_OVERRIDE = "freq:user:{uid}:override"  # HASH — explicit per-user cap override
+
+# Fields stored inside the HASH config that are tier-overridable per-field.
+CAP_FIELDS = (
+    "global_daily",
+    "global_weekly",
+    "per_brand_daily",
+    "per_brand_weekly",
+    "recency_minutes",
+    "pacing_hourly_cap",
+)
 
 # Default rules — applied when ``freq:config`` is empty or missing keys.
 DEFAULT_CONFIG: dict[str, int] = {
@@ -105,16 +119,116 @@ def _resolve_user_key(user_id: str | None, device_fingerprint: str | None) -> st
     )
 
 
-async def _load_config(r: aioredis.Redis) -> dict[str, int]:
-    """Merge stored config over defaults."""
-    cfg = dict(DEFAULT_CONFIG)
+async def _load_config(r: aioredis.Redis) -> dict[str, Any]:
+    """Merge stored config over defaults.
+
+    Returns a dict where integer cap fields are ints, plus an optional
+    ``tier_overrides`` key (a dict of ``{tier_name: {field: int_value}}``)
+    parsed from the stored JSON blob.
+    """
+    cfg: dict[str, Any] = dict(DEFAULT_CONFIG)
     raw = await r.hgetall(K_CONFIG)
     for k, v in (raw or {}).items():
+        if k == "tier_overrides":
+            try:
+                parsed = json.loads(v) if v else {}
+            except (TypeError, ValueError, json.JSONDecodeError):
+                parsed = {}
+            if isinstance(parsed, dict):
+                # Sanitize: ensure {tier: {field: int}}
+                clean: dict[str, dict[str, int]] = {}
+                for tier_name, fields in parsed.items():
+                    if not isinstance(fields, dict):
+                        continue
+                    sub: dict[str, int] = {}
+                    for fk, fv in fields.items():
+                        if fk not in CAP_FIELDS:
+                            continue
+                        try:
+                            sub[fk] = int(fv)
+                        except (TypeError, ValueError):
+                            continue
+                    if sub:
+                        clean[str(tier_name)] = sub
+                cfg["tier_overrides"] = clean
+            continue
         try:
             cfg[k] = int(v)
         except (TypeError, ValueError):
             continue
+    cfg.setdefault("tier_overrides", {})
     return cfg
+
+
+async def _resolve_user_tier(
+    r: aioredis.Redis,
+    *,
+    user_id: str | None,
+    brand_id: str | None,
+    user_tier: str | None,
+) -> str | None:
+    """Resolve the user's tier name.
+
+    Priority: explicit ``user_tier`` arg → per-brand tier key → global tier key.
+    Returns ``None`` if no tier is recorded.
+    """
+    if user_tier:
+        return user_tier
+    if not user_id:
+        return None
+    if brand_id:
+        per_brand = await r.get(K_USER_TIER_BRAND.format(uid=user_id, bid=brand_id))
+        if per_brand:
+            return per_brand
+    glob = await r.get(K_USER_TIER_GLOBAL.format(uid=user_id))
+    return glob or None
+
+
+async def _load_user_override(
+    r: aioredis.Redis, user_id: str | None
+) -> dict[str, int]:
+    """Read the per-user override HASH (admin allowlist)."""
+    if not user_id:
+        return {}
+    raw = await r.hgetall(K_USER_OVERRIDE.format(uid=user_id))
+    out: dict[str, int] = {}
+    for k, v in (raw or {}).items():
+        if k not in CAP_FIELDS:
+            continue
+        try:
+            out[k] = int(v)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _effective_caps(
+    base_cfg: dict[str, Any],
+    tier: str | None,
+    user_override: dict[str, int] | None,
+) -> dict[str, int]:
+    """Merge defaults ← tier override ← per-user override (latter wins per-field).
+
+    Returns a flat dict of just the cap fields as ints.
+    """
+    out: dict[str, int] = {f: int(base_cfg.get(f, DEFAULT_CONFIG.get(f, 0))) for f in CAP_FIELDS}
+    tier_map = base_cfg.get("tier_overrides") or {}
+    if tier and isinstance(tier_map, dict):
+        tier_cfg = tier_map.get(tier) or {}
+        for f, v in tier_cfg.items():
+            if f in CAP_FIELDS:
+                try:
+                    out[f] = int(v)
+                except (TypeError, ValueError):
+                    continue
+    if user_override:
+        for f, v in user_override.items():
+            if f in CAP_FIELDS:
+                try:
+                    out[f] = int(v)
+                except (TypeError, ValueError):
+                    continue
+    return out
 
 
 async def _get_counter(r: aioredis.Redis, key: str) -> int:
@@ -149,6 +263,7 @@ class _UserIdent(BaseModel):
 class CheckRequest(_UserIdent):
     brand_id: str
     slot: Literal["push", "feed", "interstitial"]
+    user_tier: str | None = None
 
 
 class CheckResponse(BaseModel):
@@ -183,6 +298,9 @@ class StatusResponse(BaseModel):
     global_week: int
     per_brand: dict[str, PerBrandCounts]
     paused_brands: list[str]
+    tier: str | None = None
+    effective_caps: dict[str, int] = Field(default_factory=dict)
+    user_override: dict[str, int] = Field(default_factory=dict)
 
 
 class AdminConfigRequest(BaseModel):
@@ -192,6 +310,9 @@ class AdminConfigRequest(BaseModel):
     per_brand_weekly: int | None = Field(default=None, ge=0)
     recency_minutes: int | None = Field(default=None, ge=0)
     pacing_hourly_cap: int | None = Field(default=None, ge=0)
+    # Per-tier overrides — e.g. {"vip": {"per_brand_daily": 10, "global_daily": 30}, ...}
+    # Each tier may set any subset of CAP_FIELDS; unset fields fall back to defaults.
+    tier_overrides: dict[str, dict[str, int]] | None = None
 
 
 # ── Core logic (in-process callable) ─────────────────────────────────────
@@ -204,12 +325,18 @@ async def check_internal(
     r: aioredis.Redis,
     *,
     device_fingerprint: str | None = None,
+    user_tier: str | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     """Decide whether ``user`` may see ``brand_id`` right now.
 
     Returns ``(allow, details)`` where ``details`` carries the reason and
     the counters that drove the decision so the caller can echo them in
     its response / logs.
+
+    ``user_tier`` lets the caller pass an explicit tier (e.g. "vip"). If
+    omitted, the tier is resolved via ``user:{uid}:tier:{brand_id}`` (or the
+    global ``user:{uid}:tier``). Per-tier overrides + per-user overrides
+    are merged over the base config to produce the effective caps.
     """
     if slot not in VALID_SLOTS:
         return False, {
@@ -220,7 +347,12 @@ async def check_internal(
         }
 
     uid = _resolve_user_key(user_id, device_fingerprint)
-    cfg = await _load_config(r)
+    base_cfg = await _load_config(r)
+    tier = await _resolve_user_tier(
+        r, user_id=user_id, brand_id=brand_id, user_tier=user_tier
+    )
+    user_override = await _load_user_override(r, user_id)
+    cfg = _effective_caps(base_cfg, tier, user_override)
     now = time.time()
     date = _today_str(now)
     week = _week_str(now)
@@ -400,6 +532,7 @@ async def check_cap(
         req.slot,
         r,
         device_fingerprint=req.device_fingerprint,
+        user_tier=req.user_tier,
     )
     return CheckResponse(
         allow=allow,
@@ -473,11 +606,23 @@ async def user_status(
     paused_raw = await r.smembers(K_PAUSED.format(uid=uid))
     paused = sorted(paused_raw or [])
 
+    # Resolve tier + effective caps so dashboards can show "why" decisions
+    # were made. We resolve the *global* tier here (no brand context).
+    base_cfg = await _load_config(r)
+    tier = await _resolve_user_tier(
+        r, user_id=user_id, brand_id=None, user_tier=None
+    )
+    user_override = await _load_user_override(r, user_id)
+    effective = _effective_caps(base_cfg, tier, user_override)
+
     return StatusResponse(
         global_today=global_today,
         global_week=global_week,
         per_brand=per_brand,
         paused_brands=paused,
+        tier=tier,
+        effective_caps=effective,
+        user_override=user_override,
     )
 
 
@@ -490,21 +635,35 @@ async def update_config(
     only fields explicitly set in the request body are written; others
     keep their previous value (or fall back to defaults).
     """
-    updates: dict[str, int] = {}
-    for field in (
-        "global_daily",
-        "global_weekly",
-        "per_brand_daily",
-        "per_brand_weekly",
-        "recency_minutes",
-        "pacing_hourly_cap",
-    ):
+    updates: dict[str, Any] = {}
+    for field in CAP_FIELDS:
         v = getattr(req, field)
         if v is not None:
             updates[field] = int(v)
 
+    if req.tier_overrides is not None:
+        # Sanitize: keep only known fields with int values.
+        clean: dict[str, dict[str, int]] = {}
+        for tier_name, fields in req.tier_overrides.items():
+            if not isinstance(fields, dict):
+                continue
+            sub: dict[str, int] = {}
+            for fk, fv in fields.items():
+                if fk not in CAP_FIELDS:
+                    continue
+                try:
+                    sub[fk] = int(fv)
+                except (TypeError, ValueError):
+                    continue
+            if sub:
+                clean[str(tier_name)] = sub
+        updates["tier_overrides"] = json.dumps(clean, separators=(",", ":"))
+
     if updates:
-        await r.hset(K_CONFIG, mapping={k: str(v) for k, v in updates.items()})
+        await r.hset(
+            K_CONFIG,
+            mapping={k: (v if isinstance(v, str) else str(v)) for k, v in updates.items()},
+        )
 
     merged = await _load_config(r)
     return {"ok": True, "config": merged, "updated": list(updates.keys())}

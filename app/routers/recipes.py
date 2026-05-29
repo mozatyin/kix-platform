@@ -29,7 +29,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -79,6 +79,32 @@ KNOWN_MODULES: set[str] = {
 # ── Pydantic models ────────────────────────────────────────────────────────
 
 
+# Industry taxonomy — kept in sync with recipe_generator.Industry. Recipes
+# may tag themselves with an industry so the catalog can be filtered per
+# vertical (老李 community / book_club, 老黄 baby_products / ecommerce, …).
+# Unknown / legacy values fall back to "other".
+Industry = Literal[
+    # Food & Beverage
+    "coffee", "bubble_tea", "food", "restaurant", "luxury_dining", "qsr",
+    # Retail
+    "retail", "ecommerce", "luxury_retail", "fashion",
+    # Health & Wellness
+    "fitness", "beauty", "wellness", "healthcare",
+    # Family
+    "baby_products", "kids_education", "parenting",
+    # Community
+    "community", "book_club", "education", "co_working", "religious",
+    # Hospitality
+    "hotel", "travel", "airline",
+    # Entertainment
+    "gaming", "music", "events", "cinema",
+    # Services
+    "automotive", "real_estate", "financial_services", "telecom",
+    # Catch-all
+    "other",
+]
+
+
 class RecipeModule(BaseModel):
     id: str
     params: dict[str, Any] = Field(default_factory=dict)
@@ -104,6 +130,7 @@ class Recipe(BaseModel):
     description_cn: str | None = None
     icon: str | None = None
     category: str = "uncategorized"
+    industry: Industry | None = None
     tags: list[str] = Field(default_factory=list)
     modules: list[RecipeModule] = Field(default_factory=list)
     rules: list[RecipeRule] = Field(default_factory=list)
@@ -327,6 +354,7 @@ async def _plan_apply(
 async def list_recipes(
     category: str | None = Query(None),
     tags: str | None = Query(None, description="comma-separated tag list"),
+    industry: str | None = Query(None, description="filter by industry vertical"),
     brand_id: str | None = Query(None, description="also include this brand's customs"),
     r: aioredis.Redis = Depends(get_redis),
 ) -> dict[str, Any]:
@@ -351,6 +379,9 @@ async def list_recipes(
 
     if category:
         out = [x for x in out if x.get("category") == category]
+
+    if industry:
+        out = [x for x in out if x.get("industry") == industry]
 
     if tags:
         wanted = {t.strip() for t in tags.split(",") if t.strip()}

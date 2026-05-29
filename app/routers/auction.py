@@ -80,11 +80,29 @@ IMPRESSION_TTL = 86400 * 7  # 7 days
 
 CLICK_KEY = "impression:{token}:click"
 CONVERSION_KEY = "impression:{token}:conversion"
+# CPE: one settlement per impression × engagement_type. Key shape mirrors
+# CLICK_KEY so TTLs and inspection stay symmetric.
+ENGAGEMENT_KEY = "impression:{token}:engagement:{etype}"
 
 # Charge timing per bid_strategy.
 CHARGE_ON_IMPRESSION = {"cpm"}
 CHARGE_ON_CLICK = {"cpc", "cpv"}
 CHARGE_ON_CONVERSION = {"cpa", "cps"}
+# cpe = cost-per-engagement: charge fires on /report-engagement (game_play,
+# video_complete, voucher_claim, level_up, streak_milestone, ...).
+CHARGE_ON_ENGAGEMENT = {"cpe"}
+
+# Engagement event types accepted by /report-engagement. Mirrors
+# campaigns.ENGAGEMENT_TYPES — duplicated here so this module doesn't
+# import a runtime set across the boundary.
+ENGAGEMENT_TYPES = {
+    "game_play_30s", "video_complete", "voucher_claim",
+    "level_up", "streak_milestone",
+}
+
+# Default attribution window for impressions whose campaign did not set
+# attribution_window_days. 7 days matches the long-standing implicit default.
+DEFAULT_ATTRIBUTION_WINDOW_SECONDS = 7 * 86400
 
 # Anti-fraud reject threshold.
 FRAUD_REJECT_THRESHOLD = 70
@@ -119,7 +137,10 @@ class AuctionRequest(BaseModel):
     device_fingerprint: str
     geo: GeoContext | None = None
     context: AuctionContext = Field(default_factory=AuctionContext)
-    objective_filter: Literal["acquire", "sales", "awareness", "geo_visit"] | None = None
+    objective_filter: Literal[
+        "acquire", "sales", "awareness", "geo_visit",
+        "engagement", "retention", "activation", "win_back",
+    ] | None = None
     slot: Literal["main", "banner", "interstitial", "push", "geofence"] = "main"
 
 
@@ -153,6 +174,24 @@ class ConversionReport(BaseModel):
     impression_token: str
     user_id: str
     conversion_value_cents: int = Field(ge=0)
+
+
+class EngagementReport(BaseModel):
+    """Cost-per-engagement event report.
+
+    Fires for the configured ENGAGEMENT_TYPES. The campaign's actual_charge
+    (settled from the auction's second-price) is applied once per impression
+    token — duplicate calls (same token + same engagement_type) are
+    idempotent.
+    """
+    impression_token: str
+    engagement_type: Literal[
+        "game_play_30s", "video_complete", "voucher_claim",
+        "level_up", "streak_milestone",
+    ]
+    user_id: str | None = None
+    value_seconds: int | None = Field(default=None, ge=0)
+    device_fingerprint: str | None = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -271,6 +310,9 @@ _WALLET_REASON_MAP = {
     "cpv_click": "cpv_visit",
     "cpa_conversion": "cpa_conversion",
     "cps_conversion": "cps_commission",
+    # Engagement charges fold into the impression bucket from the wallet's
+    # point of view — the engagement itself is the "render value".
+    "cpe_engagement": "cpm_impression",
 }
 
 
@@ -702,6 +744,25 @@ async def run_auction(
     winner_bid_strategy = winner.get("bid_strategy", "cpm")
     _ = winner_pacing  # consumed by /admin/explain via separate path
 
+    # ── Resolve attribution window (campaign override → default) ────────
+    # Stored on the impression token so report_conversion enforces the
+    # campaign-specific window, not a global default.
+    try:
+        attr_days = int(winner.get("attribution_window_days", 0))
+    except (TypeError, ValueError):
+        attr_days = 0
+    attribution_window_seconds = (
+        attr_days * 86400 if attr_days > 0
+        else DEFAULT_ATTRIBUTION_WINDOW_SECONDS
+    )
+
+    # CPS percent-of-order bps stored on token so conversion-time charge
+    # is independent of whether the campaign hash is mutated later.
+    try:
+        bid_percent_bps = int(winner.get("bid_percent_bps", 0))
+    except (TypeError, ValueError):
+        bid_percent_bps = 0
+
     # ── Impression token ────────────────────────────────────────────────
     impression_token = uuid4().hex
     await r.hset(
@@ -716,6 +777,9 @@ async def run_auction(
             "device_fingerprint": body.device_fingerprint,
             "slot": body.slot,
             "source_brand": body.context.current_brand or "",
+            "attribution_window_seconds": str(attribution_window_seconds),
+            "bid_percent_bps": str(bid_percent_bps),
+            "max_bid_cents": str(winner.get("max_bid_cents", "0")),
             "created_at": str(_now()),
             "settled": "0",
         },
@@ -902,6 +966,26 @@ async def report_conversion(
     if not imp:
         raise HTTPException(status_code=404, detail="impression token unknown / expired")
 
+    # ── Enforce attribution window stored on the impression token ───────
+    # When unset (legacy tokens), fall back to the system default.
+    try:
+        window_seconds = int(imp.get("attribution_window_seconds", "0") or "0")
+    except (TypeError, ValueError):
+        window_seconds = 0
+    if window_seconds <= 0:
+        window_seconds = DEFAULT_ATTRIBUTION_WINDOW_SECONDS
+    try:
+        created_at = float(imp.get("created_at", "0") or "0")
+    except (TypeError, ValueError):
+        created_at = 0.0
+    if created_at > 0 and (_now() - created_at) > window_seconds:
+        return {
+            "ok": False,
+            "rejected": "outside_attribution_window",
+            "window_seconds": window_seconds,
+            "age_seconds": int(_now() - created_at),
+        }
+
     # Idempotent on conversion key.
     conv_key = CONVERSION_KEY.format(token=body.impression_token)
     already = await r.exists(conv_key)
@@ -941,11 +1025,34 @@ async def report_conversion(
 
     strategy = imp.get("bid_strategy", "cpm")
     if strategy in CHARGE_ON_CONVERSION:
-        # CPA: flat actual_charge. CPS: charge as % of conversion value
-        # (default: actual_charge but capped by conversion_value).
+        # CPA: flat actual_charge.
+        # CPS: percent-of-order when bid_percent_bps > 0 (GMV revenue share);
+        # else legacy fixed cents fallback. The percent path is capped by
+        # max_bid_cents to protect the merchant from runaway orders.
         base_charge = int(imp.get("actual_charge", 0))
         if strategy == "cps":
-            charge = min(base_charge, body.conversion_value_cents)
+            try:
+                cps_bps = int(imp.get("bid_percent_bps", "0") or "0")
+            except (TypeError, ValueError):
+                cps_bps = 0
+            if cps_bps > 0:
+                # commission = conversion_value × bps / 10000
+                commission = int(
+                    body.conversion_value_cents * cps_bps / 10000
+                )
+                # Cap by max_bid_cents (merchant-set ceiling). Falls back
+                # to commission itself when max_bid is unset.
+                try:
+                    max_bid_cap = int(imp.get("max_bid_cents", "0") or "0")
+                except (TypeError, ValueError):
+                    max_bid_cap = 0
+                if max_bid_cap > 0:
+                    commission = min(commission, max_bid_cap)
+                # Sanity: never charge more than the order itself.
+                charge = max(0, min(commission, body.conversion_value_cents))
+            else:
+                # Legacy: fixed cents per conversion, capped by order value.
+                charge = min(base_charge, body.conversion_value_cents)
         else:
             charge = base_charge
 
@@ -965,6 +1072,104 @@ async def report_conversion(
         "conversion_recorded": True,
         "no_charge": True,
         "conversion_value_cents": body.conversion_value_cents,
+    }
+
+
+# ── CPE: Cost-Per-Engagement reporting ───────────────────────────────────
+
+
+@router.post("/report-engagement")
+async def report_engagement(
+    body: EngagementReport,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Settle a CPE charge when a meaningful engagement event fires.
+
+    Idempotent per (impression_token, engagement_type): the same token may
+    fire multiple engagement_types (e.g. ``game_play_30s`` then
+    ``voucher_claim``) and each charges once. Non-CPE strategies record the
+    event but do not charge.
+    """
+    imp = await r.hgetall(_imp_key(body.impression_token))
+    if not imp:
+        raise HTTPException(
+            status_code=404, detail="impression token unknown / expired"
+        )
+
+    if body.engagement_type not in ENGAGEMENT_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"engagement_type must be one of {sorted(ENGAGEMENT_TYPES)}",
+        )
+
+    eng_key = ENGAGEMENT_KEY.format(
+        token=body.impression_token, etype=body.engagement_type
+    )
+    already = await r.exists(eng_key)
+    if already:
+        return {
+            "ok": True,
+            "already_reported": True,
+            "engagement_type": body.engagement_type,
+        }
+
+    await r.set(
+        eng_key,
+        json.dumps({
+            "user_id": body.user_id,
+            "value_seconds": body.value_seconds,
+            "device_fingerprint": body.device_fingerprint,
+            "at": _now(),
+        }),
+        ex=IMPRESSION_TTL,
+    )
+
+    # Bump engagement counter on campaign stats (separate from clicks /
+    # conversions — engagements are their own funnel step).
+    cid = imp.get("campaign_id", "")
+    if cid:
+        await r.hincrby(_sk(cid), "engagements", 1)
+
+    strategy = imp.get("bid_strategy", "cpm")
+    if strategy in CHARGE_ON_ENGAGEMENT:
+        # Anti-fraud gate (reuse conversion-style check; engagement events
+        # have similar fraud surface to clicks/conversions).
+        fscore = await _fraud_score(
+            r,
+            user_id=body.user_id,
+            device_fingerprint=body.device_fingerprint,
+            source_brand=imp.get("source_brand") or None,
+            target_brand=imp.get("brand_id"),
+        )
+        if fscore > FRAUD_REJECT_THRESHOLD:
+            logger.warning(
+                "engagement rejected by anti-fraud token=%s type=%s score=%d",
+                body.impression_token, body.engagement_type, fscore,
+            )
+            return {
+                "ok": True,
+                "rejected": "fraud",
+                "fraud_score": fscore,
+                "engagement_type": body.engagement_type,
+            }
+
+        result = await _settle_charge(
+            r,
+            body.impression_token,
+            imp["brand_id"],
+            imp["campaign_id"],
+            int(imp.get("actual_charge", 0)),
+            reason="cpe_engagement",
+        )
+        result["engagement_type"] = body.engagement_type
+        return result
+
+    return {
+        "ok": True,
+        "engagement_recorded": True,
+        "no_charge": True,
+        "engagement_type": body.engagement_type,
+        "bid_strategy": strategy,
     }
 
 
@@ -1107,7 +1312,10 @@ class ExplainBody(BaseModel):
     device_fingerprint: str
     geo: GeoContext | None = None
     context: AuctionContext = Field(default_factory=AuctionContext)
-    objective_filter: Literal["acquire", "sales", "awareness", "geo_visit"] | None = None
+    objective_filter: Literal[
+        "acquire", "sales", "awareness", "geo_visit",
+        "engagement", "retention", "activation", "win_back",
+    ] | None = None
     slot: Literal["main", "banner", "interstitial", "push", "geofence"] = "main"
 
 

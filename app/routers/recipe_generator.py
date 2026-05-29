@@ -167,7 +167,30 @@ KNOWN_RECIPE_TEMPLATES: list[dict[str, Any]] = [
 
 
 Style = Literal["viral", "loyalty", "premium", "casual"]
-Industry = Literal["coffee", "retail", "fitness", "gaming", "food", "beauty", "other"]
+# Expanded industry taxonomy — covers 老李 (community/book_club), 老黄
+# (baby_products/ecommerce), luxury, healthcare, automotive, real_estate,
+# fintech and more. Anything not on this list falls back to "other"; existing
+# recipes stored with industry="other" remain valid.
+Industry = Literal[
+    # Food & Beverage
+    "coffee", "bubble_tea", "food", "restaurant", "luxury_dining", "qsr",
+    # Retail
+    "retail", "ecommerce", "luxury_retail", "fashion",
+    # Health & Wellness
+    "fitness", "beauty", "wellness", "healthcare",
+    # Family
+    "baby_products", "kids_education", "parenting",
+    # Community
+    "community", "book_club", "education", "co_working", "religious",
+    # Hospitality
+    "hotel", "travel", "airline",
+    # Entertainment
+    "gaming", "music", "events", "cinema",
+    # Services
+    "automotive", "real_estate", "financial_services", "telecom",
+    # Catch-all
+    "other",
+]
 Complexity = Literal["easy", "medium", "complex"]
 
 

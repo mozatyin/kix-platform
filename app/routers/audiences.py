@@ -100,7 +100,20 @@ VALID_SOURCES = {
     "app_users",
     "converters",
     "manual",
+    "filter",
 }
+
+# Event-type → ordered list of attribution stages that qualify. Used by
+# recency filters. "any" matches every stage on the journey.
+RECENCY_EVENT_STAGES = {
+    "purchase": {"conversion"},
+    "visit": {"visit", "click", "impression"},
+    "any": None,  # sentinel — accept any stage
+}
+
+# Hard cap on user-set SCAN for filter-built audiences to avoid pathological
+# walks on large platforms. Tune up once we move to a proper index.
+FILTER_MAX_SCAN = 5000
 
 STATUS_READY = "ready"
 STATUS_BUILDING = "building"
@@ -150,11 +163,38 @@ class CustomAudienceCreate(BaseModel):
         "app_users",
         "converters",
         "manual",
+        "filter",
     ]
     user_ids: list[str] = Field(default_factory=list)
     emails_sha256: list[str] = Field(default_factory=list)
     phones_sha256: list[str] = Field(default_factory=list)
     description: str | None = None
+    # ── Filter-built audiences ──────────────────────────────────────────
+    # Used when source="filter". Each filter is independent; a user must
+    # satisfy ALL provided filters (AND) to be included.
+    #
+    # recency_filter:
+    #   {min_days_since: int?, max_days_since: int?,
+    #    event_type: "purchase"|"visit"|"any"}
+    #   → match users whose most-recent event of that type falls inside
+    #     [min_days_since, max_days_since] days ago.
+    # lifecycle_filter:
+    #   {stages: ["new_mom_0_3mo", ...]}
+    #   → match users whose user:{uid}:lifecycle_stage.stage is in the set.
+    # attribute_filter:
+    #   {attr_key: expected_value, ...} (values stringified)
+    #   → match users whose attribute hash has those k/v pairs.
+    recency_filter: dict | None = None
+    lifecycle_filter: dict | None = None
+    attribute_filter: dict | None = None
+
+
+class FilterPreview(BaseModel):
+    brand_id: str
+    recency_filter: dict | None = None
+    lifecycle_filter: dict | None = None
+    attribute_filter: dict | None = None
+    limit: int = Field(default=100, ge=1, le=FILTER_MAX_SCAN)
 
 
 class AudienceAppend(BaseModel):
@@ -298,6 +338,158 @@ async def _record_growth(r: aioredis.Redis, aid: str, size: int) -> None:
     await pipe.execute()
 
 
+# ── Filter evaluation (recency / lifecycle / attribute) ─────────────────
+
+
+def _serialize_attr_value(v: Any) -> str:
+    if isinstance(v, str):
+        return v
+    return json.dumps(v)
+
+
+async def _matches_recency(
+    r: aioredis.Redis, user_id: str, rf: dict
+) -> bool:
+    """Return True if the user has an event of the requested type within
+    the [min_days_since, max_days_since] window (either bound optional)."""
+    event_type = (rf.get("event_type") or "any").lower()
+    accepted_stages = RECENCY_EVENT_STAGES.get(event_type)
+    min_days = rf.get("min_days_since")
+    max_days = rf.get("max_days_since")
+
+    # Walk the journey (newest-first), find first qualifying event.
+    journey_key = f"user:{user_id}:attr_journey"
+    event_ids = await r.lrange(journey_key, 0, 200)
+    if not event_ids:
+        return False
+
+    now = time.time()
+    matched_age_days: float | None = None
+    for eid in event_ids:
+        ev = await r.hgetall(f"attr:{eid}")
+        if not ev:
+            continue
+        if accepted_stages is not None and ev.get("stage") not in accepted_stages:
+            continue
+        try:
+            ts = float(ev.get("timestamp", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if ts <= 0:
+            continue
+        age_days = (now - ts) / 86400.0
+        matched_age_days = age_days
+        break
+
+    if matched_age_days is None:
+        return False
+    if min_days is not None and matched_age_days < float(min_days):
+        return False
+    if max_days is not None and matched_age_days > float(max_days):
+        return False
+    return True
+
+
+async def _matches_lifecycle(
+    r: aioredis.Redis, user_id: str, lf: dict
+) -> bool:
+    wanted = set(lf.get("stages") or [])
+    if not wanted:
+        return True  # vacuous filter — accept all
+    raw = await r.hgetall(f"user:{user_id}:lifecycle_stage")
+    if not raw:
+        return False
+    return raw.get("stage") in wanted
+
+
+async def _matches_attributes(
+    r: aioredis.Redis,
+    user_id: str,
+    af: dict,
+    brand_id: str | None,
+) -> bool:
+    """Match against global attrs first, then brand-scoped overrides."""
+    if not af:
+        return True
+    global_key = f"user:{user_id}:attributes"
+    scoped_key = (
+        f"user:{user_id}:attributes:{brand_id}" if brand_id else None
+    )
+    glob = await r.hgetall(global_key) or {}
+    scoped = await r.hgetall(scoped_key) if scoped_key else {}
+    for k, v in af.items():
+        expected = _serialize_attr_value(v)
+        actual = scoped.get(k) if scoped else None
+        if actual is None:
+            actual = glob.get(k)
+        if actual != expected:
+            return False
+    return True
+
+
+async def _evaluate_filters_for_user(
+    r: aioredis.Redis,
+    user_id: str,
+    brand_id: str | None,
+    recency_filter: dict | None,
+    lifecycle_filter: dict | None,
+    attribute_filter: dict | None,
+) -> bool:
+    if recency_filter and not await _matches_recency(r, user_id, recency_filter):
+        return False
+    if lifecycle_filter and not await _matches_lifecycle(r, user_id, lifecycle_filter):
+        return False
+    if attribute_filter and not await _matches_attributes(
+        r, user_id, attribute_filter, brand_id
+    ):
+        return False
+    return True
+
+
+async def _scan_users_for_filters(
+    r: aioredis.Redis,
+    brand_id: str | None,
+    recency_filter: dict | None,
+    lifecycle_filter: dict | None,
+    attribute_filter: dict | None,
+    limit: int,
+) -> tuple[list[str], int]:
+    """SCAN ``user:*`` profile keys, return up to ``limit`` matching uids.
+
+    Returns (matched_uids, total_scanned). Scans are capped at
+    FILTER_MAX_SCAN candidates to bound runtime.
+    """
+    out: list[str] = []
+    cursor = 0
+    scanned = 0
+    while scanned < FILTER_MAX_SCAN and len(out) < limit:
+        cursor, batch = await r.scan(cursor=cursor, match="user:*", count=200)
+        for k in batch:
+            # Only top-level user profile keys (user:{uid}), not sub-keys
+            # like user:{uid}:currency:... which contain extra colons.
+            if k.count(":") != 1:
+                continue
+            scanned += 1
+            uid = k.split(":", 1)[1]
+            ok = await _evaluate_filters_for_user(
+                r,
+                uid,
+                brand_id,
+                recency_filter,
+                lifecycle_filter,
+                attribute_filter,
+            )
+            if ok:
+                out.append(uid)
+                if len(out) >= limit:
+                    break
+            if scanned >= FILTER_MAX_SCAN:
+                break
+        if cursor == 0:
+            break
+    return out, scanned
+
+
 # ── Endpoints: Custom Audience ───────────────────────────────────────────
 
 
@@ -326,6 +518,32 @@ async def create_custom_audience(
     all_uids.update(matched_email_uids)
     all_uids.update(matched_phone_uids)
 
+    # source=filter: materialize membership by scanning matching users now.
+    # Filter spec is also persisted so auction-time matching can re-evaluate
+    # dynamically (a user becomes a member as soon as they satisfy filters).
+    filter_spec: dict[str, Any] = {}
+    if body.source == "filter":
+        if not any([body.recency_filter, body.lifecycle_filter, body.attribute_filter]):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="source=filter requires at least one of "
+                "recency_filter, lifecycle_filter, attribute_filter",
+            )
+        matched, _scanned = await _scan_users_for_filters(
+            r,
+            brand_id=body.brand_id,
+            recency_filter=body.recency_filter,
+            lifecycle_filter=body.lifecycle_filter,
+            attribute_filter=body.attribute_filter,
+            limit=FILTER_MAX_SCAN,
+        )
+        all_uids.update(matched)
+        filter_spec = {
+            "recency_filter": body.recency_filter,
+            "lifecycle_filter": body.lifecycle_filter,
+            "attribute_filter": body.attribute_filter,
+        }
+
     payload: dict[str, str] = {
         "audience_id": aid,
         "brand_id": body.brand_id,
@@ -338,6 +556,7 @@ async def create_custom_audience(
         "created_at": str(_now()),
         "last_updated": str(_now()),
         "status": STATUS_READY,
+        "filter_spec": json.dumps(filter_spec) if filter_spec else "",
     }
 
     pipe = r.pipeline()
@@ -365,6 +584,42 @@ async def create_custom_audience(
     return AudienceCreateResponse(
         audience_id=aid, size=int(size), status=STATUS_READY
     )
+
+
+@router.post("/filter/preview")
+async def filter_preview(
+    body: FilterPreview,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Estimate audience size for a filter spec without persisting.
+
+    Useful before saving — merchants see a live count + sample as they
+    tweak the filter. Scans up to ``limit`` users; ``estimated_size`` is
+    the count actually matched within that scan window (a lower bound for
+    very large platforms).
+    """
+    if not any(
+        [body.recency_filter, body.lifecycle_filter, body.attribute_filter]
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="at least one filter (recency/lifecycle/attribute) required",
+        )
+    matched, scanned = await _scan_users_for_filters(
+        r,
+        brand_id=body.brand_id,
+        recency_filter=body.recency_filter,
+        lifecycle_filter=body.lifecycle_filter,
+        attribute_filter=body.attribute_filter,
+        limit=body.limit,
+    )
+    return {
+        "brand_id": body.brand_id,
+        "estimated_size": len(matched),
+        "scanned": scanned,
+        "scan_cap": FILTER_MAX_SCAN,
+        "sample_user_ids": matched[: min(len(matched), body.limit)],
+    }
 
 
 @router.post("/{audience_id}/append")
@@ -926,6 +1181,32 @@ async def get_user_audience_memberships(
     return set(members or [])
 
 
+async def _audience_dynamic_match(
+    r: aioredis.Redis, audience_id: str, user_id: str
+) -> bool:
+    """For ``source=filter`` audiences, re-evaluate the persisted filter
+    spec against the user's current state. Returns False for non-filter
+    audiences (caller should fall back to SET membership for those).
+    """
+    raw = await r.hgetall(_ak(audience_id))
+    if not raw or raw.get("source") != "filter":
+        return False
+    spec_raw = raw.get("filter_spec")
+    if not spec_raw:
+        return False
+    spec = _safe_json_loads(spec_raw, None)
+    if not isinstance(spec, dict):
+        return False
+    return await _evaluate_filters_for_user(
+        r,
+        user_id=user_id,
+        brand_id=raw.get("brand_id") or None,
+        recency_filter=spec.get("recency_filter"),
+        lifecycle_filter=spec.get("lifecycle_filter"),
+        attribute_filter=spec.get("attribute_filter"),
+    )
+
+
 async def campaign_audience_matches(
     campaign_id: str, user_id: str, r: aioredis.Redis
 ) -> bool:
@@ -936,6 +1217,10 @@ async def campaign_audience_matches(
         member of at least one.
       * The user must NOT be a member of any *exclude* audience.
       * Campaigns with no audience linkage are unaffected (pass-through).
+
+    Filter-based audiences are re-evaluated dynamically against the user's
+    current attribute / lifecycle / journey state (so a user joins/leaves
+    automatically as their state changes — no rescan needed).
     """
     include_set = await r.smembers(_camp_inc_auds(campaign_id)) or set()
     exclude_set = await r.smembers(_camp_exc_auds(campaign_id)) or set()
@@ -945,8 +1230,23 @@ async def campaign_audience_matches(
 
     user_auds = await get_user_audience_memberships(user_id, r)
 
-    if exclude_set and (user_auds & set(exclude_set)):
-        return False
+    # Exclusion check (static membership first, then dynamic filter).
+    if exclude_set:
+        if user_auds & set(exclude_set):
+            return False
+        for aid in exclude_set:
+            if aid in user_auds:
+                continue
+            if await _audience_dynamic_match(r, aid, user_id):
+                return False
+
     if include_set:
-        return bool(user_auds & set(include_set))
+        if user_auds & set(include_set):
+            return True
+        for aid in include_set:
+            if aid in user_auds:
+                return True
+            if await _audience_dynamic_match(r, aid, user_id):
+                return True
+        return False
     return True

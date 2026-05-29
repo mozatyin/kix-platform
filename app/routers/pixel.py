@@ -6,16 +6,37 @@ the returned <script> snippet on their site. The browser SDK auto-fires a
 `kix.signup(...)`, etc.
 
 POST /api/v1/pixel/event records the event:
-  * pageview / add_to_cart    → counter bump only (lightweight)
-  * purchase                  → attribution.track_conversion (commission split)
-  * signup                    → attribution.track_visit (acquisition record)
+  * pageview / add_to_cart       → counter bump only (lightweight)
+  * purchase                     → attribution.track_conversion (commission split)
+  * signup                       → attribution.track_visit (acquisition record)
+  * refund / return / order_cancelled → auto-reverses commission via dispute
+
+POST /api/v1/pixel/events/batch records up to 100 events in one round-trip
+(critical for high-volume mobile clients) — counts as one rate-limit hit.
 
 CORS / abuse:
   * Each pixel has an `allowed_origins` allowlist. The `origin` field of the
     payload + the HTTP `Origin` header must both match — otherwise 403.
-  * Per-pixel rate limit: 1000 events/minute (rolling).
+  * Per-pixel rate limit: 1000 events/minute (rolling) for web origins;
+    halved (500/min) when the request is from a native-app origin (no
+    HTTP Origin header → body.origin is authoritative, so we need a tighter
+    budget to deter spoofing).
   * `user_id` from the client is treated as a hint only; we never grant
     privileges based on it.
+
+Supported origin formats
+------------------------
+  http(s)://<host>...                   browser / webview
+  wx<16+ alphanumeric>                  WeChat Mini-Program App-ID
+                                        (e.g. wx1234567890abcdef)
+  alipay:<16+ alphanumeric>             Alipay Mini-Program App-ID
+  ios:<reverse-DNS bundle id>           iOS native SDK
+                                        (e.g. ios:com.huangbaby.app)
+  android:<package_name>                Android native SDK
+  kix-native:<merchant_token>           generic native-app catch-all
+
+Native-app origins do not send an HTTP `Origin` header; the body field is
+authoritative for those, but rate-limited harder.
 
 Redis schema
 ------------
@@ -31,8 +52,10 @@ Redis schema
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
 import secrets
 import time
 from typing import Any, Literal
@@ -40,11 +63,14 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 import redis.asyncio as aioredis
 
 from app.redis_client import get_redis
 from app.routers import attribution as attr_mod
+
+# disputes import is intentionally deferred to call site to avoid an import
+# cycle if disputes.py ever imports from pixel.py.
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +80,44 @@ router = APIRouter()
 # ── Constants ──────────────────────────────────────────────────────────────
 
 EVENT_TTL_SECONDS = 7 * 24 * 60 * 60       # audit retention
-RATE_LIMIT_PER_MINUTE = 1000               # per pixel_id
+RATE_LIMIT_PER_MINUTE = 1000               # per pixel_id (web)
+RATE_LIMIT_PER_MINUTE_NATIVE = 500         # native app origins — half budget
 MAX_ALLOWED_ORIGINS = 50                   # safety cap on allowlist length
+MAX_BATCH_EVENTS = 100                     # cap per /events/batch call
+DEFAULT_REFUND_WINDOW_DAYS = 30            # refund-eligible window
 SUPPORTED_EVENTS = {
     "pageview",
     "add_to_cart",
     "purchase",
     "signup",
     "custom",
+    "refund",
+    "return",
+    "order_cancelled",
 }
+REFUND_LIKE_EVENTS = {"refund", "return", "order_cancelled"}
 DEFAULT_SDK_URL = "https://api.kix.gg/sdk/kix-pixel.js"
 DEFAULT_EVENT_URL = "https://api.kix.gg/api/v1/pixel/event"
+
+# Origin format regex: web URL OR mini-program / native app identifier.
+# We DELIBERATELY do not use HttpUrl any more — Chinese mini-program merchants
+# don't send a URL-shaped origin.
+_ORIGIN_RE = re.compile(
+    r"^(https?://[^\s]+"
+    r"|wx[a-zA-Z0-9]{16,}"
+    r"|alipay:[a-zA-Z0-9]{16,}"
+    r"|(?:ios|android|kix-native):[a-zA-Z0-9._-]+)$"
+)
+# Native-app origins never come with an HTTP Origin header.
+_NATIVE_ORIGIN_PREFIXES = ("wx", "alipay:", "ios:", "android:", "kix-native:")
+
+
+def _origin_is_native(o: str) -> bool:
+    return bool(o) and o.startswith(_NATIVE_ORIGIN_PREFIXES)
+
+
+def _origin_is_valid(o: str) -> bool:
+    return bool(_ORIGIN_RE.match(o))
 
 
 # ── Pydantic models ────────────────────────────────────────────────────────
@@ -72,6 +125,12 @@ DEFAULT_EVENT_URL = "https://api.kix.gg/api/v1/pixel/event"
 class PixelRegisterRequest(BaseModel):
     brand_id: str
     allowed_origins: list[str] = Field(default_factory=list)
+    # How long after a `purchase` we accept a corresponding `refund`/`return`
+    # event and reverse commission. Outside this window the refund is still
+    # audited but does not auto-dispute. 0 disables auto-reversal.
+    refund_eligible_within_days: int = Field(
+        default=DEFAULT_REFUND_WINDOW_DAYS, ge=0, le=365
+    )
 
     @field_validator("allowed_origins")
     @classmethod
@@ -82,9 +141,16 @@ class PixelRegisterRequest(BaseModel):
         for raw in v:
             if not raw:
                 continue
-            o = raw.strip().rstrip("/")
-            if not (o.startswith("http://") or o.startswith("https://")):
-                raise ValueError(f"origin must be http(s) URL: {raw}")
+            o = raw.strip()
+            # Only URL-shaped origins lose a trailing slash; mini-program /
+            # native ids are opaque tokens — leave them alone.
+            if o.startswith(("http://", "https://")):
+                o = o.rstrip("/")
+            if not _origin_is_valid(o):
+                raise ValueError(
+                    f"origin must be http(s) URL or wx<appid>/alipay:/ios:/"
+                    f"android:/kix-native: identifier: {raw}"
+                )
             cleaned.append(o)
         # dedupe, preserve order
         seen: set[str] = set()
@@ -100,6 +166,7 @@ class PixelRegisterResponse(BaseModel):
     pixel_id: str
     brand_id: str
     allowed_origins: list[str]
+    refund_eligible_within_days: int
     embed_snippet: str
     sdk_url: str
     created_at: float
@@ -107,7 +174,16 @@ class PixelRegisterResponse(BaseModel):
 
 class PixelEventRequest(BaseModel):
     pixel_id: str
-    event_type: Literal["pageview", "add_to_cart", "purchase", "signup", "custom"]
+    event_type: Literal[
+        "pageview",
+        "add_to_cart",
+        "purchase",
+        "signup",
+        "custom",
+        "refund",
+        "return",
+        "order_cancelled",
+    ]
     user_id: str | None = None
     device_fingerprint: str
     order_id: str | None = None
@@ -117,6 +193,62 @@ class PixelEventRequest(BaseModel):
     referrer: str | None = None
     origin: str
     url: str | None = None
+
+
+class PixelBatchEventRequest(BaseModel):
+    """Single event inside a batch — same shape as PixelEventRequest minus
+    pixel_id (which is enforced at the envelope level so the batch can't span
+    multiple pixels)."""
+    event_type: Literal[
+        "pageview",
+        "add_to_cart",
+        "purchase",
+        "signup",
+        "custom",
+        "refund",
+        "return",
+        "order_cancelled",
+    ]
+    user_id: str | None = None
+    device_fingerprint: str
+    order_id: str | None = None
+    amount_cents: int | None = Field(default=None, ge=0)
+    currency: str | None = None
+    meta: dict[str, Any] = Field(default_factory=dict)
+    referrer: str | None = None
+    origin: str | None = None  # falls back to envelope origin
+    url: str | None = None
+
+
+class PixelBatchRequest(BaseModel):
+    pixel_id: str
+    origin: str | None = None  # envelope-level default for child events
+    events: list[PixelBatchEventRequest] = Field(default_factory=list)
+
+    @field_validator("events")
+    @classmethod
+    def _cap_events(cls, v: list[PixelBatchEventRequest]) -> list[PixelBatchEventRequest]:
+        if len(v) == 0:
+            raise ValueError("events must not be empty")
+        if len(v) > MAX_BATCH_EVENTS:
+            raise ValueError(f"events exceeds max batch size {MAX_BATCH_EVENTS}")
+        return v
+
+
+class PixelBatchEventResult(BaseModel):
+    index: int
+    event_id: str | None = None
+    event_type: str
+    status: str  # "accepted" | "rejected"
+    attributed: bool | None = None
+    error: str | None = None
+
+
+class PixelBatchResponse(BaseModel):
+    ok: bool
+    accepted: int
+    rejected: int
+    results: list[PixelBatchEventResult]
 
 
 class PixelEventResponse(BaseModel):
@@ -154,7 +286,12 @@ def _new_pixel_id() -> str:
 def _normalize_origin(o: str | None) -> str:
     if not o:
         return ""
-    return o.strip().rstrip("/")
+    s = o.strip()
+    # Only URL-shaped origins get trailing-slash normalization; mini-program /
+    # native ids are opaque tokens (case-sensitive bundle ids, etc.).
+    if s.startswith(("http://", "https://")):
+        return s.rstrip("/")
+    return s
 
 
 def _build_snippet(pixel_id: str, sdk_url: str) -> str:
@@ -176,22 +313,38 @@ async def _load_pixel(r: aioredis.Redis, pixel_id: str) -> dict[str, Any]:
         allowed = json.loads(raw.get("allowed_origins") or "[]")
     except json.JSONDecodeError:
         allowed = []
+    try:
+        refund_days = int(raw.get("refund_eligible_within_days") or DEFAULT_REFUND_WINDOW_DAYS)
+    except (TypeError, ValueError):
+        refund_days = DEFAULT_REFUND_WINDOW_DAYS
     return {
         "pixel_id": pixel_id,
         "brand_id": raw.get("brand_id", ""),
         "allowed_origins": list(allowed),
+        "refund_eligible_within_days": refund_days,
         "created_at": float(raw.get("created_at") or 0),
         "status": raw.get("status", "active"),
     }
 
 
-async def _check_rate_limit(r: aioredis.Redis, pixel_id: str) -> None:
+async def _check_rate_limit(
+    r: aioredis.Redis,
+    pixel_id: str,
+    *,
+    native: bool = False,
+) -> None:
+    """Per-pixel sliding-minute rate limit.
+
+    Native-app origins get a tighter budget — they don't have an HTTP Origin
+    header to cross-check against, so the body field alone is authoritative.
+    """
     minute = int(_now() // 60)
     key = f"pixel:{pixel_id}:ratelimit:{minute}"
     cnt = await r.incr(key)
     if cnt == 1:
         await r.expire(key, 120)
-    if cnt > RATE_LIMIT_PER_MINUTE:
+    limit = RATE_LIMIT_PER_MINUTE_NATIVE if native else RATE_LIMIT_PER_MINUTE
+    if cnt > limit:
         raise HTTPException(status_code=429, detail="rate_limit_exceeded")
 
 
@@ -200,7 +353,16 @@ def _check_cors(
     payload_origin: str,
     header_origin: str | None,
 ) -> str:
-    """Validates both the payload `origin` and HTTP `Origin` header.
+    """Validates the payload `origin` (always) and HTTP `Origin` header
+    (when applicable).
+
+    Web origins (http/https): the HTTP `Origin` header is cross-checked when
+    present — protects against a hostile page lying in the body.
+
+    Native-app origins (wx*/alipay:/ios:/android:/kix-native:): mobile clients
+    do not send an HTTP `Origin` header at all. We accept `body.origin` as
+    authoritative for those, and rely on tighter rate-limiting + the
+    `allowed_origins` allowlist to bound abuse.
 
     Empty allowlist means "anything goes" — useful for testing but discouraged
     in production. Returns the normalized origin string for logging.
@@ -210,13 +372,18 @@ def _check_cors(
     h_origin = _normalize_origin(header_origin)
     if not p_origin:
         raise HTTPException(status_code=400, detail="missing_origin")
+    if not _origin_is_valid(p_origin):
+        raise HTTPException(status_code=400, detail="malformed_origin")
     if allowed:
         if p_origin not in allowed:
             raise HTTPException(status_code=403, detail="origin_not_allowed")
-        # Header may legitimately be absent (same-origin POST, server-to-server),
-        # but if present it must agree with payload to prevent spoofing.
-        if h_origin and h_origin not in allowed:
-            raise HTTPException(status_code=403, detail="origin_header_mismatch")
+        # Header cross-check only meaningful for web origins. Native-app
+        # SDKs (WeChat/Alipay/iOS/Android) do not set HTTP Origin, so we skip
+        # the cross-check there — the merchant explicitly identifies itself
+        # via body.origin and is bound by the tighter native rate limit.
+        if not _origin_is_native(p_origin):
+            if h_origin and h_origin not in allowed:
+                raise HTTPException(status_code=403, detail="origin_header_mismatch")
     return p_origin
 
 
@@ -261,8 +428,130 @@ async def _record_audit_event(
     pipe = r.pipeline(transaction=False)
     pipe.hset(key, mapping=payload)
     pipe.expire(key, EVENT_TTL_SECONDS)
+    # Index purchases by (pixel_id, order_id) so refunds can find them later.
+    # We keep the index alive for the full refund window (capped at the
+    # default to cap memory in pathological cases — pixels with long
+    # custom windows will still match within EVENT_TTL_SECONDS).
+    if event_type == "purchase" and order_id:
+        index_key = f"pixel:{pixel_id}:order:{order_id}"
+        pipe2 = r.pipeline(transaction=False)
+        pipe2.set(index_key, event_id)
+        pipe2.expire(index_key, EVENT_TTL_SECONDS)
+        await pipe2.execute()
     await pipe.execute()
     return event_id
+
+
+async def _find_purchase_by_order(
+    r: aioredis.Redis,
+    pixel_id: str,
+    order_id: str,
+) -> dict[str, Any] | None:
+    """Looks up the original purchase audit row for an order_id under a pixel.
+
+    Returns None if missing/expired.
+    """
+    event_id = await r.get(f"pixel:{pixel_id}:order:{order_id}")
+    if not event_id:
+        return None
+    raw = await r.hgetall(f"pixel_event:{event_id}")
+    if not raw:
+        return None
+    return raw
+
+
+async def _open_refund_dispute(
+    r: aioredis.Redis,
+    *,
+    brand_id: str,
+    pixel_id: str,
+    order_id: str,
+    refund_event_id: str,
+    purchase_event: dict[str, Any],
+    refund_amount_cents: int | None,
+) -> str | None:
+    """Opens an internal dispute to reverse commission on a refunded order.
+
+    Prefers an in-process `disputes.open_internal(...)` helper when available
+    (avoids a round-trip + duplicates the per-brand limit only once). Falls
+    back to constructing an OpenDisputeRequest and calling the route handler
+    directly. Returns the dispute_id on success, None on failure.
+    """
+    try:
+        from app.routers import disputes as disputes_mod
+    except Exception as exc:  # pragma: no cover - import guard
+        logger.warning("disputes module unavailable: %s", exc)
+        return None
+
+    purchase_event_id = purchase_event.get("event_id") or ""
+    attributed_source_brand = purchase_event.get("source_brand") or None
+    # The purchase event_id doubles as our conversion handle. We don't have
+    # the wallet charge_id at this layer (it's internal to attribution), so
+    # we reference the conversion via `conversion_id`.
+    evidence_text = (
+        f"Auto-reversal: refund/return event {refund_event_id} received for "
+        f"order_id={order_id} (originally attributed conversion "
+        f"{purchase_event_id})."
+    )
+
+    helper = getattr(disputes_mod, "open_internal", None)
+    if callable(helper):
+        try:
+            result = await helper(
+                r=r,
+                brand_id=brand_id,
+                conversion_id=purchase_event_id,
+                category="refund_attributed",
+                evidence={
+                    "order_id": order_id,
+                    "refund_event_id": refund_event_id,
+                    "pixel_id": pixel_id,
+                    "refund_amount_cents": refund_amount_cents,
+                    "source_brand": attributed_source_brand,
+                },
+            )
+            # helper return shape is implementation-defined; try common keys.
+            if isinstance(result, dict):
+                return result.get("dispute_id")
+            return getattr(result, "dispute_id", None)
+        except Exception as exc:
+            logger.exception(
+                "disputes.open_internal failed: pixel=%s order=%s err=%s",
+                pixel_id, order_id, exc,
+            )
+            return None
+
+    # Fallback: call the public open_dispute route handler in-process.
+    # `refund_attributed` may not be in the public category Literal (which
+    # is fine — we use the closest existing match and carry refund context
+    # in evidence_text so admins can see the reason).
+    try:
+        OpenReq = getattr(disputes_mod, "OpenDisputeRequest", None)
+        opener = getattr(disputes_mod, "open_dispute", None)
+        if OpenReq is None or opener is None:
+            logger.warning("disputes.open_dispute unavailable; refund not reversed")
+            return None
+        body = OpenReq(
+            brand_id=brand_id,
+            conversion_id=purchase_event_id,
+            category="wrong_attribution",
+            evidence_text=evidence_text,
+        )
+        resp = await opener(body, r)
+        return getattr(resp, "dispute_id", None)
+    except HTTPException as http_exc:
+        # 409 = duplicate dispute already exists; 429 = brand limit hit.
+        logger.info(
+            "refund dispute open returned %s for order=%s: %s",
+            http_exc.status_code, order_id, http_exc.detail,
+        )
+        return None
+    except Exception as exc:
+        logger.exception(
+            "refund dispute open failed: pixel=%s order=%s err=%s",
+            pixel_id, order_id, exc,
+        )
+        return None
 
 
 async def _bump_stats(
@@ -289,6 +578,13 @@ async def _bump_stats(
         pipe.hincrby(key, "signups", 1)
         if attributed:
             pipe.hincrby(key, "attributed_signups", 1)
+    elif event_type in REFUND_LIKE_EVENTS:
+        pipe.hincrby(key, "refunds", 1)
+        if amount_cents:
+            pipe.hincrby(key, "refunded_amount_cents", int(amount_cents))
+        if attributed:
+            # `attributed` here means a dispute was successfully opened.
+            pipe.hincrby(key, "refund_attributed", 1)
     else:
         pipe.hincrby(key, "custom", 1)
     await pipe.execute()
@@ -313,6 +609,7 @@ async def register_pixel(
     record = {
         "brand_id": req.brand_id,
         "allowed_origins": json.dumps(req.allowed_origins),
+        "refund_eligible_within_days": str(int(req.refund_eligible_within_days)),
         "created_at": f"{ts:.6f}",
         "status": "active",
     }
@@ -322,14 +619,16 @@ async def register_pixel(
     await pipe.execute()
 
     logger.info(
-        "pixel registered: pixel_id=%s brand_id=%s origins=%d",
+        "pixel registered: pixel_id=%s brand_id=%s origins=%d refund_days=%d",
         pixel_id, req.brand_id, len(req.allowed_origins),
+        req.refund_eligible_within_days,
     )
 
     return PixelRegisterResponse(
         pixel_id=pixel_id,
         brand_id=req.brand_id,
         allowed_origins=req.allowed_origins,
+        refund_eligible_within_days=req.refund_eligible_within_days,
         embed_snippet=_build_snippet(pixel_id, sdk_url),
         sdk_url=sdk_url,
         created_at=ts,
@@ -348,25 +647,28 @@ async def get_snippet(
     return PlainTextResponse(content=_build_snippet(pixel_id, sdk_url))
 
 
-@router.post("/event", response_model=PixelEventResponse)
-async def record_event(
-    req: PixelEventRequest,
-    request: Request,
-    origin_header: str | None = Header(default=None, alias="Origin"),
-    r: aioredis.Redis = Depends(get_redis),
-):
-    """Single ingestion endpoint for all browser-side pixel events.
+async def _process_event(
+    r: aioredis.Redis,
+    *,
+    pixel: dict[str, Any],
+    event_type: str,
+    user_id: str | None,
+    device_fingerprint: str,
+    order_id: str | None,
+    amount_cents: int | None,
+    currency: str | None,
+    meta: dict[str, Any],
+    referrer: str | None,
+    origin: str,
+    url: str | None,
+) -> tuple[str, bool | None, str | None, str | None]:
+    """Shared ingestion path — audit + stats + side-effects.
 
-    Validates origin, rate-limits, audits, bumps stats, and bridges purchase
-    + signup events into the attribution pipeline.
+    Returns (event_id, attributed, source_brand, attributed_event_id).
+    Raises HTTPException for client-input validation errors so the caller can
+    decide whether to surface (single endpoint) or capture per-row (batch).
     """
-    pixel = await _load_pixel(r, req.pixel_id)
-    origin = _check_cors(pixel, req.origin, origin_header)
-    await _check_rate_limit(r, req.pixel_id)
-
-    if req.event_type not in SUPPORTED_EVENTS:
-        raise HTTPException(status_code=422, detail="unsupported_event_type")
-
+    pixel_id = pixel["pixel_id"]
     brand_id = pixel["brand_id"]
     attributed: bool | None = None
     source_brand: str | None = None
@@ -376,25 +678,24 @@ async def record_event(
     # NOTE: user_id from client is a hint only — we never look it up for
     # auth. attribution.track_* functions also treat it as a key only.
     try:
-        if req.event_type == "purchase":
-            if not req.order_id:
+        if event_type == "purchase":
+            if not order_id:
                 raise HTTPException(status_code=422, detail="order_id_required")
-            if req.amount_cents is None:
+            if amount_cents is None:
                 raise HTTPException(status_code=422, detail="amount_cents_required")
-            # Anonymous purchase fallback — synthesize a stable id from FP.
-            effective_uid = req.user_id or f"anon:{req.device_fingerprint}"
+            effective_uid = user_id or f"anon:{device_fingerprint}"
             conv_req = attr_mod.ConversionCheckRequest(
                 user_id=effective_uid,
                 target_brand=brand_id,
-                order_id=req.order_id,
-                amount_cents=int(req.amount_cents),
+                order_id=order_id,
+                amount_cents=int(amount_cents),
                 context={
-                    "pixel_id": req.pixel_id,
+                    "pixel_id": pixel_id,
                     "origin": origin,
-                    "referrer": req.referrer,
-                    "currency": req.currency,
-                    "device_fingerprint": req.device_fingerprint,
-                    "meta": req.meta,
+                    "referrer": referrer,
+                    "currency": currency,
+                    "device_fingerprint": device_fingerprint,
+                    "meta": meta,
                 },
             )
             conv_resp = await attr_mod.track_conversion(conv_req, r)
@@ -402,37 +703,32 @@ async def record_event(
             source_brand = conv_resp.source_brand
             attributed_event_id = conv_resp.attributed_event_id
 
-        elif req.event_type == "signup":
-            if not req.user_id:
+        elif event_type == "signup":
+            if not user_id:
                 raise HTTPException(status_code=422, detail="user_id_required")
-            # Signups don't have an invite_token at this layer (the merchant
-            # site doesn't carry KiX invite tokens). We record a visit-style
-            # acquisition event directly via _persist_event for journey
-            # continuity, then check last-touch attribution.
-            event_id, ts = await attr_mod._persist_event(
+            event_id_inner, ts = await attr_mod._persist_event(
                 r,
                 stage=attr_mod.STAGE_VISIT,
-                user_id=req.user_id,
-                device_fingerprint=req.device_fingerprint,
+                user_id=user_id,
+                device_fingerprint=device_fingerprint,
                 target_brand=brand_id,
                 meta={
-                    "pixel_id": req.pixel_id,
+                    "pixel_id": pixel_id,
                     "origin": origin,
-                    "referrer": req.referrer,
+                    "referrer": referrer,
                     "source": "pixel_signup",
-                    "meta": req.meta,
+                    "meta": meta,
                 },
             )
-            # Mark user as known to this brand (mirrors track_visit).
-            is_new = await r.sadd(f"brand:{brand_id}:users", req.user_id)
+            is_new = await r.sadd(f"brand:{brand_id}:users", user_id)
             if is_new:
                 await r.hset(
                     f"brand:{brand_id}:user_first_seen",
-                    req.user_id,
+                    user_id,
                     f"{ts:.6f}",
                 )
             attr_event = await attr_mod.find_attribution(
-                r, req.user_id, brand_id, attr_mod.ATTRIBUTION_WINDOW_SECONDS
+                r, user_id, brand_id, attr_mod.ATTRIBUTION_WINDOW_SECONDS
             )
             if attr_event:
                 attributed = True
@@ -445,34 +741,132 @@ async def record_event(
     except Exception as exc:
         logger.exception(
             "pixel event attribution failure: pixel_id=%s type=%s err=%s",
-            req.pixel_id, req.event_type, exc,
+            pixel_id, event_type, exc,
         )
         # Don't fail the merchant page — audit still recorded below.
 
-    # ── Audit + stats ─────────────────────────────────────────────────────
+    # ── Audit ─────────────────────────────────────────────────────────────
     event_id = await _record_audit_event(
         r,
-        pixel_id=req.pixel_id,
+        pixel_id=pixel_id,
         brand_id=brand_id,
-        event_type=req.event_type,
-        user_id=req.user_id,
-        device_fingerprint=req.device_fingerprint,
+        event_type=event_type,
+        user_id=user_id,
+        device_fingerprint=device_fingerprint,
         origin=origin,
-        amount_cents=req.amount_cents,
-        currency=req.currency,
-        order_id=req.order_id,
-        referrer=req.referrer,
-        url=req.url,
-        meta=req.meta,
+        amount_cents=amount_cents,
+        currency=currency,
+        order_id=order_id,
+        referrer=referrer,
+        url=url,
+        meta=meta,
         attributed=attributed,
         source_brand=source_brand,
     )
+
+    # ── Refund / return / cancel handling ────────────────────────────────
+    # Look up the original purchase, then open an internal dispute to
+    # reverse commission. The audit row is already persisted regardless
+    # — auto-reversal failure must not erase the refund record.
+    refund_dispute_opened = False
+    if event_type in REFUND_LIKE_EVENTS and order_id:
+        refund_days = pixel.get(
+            "refund_eligible_within_days", DEFAULT_REFUND_WINDOW_DAYS
+        )
+        if refund_days > 0:
+            original = await _find_purchase_by_order(r, pixel_id, order_id)
+            if original is None:
+                logger.info(
+                    "refund received but no matching purchase: pixel=%s order=%s",
+                    pixel_id, order_id,
+                )
+            else:
+                # Within the eligibility window?
+                try:
+                    purchase_ts = float(original.get("timestamp") or 0)
+                except (TypeError, ValueError):
+                    purchase_ts = 0.0
+                age_days = (_now() - purchase_ts) / 86400.0 if purchase_ts else 0.0
+                was_attributed = original.get("attributed") == "1"
+                if not was_attributed:
+                    # Nothing to reverse — original purchase wasn't attributed.
+                    pass
+                elif age_days > refund_days:
+                    logger.info(
+                        "refund outside eligibility window: pixel=%s order=%s "
+                        "age_days=%.2f window=%d",
+                        pixel_id, order_id, age_days, refund_days,
+                    )
+                else:
+                    dispute_id = await _open_refund_dispute(
+                        r,
+                        brand_id=brand_id,
+                        pixel_id=pixel_id,
+                        order_id=order_id,
+                        refund_event_id=event_id,
+                        purchase_event=original,
+                        refund_amount_cents=amount_cents,
+                    )
+                    if dispute_id:
+                        refund_dispute_opened = True
+                        # Surface dispute_id on the audit row for traceability.
+                        await r.hset(
+                            f"pixel_event:{event_id}",
+                            "refund_dispute_id",
+                            dispute_id,
+                        )
+
+    if event_type in REFUND_LIKE_EVENTS:
+        # For refund-like events, `attributed` field of the response means
+        # "we opened an auto-reversal dispute". Keep semantics distinct from
+        # purchase attribution.
+        attributed = refund_dispute_opened
+
+    # ── Stats ─────────────────────────────────────────────────────────────
     await _bump_stats(
         r,
-        req.pixel_id,
-        event_type=req.event_type,
-        amount_cents=req.amount_cents,
+        pixel_id,
+        event_type=event_type,
+        amount_cents=amount_cents,
         attributed=bool(attributed),
+    )
+
+    return event_id, attributed, source_brand, attributed_event_id
+
+
+@router.post("/event", response_model=PixelEventResponse)
+async def record_event(
+    req: PixelEventRequest,
+    request: Request,
+    origin_header: str | None = Header(default=None, alias="Origin"),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Single ingestion endpoint for all browser-side / mobile pixel events.
+
+    Validates origin, rate-limits, audits, bumps stats, and bridges purchase
+    + signup events into the attribution pipeline. Refund/return events
+    auto-open a dispute to reverse commission.
+    """
+    pixel = await _load_pixel(r, req.pixel_id)
+    origin = _check_cors(pixel, req.origin, origin_header)
+    await _check_rate_limit(r, req.pixel_id, native=_origin_is_native(origin))
+
+    if req.event_type not in SUPPORTED_EVENTS:
+        raise HTTPException(status_code=422, detail="unsupported_event_type")
+
+    event_id, attributed, source_brand, attributed_event_id = await _process_event(
+        r,
+        pixel=pixel,
+        event_type=req.event_type,
+        user_id=req.user_id,
+        device_fingerprint=req.device_fingerprint,
+        order_id=req.order_id,
+        amount_cents=req.amount_cents,
+        currency=req.currency,
+        meta=req.meta,
+        referrer=req.referrer,
+        origin=origin,
+        url=req.url,
     )
 
     return PixelEventResponse(
@@ -482,6 +876,105 @@ async def record_event(
         attributed=attributed,
         source_brand=source_brand,
         attributed_event_id=attributed_event_id,
+    )
+
+
+@router.post("/events/batch", response_model=PixelBatchResponse)
+async def record_events_batch(
+    req: PixelBatchRequest,
+    request: Request,
+    origin_header: str | None = Header(default=None, alias="Origin"),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Batch event ingestion (up to 100 events / call).
+
+    Critical for high-volume mobile clients (e.g. 老黄's 50K events/day):
+    one HTTP round-trip per batch, one origin/rate-limit check per batch,
+    parallel per-event processing inside.
+
+    Partial success: per-event errors land in `results[i].error` with
+    `status=rejected`; the envelope is `ok=True` whenever at least one
+    event accepted.
+    """
+    pixel = await _load_pixel(r, req.pixel_id)
+
+    # Envelope origin — falls back to first child's origin if envelope omitted.
+    envelope_origin_raw = req.origin or (req.events[0].origin if req.events else None)
+    if not envelope_origin_raw:
+        raise HTTPException(status_code=400, detail="missing_origin")
+    origin = _check_cors(pixel, envelope_origin_raw, origin_header)
+
+    # One rate-limit slot per batch — that's the whole point of batching.
+    await _check_rate_limit(r, req.pixel_id, native=_origin_is_native(origin))
+
+    async def _one(idx: int, ev: PixelBatchEventRequest) -> PixelBatchEventResult:
+        if ev.event_type not in SUPPORTED_EVENTS:
+            return PixelBatchEventResult(
+                index=idx,
+                event_type=ev.event_type,
+                status="rejected",
+                error="unsupported_event_type",
+            )
+        # Per-event origin must agree with envelope (defend against a batch
+        # smuggling events from an off-pixel origin).
+        ev_origin = _normalize_origin(ev.origin) if ev.origin else origin
+        if ev_origin != origin:
+            return PixelBatchEventResult(
+                index=idx,
+                event_type=ev.event_type,
+                status="rejected",
+                error="origin_mismatch_within_batch",
+            )
+        try:
+            event_id, attributed, _src, _attr_id = await _process_event(
+                r,
+                pixel=pixel,
+                event_type=ev.event_type,
+                user_id=ev.user_id,
+                device_fingerprint=ev.device_fingerprint,
+                order_id=ev.order_id,
+                amount_cents=ev.amount_cents,
+                currency=ev.currency,
+                meta=ev.meta,
+                referrer=ev.referrer,
+                origin=origin,
+                url=ev.url,
+            )
+            return PixelBatchEventResult(
+                index=idx,
+                event_id=event_id,
+                event_type=ev.event_type,
+                status="accepted",
+                attributed=attributed,
+            )
+        except HTTPException as http_exc:
+            detail = http_exc.detail if isinstance(http_exc.detail, str) else "validation_error"
+            return PixelBatchEventResult(
+                index=idx,
+                event_type=ev.event_type,
+                status="rejected",
+                error=detail,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("batch event %d failed: %s", idx, exc)
+            return PixelBatchEventResult(
+                index=idx,
+                event_type=ev.event_type,
+                status="rejected",
+                error="internal_error",
+            )
+
+    results = await asyncio.gather(
+        *[_one(i, ev) for i, ev in enumerate(req.events)]
+    )
+    accepted = sum(1 for r_ in results if r_.status == "accepted")
+    rejected = len(results) - accepted
+
+    return PixelBatchResponse(
+        ok=accepted > 0,
+        accepted=accepted,
+        rejected=rejected,
+        results=list(results),
     )
 
 
