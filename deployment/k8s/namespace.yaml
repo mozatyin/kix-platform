@@ -1,0 +1,51 @@
+# One namespace per region. Apply with `kubectl apply -f namespace.yaml`
+# Set the desired KIX_REGION before rendering (kustomize / envsubst).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kix-cn
+  labels:
+    app.kubernetes.io/name: kix
+    kix.region: cn
+    kix.compliance: pipl
+    kix.data-residency: required
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kix-id
+  labels:
+    app.kubernetes.io/name: kix
+    kix.region: id
+    kix.compliance: pdp-id
+    kix.data-residency: optional
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kix-sg
+  labels:
+    app.kubernetes.io/name: kix
+    kix.region: sg
+    kix.compliance: pdpa-sg
+    kix.data-residency: optional
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kix-us
+  labels:
+    app.kubernetes.io/name: kix
+    kix.region: us
+    kix.compliance: ccpa
+    kix.data-residency: optional
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kix-eu
+  labels:
+    app.kubernetes.io/name: kix
+    kix.region: eu
+    kix.compliance: gdpr
+    kix.data-residency: required

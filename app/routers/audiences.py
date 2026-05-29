@@ -68,6 +68,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
+from app.api_standards import error_response, list_response, not_found
 from app.redis_client import get_redis
 from app.routers.campaigns import _safe_json_loads
 
@@ -734,7 +735,10 @@ async def list_brand_audiences(
             "last_updated": float(raw.get("last_updated", 0.0)),
         })
     out.sort(key=lambda a: a.get("created_at", 0.0), reverse=True)
-    return {"brand_id": brand_id, "audiences": out, "count": len(out)}
+    # api_standards: merge list_response envelope with legacy fields
+    # (brand_id, audiences) for backwards compat.
+    envelope = list_response(items=out, total=len(out), limit=len(out), offset=0)
+    return {"brand_id": brand_id, "audiences": out, **envelope}
 
 
 @router.get("/{audience_id}/details")
@@ -745,7 +749,8 @@ async def audience_details(
     """Full info, member count, growth chart placeholder."""
     raw = await r.hgetall(_ak(audience_id))
     if not raw:
-        raise HTTPException(status_code=404, detail="audience not found")
+        # api_standards: structured not_found envelope.
+        raise not_found("audience", id=audience_id)
 
     size = await r.scard(_mk(audience_id))
     pending_emails = await r.scard(_pek(audience_id))
@@ -793,7 +798,8 @@ async def delete_audience(
     """Remove an audience and detach it from every link."""
     raw = await r.hgetall(_ak(audience_id))
     if not raw:
-        raise HTTPException(status_code=404, detail="audience not found")
+        # api_standards: structured not_found envelope.
+        raise not_found("audience", id=audience_id)
     brand_id = raw.get("brand_id", "")
 
     # Clean reverse user → audience index (best-effort, SET may be large).

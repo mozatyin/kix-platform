@@ -117,6 +117,10 @@ and the shim helpers in `app.api_standards`.
         lifespan=lifespan,
     )
 
+    # ── Multi-tenant isolation: per-brand RPM limit + usage tracking ──
+    from app.middleware.tenant_isolation import TenantIsolationMiddleware
+    app.add_middleware(TenantIsolationMiddleware)
+
     # ── CORS ──────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
@@ -552,6 +556,14 @@ and the shim helpers in `app.api_standards`.
         tags=["stripe_webhook"],
     )
 
+    # ── Outbound Webhooks: KiX → merchant event delivery (HMAC + retry) ─
+    from app.routers import webhooks_outbound
+    app.include_router(
+        webhooks_outbound.router,
+        prefix="/api/v1/webhooks-outbound",
+        tags=["webhooks_outbound"],
+    )
+
     # ── Merchant Dashboards: today / cumulative / leaderboard / insights ─
     from app.routers import dashboards
     app.include_router(
@@ -582,6 +594,38 @@ and the shim helpers in `app.api_standards`.
         saga_router.router,
         prefix="/api/v1/saga",
         tags=["saga"],
+    )
+
+    # ── Admin: tenant isolation introspection + circuit reset ──────────
+    from app.routers import tenant_admin
+    app.include_router(
+        tenant_admin.router,
+        prefix="/api/v1/admin",
+        tags=["tenant_admin"],
+    )
+
+    # ── ML: Quality Score / Relevance / Smart Bid (admin) ──────────────
+    from app.routers import ml as ml_router
+    app.include_router(
+        ml_router.router,
+        prefix="/api/v1/ml",
+        tags=["ml"],
+    )
+
+    # ── Asset CDN: merchant logos/images/videos w/ storage abstraction ─
+    from app.routers import assets
+    app.include_router(
+        assets.router,
+        prefix="/api/v1/assets",
+        tags=["assets"],
+    )
+
+    # ── A/B Testing: split-test voucher/campaign/push/recipe configs ───
+    from app.routers import ab_testing
+    app.include_router(
+        ab_testing.router,
+        prefix="/api/v1/ab-testing",
+        tags=["ab_testing"],
     )
 
     # ── Root redirect to Landing Page ──────────────────────────────────

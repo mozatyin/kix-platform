@@ -1312,10 +1312,10 @@ async def _collect_brand_visits(
     hi = "+inf" if to_ts is None else to_ts
     visits: list[tuple[str, float]] = []
 
-    # 1) attribution events landing on this brand
+    # 1) attribution events landing on this brand (capped at 10k per window)
     try:
         events = await r.zrangebyscore(
-            f"brand:{brand_id}:attr_incoming", lo, hi
+            f"brand:{brand_id}:attr_incoming", lo, hi, start=0, num=10_000
         )
     except Exception:  # noqa: BLE001
         events = []
@@ -1337,10 +1337,15 @@ async def _collect_brand_visits(
             ts = 0.0
         visits.append((uid, ts))
 
-    # 2) voucher redemptions
+    # 2) voucher redemptions (capped at 10k per window)
     try:
         vids = await r.zrangebyscore(
-            f"brand:{brand_id}:redeemed_vouchers", lo, hi, withscores=True
+            f"brand:{brand_id}:redeemed_vouchers",
+            lo,
+            hi,
+            start=0,
+            num=10_000,
+            withscores=True,
         )
     except Exception:  # noqa: BLE001
         vids = []
@@ -1358,10 +1363,15 @@ async def _collect_brand_visits(
             continue
         visits.append((uid, float(ts)))
 
-    # 3) honored reservations
+    # 3) honored reservations (capped at 10k per window)
     try:
         rids = await r.zrangebyscore(
-            f"brand:{brand_id}:reservations", lo, hi, withscores=True
+            f"brand:{brand_id}:reservations",
+            lo,
+            hi,
+            start=0,
+            num=10_000,
+            withscores=True,
         )
     except Exception:  # noqa: BLE001
         rids = []
@@ -3228,8 +3238,13 @@ async def _fetch_brand_attribution(
 ) -> dict[str, Any]:
     """Conversion + revenue counters for a brand in window."""
     try:
+        # Bounded: cap at 10k events per window for rollup aggregation.
         events = await r.zrangebyscore(
-            f"brand:{brand_id}:attr_incoming", from_ts, to_ts
+            f"brand:{brand_id}:attr_incoming",
+            from_ts,
+            to_ts,
+            start=0,
+            num=10_000,
         )
     except Exception:  # noqa: BLE001
         events = []
@@ -3379,8 +3394,13 @@ async def _fetch_brand_reservations(
 ) -> dict[str, Any]:
     """Reservations created/honored/no-show in window."""
     try:
+        # Bounded: cap at 10k reservations per window for rollup aggregation.
         rids = await r.zrangebyscore(
-            f"brand:{brand_id}:reservations", from_ts, to_ts
+            f"brand:{brand_id}:reservations",
+            from_ts,
+            to_ts,
+            start=0,
+            num=10_000,
         )
     except Exception:  # noqa: BLE001
         rids = []
@@ -3633,8 +3653,13 @@ async def revenue_by_brand_timeseries(
 
     async def _series(brand_id: str) -> dict[str, Any]:
         try:
+            # Bounded: cap at 10k events per brand per window.
             event_ids = await r.zrangebyscore(
-                f"brand:{brand_id}:attr_incoming", from_ts, to_ts
+                f"brand:{brand_id}:attr_incoming",
+                from_ts,
+                to_ts,
+                start=0,
+                num=10_000,
             )
         except Exception:  # noqa: BLE001
             event_ids = []

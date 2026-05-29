@@ -1,0 +1,100 @@
+# KiX API (uvicorn) Deployment — one per region namespace.
+# Replace KIX_REGION / namespace with kustomize overlays.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kix-api
+  namespace: kix-cn   # change per region overlay
+  labels:
+    app: kix-api
+    kix.region: cn
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  selector:
+    matchLabels:
+      app: kix-api
+  template:
+    metadata:
+      labels:
+        app: kix-api
+        kix.region: cn
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: kix-api
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: api
+          image: registry.letskix.com/kix-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: KIX_REGION
+              value: "cn"
+            - name: UVICORN_WORKERS
+              value: "4"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: jwt-secret
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 30
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+      terminationGracePeriodSeconds: 30

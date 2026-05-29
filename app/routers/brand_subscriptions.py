@@ -38,7 +38,7 @@ import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_db, get_read_db
 from app.models.subscription import BrandSubscription, SubscriptionHistory
 from app.redis_client import get_redis
 
@@ -520,9 +520,12 @@ async def list_tiers() -> dict[str, Any]:
 async def get_current(
     brand_id: str,
     r: aioredis.Redis = Depends(get_redis),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
 ) -> dict[str, Any]:
-    """Return the brand's current tier, billing state, and usage snapshot."""
+    """Return the brand's current tier, billing state, and usage snapshot.
+
+    Read-only — routed through the read replica when configured.
+    """
     record = await _resolve_sub_record(r, brand_id, db)
     tier = record["tier"] if record["tier"] in VALID_TIERS else "free"
     usage = await _usage_snapshot(r, brand_id, tier)
@@ -860,9 +863,12 @@ async def cancel(
 async def get_usage(
     brand_id: str,
     r: aioredis.Redis = Depends(get_redis),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
 ) -> dict[str, Any]:
-    """Return per-resource usage / limits / over-limit deltas."""
+    """Return per-resource usage / limits / over-limit deltas.
+
+    Read-only — routed through the read replica when configured.
+    """
     tier = await _resolve_brand_tier(r, brand_id, db)
     return await _usage_snapshot(r, brand_id, tier)
 

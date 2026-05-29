@@ -309,13 +309,14 @@ async def coop_contribute(
             except Exception:
                 reward = Reward()
             brand_id = state["brand_id"]
-            members = await r.zrange(contrib_key, 0, -1)
+            # Bounded scan: cap at 1000 contributors per coop quest distribution.
+            members = await r.zrange(contrib_key, 0, 999)
             for uid in members:
                 g = await _grant_reward(r, uid, brand_id, reward)
                 distribution.append({"user_id": uid, "granted": g})
 
-    # Build all_contributors snapshot.
-    raw = await r.zrange(contrib_key, 0, -1, withscores=True)
+    # Build all_contributors snapshot (bounded at 1000).
+    raw = await r.zrange(contrib_key, 0, 999, withscores=True)
     all_contributors = [
         {"user_id": uid, "contribution": int(score)} for uid, score in raw
     ]
@@ -341,7 +342,8 @@ async def coop_get(
     state = await r.hgetall(_coop_key(coop_id))
     if not state:
         raise HTTPException(404, detail="coop not found")
-    raw = await r.zrange(_coop_contrib_key(coop_id), 0, -1, withscores=True)
+    # Bounded read: cap at 1000 contributors per coop snapshot.
+    raw = await r.zrange(_coop_contrib_key(coop_id), 0, 999, withscores=True)
     contribs = [
         {"user_id": uid, "contribution": int(s)} for uid, s in raw
     ]

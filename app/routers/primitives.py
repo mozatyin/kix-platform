@@ -3160,13 +3160,25 @@ async def _merge_zset(
         return 0
     if ktype != "zset":
         return 0
-    pairs = await r.zrange(s_key, 0, -1, withscores=True) or []
-    if not pairs:
-        return 0
-    mapping = {member: score for member, score in pairs}
-    if mapping:
-        await r.zadd(p_key, mapping)
-    return len(mapping)
+    # Paginated scan: identity merge can be unbounded (e.g. years of activity).
+    # Stream in 1000-row pages instead of one unbounded ZRANGE.
+    MAX_PAGE = 1000
+    cursor = 0
+    total_merged = 0
+    while True:
+        page = await r.zrange(
+            s_key, cursor, cursor + MAX_PAGE - 1, withscores=True
+        )
+        if not page:
+            break
+        mapping = {member: score for member, score in page}
+        if mapping:
+            await r.zadd(p_key, mapping)
+        total_merged += len(mapping)
+        if len(page) < MAX_PAGE:
+            break
+        cursor += MAX_PAGE
+    return total_merged
 
 
 async def _delete_user_keys(r: aioredis.Redis, uid: str) -> int:

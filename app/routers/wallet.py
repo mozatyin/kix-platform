@@ -34,7 +34,9 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.api_standards import error_response, list_response, mint_id
 from app.redis_client import get_redis
+from app.region import get_region_config, get_primary_currency, is_currency_supported
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,13 @@ router = APIRouter()
 
 
 # ── Constants ────────────────────────────────────────────────────────────
-SUPPORTED_PAYMENT_METHODS = {"alipay", "wechat", "stripe", "paypal"}
+# Payment methods supported globally. The active region narrows the user-
+# facing default list via `app.region.get_payment_methods()`.
+SUPPORTED_PAYMENT_METHODS = {
+    "alipay", "wechat", "stripe", "paypal",
+    "gopay", "ovo", "dana", "paynow", "grabpay",
+    "credit_card", "apple_pay", "google_pay", "sepa", "ideal",
+}
 
 # Charge reason → category. The reason vocabulary deliberately spans far
 # beyond ad-spend (老田 P0) so commerce, ride-hailing, marketplace and
@@ -78,7 +86,10 @@ REASON_CATEGORY_MAP: dict[str, str] = {
 SUPPORTED_CHARGE_REASONS = set(REASON_CATEGORY_MAP.keys())
 SUPPORTED_CATEGORIES = ("ad_spend", "consumer_revenue", "settlement", "fee", "other")
 
-DEFAULT_CURRENCY = "CNY"
+# Region-aware default currency. Falls back to CNY when KIX_REGION is unset
+# (matches MVP launch region). Override with the active region's primary
+# currency for new wallet creations.
+DEFAULT_CURRENCY = get_primary_currency() or "CNY"
 REFUND_WINDOW_SECONDS = 30 * 24 * 3600  # 30 days
 MAX_WATCH_RETRIES = 8
 TX_LIST_MAX = 10_000  # cap to bound memory
@@ -441,14 +452,15 @@ async def create_topup(
         await r.set(_k_currency(brand_id), wallet_currency)
     elif body.currency and body.currency != cur_existing:
         if not body.auto_fx:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "error": "currency_mismatch",
-                    "wallet_currency": cur_existing,
-                    "requested": body.currency,
-                    "hint": "set auto_fx=true to convert via FX engine",
-                },
+            # api_standards: error_response keeps existing detail fields for
+            # backwards compatibility (wallet_currency / requested / hint).
+            raise error_response(
+                status.HTTP_409_CONFLICT,
+                "currency_mismatch",
+                message=None,
+                wallet_currency=cur_existing,
+                requested=body.currency,
+                hint="set auto_fx=true to convert via FX engine",
             )
 
     credited_amount = body.amount_cents
@@ -472,7 +484,8 @@ async def create_topup(
         fx_stale = bool(conv["stale"])
         fx_expires_at = conv["expires_at"]
 
-    topup_id = uuid4().hex
+    # api_standards: KiX ID format (dpt_<22hex>).
+    topup_id = mint_id("dpt")
     now = time.time()
     mapping = {
         "topup_id": topup_id,
@@ -788,6 +801,41 @@ async def charge(
                     await _maybe_auto_recharge(brand_id, new_balance, r)
                 except Exception as exc:  # never break the charge path
                     logger.warning("auto_recharge check failed: %s", exc)
+
+                # Outbound webhook fan-out: wallet.charged + balance_low.
+                try:
+                    from app.routers.webhooks_outbound import (
+                        fan_out_webhook_to_brand,
+                    )
+                    await fan_out_webhook_to_brand(
+                        brand_id,
+                        "wallet.charged",
+                        {
+                            "charge_id": charge_id,
+                            "amount_cents": charge_amount,
+                            "currency": wallet_currency,
+                            "reason": body.reason,
+                            "category": category,
+                            "campaign_id": body.campaign_id or None,
+                            "reference_id": ref_id,
+                            "new_balance_cents": new_balance,
+                        },
+                        r,
+                    )
+                    cfg = await _get_auto_recharge_config(brand_id, r)
+                    if cfg is not None and new_balance < cfg.threshold_cents:
+                        await fan_out_webhook_to_brand(
+                            brand_id,
+                            "wallet.balance_low",
+                            {
+                                "balance_cents": new_balance,
+                                "threshold_cents": cfg.threshold_cents,
+                                "currency": wallet_currency,
+                            },
+                            r,
+                        )
+                except Exception as exc:  # never break the charge path
+                    logger.warning("webhook fan-out (charge) failed: %s", exc)
 
                 return ChargeResponse(
                     ok=True,

@@ -765,8 +765,20 @@ async def brand_metrics(
     # ARR end ≈ live MRR sum × 12 (current snapshot).
     active_set = f"brand:{brand_id}:subscriptions:active"
     customer_count = await r.zcard(active_set)
-    members = await r.zrange(active_set, 0, -1, withscores=True)
-    live_mrr = sum(int(score) for _, score in members) if members else 0
+    # Paginated sum: avoid unbounded read on large brands' active subscriber set.
+    MAX_PAGE = 1000
+    cursor = 0
+    live_mrr = 0
+    while True:
+        page = await r.zrange(
+            active_set, cursor, cursor + MAX_PAGE - 1, withscores=True
+        )
+        if not page:
+            break
+        live_mrr += sum(int(score) for _, score in page)
+        if len(page) < MAX_PAGE:
+            break
+        cursor += MAX_PAGE
     arr_end = live_mrr * 12
 
     # ARR start = ARR end − (new + expansion) + (contraction + churn)

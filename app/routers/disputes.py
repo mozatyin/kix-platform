@@ -695,6 +695,26 @@ async def open_dispute(
                     err,
                 )
 
+    # Outbound webhook fan-out: notify on dispute.opened.
+    try:
+        from app.routers.webhooks_outbound import fan_out_webhook_to_brand
+        await fan_out_webhook_to_brand(
+            body.brand_id,
+            "dispute.opened",
+            {
+                "dispute_id": dispute_id,
+                "charge_id": body.charge_id,
+                "conversion_id": body.conversion_id,
+                "impression_token": body.impression_token,
+                "category": body.category,
+                "amount_cents": amount_cents,
+                "auto_resolved": auto_resolved,
+            },
+            r,
+        )
+    except Exception as _exc:  # pragma: no cover
+        logger.debug("webhook fan-out (dispute.opened) failed: %s", _exc)
+
     return OpenDisputeResponse(
         dispute_id=dispute_id,
         status="resolved_refund_full" if auto_resolved else "pending_review",
@@ -790,6 +810,27 @@ async def _finalize_resolution(
     # uuid4 so this is paranoia).
     if charge_id and new_status != "pending_review":
         await r.delete(_k_by_charge(charge_id))
+
+    # Outbound webhook fan-out: notify the merchant on resolution.
+    try:
+        from app.routers.webhooks_outbound import fan_out_webhook_to_brand
+        await fan_out_webhook_to_brand(
+            brand_id,
+            "dispute.resolved",
+            {
+                "dispute_id": dispute_id,
+                "status": new_status,
+                "decision": decision,
+                "charge_id": charge_id,
+                "refund_id": refund_id,
+                "refund_cents": refund_cents,
+                "reason": reason,
+                "actor": actor,
+            },
+            r,
+        )
+    except Exception as _exc:  # pragma: no cover
+        logger.debug("webhook fan-out (dispute.resolved) failed: %s", _exc)
 
 
 # ── GET /{dispute_id} ─────────────────────────────────────────────────────

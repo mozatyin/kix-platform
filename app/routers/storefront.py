@@ -293,7 +293,8 @@ async def discover_brands(
     else:  # top_rated
         # Need to iterate ratings — for a v1, just scan candidates (or all brands in country index).
         if candidates is None:
-            raw = await r.zrange(_k_discover_country(), 0, -1)
+            # Bounded discovery scan: cap at 1000 candidate brands per query.
+            raw = await r.zrange(_k_discover_country(), 0, 999)
             candidates = set(raw)
         scored: list[tuple[float, int, dict[str, Any]]] = []
         for bid in candidates:

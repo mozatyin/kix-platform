@@ -43,10 +43,20 @@ Storage layout
       given combo on a given day without a KEYS scan.
 
   reports:brand:{bid}:unique:{combo_name}:{value_tuple}:users
-      SET of user_id  (uniques / reach — 7-day TTL).
+      SET of user_id  (uniques / reach — 35-day TTL). LEGACY: kept
+      under dual-write during the 30-day HLL transition; will be
+      retired once read traffic is fully served by HLL.
 
-  reports:brand:{bid}:uniques:imp:{value_tuple}:dfp
-      SET of device_fingerprint (unique_impressions counter).
+  reports:brand:{bid}:unique:{combo_name}:{value_tuple}:dfp
+      SET of device_fingerprint (unique_impressions counter). LEGACY.
+
+  reports:brand:{bid}:hll:{combo_name}:{value_tuple}:users
+      HyperLogLog of user_id (reach). Fixed ~12 KB regardless of
+      cardinality, ~0.81% standard error. PFADD on write,
+      PFCOUNT on read, PFMERGE for cross-slice aggregation.
+
+  reports:brand:{bid}:hll:{combo_name}:{value_tuple}:dfp
+      HyperLogLog of device_fingerprint (unique_impressions).
 
 All keys carry a 35-day TTL.
 
@@ -106,6 +116,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
+from uuid import uuid4
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -273,6 +284,22 @@ def _unique_dfp_key(
     return f"reports:brand:{brand_id}:unique:{combo.name}:{vt}:dfp"
 
 
+def _hll_users_key(
+    brand_id: str, combo: Combo, value_tuple: tuple[str, ...]
+) -> str:
+    """HyperLogLog reach key (PFADD user_id)."""
+    vt = "|".join(value_tuple)
+    return f"reports:brand:{brand_id}:hll:{combo.name}:{vt}:users"
+
+
+def _hll_dfp_key(
+    brand_id: str, combo: Combo, value_tuple: tuple[str, ...]
+) -> str:
+    """HyperLogLog unique_impressions key (PFADD device_fingerprint)."""
+    vt = "|".join(value_tuple)
+    return f"reports:brand:{brand_id}:hll:{combo.name}:{vt}:dfp"
+
+
 # ── Time helpers ─────────────────────────────────────────────────────────
 
 
@@ -428,6 +455,11 @@ async def write_event(
             # uniques set when there's actually a user_id and the event
             # represents a viewing event (impressions / engagements /
             # clicks / conversions).
+            #
+            # DUAL-WRITE during HLL migration: both the legacy SET
+            # (SCARD-counted) and the new HLL (PFCOUNT-counted) receive
+            # the id. Once read traffic is fully served by HLL across
+            # the 30-day transition the SET writes can be dropped.
             if (
                 user_id
                 and clean.get("impressions", 0)
@@ -437,12 +469,18 @@ async def write_event(
                 > 0
             ):
                 uk = _unique_users_key(brand_id, combo, value_tuple)
-                pipe.sadd(uk, user_id)
+                pipe.sadd(uk, user_id)  # legacy SET — TODO: retire after 30d
                 pipe.expire(uk, UNIQUE_TTL_SECONDS)
+                huk = _hll_users_key(brand_id, combo, value_tuple)
+                pipe.pfadd(huk, user_id)
+                pipe.expire(huk, UNIQUE_TTL_SECONDS)
             if device_fingerprint and clean.get("impressions", 0) > 0:
                 dk = _unique_dfp_key(brand_id, combo, value_tuple)
-                pipe.sadd(dk, device_fingerprint)
+                pipe.sadd(dk, device_fingerprint)  # legacy SET
                 pipe.expire(dk, UNIQUE_TTL_SECONDS)
+                hdk = _hll_dfp_key(brand_id, combo, value_tuple)
+                pipe.pfadd(hdk, device_fingerprint)
+                pipe.expire(hdk, UNIQUE_TTL_SECONDS)
 
         # Quality score running totals: stored as (sum, n) on the
         # canonical (date) and (campaign_id) cubes only — these are the
@@ -503,20 +541,110 @@ async def _read_cube_row(
         except (TypeError, ValueError):
             out[k] = v
 
-    # Uniques are cheap SCARDs.
+    # Uniques: prefer HyperLogLog (PFCOUNT, ~12 KB / key, ~0.81% error);
+    # fall back to legacy SET SCARD for slices not yet migrated. The
+    # fallback only triggers when the HLL is genuinely empty (PFCOUNT
+    # returns 0), so well-populated migrated keys never pay the second
+    # round-trip on the hot read path.
     uk = _unique_users_key(brand_id, combo, value_tuple)
     dk = _unique_dfp_key(brand_id, combo, value_tuple)
+    huk = _hll_users_key(brand_id, combo, value_tuple)
+    hdk = _hll_dfp_key(brand_id, combo, value_tuple)
     try:
-        reach = await r.scard(uk)
-        out["reach"] = int(reach or 0)
+        reach = await r.pfcount(huk)
+        reach = int(reach or 0)
+        if reach == 0:
+            try:
+                reach = int(await r.scard(uk) or 0)
+            except Exception:
+                reach = 0
+        out["reach"] = reach
     except Exception:
-        out["reach"] = 0
+        try:
+            out["reach"] = int(await r.scard(uk) or 0)
+        except Exception:
+            out["reach"] = 0
     try:
-        uniq_imp = await r.scard(dk)
-        out["unique_impressions"] = int(uniq_imp or 0)
+        uniq_imp = await r.pfcount(hdk)
+        uniq_imp = int(uniq_imp or 0)
+        if uniq_imp == 0:
+            try:
+                uniq_imp = int(await r.scard(dk) or 0)
+            except Exception:
+                uniq_imp = 0
+        out["unique_impressions"] = uniq_imp
     except Exception:
-        out["unique_impressions"] = 0
+        try:
+            out["unique_impressions"] = int(await r.scard(dk) or 0)
+        except Exception:
+            out["unique_impressions"] = 0
     return out
+
+
+# ── HLL aggregation across dimensions ────────────────────────────────────
+
+
+async def aggregate_unique_via_hll(
+    r: aioredis.Redis,
+    brand_id: str,
+    combo: Combo,
+    value_tuples: Iterable[tuple[str, ...]],
+    kind: str = "users",
+) -> int:
+    """Merge multiple HLL slices into a deduplicated cardinality.
+
+    Use when callers need a total reach/unique-impressions across many
+    slices (e.g. total reach across all countries on a given date).
+    PFMERGE is associative + idempotent, so the result correctly
+    de-duplicates ids that appear in multiple slices — something SCARD
+    + sum cannot do.
+
+    ``kind`` is either ``"users"`` (→ reach) or ``"dfp"`` (→
+    unique_impressions). Returns the aggregated cardinality estimate.
+    """
+    if kind == "users":
+        keyfn = _hll_users_key
+        legacy_keyfn = _unique_users_key
+    elif kind == "dfp":
+        keyfn = _hll_dfp_key
+        legacy_keyfn = _unique_dfp_key
+    else:
+        raise ValueError(f"kind must be 'users' or 'dfp', got {kind!r}")
+
+    vts = list(value_tuples)
+    if not vts:
+        return 0
+
+    hll_keys = [keyfn(brand_id, combo, vt) for vt in vts]
+    temp_key = f"_hll_agg:{uuid4().hex[:12]}"
+    try:
+        try:
+            await r.pfmerge(temp_key, *hll_keys)
+            count = int(await r.pfcount(temp_key) or 0)
+        finally:
+            try:
+                await r.delete(temp_key)
+            except Exception:
+                pass
+        if count > 0:
+            return count
+        # All HLLs empty — try a legacy SUNIONSTORE across SET fallbacks
+        # so callers don't see a hard zero during migration.
+        legacy_keys = [legacy_keyfn(brand_id, combo, vt) for vt in vts]
+        tmp_set = f"_set_agg:{uuid4().hex[:12]}"
+        try:
+            await r.sunionstore(tmp_set, *legacy_keys)
+            return int(await r.scard(tmp_set) or 0)
+        except Exception:
+            return 0
+        finally:
+            try:
+                await r.delete(tmp_set)
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.debug("aggregate_unique_via_hll failed: %s", exc)
+        return 0
 
 
 def _apply_derived_metrics(row: dict[str, Any]) -> dict[str, Any]:
@@ -706,6 +834,129 @@ async def unsupported_demand(
         key=lambda x: -x["request_count"],
     )
     return {"top_unsupported": items[:50], "total_distinct": len(items)}
+
+
+# ── Admin: bulk SET → HLL migration ──────────────────────────────────────
+
+
+class HLLMigrateRequest(BaseModel):
+    brand_id: str | None = None
+    scan_count: int = Field(default=500, ge=50, le=5000)
+    max_keys: int = Field(default=100_000, ge=1, le=10_000_000)
+    delete_legacy: bool = False
+
+
+@router.post("/admin/migrate-to-hll")
+async def admin_migrate_to_hll(
+    body: HLLMigrateRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Bulk-migrate legacy SET unique-counters into HyperLogLog keys.
+
+    Walks ``reports:brand:{bid}:unique:*:{users,dfp}`` via SCAN (no
+    KEYS), and for each SET it SSCANs the members and PFADDs them into
+    the matching ``reports:brand:{bid}:hll:*`` key. Idempotent — running
+    twice produces the same cardinality estimate.
+
+    When ``delete_legacy=true`` the SET key is dropped after a
+    successful PFADD pass. Leave it false during the 30-day transition
+    so the read path's SCARD fallback still works while traffic ramps
+    onto HLL.
+
+    Returns a per-brand-and-kind summary so ops can confirm coverage
+    before flipping the switch in the writer.
+    """
+    pattern = (
+        f"reports:brand:{body.brand_id}:unique:*"
+        if body.brand_id
+        else "reports:brand:*:unique:*"
+    )
+    sets_migrated = 0
+    members_added = 0
+    legacy_deleted = 0
+    errors = 0
+    keys_seen = 0
+
+    cursor = 0
+    started = time.time()
+    try:
+        while True:
+            cursor, batch = await r.scan(
+                cursor=cursor, match=pattern, count=body.scan_count
+            )
+            for key in batch:
+                keys_seen += 1
+                if keys_seen > body.max_keys:
+                    cursor = 0
+                    break
+                key_s = (
+                    key.decode() if isinstance(key, (bytes, bytearray)) else key
+                )
+                # Only consider :users and :dfp leaves — skip anything else.
+                if key_s.endswith(":users"):
+                    suffix = ":users"
+                elif key_s.endswith(":dfp"):
+                    suffix = ":dfp"
+                else:
+                    continue
+                # Map legacy key → HLL key by swapping the segment marker.
+                #   reports:brand:{bid}:unique:{combo}:{vt}:users
+                # → reports:brand:{bid}:hll:{combo}:{vt}:users
+                hll_key = key_s.replace(":unique:", ":hll:", 1)
+                try:
+                    sub_cursor = 0
+                    pipe = r.pipeline(transaction=False)
+                    pending = 0
+                    while True:
+                        sub_cursor, members = await r.sscan(
+                            key_s, cursor=sub_cursor, count=body.scan_count
+                        )
+                        if members:
+                            decoded = [
+                                m.decode()
+                                if isinstance(m, (bytes, bytearray))
+                                else m
+                                for m in members
+                            ]
+                            pipe.pfadd(hll_key, *decoded)
+                            pending += len(decoded)
+                            members_added += len(decoded)
+                        if sub_cursor == 0:
+                            break
+                    pipe.expire(hll_key, UNIQUE_TTL_SECONDS)
+                    await pipe.execute()
+                    sets_migrated += 1
+                    if body.delete_legacy and pending > 0:
+                        try:
+                            await r.delete(key_s)
+                            legacy_deleted += 1
+                        except Exception:
+                            errors += 1
+                except Exception as exc:
+                    errors += 1
+                    logger.warning(
+                        "migrate-to-hll key=%s failed: %s", key_s, exc
+                    )
+            if cursor == 0 or keys_seen > body.max_keys:
+                break
+    except Exception as exc:
+        logger.exception("migrate-to-hll scan failed: %s", exc)
+        raise HTTPException(
+            status_code=500, detail=f"scan failed: {exc}"
+        ) from exc
+
+    return {
+        "ok": True,
+        "brand_id": body.brand_id,
+        "pattern": pattern,
+        "keys_seen": keys_seen,
+        "sets_migrated": sets_migrated,
+        "members_added": members_added,
+        "legacy_deleted": legacy_deleted,
+        "errors": errors,
+        "elapsed_ms": int((time.time() - started) * 1000),
+        "truncated": keys_seen > body.max_keys,
+    }
 
 
 # ── Endpoint: query ──────────────────────────────────────────────────────

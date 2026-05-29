@@ -1,0 +1,145 @@
+# KiX Indonesia region stack (ap-southeast-3 / Jakarta)
+# Same shape as CN, smaller footprint: 2 API workers, 1 PG replica, single Redis.
+# Run: KIX_REGION=id docker compose -f deployment/docker-compose.indonesia.yml up -d
+version: "3.8"
+
+x-common-env: &common-env
+  KIX_REGION: id
+  KIX_REGION_NAME: "Indonesia-Jakarta"
+  TZ: Asia/Jakarta
+
+services:
+  # ── Redis (single node for ID MVP; cluster in Phase 2) ───────────────
+  redis-id:
+    image: redis:7.2-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    ports: ["6379:6379"]
+    volumes:
+      - redis-id:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [kix-id]
+    restart: unless-stopped
+
+  # ── PostgreSQL primary + 1 read replica ──────────────────────────────
+  pg-id-primary:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kix
+      POSTGRES_USER: kix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ID}
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=5
+      - -c
+      - hot_standby=on
+      - -c
+      - max_connections=100
+    ports: ["54322:5432"]
+    volumes:
+      - pg-id-primary:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kix"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [kix-id]
+    restart: unless-stopped
+
+  pg-id-replica:
+    image: postgres:17-alpine
+    depends_on:
+      pg-id-primary:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ID}
+      PGUSER: kix
+      PRIMARY_HOST: pg-id-primary
+    command:
+      - bash
+      - -c
+      - |
+        until pg_basebackup -h $$PRIMARY_HOST -U kix -D /var/lib/postgresql/data -Fp -Xs -P -R; do
+          echo "Waiting for primary..."; sleep 2
+        done
+        exec postgres
+    volumes:
+      - pg-id-replica:/var/lib/postgresql/data
+    networks: [kix-id]
+    restart: unless-stopped
+
+  # ── uvicorn API workers × 2 ──────────────────────────────────────────
+  kix-api-1: &api-template
+    build:
+      context: ..
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_ID}@pg-id-primary:5432/kix
+      DATABASE_URL_RO: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_ID}@pg-id-replica:5432/kix
+      REDIS_URL: redis://redis-id:6379/0
+      REDIS_URL_ID: redis://redis-id:6379/0
+      DATABASE_URL_ID: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_ID}@pg-id-primary:5432/kix
+      JWT_SECRET: ${JWT_SECRET}
+      UVICORN_WORKERS: "2"
+    depends_on:
+      pg-id-primary:
+        condition: service_healthy
+    expose: ["8000"]
+    networks: [kix-id]
+    restart: unless-stopped
+
+  kix-api-2:
+    <<: *api-template
+
+  # ── nginx ingress ────────────────────────────────────────────────────
+  nginx-id:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/id.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on: [kix-api-1, kix-api-2]
+    networks: [kix-id]
+    restart: unless-stopped
+
+  # ── Monitoring ────────────────────────────────────────────────────────
+  prometheus-id:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.id.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-id-data:/prometheus
+    ports: ["9090:9090"]
+    networks: [kix-id]
+    restart: unless-stopped
+
+  grafana-id:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-kix_admin}
+      GF_SERVER_ROOT_URL: https://grafana.id.letskix.com
+    ports: ["3000:3000"]
+    volumes:
+      - grafana-id-data:/var/lib/grafana
+    depends_on: [prometheus-id]
+    networks: [kix-id]
+    restart: unless-stopped
+
+networks:
+  kix-id:
+    driver: bridge
+
+volumes:
+  redis-id:
+  pg-id-primary:
+  pg-id-replica:
+  prometheus-id-data:
+  grafana-id-data:

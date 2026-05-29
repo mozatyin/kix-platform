@@ -140,10 +140,13 @@ async def _conversion_value_cents(
             tzinfo=timezone.utc
         )
         end = start + timedelta(days=1)
+        # Bounded: cap at 10k redemptions per day for dashboard aggregation.
         vids = await r.zrangebyscore(
             f"brand:{brand_id}:redeemed_vouchers",
             start.timestamp(),
             end.timestamp() - 0.001,
+            start=0,
+            num=10_000,
         )
     except Exception:
         return 0
@@ -543,10 +546,13 @@ async def _peak_hour_insight(
     today = datetime.now(timezone.utc)
     start = today - timedelta(days=7)
     try:
+        # Bounded: 7-day window peak-hour insight capped at 10k samples.
         members = await r.zrangebyscore(
             f"brand:{brand_id}:redeemed_vouchers",
             start.timestamp(),
             today.timestamp(),
+            start=0,
+            num=10_000,
             withscores=True,
         )
     except Exception:

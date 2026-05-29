@@ -75,6 +75,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
+from app.api_standards import error_response, list_response
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -727,20 +728,28 @@ async def create_campaign(
     r: aioredis.Redis = Depends(get_redis),
 ) -> CampaignCreateResponse:
     """Create a new campaign and mark it active in the auction pool."""
+    # api_standards: error_response envelopes carry a structured `error` code
+    # plus the original human-readable message for backwards compat.
     if body.daily_budget_cents > body.total_budget_cents:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="daily_budget_cents must be ≤ total_budget_cents",
+        raise error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "daily_budget_cents must be ≤ total_budget_cents",
+            field="daily_budget_cents",
         )
     if body.objective not in VALID_OBJECTIVES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"objective must be one of {sorted(VALID_OBJECTIVES)}",
+        raise error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            f"objective must be one of {sorted(VALID_OBJECTIVES)}",
+            field="objective",
         )
     if body.bid_strategy not in VALID_BID_STRATEGIES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"bid_strategy must be one of {sorted(VALID_BID_STRATEGIES)}",
+        raise error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            f"bid_strategy must be one of {sorted(VALID_BID_STRATEGIES)}",
+            field="bid_strategy",
         )
 
     # Per-strategy required-field validation. Each auto-optimised strategy
@@ -888,7 +897,11 @@ async def list_brand_campaigns(
         stats = await _read_stats(r, cid)
         out.append(_to_response(raw, stats))
     out.sort(key=lambda c: c.get("created_at", 0.0), reverse=True)
-    return {"brand_id": brand_id, "campaigns": out, "count": len(out)}
+    # api_standards: merge list_response envelope (items/count/total/has_more/
+    # limit/offset) with legacy fields (brand_id, campaigns) for backwards
+    # compat. Old clients reading .campaigns / .count keep working.
+    envelope = list_response(items=out, total=len(out), limit=len(out), offset=0)
+    return {"brand_id": brand_id, "campaigns": out, **envelope}
 
 
 @router.get("/{campaign_id}/details")

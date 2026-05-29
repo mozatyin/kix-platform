@@ -643,7 +643,9 @@ async def list_invoices_for_customer(
 ) -> dict[str, Any]:
     await ensure_customer_exists(customer_id, r)
     total = int(await r.zcard(_k_cust_invoices(customer_id)))
-    ids = await r.zrevrange(_k_cust_invoices(customer_id), 0, -1)
+    # Bounded scan: cap raw fetch at 1000 even after over-fetch for status filter.
+    fetch_max = min(1000, max(offset + limit * 5, limit))
+    ids = await r.zrevrange(_k_cust_invoices(customer_id), 0, fetch_max - 1)
     items: list[dict[str, Any]] = []
     skipped = 0
     for inv_id in ids:

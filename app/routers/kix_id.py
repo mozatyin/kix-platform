@@ -85,6 +85,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
+from app.api_standards import error_response
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -586,13 +587,13 @@ async def register(
                 "device_velocity_exceeded device_fp=%s recent=%s",
                 device_fp, recent,
             )
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
-                    "error": "device_velocity_exceeded",
-                    "kids_in_window": int(recent),
-                    "window_seconds": DEVICE_VELOCITY_BURST_SECONDS,
-                },
+            # api_standards: rate-limited envelope; context fields preserved.
+            raise error_response(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "device_velocity_exceeded",
+                f"too many new kids in {DEVICE_VELOCITY_BURST_SECONDS}s",
+                kids_in_window=int(recent),
+                window_seconds=DEVICE_VELOCITY_BURST_SECONDS,
             )
 
         total = await r.zcard(velocity_key)
@@ -601,13 +602,13 @@ async def register(
                 "device_kid_limit_reached device_fp=%s total=%s — fraud signal",
                 device_fp, total,
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "device_kid_limit_reached",
-                    "total_kids": int(total),
-                    "limit": DEVICE_VELOCITY_MAX_TOTAL,
-                },
+            # api_standards: forbidden envelope; context fields preserved.
+            raise error_response(
+                status.HTTP_403_FORBIDDEN,
+                "device_kid_limit_reached",
+                f"device has reached the kid limit ({DEVICE_VELOCITY_MAX_TOTAL})",
+                total_kids=int(total),
+                limit=DEVICE_VELOCITY_MAX_TOTAL,
             )
 
     kid, is_new = await ensure_kid(
@@ -686,7 +687,8 @@ async def admin_device_velocity(
         velocity_key, now_ts - DEVICE_VELOCITY_BURST_SECONDS, "+inf"
     )
     total_24h = await r.zcard(velocity_key)
-    all_kids = await r.zrange(velocity_key, 0, -1, withscores=True)
+    # Bounded admin scan: cap at 1000 kids per device velocity report.
+    all_kids = await r.zrange(velocity_key, 0, 999, withscores=True)
 
     suspicious = bool(
         recent_60s >= DEVICE_VELOCITY_MAX_BURST

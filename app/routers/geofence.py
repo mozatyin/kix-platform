@@ -35,8 +35,26 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
+from sqlalchemy import func as sa_func, select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db, get_read_db
+from app.models.geofence import Geofence
 from app.redis_client import get_redis
+
+try:
+    # Optional: only imported when PostGIS is configured. We tolerate the
+    # absence (e.g. in test environments that mock the DB) so the router
+    # still loads cleanly. ``geoalchemy2`` is declared in pyproject.toml
+    # so production environments will always have it.
+    from geoalchemy2 import Geography as _PGGeography  # noqa: F401
+    from geoalchemy2.functions import ST_DWithin
+
+    _POSTGIS_AVAILABLE = True
+except ImportError:  # pragma: no cover - safety net
+    ST_DWithin = None  # type: ignore[assignment]
+    _POSTGIS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +266,140 @@ def _store_from_hash(raw: dict[str, Any]) -> Store:
     )
 
 
+async def _upsert_pg_geofence(
+    db: AsyncSession,
+    *,
+    store_id: str,
+    brand_id: str,
+    name: str,
+    lat: float,
+    lng: float,
+    radius_meters: int,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Mirror a store record into the PostGIS ``geofences`` table.
+
+    Best-effort dual-write: on any SQLAlchemy failure we log + swallow so
+    the Redis-backed primary path still completes. Once PG becomes source
+    of truth this swallow can be tightened to fail-closed.
+
+    The ``location`` column is filled via raw WKT (``POINT(lng lat)``);
+    PostGIS coerces this to ``geography(POINT, 4326)`` at insert time.
+    Note WKT order is ``lng lat`` (not ``lat lng``).
+    """
+    if db is None:
+        return
+    now = int(time.time())
+    point_wkt = f"POINT({lng} {lat})"
+    try:
+        existing = await db.get(Geofence, store_id)
+        if existing is None:
+            db.add(
+                Geofence(
+                    id=store_id,
+                    brand_id=brand_id,
+                    store_id=store_id,
+                    name=name,
+                    location=point_wkt,
+                    radius_meters=int(radius_meters),
+                    active=True,
+                    metadata_json=metadata or {},
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        else:
+            existing.brand_id = brand_id
+            existing.name = name
+            existing.location = point_wkt
+            existing.radius_meters = int(radius_meters)
+            existing.active = True
+            if metadata is not None:
+                existing.metadata_json = metadata
+            existing.updated_at = now
+        await db.flush()
+    except SQLAlchemyError as exc:
+        logger.warning(
+            "geofence pg dual-write failed store=%s: %s", store_id, exc
+        )
+        await db.rollback()
+
+
+async def _delete_pg_geofence(db: AsyncSession, store_id: str) -> None:
+    """Soft-delete by setting ``active=False`` (preserves analytics)."""
+    if db is None:
+        return
+    try:
+        existing = await db.get(Geofence, store_id)
+        if existing is not None:
+            existing.active = False
+            existing.updated_at = int(time.time())
+            await db.flush()
+    except SQLAlchemyError as exc:
+        logger.warning(
+            "geofence pg soft-delete failed store=%s: %s", store_id, exc
+        )
+        await db.rollback()
+
+
+async def find_geofences_near(
+    lat: float,
+    lng: float,
+    max_distance_meters: int,
+    db: AsyncSession,
+) -> list[dict[str, Any]]:
+    """Return geofences whose centre is within ``max_distance_meters``.
+
+    PostGIS spatial query — backed by the GiST R-tree index, so this is
+    ``O(log N)`` plus the candidates actually inside the bbox.
+
+    The result is capped at 100 to bound payload size; callers that need
+    more should narrow ``max_distance_meters`` or paginate by brand.
+    """
+    if not _POSTGIS_AVAILABLE or ST_DWithin is None:
+        return []
+    user_point = sa_func.ST_SetSRID(
+        sa_func.ST_MakePoint(lng, lat), 4326
+    ).cast(_PGGeography(geometry_type="POINT", srid=4326))
+
+    query = (
+        select(Geofence)
+        .where(
+            Geofence.active.is_(True),
+            ST_DWithin(Geofence.location, user_point, max_distance_meters),
+        )
+        .limit(100)
+    )
+    result = await db.execute(query)
+    return [g.to_dict() for g in result.scalars().all()]
+
+
+async def is_inside_geofence(
+    brand_id: str,
+    lat: float,
+    lng: float,
+    db: AsyncSession,
+) -> list[str]:
+    """Return geofence IDs the (lat, lng) is inside for this brand.
+
+    Uses each row's own ``radius_meters`` as the inclusion threshold so
+    one query answers "which of my brand's stores is the user inside?".
+    """
+    if not _POSTGIS_AVAILABLE or ST_DWithin is None:
+        return []
+    user_point = sa_func.ST_SetSRID(
+        sa_func.ST_MakePoint(lng, lat), 4326
+    ).cast(_PGGeography(geometry_type="POINT", srid=4326))
+
+    query = select(Geofence.id).where(
+        Geofence.brand_id == brand_id,
+        Geofence.active.is_(True),
+        ST_DWithin(Geofence.location, user_point, Geofence.radius_meters),
+    )
+    result = await db.execute(query)
+    return [row[0] for row in result.all()]
+
+
 async def _campaign_is_active(r: aioredis.Redis, campaign_id: str) -> bool:
     """Look up a campaign hash and confirm it's active.
 
@@ -435,11 +587,13 @@ def _list_template_placeholders(template: str) -> list[str]:
 async def register_store(
     payload: StoreRegister,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Register a physical store with its geo coordinates + push config.
 
     Idempotent on ``store_id``: re-registering overwrites the record.
-    Also indexes the store in the global Redis GEO sorted-set.
+    Also indexes the store in the global Redis GEO sorted-set AND in the
+    PostGIS ``geofences`` table (dual-write migration window).
     """
     store_id = payload.store_id
     brand_id = payload.brand_id
@@ -463,6 +617,26 @@ async def register_store(
 
     # Index in GEO sorted-set. redis-py accepts (lng, lat, member).
     await r.geoadd(_GEO_INDEX, (payload.lng, payload.lat, store_id))
+
+    # NEW: dual-write to PostGIS so the spatial index is in place when
+    # we cut reads over. Failures are logged + swallowed so Redis stays
+    # source of truth during the migration window.
+    await _upsert_pg_geofence(
+        db,
+        store_id=store_id,
+        brand_id=brand_id,
+        name=payload.name,
+        lat=payload.lat,
+        lng=payload.lng,
+        radius_meters=payload.radius_meters,
+        metadata={
+            "brand_name": payload.brand_name or "",
+            "associated_game_slug": payload.associated_game_slug or "",
+            "associated_recipe_id": payload.associated_recipe_id or "",
+            "associated_campaign_id": payload.associated_campaign_id or "",
+            "push_config": payload.push_config.model_dump(),
+        },
+    )
 
     logger.info(
         "geofence.register_store brand=%s store=%s @ (%.5f,%.5f) r=%dm",
@@ -494,11 +668,13 @@ async def list_brand_stores(
 async def delete_store(
     store_id: str,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Delete a store. Removes the hash, brand index entry, and GEO entry.
 
     Does not delete historical event streams (enter/visit zsets) so that
-    analytics can still be queried for terminated stores.
+    analytics can still be queried for terminated stores. The PostGIS
+    mirror is soft-deleted (``active=False``) for the same reason.
     """
     raw = await _load_store(r, store_id)
     if not raw:
@@ -508,6 +684,9 @@ async def delete_store(
     if brand_id:
         await r.srem(_brand_stores_key(brand_id), store_id)
     await r.zrem(_GEO_INDEX, store_id)
+    # Soft-delete in PG so spatial queries stop returning the store but
+    # historical analytics joins still resolve.
+    await _delete_pg_geofence(db, store_id)
     logger.info("geofence.delete_store store=%s brand=%s", store_id, brand_id)
     return {"store_id": store_id, "deleted": True}
 
@@ -583,6 +762,50 @@ async def nearby(
             push_eligible=push_eligible,
         ))
     return NearbyResponse(nearby_stores=out)
+
+
+# ── Endpoints: PostGIS spatial queries (preparation, opt-in) ─────────────
+
+
+class PostGISNearbyRequest(BaseModel):
+    lat: float = Field(..., ge=-90.0, le=90.0)
+    lng: float = Field(..., ge=-180.0, le=180.0)
+    max_distance_meters: int = Field(default=5000, ge=10, le=50_000)
+
+
+class PostGISInsideRequest(BaseModel):
+    brand_id: str
+    lat: float = Field(..., ge=-90.0, le=90.0)
+    lng: float = Field(..., ge=-180.0, le=180.0)
+
+
+@router.post("/postgis/nearby", response_model=list[dict])
+async def postgis_nearby(
+    payload: PostGISNearbyRequest,
+    db: AsyncSession = Depends(get_read_db),
+) -> list[dict]:
+    """Spatial query against PostGIS — preparation endpoint.
+
+    Returns the same shape as the Redis ``/nearby`` carousel but goes
+    through the R-tree GiST index. Off by default in routing config until
+    the dual-write soak completes.
+    """
+    return await find_geofences_near(
+        payload.lat, payload.lng, payload.max_distance_meters, db
+    )
+
+
+@router.post("/postgis/inside", response_model=list[str])
+async def postgis_inside(
+    payload: PostGISInsideRequest,
+    db: AsyncSession = Depends(get_read_db),
+) -> list[str]:
+    """Returns the list of geofence IDs the (lat, lng) is inside for
+    this brand, using each row's own ``radius_meters``.
+    """
+    return await is_inside_geofence(
+        payload.brand_id, payload.lat, payload.lng, db
+    )
 
 
 # ── Endpoints: geofence enter (push trigger) ──────────────────────────────

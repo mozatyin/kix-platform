@@ -676,10 +676,14 @@ async def create_reservation(
         window_lo = body.scheduled_at - 1800
         window_hi = body.scheduled_at + dur_seconds
         try:
+            # Bounded conflict check: a resource window cannot legitimately
+            # have more than 1000 overlapping holds.
             conflict_rids = await r.zrangebyscore(
                 _k_brand_res_by_resource(body.brand_id, body.resource_id),
                 window_lo,
                 window_hi,
+                start=0,
+                num=1000,
             )
         except Exception:  # pragma: no cover
             conflict_rids = []

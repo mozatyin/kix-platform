@@ -39,6 +39,8 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.api_standards import error_response, not_found
 from pydantic import BaseModel, Field, field_validator
 import redis.asyncio as aioredis
 
@@ -135,10 +137,8 @@ def _safe_loads(raw: str | None, default: Any) -> Any:
 async def _load_tx(r: aioredis.Redis, tid: str) -> dict[str, str]:
     data = await r.hgetall(_k_tx(tid))
     if not data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"transaction_id={tid} not found",
-        )
+        # api_standards: structured not_found envelope with resource_id context.
+        raise not_found("transaction", id=tid)
     return data
 
 

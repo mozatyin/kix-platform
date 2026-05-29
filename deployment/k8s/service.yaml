@@ -1,0 +1,40 @@
+# ClusterIP service in front of API pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kix-api
+  namespace: kix-cn
+  labels:
+    app: kix-api
+    kix.region: cn
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+spec:
+  type: ClusterIP
+  selector:
+    app: kix-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kix-push-worker
+  namespace: kix-cn
+  labels:
+    app: kix-push-worker
+    kix.region: cn
+spec:
+  type: ClusterIP
+  clusterIP: None   # headless — Prometheus scrapes pods directly
+  selector:
+    app: kix-push-worker
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100

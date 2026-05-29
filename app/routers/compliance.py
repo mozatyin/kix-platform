@@ -94,7 +94,8 @@ VALID_INDUSTRIES: set[str] = {
 }
 
 VALID_SEVERITIES: set[str] = {"block", "warn", "info"}
-VALID_JURISDICTIONS: set[str] = {"CN", "US", "EU", "global"}
+# Jurisdictions matching `app.region.REGION_CONFIG` plus the `global` catch-all.
+VALID_JURISDICTIONS: set[str] = {"CN", "US", "EU", "ID", "SG", "global"}
 
 VALID_PII_FIELDS: set[str] = {
     "id_card",

@@ -1,0 +1,71 @@
+# Push worker — drains push_engine queue, delivers to FCM/APNS/Centrifugo.
+# Scaled horizontally; per-user ordering preserved via consistent hashing.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kix-push-worker
+  namespace: kix-cn
+  labels:
+    app: kix-push-worker
+    kix.region: cn
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: kix-push-worker
+  template:
+    metadata:
+      labels:
+        app: kix-push-worker
+        kix.region: cn
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      containers:
+        - name: push
+          image: registry.letskix.com/kix-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.workers.push_worker"]
+          env:
+            - name: KIX_REGION
+              value: "cn"
+            - name: WORKER_CONCURRENCY
+              value: "16"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: redis-url
+            - name: FCM_SERVER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: fcm-server-key
+                  optional: true
+            - name: APNS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: apns-key
+                  optional: true
+          resources:
+            requests:
+              cpu: "300m"
+              memory: "256Mi"
+            limits:
+              cpu: "1500m"
+              memory: "1Gi"
+          ports:
+            - containerPort: 9100
+              name: metrics

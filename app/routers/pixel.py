@@ -66,6 +66,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 import redis.asyncio as aioredis
 
+from app.api_standards import error_response
 from app.redis_client import get_redis
 from app.routers import attribution as attr_mod
 
@@ -1065,7 +1066,13 @@ async def record_event(
     await _check_rate_limit(r, req.pixel_id, native=_origin_is_native(origin))
 
     if req.event_type not in SUPPORTED_EVENTS:
-        raise HTTPException(status_code=422, detail="unsupported_event_type")
+        # api_standards: structured error envelope.
+        raise error_response(
+            422,
+            "unsupported_event_type",
+            f"event_type must be one of {sorted(SUPPORTED_EVENTS)}",
+            field="event_type",
+        )
 
     (
         event_id,

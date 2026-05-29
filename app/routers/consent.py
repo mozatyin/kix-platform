@@ -47,11 +47,17 @@ import time
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
+from app.api_standards import mint_id
 from app.redis_client import get_redis
+from app.services.gdpr_export import (
+    EXPORT_TTL_SECONDS,
+    audit_export,
+    store_export,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -750,7 +756,12 @@ async def _scan_keys(r: aioredis.Redis, pattern: str) -> list[str]:
 
 
 async def _dump_key(r: aioredis.Redis, key: str) -> Any:
-    """Best-effort export of a Redis key into a JSON-able shape."""
+    """Best-effort export of a Redis key into a JSON-able shape.
+
+    Collection types are paginated at 1000 rows per page to avoid
+    unbounded Redis reads on large GDPR exports.
+    """
+    MAX_PAGE = 1000
     try:
         t = await r.type(key)
     except Exception:
@@ -758,66 +769,310 @@ async def _dump_key(r: aioredis.Redis, key: str) -> Any:
     if t == "string":
         return await r.get(key)
     if t == "list":
-        return await r.lrange(key, 0, -1)
+        # Paginated LRANGE.
+        out_list: list[Any] = []
+        cursor = 0
+        while True:
+            page = await r.lrange(key, cursor, cursor + MAX_PAGE - 1)
+            if not page:
+                break
+            out_list.extend(page)
+            if len(page) < MAX_PAGE:
+                break
+            cursor += MAX_PAGE
+        return out_list
     if t == "set":
         return sorted(await r.smembers(key))
     if t == "zset":
-        return await r.zrange(key, 0, -1, withscores=True)
+        # Paginated ZRANGE with scores.
+        out_zset: list[Any] = []
+        cursor = 0
+        while True:
+            page = await r.zrange(
+                key, cursor, cursor + MAX_PAGE - 1, withscores=True
+            )
+            if not page:
+                break
+            out_zset.extend(page)
+            if len(page) < MAX_PAGE:
+                break
+            cursor += MAX_PAGE
+        return out_zset
     if t == "hash":
         return await r.hgetall(key)
     return None
 
 
-@router.post("/data/export", response_model=DataExportInitResponse)
+@router.post("/data/export")
 async def export_data(
     body: DataExportRequest,
+    request: Request,
     r: aioredis.Redis = Depends(get_redis),
-) -> DataExportInitResponse:
-    """Mint a GDPR Article-15 data-export job.
+) -> dict[str, Any]:
+    """GDPR Article-15 data export — synchronous S3 + signed URL flow.
 
-    The job is queued for async assembly; call
-    ``GET /data/export/{export_id}`` to poll status and pick up the
-    download URL once ``status=ready``. For immediate execution (admin
-    tooling, regulator on-site request) use
-    ``POST /data/export/{export_id}/run``.
+    Collects the user's data across all sibling-router patterns,
+    encrypts the JSON/CSV payload with a per-user Fernet key derived
+    from the KMS master, and uploads to object storage. Returns a
+    7-day signed download URL — the plaintext is never persisted in
+    Redis. Use ``/data/export-async`` for users with very large data
+    footprints (>100k events) where the request must not block.
+
+    Metadata (status / size / signed URL) is stored in
+    ``consent:export:{export_id}`` with a matching 7-day TTL so
+    polling clients keep working.
     """
-    export_id = uuid4().hex
-    job_key = f"consent:export:{export_id}"
+    scopes = body.scopes
+
+    # 1. Gather the payload (same fan-out as the legacy queue worker).
+    patterns = _user_patterns_for_scopes(body.user_id, scopes)
+    bundle: dict[str, dict[str, Any]] = {}
+    total_keys = 0
+    for scope, pat in patterns:
+        keys = await _scan_keys(r, pat)
+        scope_bucket = bundle.setdefault(scope, {})
+        for k in keys:
+            scope_bucket[k] = await _dump_key(r, k)
+            total_keys += 1
+
+    attr_user_keys = await _scan_keys(r, f"attr:*user:{body.user_id}*")
+    if attr_user_keys:
+        attr_bucket = bundle.setdefault("attribution", {})
+        for k in attr_user_keys:
+            attr_bucket[k] = await _dump_key(r, k)
+            total_keys += 1
+
+    export_id = mint_id("exp")
     now = int(time.time())
-    scopes_csv = ",".join(body.scopes) if body.scopes else ""
+
+    export_data_doc: dict[str, Any] = {
+        "export_id": export_id,
+        "user_id": body.user_id,
+        "generated_at": now,
+        "scopes": list(bundle.keys()),
+        "total_keys": total_keys,
+        "data": bundle,
+    }
+
+    if body.format == "csv":
+        lines = ["scope,key,value"]
+        for scope, kv in bundle.items():
+            for k, v in kv.items():
+                lines.append(
+                    f"{scope},{k},{json.dumps(v, ensure_ascii=False, default=str).replace(chr(10), ' ')}"
+                )
+        payload = "\n".join(lines).encode("utf-8")
+    else:
+        payload = json.dumps(
+            export_data_doc, indent=2, ensure_ascii=False, default=str
+        ).encode("utf-8")
+
+    # 2. Encrypt + upload (retried by the storage backend on transient IO).
+    try:
+        download_url = await store_export(body.user_id, payload, export_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "consent.data.export.store_failed user=%s export_id=%s",
+            body.user_id,
+            export_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"export_storage_failed: {exc}",
+        )
+
+    expires_at = now + EXPORT_TTL_SECONDS
+
+    # 3. Metadata-only Redis record (no payload — that lives in S3).
+    job_key = f"gdpr:export:{export_id}"
     await r.hset(
         job_key,
         mapping={
-            "export_id": export_id,
             "user_id": body.user_id,
-            "kind": "export",
-            "status": "queued",
-            "format": body.format,
-            "scopes": scopes_csv,
+            "export_id": export_id,
+            "status": "ready",
             "created_at": str(now),
+            "finished_at": str(now),
+            "expires_at": str(expires_at),
+            "download_url": download_url,
+            "size_bytes": str(len(payload)),
+            "format": body.format,
+            "total_keys": str(total_keys),
+            "scopes": ",".join(scopes) if scopes else "",
         },
     )
-    await r.expire(job_key, 7 * 24 * 3600)  # 7 day TTL per spec
-    await r.lpush("consent:jobs:export:queue", export_id)
+    await r.expire(job_key, EXPORT_TTL_SECONDS)
 
+    # 4. Audit per Article-30 (records of processing).
+    await audit_export(
+        r,
+        export_id=export_id,
+        user_id=body.user_id,
+        ip=_client_ip(request),
+        user_agent=request.headers.get("user-agent", ""),
+        extra={"format": body.format, "size_bytes": len(payload)},
+    )
     await _audit(
         r,
         body.user_id,
-        "data_export_requested",
+        "data_export_ready",
         {
             "export_id": export_id,
             "format": body.format,
-            "scopes": body.scopes,
+            "size_bytes": len(payload),
+            "total_keys": total_keys,
         },
     )
     logger.info(
-        "consent.data.export user=%s export_id=%s", body.user_id, export_id
+        "consent.data.export user=%s export_id=%s bytes=%d",
+        body.user_id,
+        export_id,
+        len(payload),
     )
 
-    # 60s is the spec'd default estimate; tune via env if needed.
+    return {
+        "export_id": export_id,
+        "status": "ready",
+        "download_url": download_url,
+        "expires_at": expires_at,
+        "size_bytes": len(payload),
+        "format": body.format,
+    }
+
+
+async def _do_async_export(
+    user_id: str,
+    export_id: str,
+    fmt: str,
+    scopes: list[str] | None,
+) -> None:
+    """Background worker for ``/data/export-async``.
+
+    Reuses the module-level ``redis_pool`` client (FastAPI's
+    ``BackgroundTasks`` run *after* the response is sent but *before*
+    the app shutdown hook closes the pool). Errors are persisted into
+    the job record so the status endpoint surfaces them instead of
+    stranding the caller.
+    """
+    from app.redis_client import redis_pool  # noqa: PLC0415
+
+    r: aioredis.Redis = redis_pool  # type: ignore[assignment]
+    if r is None:
+        logger.error(
+            "consent.data.export_async.no_redis export_id=%s", export_id
+        )
+        return
+    job_key = f"gdpr:export:{export_id}"
+
+    try:
+        patterns = _user_patterns_for_scopes(user_id, scopes)
+        bundle: dict[str, dict[str, Any]] = {}
+        total_keys = 0
+        for scope, pat in patterns:
+            keys = await _scan_keys(r, pat)
+            scope_bucket = bundle.setdefault(scope, {})
+            for k in keys:
+                scope_bucket[k] = await _dump_key(r, k)
+                total_keys += 1
+
+        export_data_doc: dict[str, Any] = {
+            "export_id": export_id,
+            "user_id": user_id,
+            "generated_at": int(time.time()),
+            "scopes": list(bundle.keys()),
+            "total_keys": total_keys,
+            "data": bundle,
+        }
+        if fmt == "csv":
+            lines = ["scope,key,value"]
+            for scope, kv in bundle.items():
+                for k, v in kv.items():
+                    lines.append(
+                        f"{scope},{k},{json.dumps(v, ensure_ascii=False, default=str).replace(chr(10), ' ')}"
+                    )
+            payload = "\n".join(lines).encode("utf-8")
+        else:
+            payload = json.dumps(
+                export_data_doc, indent=2, ensure_ascii=False, default=str
+            ).encode("utf-8")
+
+        download_url = await store_export(user_id, payload, export_id)
+        now = int(time.time())
+        expires_at = now + EXPORT_TTL_SECONDS
+        await r.hset(
+            job_key,
+            mapping={
+                "status": "ready",
+                "finished_at": str(now),
+                "expires_at": str(expires_at),
+                "download_url": download_url,
+                "size_bytes": str(len(payload)),
+                "total_keys": str(total_keys),
+            },
+        )
+        await r.expire(job_key, EXPORT_TTL_SECONDS)
+        logger.info(
+            "consent.data.export_async.ready user=%s export_id=%s bytes=%d",
+            user_id,
+            export_id,
+            len(payload),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "consent.data.export_async.failed user=%s export_id=%s",
+            user_id,
+            export_id,
+        )
+        await r.hset(
+            job_key,
+            mapping={"status": "failed", "error": str(exc)[:512]},
+        )
+        await r.expire(job_key, EXPORT_TTL_SECONDS)
+
+
+@router.post("/data/export-async", response_model=DataExportInitResponse)
+async def export_data_async(
+    body: DataExportRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    r: aioredis.Redis = Depends(get_redis),
+) -> DataExportInitResponse:
+    """Background variant of ``/data/export`` for very large data sets.
+
+    Returns a ``processing`` ticket immediately; the background task
+    fans out, encrypts, uploads, and updates the same
+    ``gdpr:export:{export_id}`` record that the status endpoint reads.
+    """
+    export_id = mint_id("exp")
+    now = int(time.time())
+    await r.hset(
+        f"gdpr:export:{export_id}",
+        mapping={
+            "user_id": body.user_id,
+            "export_id": export_id,
+            "status": "processing",
+            "created_at": str(now),
+            "format": body.format,
+            "scopes": ",".join(body.scopes) if body.scopes else "",
+        },
+    )
+    await r.expire(f"gdpr:export:{export_id}", EXPORT_TTL_SECONDS)
+
+    await audit_export(
+        r,
+        export_id=export_id,
+        user_id=body.user_id,
+        ip=_client_ip(request),
+        user_agent=request.headers.get("user-agent", ""),
+        extra={"format": body.format, "mode": "async"},
+    )
+
+    background_tasks.add_task(
+        _do_async_export, body.user_id, export_id, body.format, body.scopes
+    )
     return DataExportInitResponse(
         export_id=export_id,
-        status="queued",
+        status="processing",
         estimated_seconds=60,
     )
 
@@ -886,20 +1141,32 @@ async def get_data_export(
     export_id: str,
     r: aioredis.Redis = Depends(get_redis),
 ) -> DataExportStatusResponse:
-    """Poll an export job. Returns a download_url once ``status=ready``."""
-    job_key = f"consent:export:{export_id}"
-    raw = await r.hgetall(job_key)
+    """Poll an export job.
+
+    Reads the new ``gdpr:export:{export_id}`` record first; falls back
+    to the legacy ``consent:export:{export_id}`` key so in-flight jobs
+    started before the upgrade still resolve. When ``status=ready`` the
+    response surfaces the S3 signed URL directly — no proxy hop.
+    """
+    raw = await r.hgetall(f"gdpr:export:{export_id}")
+    legacy = False
+    if not raw:
+        raw = await r.hgetall(f"consent:export:{export_id}")
+        legacy = bool(raw)
     if not raw:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Unknown export_id: {export_id}",
+            detail=f"export_not_found_or_expired: {export_id}",
         )
+
     scopes_csv = raw.get("scopes", "")
     scopes = scopes_csv.split(",") if scopes_csv else None
     finished_at = raw.get("finished_at")
     size_bytes = raw.get("size_bytes")
-    download_url: str | None = None
-    if raw.get("status") == "ready":
+
+    download_url: str | None = raw.get("download_url") or None
+    if raw.get("status") == "ready" and not download_url:
+        # Legacy Redis-blob path — proxy through the download endpoint.
         download_url = f"/api/v1/consent/data/export/{export_id}/download"
 
     return DataExportStatusResponse(

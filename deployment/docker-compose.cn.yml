@@ -1,0 +1,253 @@
+# KiX China region stack (cn-beijing)
+# Run: KIX_REGION=cn docker compose -f deployment/docker-compose.cn.yml up -d
+version: "3.8"
+
+x-common-env: &common-env
+  KIX_REGION: cn
+  KIX_REGION_NAME: "China-North"
+  TZ: Asia/Shanghai
+
+services:
+  # ── Redis Cluster (3 nodes) ───────────────────────────────────────────
+  redis-cn-1:
+    image: redis:7.2-alpine
+    command:
+      - redis-server
+      - --cluster-enabled
+      - "yes"
+      - --cluster-config-file
+      - nodes.conf
+      - --cluster-node-timeout
+      - "5000"
+      - --appendonly
+      - "yes"
+      - --port
+      - "6379"
+    ports:
+      - "6391:6379"
+    volumes:
+      - redis-cn-1:/data
+    networks: [kix-cn]
+
+  redis-cn-2:
+    image: redis:7.2-alpine
+    command:
+      - redis-server
+      - --cluster-enabled
+      - "yes"
+      - --cluster-config-file
+      - nodes.conf
+      - --cluster-node-timeout
+      - "5000"
+      - --appendonly
+      - "yes"
+      - --port
+      - "6379"
+    ports:
+      - "6392:6379"
+    volumes:
+      - redis-cn-2:/data
+    networks: [kix-cn]
+
+  redis-cn-3:
+    image: redis:7.2-alpine
+    command:
+      - redis-server
+      - --cluster-enabled
+      - "yes"
+      - --cluster-config-file
+      - nodes.conf
+      - --cluster-node-timeout
+      - "5000"
+      - --appendonly
+      - "yes"
+      - --port
+      - "6379"
+    ports:
+      - "6393:6379"
+    volumes:
+      - redis-cn-3:/data
+    networks: [kix-cn]
+
+  redis-cluster-init:
+    image: redis:7.2-alpine
+    depends_on: [redis-cn-1, redis-cn-2, redis-cn-3]
+    command: >
+      sh -c "sleep 5 && echo yes | redis-cli --cluster create
+      redis-cn-1:6379 redis-cn-2:6379 redis-cn-3:6379
+      --cluster-replicas 0"
+    networks: [kix-cn]
+    restart: "no"
+
+  # ── PostgreSQL primary + 2 read replicas ─────────────────────────────
+  pg-cn-primary:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kix
+      POSTGRES_USER: kix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_CN}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - hot_standby=on
+      - -c
+      - max_connections=200
+    ports:
+      - "54321:5432"
+    volumes:
+      - pg-cn-primary:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kix"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [kix-cn]
+
+  pg-cn-replica-1:
+    image: postgres:17-alpine
+    depends_on:
+      pg-cn-primary:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_CN}
+      PGUSER: kix
+      PRIMARY_HOST: pg-cn-primary
+    command:
+      - bash
+      - -c
+      - |
+        until pg_basebackup -h $$PRIMARY_HOST -U kix -D /var/lib/postgresql/data -Fp -Xs -P -R; do
+          echo "Waiting for primary..."; sleep 2
+        done
+        exec postgres
+    volumes:
+      - pg-cn-replica-1:/var/lib/postgresql/data
+    networks: [kix-cn]
+
+  pg-cn-replica-2:
+    image: postgres:17-alpine
+    depends_on:
+      pg-cn-primary:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_CN}
+      PGUSER: kix
+      PRIMARY_HOST: pg-cn-primary
+    command:
+      - bash
+      - -c
+      - |
+        until pg_basebackup -h $$PRIMARY_HOST -U kix -D /var/lib/postgresql/data -Fp -Xs -P -R; do
+          echo "Waiting for primary..."; sleep 2
+        done
+        exec postgres
+    volumes:
+      - pg-cn-replica-2:/var/lib/postgresql/data
+    networks: [kix-cn]
+
+  # ── uvicorn API workers × 4 ──────────────────────────────────────────
+  kix-api-1: &api-template
+    build:
+      context: ..
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-primary:5432/kix
+      DATABASE_URL_RO: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-replica-1:5432/kix
+      REDIS_URL: redis://redis-cn-1:6379/0
+      REDIS_URL_CN: redis://redis-cn-1:6379/0
+      DATABASE_URL_CN: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-primary:5432/kix
+      JWT_SECRET: ${JWT_SECRET}
+      UVICORN_WORKERS: "1"
+    depends_on:
+      pg-cn-primary:
+        condition: service_healthy
+    expose: ["8000"]
+    networks: [kix-cn]
+    restart: unless-stopped
+
+  kix-api-2:
+    <<: *api-template
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-primary:5432/kix
+      DATABASE_URL_RO: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-replica-2:5432/kix
+      REDIS_URL: redis://redis-cn-2:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      UVICORN_WORKERS: "1"
+
+  kix-api-3:
+    <<: *api-template
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-primary:5432/kix
+      DATABASE_URL_RO: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-replica-1:5432/kix
+      REDIS_URL: redis://redis-cn-3:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      UVICORN_WORKERS: "1"
+
+  kix-api-4:
+    <<: *api-template
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-primary:5432/kix
+      DATABASE_URL_RO: postgresql+asyncpg://kix:${POSTGRES_PASSWORD_CN}@pg-cn-replica-2:5432/kix
+      REDIS_URL: redis://redis-cn-1:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      UVICORN_WORKERS: "1"
+
+  # ── nginx ingress ────────────────────────────────────────────────────
+  nginx-cn:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/cn.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on: [kix-api-1, kix-api-2, kix-api-3, kix-api-4]
+    networks: [kix-cn]
+    restart: unless-stopped
+
+  # ── Monitoring: Prometheus + Grafana ─────────────────────────────────
+  prometheus-cn:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.cn.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-cn-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [kix-cn]
+    restart: unless-stopped
+
+  grafana-cn:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-kix_admin}
+      GF_SERVER_ROOT_URL: https://grafana.cn.letskix.com
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-cn-data:/var/lib/grafana
+    depends_on: [prometheus-cn]
+    networks: [kix-cn]
+    restart: unless-stopped
+
+networks:
+  kix-cn:
+    driver: bridge
+
+volumes:
+  redis-cn-1:
+  redis-cn-2:
+  redis-cn-3:
+  pg-cn-primary:
+  pg-cn-replica-1:
+  pg-cn-replica-2:
+  prometheus-cn-data:
+  grafana-cn-data:

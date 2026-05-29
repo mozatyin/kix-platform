@@ -1,0 +1,50 @@
+# Per-region ingress. The GeoDNS layer (Cloudflare) routes to the
+# region-specific hostname; this ingress terminates TLS inside the cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kix-api-ingress
+  namespace: kix-cn
+  labels:
+    app: kix-api
+    kix.region: cn
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-rpm: "3000"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-KiX-Region: cn";
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - cn.api.letskix.com
+        - cn.partner.letskix.com
+      secretName: kix-cn-tls
+  rules:
+    - host: cn.api.letskix.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kix-api
+                port:
+                  number: 80
+    - host: cn.partner.letskix.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kix-api
+                port:
+                  number: 80

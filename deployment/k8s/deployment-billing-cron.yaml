@@ -1,0 +1,53 @@
+# Billing cron — runs invoice generation, dispute timeouts, settlement.
+# Singleton per region.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kix-billing-cron
+  namespace: kix-cn
+  labels:
+    app: kix-billing-cron
+    kix.region: cn
+spec:
+  replicas: 1   # singleton — leader election via Redis lock
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: kix-billing-cron
+  template:
+    metadata:
+      labels:
+        app: kix-billing-cron
+        kix.region: cn
+    spec:
+      containers:
+        - name: cron
+          image: registry.letskix.com/kix-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.workers.billing_cron"]
+          env:
+            - name: KIX_REGION
+              value: "cn"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kix-secrets
+                  key: redis-url
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            exec:
+              command: ["python", "-c", "import sys; sys.exit(0)"]
+            initialDelaySeconds: 30
+            periodSeconds: 60

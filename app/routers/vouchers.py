@@ -66,6 +66,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
 
+from app.api_standards import error_response, list_response
 from app.database import get_db
 from app.models import VoucherPool
 from app.redis_client import get_redis
@@ -667,9 +668,12 @@ async def _do_issue(
 
     if isinstance(redeemable_at, str) and redeemable_at == "any_in_master":
         if not master_id:
-            raise HTTPException(
-                status_code=400,
-                detail="redeemable_at=any_in_master requires brand to belong to a master",
+            # api_standards: structured error envelope, human-readable message kept.
+            raise error_response(
+                400,
+                "validation_failed",
+                "redeemable_at=any_in_master requires brand to belong to a master",
+                field="redeemable_at",
             )
         resolved_redeemable = f"any_in_master:{master_id}"
     elif isinstance(redeemable_at, list):
@@ -682,7 +686,12 @@ async def _do_issue(
     issued_at = _now()
     expires_at = body.expires_at
     if expires_at and expires_at <= issued_at:
-        raise HTTPException(status_code=400, detail="expires_at must be in the future")
+        raise error_response(
+            400,
+            "validation_failed",
+            "expires_at must be in the future",
+            field="expires_at",
+        )
 
     # Validate relational_conditions against schema if provided. If not
     # provided on the request, try to inherit from the template.
@@ -693,9 +702,11 @@ async def _do_issue(
                 **body.relational_conditions
             ).model_dump(exclude_none=True)
         except Exception as exc:
-            raise HTTPException(
-                status_code=400,
-                detail=f"invalid relational_conditions: {exc}",
+            raise error_response(
+                400,
+                "validation_failed",
+                f"invalid relational_conditions: {exc}",
+                field="relational_conditions",
             )
     elif body.template_id:
         # Inherit relational_conditions from the template if present.
@@ -1022,14 +1033,15 @@ async def _evaluate_relational_conditions(
     # ── Bundle / multi-item ────────────────────────────────────────────
     bundle_required = cond.get("bundle_required") or []
     if bundle_required:
+        # Bounded scan: cap at 1000 vouchers per holder for bundle membership.
         user_vouchers = await r.zrange(
-            _k_user_vouchers(redeemer_user_id), 0, -1
+            _k_user_vouchers(redeemer_user_id), 0, 999
         )
         # Also check vouchers held by the original holder if different
         holder = voucher.get("holder_user_id", "")
         if holder and holder != redeemer_user_id:
             user_vouchers = list(user_vouchers or []) + list(
-                await r.zrange(_k_user_vouchers(holder), 0, -1) or []
+                await r.zrange(_k_user_vouchers(holder), 0, 999) or []
             )
         held_templates: set[str] = set()
         for vid in user_vouchers or []:
@@ -1148,21 +1160,34 @@ async def _evaluate_relational_conditions(
             brand_ids = await _master_brands(r, master_id)
         else:
             brand_ids = {at_brand_id}
+        # Paginated aggregation: cumulative spend may span thousands of events.
+        MAX_PAGE = 1000
         total = 0
         for bid in brand_ids:
-            events = await r.zrange(f"brand:{bid}:attr_incoming", 0, -1)
-            for eid in events or []:
-                e = await r.hgetall(f"attr:{eid}")
-                if not e:
-                    continue
-                if e.get("user_id") != redeemer_user_id:
-                    continue
-                if e.get("stage") != "conversion":
-                    continue
-                try:
-                    total += int(e.get("value_cents", 0) or 0)
-                except (TypeError, ValueError):
-                    continue
+            cursor = 0
+            while True:
+                events = await r.zrange(
+                    f"brand:{bid}:attr_incoming",
+                    cursor,
+                    cursor + MAX_PAGE - 1,
+                )
+                if not events:
+                    break
+                for eid in events:
+                    e = await r.hgetall(f"attr:{eid}")
+                    if not e:
+                        continue
+                    if e.get("user_id") != redeemer_user_id:
+                        continue
+                    if e.get("stage") != "conversion":
+                        continue
+                    try:
+                        total += int(e.get("value_cents", 0) or 0)
+                    except (TypeError, ValueError):
+                        continue
+                if len(events) < MAX_PAGE:
+                    break
+                cursor += MAX_PAGE
         if total < need:
             return False, (
                 f"cumulative spend {total} < required {need}"
@@ -1374,6 +1399,49 @@ async def redeem_voucher(
             "commission_cents": event["commission_cents"],
         },
     )
+
+    # Outbound webhook fan-out — best-effort, never break redemption path.
+    try:
+        from app.routers.webhooks_outbound import fan_out_webhook_to_brand
+        issuer_brand = (voucher or {}).get("issuer_brand_id", "")
+        if issuer_brand:
+            await fan_out_webhook_to_brand(
+                issuer_brand,
+                "voucher.redeemed",
+                {
+                    "voucher_id": voucher_id,
+                    "at_brand_id": body.at_brand_id,
+                    "redeemer_user_id": body.redeemer_user_id,
+                    "holder_user_id": (voucher or {}).get("holder_user_id"),
+                    "value_applied_cents": event["value_applied_cents"],
+                    "residual_cents_after": event["residual_cents_after"],
+                    "is_cross_brand": event["is_cross_brand"],
+                    "commission_cents": event["commission_cents"],
+                    "order_id": body.order_id,
+                    "new_status": new_status,
+                },
+                r,
+            )
+        if (
+            event["is_cross_brand"]
+            and body.at_brand_id
+            and body.at_brand_id != issuer_brand
+        ):
+            await fan_out_webhook_to_brand(
+                body.at_brand_id,
+                "voucher.redeemed",
+                {
+                    "voucher_id": voucher_id,
+                    "issuer_brand_id": issuer_brand,
+                    "redeemer_user_id": body.redeemer_user_id,
+                    "value_applied_cents": event["value_applied_cents"],
+                    "is_cross_brand": True,
+                    "order_id": body.order_id,
+                },
+                r,
+            )
+    except Exception as _exc:  # pragma: no cover
+        logger.debug("webhook fan-out (voucher.redeemed) failed: %s", _exc)
 
     return {
         "ok": True,
@@ -1599,7 +1667,10 @@ async def list_brand_issued(
         if template_id and state.get("template_id") != template_id:
             continue
         out.append(_voucher_to_dict(state))
-    return {"brand_id": brand_id, "count": len(out), "vouchers": out}
+    # api_standards: list_response envelope merged with legacy fields
+    # (brand_id, vouchers) so existing clients keep working.
+    envelope = list_response(items=out, total=len(out), limit=limit, offset=0)
+    return {"brand_id": brand_id, "vouchers": out, **envelope}
 
 
 @cross_store_router.get(

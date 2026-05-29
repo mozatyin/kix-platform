@@ -915,19 +915,47 @@ async def run_auction(
     )
 
     # rank = effective_bid × quality_score × pacing_factor
+    # Optional ML path (feature flag KIX_ML_ENABLED): predict QS + bid
+    # via LightGBM, falling back to the heuristic on any failure. The
+    # import is lazy so the API stays bootable without the ml extras.
+    try:
+        from app.ml import is_enabled as _ml_enabled
+        from app.ml.inference import (
+            predict_quality_score as _ml_qs,
+            predict_smart_bid as _ml_bid,
+        )
+        _use_ml = _ml_enabled()
+    except Exception:  # noqa: BLE001 — ML module missing is non-fatal.
+        _use_ml = False
+
+    user_ctx = body.context.model_dump() if hasattr(body.context, "model_dump") else {}
+
     ranked: list[tuple[float, int, float, float, dict[str, str]]] = []
     for c in eligible:
         cid = c.get("campaign_id", "")
-        try:
-            qs = float(c.get("quality_score", 0.5))
-        except (ValueError, TypeError):
-            continue
+        stats = await r.hgetall(_sk(cid)) if cid else {}
+
+        if _use_ml:
+            try:
+                qs = await _ml_qs(c, user=None, context=user_ctx, r=r)
+            except Exception:  # noqa: BLE001
+                qs = float(c.get("quality_score", 0.5) or 0.5)
+        else:
+            try:
+                qs = float(c.get("quality_score", 0.5))
+            except (ValueError, TypeError):
+                continue
         if qs <= 0:
             continue
 
         # Smart bid (or manual max_bid_cents).
-        stats = await r.hgetall(_sk(cid)) if cid else {}
-        bid = _compute_auto_bid(c, stats)
+        if _use_ml:
+            try:
+                bid = await _ml_bid(c, user=None, context=user_ctx, stats=stats, r=r)
+            except Exception:  # noqa: BLE001
+                bid = _compute_auto_bid(c, stats)
+        else:
+            bid = _compute_auto_bid(c, stats)
         if bid <= 0:
             continue
 
@@ -1126,6 +1154,27 @@ async def run_auction(
         )
 
     creative = _safe_json_loads(winner.get("creative"), {})
+
+    # Outbound webhook fan-out: notify the winning brand that they took
+    # this slot. Best-effort — never block the auction critical path.
+    try:
+        from app.routers.webhooks_outbound import fan_out_webhook_to_brand
+        await fan_out_webhook_to_brand(
+            winner_brand_id,
+            "auction.won",
+            {
+                "campaign_id": winner_cid,
+                "winning_bid_cents": winner_bid,
+                "actual_charge_cents": actual_charge,
+                "slot": body.slot,
+                "impression_token": impression_token,
+                "bid_strategy": winner_bid_strategy,
+                "quality_score": winner_qs,
+            },
+            r,
+        )
+    except Exception as _exc:  # pragma: no cover
+        logger.debug("webhook fan-out (auction.won) failed: %s", _exc)
 
     return AuctionResponse(
         winner_campaign_id=winner_cid,
@@ -1448,7 +1497,47 @@ async def report_conversion(
             reason=f"{strategy}_conversion",
         )
         result["conversion_value_cents"] = body.conversion_value_cents
+
+        # Outbound webhook fan-out (best effort — never block on subscribers).
+        try:
+            from app.routers.webhooks_outbound import fan_out_webhook_to_brand
+            await fan_out_webhook_to_brand(
+                imp.get("brand_id", ""),
+                "conversion.attributed",
+                {
+                    "campaign_id": cid,
+                    "impression_token": body.impression_token,
+                    "user_id": body.user_id,
+                    "conversion_value_cents": body.conversion_value_cents,
+                    "charged_cents": charge,
+                    "bid_strategy": strategy,
+                },
+                r,
+            )
+        except Exception as _exc:  # pragma: no cover
+            logger.debug("webhook fan-out (conversion) failed: %s", _exc)
+
         return result
+
+    # Conversion recorded but no charge (e.g. CPM/CPC where impression was
+    # the chargeable event). Still notify subscribed merchants.
+    try:
+        from app.routers.webhooks_outbound import fan_out_webhook_to_brand
+        await fan_out_webhook_to_brand(
+            imp.get("brand_id", ""),
+            "conversion.attributed",
+            {
+                "campaign_id": cid,
+                "impression_token": body.impression_token,
+                "user_id": body.user_id,
+                "conversion_value_cents": body.conversion_value_cents,
+                "charged_cents": 0,
+                "bid_strategy": strategy,
+            },
+            r,
+        )
+    except Exception as _exc:  # pragma: no cover
+        logger.debug("webhook fan-out (conversion no-charge) failed: %s", _exc)
 
     return {
         "ok": True,
