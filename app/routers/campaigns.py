@@ -92,6 +92,21 @@ CAMPAIGN_STATS_KEY = "campaign:{cid}:stats"
 CAMPAIGN_DAILY_SPEND_KEY = "campaign:{cid}:budget_spent_today:{date}"
 CAMPAIGN_TOTAL_SPEND_KEY = "campaign:{cid}:budget_spent_total"
 
+# ── Bid death-spiral guards (P1 fix from sg-marketplace 30day sim) ───────
+BID_FLOOR_ABSOLUTE_CENTS = 50
+BID_FLOOR_PCT_OF_DECLARED = 0.5
+CAMPAIGN_DECLARED_MAX_BID_KEY = "campaign:{cid}:declared_max_bid_cents"
+CAMPAIGN_BID_FLOOR_HITS_KEY = "campaign:{cid}:bid_floor_hits"
+CAMPAIGN_BID_HISTORY_KEY = "campaign:{cid}:bid_history"
+CAMPAIGN_AUCTIONS_ENTERED_KEY = "campaign:{cid}:auctions_entered"
+CAMPAIGN_AUCTIONS_ENTERED_DAILY_KEY = "campaign:{cid}:auctions_entered:{date}"
+CAMPAIGN_WINS_DAILY_KEY = "campaign:{cid}:wins:{date}"
+BID_HISTORY_MAX_LEN = 200
+AUTO_PAUSE_LOW_WIN_RATE = 0.05
+AUTO_PAUSE_MIN_IMPRESSIONS = 300
+AUTO_PAUSE_WINDOW_DAYS = 3
+NOTIFICATION_KEY = "notification:brand:{bid}:campaign_paused"
+
 # ── Multi-dimensional active-campaign indexes (Trinity-F #1) ─────────────
 # At 10K+ active campaigns SMEMBERS campaigns:active + per-campaign HGETALL
 # blows up to 500ms+. Maintain per-dimension SETs so the auction can use
@@ -348,6 +363,76 @@ def _daily_spend_key(cid: str, date: str | None = None) -> str:
 
 def _total_spend_key(cid: str) -> str:
     return CAMPAIGN_TOTAL_SPEND_KEY.format(cid=cid)
+
+
+# ── Bid death-spiral helpers ─────────────────────────────────────────────
+
+
+def _declared_max_bid_key(cid: str) -> str:
+    return CAMPAIGN_DECLARED_MAX_BID_KEY.format(cid=cid)
+
+
+def _bid_floor_hits_key(cid: str) -> str:
+    return CAMPAIGN_BID_FLOOR_HITS_KEY.format(cid=cid)
+
+
+def _bid_history_key(cid: str) -> str:
+    return CAMPAIGN_BID_HISTORY_KEY.format(cid=cid)
+
+
+def _auctions_entered_daily_key(cid: str, date: str | None = None) -> str:
+    return CAMPAIGN_AUCTIONS_ENTERED_DAILY_KEY.format(
+        cid=cid, date=date or _today_date()
+    )
+
+
+def _wins_daily_key(cid: str, date: str | None = None) -> str:
+    return CAMPAIGN_WINS_DAILY_KEY.format(cid=cid, date=date or _today_date())
+
+
+async def _read_declared_max_bid(
+    r: aioredis.Redis, cid: str, fallback: int = 0
+) -> int:
+    """Return the *declared* max_bid_cents (the value at creation)."""
+    raw = await r.get(_declared_max_bid_key(cid))
+    if raw:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return fallback
+    if fallback > 0:
+        try:
+            await r.set(_declared_max_bid_key(cid), str(fallback))
+        except Exception:  # pragma: no cover
+            pass
+    return fallback
+
+
+def _compute_bid_floor(declared_max_bid_cents: int) -> int:
+    """Floor = max(BID_FLOOR_ABSOLUTE_CENTS, 50% of declared max)."""
+    pct_floor = int(declared_max_bid_cents * BID_FLOOR_PCT_OF_DECLARED)
+    return max(BID_FLOOR_ABSOLUTE_CENTS, pct_floor)
+
+
+async def _record_bid_history(
+    r: aioredis.Redis,
+    cid: str,
+    bid_cents: int,
+    reason: str,
+) -> None:
+    """Append a bid-change event to the per-campaign sorted set."""
+    ts = _now()
+    entry = json.dumps({
+        "ts": ts,
+        "bid_cents": int(bid_cents),
+        "reason": reason,
+    })
+    pipe = r.pipeline()
+    pipe.zadd(_bid_history_key(cid), {entry: ts})
+    pipe.zremrangebyrank(
+        _bid_history_key(cid), 0, -BID_HISTORY_MAX_LEN - 1
+    )
+    await pipe.execute()
 
 
 def _serialise_campaign(c: CampaignCreate, campaign_id: str) -> dict[str, str]:
@@ -863,7 +948,14 @@ async def create_campaign(
     # every newly created campaign (active or pending_review) since both
     # consume merchant headroom; on delete / cancellation we DECR.
     pipe.incr(f"brand:{body.brand_id}:campaigns_count")
+    # Death-spiral guard: freeze declared max_bid_cents.
+    pipe.set(_declared_max_bid_key(campaign_id), str(body.max_bid_cents))
     await pipe.execute()
+
+    # Seed bid_history with the initial bid.
+    await _record_bid_history(
+        r, campaign_id, body.max_bid_cents, reason="initial_bid"
+    )
 
     # Populate partition indexes — done after the HSET so the helper can
     # read targeting from the freshly-written payload (it uses `payload`
@@ -941,6 +1033,29 @@ async def update_campaign(
     if body.name is not None:
         patch["name"] = body.name
     if body.max_bid_cents is not None:
+        # ── Bid-floor guard (P1 fix: prevent death spiral) ─────────────
+        declared = await _read_declared_max_bid(
+            r, campaign_id, fallback=int(raw.get("max_bid_cents", 0) or 0)
+        )
+        floor = _compute_bid_floor(declared)
+        if body.max_bid_cents < floor:
+            await r.incr(_bid_floor_hits_key(campaign_id))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "bid_below_floor",
+                    "message": (
+                        f"max_bid_cents={body.max_bid_cents} is below the "
+                        f"floor of {floor} cents (50% of declared max "
+                        f"{declared}). Lower bids would trigger a "
+                        f"death-spiral; raise quality_score or narrow "
+                        f"targeting instead."
+                    ),
+                    "floor_cents": floor,
+                    "declared_max_bid_cents": declared,
+                    "submitted_bid_cents": body.max_bid_cents,
+                },
+            )
         patch["max_bid_cents"] = str(body.max_bid_cents)
     if body.bid_percent_bps is not None:
         patch["bid_percent_bps"] = str(body.bid_percent_bps)
@@ -980,6 +1095,12 @@ async def update_campaign(
 
     patch["updated_at"] = str(_now())
     await r.hset(_ck(campaign_id), mapping=patch)
+
+    # Death-spiral diagnostic: record accepted bid changes.
+    if body.max_bid_cents is not None:
+        await _record_bid_history(
+            r, campaign_id, body.max_bid_cents, reason="manual_update"
+        )
 
     # Status may need re-derivation (schedule / budget changed).
     prev_status = raw.get("status", "")
@@ -1066,6 +1187,10 @@ async def delete_campaign(
     pipe.delete(_sk(campaign_id))
     pipe.delete(_total_spend_key(campaign_id))
     pipe.delete(_daily_spend_key(campaign_id))
+    # Death-spiral guard keys.
+    pipe.delete(_declared_max_bid_key(campaign_id))
+    pipe.delete(_bid_floor_hits_key(campaign_id))
+    pipe.delete(_bid_history_key(campaign_id))
     if brand_id:
         pipe.srem(BRAND_CAMPAIGNS_KEY.format(bid=brand_id), campaign_id)
         # Tier-quota counter — DECR campaigns_count. Floor at 0 to stay
@@ -2182,4 +2307,296 @@ async def campaign_quality(
         # Also surface the legacy 0..1 quality_score so existing callers
         # have a migration window.
         "legacy_quality_score": float(raw.get("quality_score", 0.5)),
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Bid Death-Spiral Diagnostics & Auto-Pause (P1 fix)
+# ═════════════════════════════════════════════════════════════════════════
+
+
+async def _compute_trailing_win_rate(
+    r: aioredis.Redis,
+    cid: str,
+    window_days: int = AUTO_PAUSE_WINDOW_DAYS,
+) -> tuple[float, int, int]:
+    """Return (win_rate, wins, auctions_entered) over the trailing window."""
+    total_entered = 0
+    total_wins = 0
+    now = _now()
+    for i in range(window_days):
+        date = datetime.fromtimestamp(
+            now - i * 86400, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+        entered_raw = await r.get(_auctions_entered_daily_key(cid, date))
+        wins_raw = await r.get(_wins_daily_key(cid, date))
+        if entered_raw:
+            try:
+                total_entered += int(entered_raw)
+            except (TypeError, ValueError):
+                pass
+        if wins_raw:
+            try:
+                total_wins += int(wins_raw)
+            except (TypeError, ValueError):
+                pass
+    if total_entered <= 0:
+        return 0.0, total_wins, total_entered
+    return total_wins / total_entered, total_wins, total_entered
+
+
+async def record_auction_participation(
+    r: aioredis.Redis,
+    cid: str,
+    *,
+    won: bool,
+) -> None:
+    """Increment daily auctions_entered (+wins) counters. 7-day TTL."""
+    if not cid:
+        return
+    entered_key = _auctions_entered_daily_key(cid)
+    pipe = r.pipeline()
+    pipe.incr(entered_key)
+    pipe.expire(entered_key, 86400 * 7)
+    pipe.incr(CAMPAIGN_AUCTIONS_ENTERED_KEY.format(cid=cid))
+    if won:
+        wins_key = _wins_daily_key(cid)
+        pipe.incr(wins_key)
+        pipe.expire(wins_key, 86400 * 7)
+    await pipe.execute()
+
+
+async def _suggest_action_for_low_perf(
+    r: aioredis.Redis,
+    cid: str,
+    raw: dict[str, str],
+) -> str:
+    """Pick the most actionable next-step for a low-performance campaign."""
+    declared = await _read_declared_max_bid(
+        r, cid, fallback=int(raw.get("max_bid_cents", 0) or 0)
+    )
+    floor = _compute_bid_floor(declared)
+    current_bid = int(raw.get("max_bid_cents", 0) or 0)
+    if current_bid <= floor:
+        return "raise_bid_to_floor"
+    qs = float(raw.get("quality_score", 0.5) or 0.5)
+    if qs < 0.4:
+        return "improve_quality_score"
+    targeting = _safe_json_loads(raw.get("targeting"), {}) or {}
+    geo = targeting.get("geo") or {}
+    has_geo = bool(geo.get("country") or geo.get("city"))
+    has_aud = bool(
+        targeting.get("audience_id")
+        or targeting.get("include_audience_id")
+    )
+    if not has_geo and not has_aud:
+        return "narrow_audience"
+    return "abandon"
+
+
+async def run_low_performance_pause_sweep(
+    r: aioredis.Redis,
+) -> dict[str, int]:
+    """Auto-pause active campaigns whose trailing win_rate is below threshold.
+
+    Criteria: win_rate < 5% AND auctions_entered >= 300 over the trailing
+    3-day window. Returns ``{scanned, paused, skipped_low_data, errors}``.
+    Idempotent — paused campaigns are skipped on subsequent runs.
+    """
+    cids = await r.smembers(ACTIVE_CAMPAIGNS_KEY)
+    scanned = 0
+    paused = 0
+    skipped_low_data = 0
+    errors = 0
+    for cid in cids:
+        scanned += 1
+        try:
+            raw = await r.hgetall(_ck(cid))
+            if not raw:
+                continue
+            if raw.get("status") != STATUS_ACTIVE:
+                continue
+            win_rate, wins, entered = await _compute_trailing_win_rate(
+                r, cid
+            )
+            if entered < AUTO_PAUSE_MIN_IMPRESSIONS:
+                skipped_low_data += 1
+                continue
+            if win_rate >= AUTO_PAUSE_LOW_WIN_RATE:
+                continue
+            await r.hset(
+                _ck(cid),
+                mapping={
+                    "status": STATUS_PAUSED,
+                    "pause_reason": "low_performance",
+                    "paused_at": str(_now()),
+                    "updated_at": str(_now()),
+                },
+            )
+            await _deindex_campaign_active(r, cid, raw)
+            paused += 1
+            bid = raw.get("brand_id", "")
+            if bid:
+                suggested = await _suggest_action_for_low_perf(r, cid, raw)
+                note = json.dumps({
+                    "campaign_id": cid,
+                    "reason": "low_performance",
+                    "win_rate": round(win_rate, 4),
+                    "wins": wins,
+                    "auctions_entered": entered,
+                    "suggested_action": suggested,
+                    "paused_at": _now(),
+                })
+                pipe = r.pipeline()
+                pipe.rpush(NOTIFICATION_KEY.format(bid=bid), note)
+                pipe.ltrim(NOTIFICATION_KEY.format(bid=bid), -100, -1)
+                await pipe.execute()
+            logger.info(
+                "campaign auto-paused cid=%s win_rate=%.4f entered=%d",
+                cid, win_rate, entered,
+            )
+        except Exception:  # noqa: BLE001
+            errors += 1
+            logger.exception("low-perf sweep failed for cid=%s", cid)
+    return {
+        "scanned": scanned,
+        "paused": paused,
+        "skipped_low_data": skipped_low_data,
+        "errors": errors,
+    }
+
+
+@router.get("/{campaign_id}/auto-pause-status")
+async def auto_pause_status(
+    campaign_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return whether the campaign is auto-paused + a suggested next step."""
+    raw = await r.hgetall(_ck(campaign_id))
+    if not raw:
+        raise HTTPException(status_code=404, detail="campaign not found")
+
+    win_rate, wins, entered = await _compute_trailing_win_rate(r, campaign_id)
+    is_paused = raw.get("status") == STATUS_PAUSED
+    reason = raw.get("pause_reason", "") if is_paused else ""
+    suggested = await _suggest_action_for_low_perf(r, campaign_id, raw)
+
+    return {
+        "campaign_id": campaign_id,
+        "paused": is_paused,
+        "reason": reason,
+        "suggested_action": suggested,
+        "win_rate": round(win_rate, 4),
+        "wins": wins,
+        "auctions_entered": entered,
+        "trailing_window_days": AUTO_PAUSE_WINDOW_DAYS,
+        "auto_pause_thresholds": {
+            "min_win_rate": AUTO_PAUSE_LOW_WIN_RATE,
+            "min_auctions_entered": AUTO_PAUSE_MIN_IMPRESSIONS,
+        },
+    }
+
+
+@router.get("/{campaign_id}/bid-history")
+async def bid_history(
+    campaign_id: str,
+    days: int = Query(default=30, ge=1, le=90),
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return the bid-change timeline for the last ``days`` days."""
+    if not await r.exists(_ck(campaign_id)):
+        raise HTTPException(status_code=404, detail="campaign not found")
+
+    cutoff = _now() - days * 86400
+    raw_entries = await r.zrangebyscore(
+        _bid_history_key(campaign_id),
+        min=cutoff, max="+inf", withscores=True,
+    )
+    entries: list[dict[str, Any]] = []
+    for member, _score in raw_entries:
+        parsed = _safe_json_loads(member, None)
+        if parsed is not None:
+            entries.append(parsed)
+    floor_hits_raw = await r.get(_bid_floor_hits_key(campaign_id))
+    current_bid_raw = await r.hget(_ck(campaign_id), "max_bid_cents")
+    declared = await _read_declared_max_bid(
+        r, campaign_id, fallback=int(current_bid_raw or 0),
+    )
+    return {
+        "campaign_id": campaign_id,
+        "days": days,
+        "entries": entries,
+        "count": len(entries),
+        "declared_max_bid_cents": declared,
+        "current_bid_floor_cents": _compute_bid_floor(declared),
+        "bid_floor_hits": int(floor_hits_raw or 0),
+    }
+
+
+# ── Budget-status (sim feedback: auction must skip blocked campaigns) ─────
+
+
+@router.get("/{campaign_id}/budget-status")
+async def budget_status(
+    campaign_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return whether the auction will skip this campaign for budget reasons.
+
+    Returns the campaign + brand-level ``budget_blocked`` flag state plus
+    the per-campaign daily-spend numbers so dashboards can render a single
+    "why isn't this campaign winning?" answer.
+
+    Flags are set by the wallet's ``daily_budget_exceeded`` path with a
+    TTL until the next UTC midnight; the auction's ``_has_budget`` short-
+    circuits on the same key so no further impressions (or failed-charge
+    log floods) happen until the rollover.
+    """
+    from app.routers.wallet import (
+        BUDGET_BLOCKED_BRAND_KEY,
+        BUDGET_BLOCKED_CAMPAIGN_KEY,
+    )
+
+    raw = await r.hgetall(_ck(campaign_id))
+    if not raw:
+        raise HTTPException(status_code=404, detail="campaign not found")
+
+    brand_id = raw.get("brand_id", "")
+    cam_key = BUDGET_BLOCKED_CAMPAIGN_KEY.format(cid=campaign_id)
+    brand_key = (
+        BUDGET_BLOCKED_BRAND_KEY.format(brand_id=brand_id) if brand_id else None
+    )
+
+    cam_reason = await r.get(cam_key)
+    brand_reason = await r.get(brand_key) if brand_key else None
+    blocked = bool(cam_reason) or bool(brand_reason)
+    reason = cam_reason or brand_reason or ""
+
+    # TTL → unblock_at_ts so dashboards can render a countdown.
+    unblock_at_ts: int | None = None
+    if blocked:
+        ttls: list[int] = []
+        for k in (cam_key, brand_key):
+            if not k:
+                continue
+            ttl = await r.ttl(k)
+            if isinstance(ttl, int) and ttl > 0:
+                ttls.append(ttl)
+        if ttls:
+            unblock_at_ts = int(time.time()) + max(ttls)
+
+    today_spent = await _read_daily_spend(r, campaign_id)
+    try:
+        today_budget = int(raw.get("daily_budget_cents", 0))
+    except (TypeError, ValueError):
+        today_budget = 0
+
+    return {
+        "campaign_id": campaign_id,
+        "brand_id": brand_id,
+        "blocked": blocked,
+        "reason": reason,
+        "unblock_at_ts": unblock_at_ts,
+        "today_spent_cents": today_spent,
+        "today_budget_cents": today_budget,
     }

@@ -196,6 +196,18 @@ async def run_once(
     except Exception:  # noqa: BLE001
         logger.exception("quality_score sweep failed")
 
+    # ── Bid death-spiral auto-pause sweep (P1 fix) ──────────────────────
+    # Pauses campaigns whose trailing 3-day win_rate < 5% (with ≥300
+    # auctions of evidence). Best-effort: never block billing.
+    low_perf_counters: dict[str, int] = {}
+    try:
+        from app.routers.campaigns import run_low_performance_pause_sweep
+
+        low_perf_counters = await run_low_performance_pause_sweep(r)
+    except Exception:  # noqa: BLE001
+        logger.exception("low_performance_pause_sweep failed")
+    logger.info("low_performance_pause_sweep counters=%s", low_perf_counters)
+
     logger.info(
         "billing_cron sweep complete: scanned=%d charged=%d failed=%d "
         "downgraded=%d qs=%s",
