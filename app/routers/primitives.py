@@ -1029,6 +1029,50 @@ def _resolve_tier_from_config(
     return current, nxt
 
 
+async def _emit_tier_promotion_event(
+    r: aioredis.Redis,
+    *,
+    user_id: str,
+    brand_id: str | None,
+    master_id: str | None,
+    from_tier: str | None,
+    to_tier: str,
+    xp: int,
+) -> None:
+    """Fan out a tier-up notification + write an audit entry.
+
+    Two side-effects, both best-effort:
+      1. Append to ``user:{uid}:tier_history`` (LIST, newest first, capped
+         at 200 entries) so support can answer "when did Lao Wang become
+         Gold and on which brand?".
+      2. Publish on ``push_engine:tier_up`` LIST so push_engine can pick
+         up the event and fire a celebration push. Decoupled via Redis so
+         we don't need to import push_engine here (avoids cycles + lets
+         push_engine consume async).
+    """
+    ts = int(time.time())
+    audit = {
+        "ts": ts,
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "master_id": master_id,
+        "from_tier": from_tier,
+        "to_tier": to_tier,
+        "xp": xp,
+    }
+    blob = json.dumps(audit)
+
+    history_key = f"user:{user_id}:tier_history"
+    pipe = r.pipeline()
+    pipe.lpush(history_key, blob)
+    pipe.ltrim(history_key, 0, 199)
+    # Fan-out queue consumed by push_engine. Stays small (1k cap) — older
+    # events are stale anyway.
+    pipe.lpush("push_engine:tier_up", blob)
+    pipe.ltrim("push_engine:tier_up", 0, 999)
+    await pipe.execute()
+
+
 # Global default tier ladder used when neither tier_config:{brand_id} nor
 # brand:{brand_id}:tiers is configured. Keeps the endpoint useful for
 # brand-agnostic / cross-brand aggregate lookups.
@@ -1105,7 +1149,68 @@ async def get_user_tier(
 
     current, nxt = _resolve_tier_from_config(tiers, xp)
 
-    # Persist current tier pointer + detect promotion (only when scoped).
+    # ── Master-scope fallback (Gap 1: cross-brand portability) ───────────
+    # When the brand-level lookup yields no tier but a master is in scope
+    # (either passed directly or derived from the brand's owning master),
+    # derive the tier from the master ladder. This is the fix for "tier
+    # configured at master scope; GET /user/{uid}/tier?brand_id=... returns
+    # null because the user has no brand-scoped XP yet" — chain loyalty
+    # should be portable across stores in the master from t=0.
+    tier_sources: list[dict[str, Any]] = []
+    if current:
+        tier_sources.append(
+            {"scope": "brand", "value": current["name"], "xp": xp}
+        )
+
+    effective_master_id = master_id
+    if not effective_master_id and brand_id:
+        try:
+            owning = await r.get(f"brand:{brand_id}:master")
+        except Exception:  # noqa: BLE001
+            owning = None
+        if owning:
+            effective_master_id = owning
+
+    master_payload: dict[str, Any] | None = None
+    if effective_master_id:
+        try:
+            from app.routers.master_accounts import (
+                _resolve_master_tier_internal,
+            )
+            master_payload = await _resolve_master_tier_internal(
+                r, effective_master_id, user_id
+            )
+        except Exception:  # noqa: BLE001
+            master_payload = None
+
+        if master_payload and master_payload.get("current_master_tier"):
+            tier_sources.append(
+                {
+                    "scope": "master",
+                    "value": master_payload["current_master_tier"],
+                    "xp": master_payload.get("aggregated_xp", 0),
+                    "master_id": effective_master_id,
+                }
+            )
+            # Only LIFT — never demote — when brand-level had no tier.
+            if not current:
+                m_tier_list = master_payload.get("tiers") or []
+                m_xp = int(master_payload.get("aggregated_xp") or 0)
+                m_current, m_next = _resolve_tier_from_config(
+                    [
+                        {"name": t["name"], "xp_min": int(t["xp_min"])}
+                        for t in m_tier_list
+                    ],
+                    m_xp,
+                )
+                if m_current:
+                    current = m_current
+                    nxt = m_next
+                    xp = m_xp
+
+    # ── Persist current tier pointer + detect promotion ─────────────────
+    # On promotion fire a tier-up event so push_engine / celebrations can
+    # react. Best-effort: emit failures must not break the read path.
     promoted = False
     if resolved_brand and current:
         stored_key = f"user:{user_id}:tier:{resolved_brand}"
@@ -1113,6 +1218,23 @@ async def get_user_tier(
         if current["name"] != stored:
             await r.set(stored_key, current["name"])
             promoted = stored is not None
+            if promoted:
+                try:
+                    await _emit_tier_promotion_event(
+                        r,
+                        user_id=user_id,
+                        brand_id=resolved_brand,
+                        master_id=effective_master_id,
+                        from_tier=stored,
+                        to_tier=current["name"],
+                        xp=int(xp),
+                    )
+                except Exception:  # noqa: BLE001
+                    logger.warning(
+                        "tier_promotion_event emit failed uid=%s bid=%s",
+                        user_id,
+                        resolved_brand,
+                    )
 
     # Progress toward next tier.
     if nxt and current:
@@ -1128,6 +1250,7 @@ async def get_user_tier(
     return {
         "user_id": user_id,
         "brand_id": resolved_brand,
+        "master_id": effective_master_id,
         "xp": xp,
         "tier": current["name"] if current else None,
         "current_tier": current,
@@ -1136,6 +1259,7 @@ async def get_user_tier(
         "xp_to_next": (nxt["xp_min"] - xp) if nxt else 0,
         "progress_pct": round(progress_pct, 2),
         "promoted": promoted,
+        "tier_sources": tier_sources,
     }
 
 
@@ -1208,11 +1332,21 @@ async def configure_tiers(
 class AttributesSet(BaseModel):
     brand_id: str | None = None
     attrs: dict[str, Any]
+    # PIPL §28 / GDPR Art.9 sensitive-data flags. Per-write metadata so the
+    # audit trail can prove compliance on readback.
+    pii: bool | None = None
+    sensitive: bool | None = None
+    retention_days: int | None = Field(default=None, ge=1)
+    legal_basis: str | None = Field(default=None, max_length=64)
 
 
 class AttributeSet(BaseModel):
     value: Any
     ttl_seconds: int | None = Field(default=None, ge=1)
+    pii: bool | None = None
+    sensitive: bool | None = None
+    retention_days: int | None = Field(default=None, ge=1)
+    legal_basis: str | None = Field(default=None, max_length=64)
 
 
 class LifecycleStageSet(BaseModel):
@@ -1234,6 +1368,78 @@ def _attr_sidecar_key(user_id: str, brand_id: str | None, key: str) -> str:
     if brand_id:
         return f"user:{user_id}:attribute:{brand_id}:{key}"
     return f"user:{user_id}:attribute:global:{key}"
+
+
+def _attr_flags_key(user_id: str, key: str) -> str:
+    """Sidecar HASH carrying PIPL/GDPR sensitivity metadata for an attribute.
+
+    Independent of brand scope — sensitivity classification applies to the
+    field semantics, not the storage scope. (e.g. ``id_card`` is sensitive
+    whether it lives under brand X or global.)
+    """
+    return f"user:{user_id}:attribute_flags:{key}"
+
+
+_FLAG_FIELDS: tuple[str, ...] = ("pii", "sensitive", "retention_days", "legal_basis")
+
+
+def _extract_flag_payload(source: Any) -> dict[str, str]:
+    """Return Redis-ready HASH payload for any provided sensitivity flags."""
+    mapping: dict[str, str] = {}
+    for field in _FLAG_FIELDS:
+        val = getattr(source, field, None)
+        if val is None:
+            continue
+        if isinstance(val, bool):
+            mapping[field] = "1" if val else "0"
+        else:
+            mapping[field] = str(val)
+    return mapping
+
+
+async def _persist_flags(
+    r: aioredis.Redis,
+    user_id: str,
+    key: str,
+    source: Any,
+) -> dict[str, Any] | None:
+    """If any sensitivity flag was provided on write, persist + return it."""
+    payload = _extract_flag_payload(source)
+    if not payload:
+        return None
+    payload["set_at"] = str(int(time.time()))
+    flags_key = _attr_flags_key(user_id, key)
+    await r.hset(flags_key, mapping=payload)
+    return _decode_flags(payload)
+
+
+def _decode_flags(raw: dict[str, str] | None) -> dict[str, Any] | None:
+    """Decode a flag HASH into typed JSON shape, or None if nothing set."""
+    if not raw:
+        return None
+    out: dict[str, Any] = {}
+    if "pii" in raw:
+        out["pii"] = raw["pii"] in ("1", "true", "True")
+    if "sensitive" in raw:
+        out["sensitive"] = raw["sensitive"] in ("1", "true", "True")
+    if "retention_days" in raw:
+        try:
+            out["retention_days"] = int(raw["retention_days"])
+        except (TypeError, ValueError):
+            pass
+    if "legal_basis" in raw and raw["legal_basis"]:
+        out["legal_basis"] = raw["legal_basis"]
+    if "set_at" in raw:
+        try:
+            out["set_at"] = int(raw["set_at"])
+        except (TypeError, ValueError):
+            pass
+    return out or None
+
+
+async def _read_flags(r: aioredis.Redis, user_id: str, key: str) -> dict[str, Any] | None:
+    raw = await r.hgetall(_attr_flags_key(user_id, key))
+    return _decode_flags(raw or None)
 
 
 def _serialize_attr_value(value: Any) -> str:
@@ -1264,6 +1470,13 @@ async def set_user_attributes(
 
     await r.hset(key, mapping=mapping)
 
+    # PIPL §51 / GDPR Art.30 — persist sensitivity classification if provided.
+    # The bulk-set form applies the same flags to every attr in the batch.
+    flags_applied: dict[str, Any] | None = None
+    if any(getattr(body, f, None) is not None for f in _FLAG_FIELDS):
+        for field in mapping.keys():
+            flags_applied = await _persist_flags(r, user_id, field, body)
+
     for field, new_val in mapping.items():
         await _fire_attribute_changed(
             r,
@@ -1275,7 +1488,7 @@ async def set_user_attributes(
             meta=None,
         )
 
-    return {
+    resp: dict[str, Any] = {
         "ok": True,
         "user_id": user_id,
         "brand_id": body.brand_id,
@@ -1283,6 +1496,9 @@ async def set_user_attributes(
         "attrs_set": list(mapping.keys()),
         "count": len(mapping),
     }
+    if flags_applied:
+        resp["flags"] = flags_applied
+    return resp
 
 
 @router.get("/user/{user_id}/attributes")
@@ -1292,33 +1508,54 @@ async def get_user_attributes(
     key: str | None = None,
     r: aioredis.Redis = Depends(get_redis),
 ):
-    """Get all attrs (or a single key) for a user under a given scope."""
+    """Get all attrs (or a single key) for a user under a given scope.
+
+    Surfaces persisted PIPL/GDPR sensitivity flags so audit consumers can
+    prove that ``pii``/``sensitive``/``retention_days``/``legal_basis``
+    classifications were not silently dropped on readback.
+    """
     hkey = _attr_hash_key(user_id, brand_id)
     if key:
         # Prefer sidecar (carries TTL) when present.
         sidecar = await r.get(_attr_sidecar_key(user_id, brand_id, key))
+        flags = await _read_flags(r, user_id, key)
         if sidecar is not None:
-            return {
+            resp = {
                 "user_id": user_id,
                 "brand_id": brand_id,
                 "key": key,
                 "value": sidecar,
             }
+            if flags:
+                resp["flags"] = flags
+            return resp
         v = await r.hget(hkey, key)
-        return {
+        resp = {
             "user_id": user_id,
             "brand_id": brand_id,
             "key": key,
             "value": v,
         }
+        if flags:
+            resp["flags"] = flags
+        return resp
     raw = await r.hgetall(hkey) or {}
-    return {
+    # Bulk read: surface flags for each key that has any.
+    flags_by_key: dict[str, dict[str, Any]] = {}
+    for k in raw.keys():
+        f = await _read_flags(r, user_id, k)
+        if f:
+            flags_by_key[k] = f
+    resp = {
         "user_id": user_id,
         "brand_id": brand_id,
         "scope": "brand" if brand_id else "global",
         "attrs": raw,
         "count": len(raw),
     }
+    if flags_by_key:
+        resp["flags"] = flags_by_key
+    return resp
 
 
 @router.post("/user/{user_id}/attributes/{key}")
@@ -1340,6 +1577,8 @@ async def set_user_attribute(
         pipe.set(side, value, ex=body.ttl_seconds)
     await pipe.execute()
 
+    flags_applied = await _persist_flags(r, user_id, key, body)
+
     await _fire_attribute_changed(
         r,
         user_id=user_id,
@@ -1350,7 +1589,7 @@ async def set_user_attribute(
         meta=None,
     )
 
-    return {
+    resp: dict[str, Any] = {
         "ok": True,
         "user_id": user_id,
         "brand_id": brand_id,
@@ -1358,6 +1597,9 @@ async def set_user_attribute(
         "value": value,
         "ttl_seconds": body.ttl_seconds,
     }
+    if flags_applied:
+        resp["flags"] = flags_applied
+    return resp
 
 
 @router.delete("/user/{user_id}/attributes/{key}")
@@ -1489,6 +1731,11 @@ class AttrLogEntry(BaseModel):
     source: Literal["self_declared", "measured", "inferred"] = "self_declared"
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     meta: dict[str, Any] | None = None
+    # PIPL/GDPR sensitivity classification — persisted on first declaration.
+    pii: bool | None = None
+    sensitive: bool | None = None
+    retention_days: int | None = Field(default=None, ge=1)
+    legal_basis: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/user/{user_id}/attributes/{key}/log")
@@ -1533,6 +1780,8 @@ async def log_user_attribute(
     pipe.delete(stats_key)  # invalidate cached stats
     await pipe.execute()
 
+    flags_applied = await _persist_flags(r, user_id, key, body)
+
     await _fire_attribute_changed(
         r,
         user_id=user_id,
@@ -1543,7 +1792,7 @@ async def log_user_attribute(
         meta=body.meta or {},
     )
 
-    return {
+    resp: dict[str, Any] = {
         "ok": True,
         "user_id": user_id,
         "brand_id": body.brand_id,
@@ -1552,6 +1801,9 @@ async def log_user_attribute(
         "ts": ts,
         "value": serialized_value,
     }
+    if flags_applied:
+        resp["flags"] = flags_applied
+    return resp
 
 
 def _decode_log_entries(raw: list[str]) -> list[dict[str, Any]]:

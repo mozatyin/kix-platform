@@ -2370,6 +2370,262 @@ async def get_master_user_tier(
     return payload
 
 
+# ── Master tier readback + management (Gap 3) ────────────────────────────
+@router.get("/{master_id}/tier")
+async def get_master_tier_config(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Read back the master tier ladder + aggregation + promotion rule.
+
+    Mirrors POST /tier/configure so callers can verify their write landed.
+    Sims kept seeing null here because there was no reader endpoint — the
+    config was only ever surfaced indirectly via /user/.../tier.
+    """
+    await _require_master(r, master_id)
+    tiers = await _read_master_tier_config(r, master_id)
+    aggregation = await _read_master_aggregation(r, master_id)
+    rule, weights = await _read_master_promotion(r, master_id)
+    axis = await r.get(_k_master_tier_axis(master_id)) or "default"
+    return {
+        "master_id": master_id,
+        "tiers": tiers,
+        "aggregation": aggregation,
+        "tier_axis": axis,
+        "promotion_rule": rule,
+        "weights": weights,
+        "configured": bool(tiers),
+    }
+
+
+@router.get("/{master_id}/tier/configure")
+async def get_master_tier_configure_readback(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Alias of GET /{master_id}/tier — same path as the POST so the
+    configure round-trip is symmetric (POST writes, GET on the same path
+    reads). Returns the same payload.
+    """
+    return await get_master_tier_config(master_id, r)
+
+
+@router.delete("/{master_id}/tier")
+async def delete_master_tier_config(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Clear the master tier ladder + aggregation + promotion rule.
+
+    Used by ops to reset a master's portability config (e.g. when a chain
+    decides to abandon cross-brand tiering). Brand-level ladders are NOT
+    touched — they live at ``tier_config:{brand_id}`` and survive.
+    """
+    await _require_master(r, master_id)
+    pipe = r.pipeline()
+    pipe.delete(_k_master_tier_config(master_id))
+    pipe.delete(_k_master_tier_aggregation(master_id))
+    pipe.delete(_k_master_tier_promotion(master_id))
+    pipe.delete(_k_master_tier_axis(master_id))
+    res = await pipe.execute()
+    removed_any = any(int(x or 0) > 0 for x in res)
+    logger.info(
+        "master_tier_config_cleared master_id=%s removed=%s",
+        master_id,
+        removed_any,
+    )
+    return {"master_id": master_id, "cleared": removed_any}
+
+
+# ── Cross-brand tier stats (Gap 4) ───────────────────────────────────────
+@router.get("/{master_id}/tier/distribution")
+async def master_tier_distribution(
+    master_id: str,
+    sample_limit: int = 5000,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Tier-population breakdown across the master.
+
+    Walks every user currently holding XP at any attached brand, resolves
+    their master tier, and aggregates:
+      * ``by_tier``                — total members per master tier
+      * ``by_brand``               — per-brand membership counts per tier
+      * ``aggregate_xp_distribution`` — coarse histogram of master XP
+
+    ``sample_limit`` caps the SCAN so a 10M-user master doesn't melt the
+    dashboard. 5k is enough for stable percentages; bump it for full
+    accounting runs.
+    """
+    await _require_master(r, master_id)
+    tiers = await _read_master_tier_config(r, master_id)
+    if not tiers:
+        return {
+            "master_id": master_id,
+            "tiers_configured": False,
+            "by_tier": {},
+            "by_brand": {},
+            "aggregate_xp_distribution": {},
+        }
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    if not brand_ids:
+        return {
+            "master_id": master_id,
+            "tiers_configured": True,
+            "by_tier": {t["name"]: 0 for t in tiers},
+            "by_brand": {},
+            "aggregate_xp_distribution": {},
+        }
+
+    # Collect distinct user_ids that have XP at any attached brand.
+    user_ids: set[str] = set()
+    scanned = 0
+    for bid in brand_ids:
+        pattern = f"user:*:currency:{bid}:xp"
+        async for key in r.scan_iter(match=pattern, count=200):
+            # Key shape: user:{uid}:currency:{bid}:xp
+            parts = key.split(":")
+            if len(parts) >= 5:
+                user_ids.add(parts[1])
+                scanned += 1
+                if scanned >= sample_limit:
+                    break
+        if scanned >= sample_limit:
+            break
+
+    by_tier: dict[str, int] = {t["name"]: 0 for t in tiers}
+    by_tier["__no_tier__"] = 0
+    by_brand: dict[str, dict[str, int]] = {
+        bid: {t["name"]: 0 for t in tiers} for bid in brand_ids
+    }
+    xp_hist: dict[str, int] = {}
+
+    def _bucket(xp_val: int) -> str:
+        if xp_val < 100:
+            return "0-99"
+        if xp_val < 500:
+            return "100-499"
+        if xp_val < 1000:
+            return "500-999"
+        if xp_val < 5000:
+            return "1000-4999"
+        if xp_val < 10000:
+            return "5000-9999"
+        if xp_val < 50000:
+            return "10000-49999"
+        return "50000+"
+
+    for uid in user_ids:
+        try:
+            out = await _resolve_master_tier_internal(r, master_id, uid)
+        except Exception:  # noqa: BLE001
+            continue
+        tname = out.get("current_master_tier") or "__no_tier__"
+        by_tier[tname] = by_tier.get(tname, 0) + 1
+        agg_xp = int(out.get("aggregated_xp") or 0)
+        b = _bucket(agg_xp)
+        xp_hist[b] = xp_hist.get(b, 0) + 1
+        per_brand_xp = out.get("per_brand_xp", {}) or {}
+        for bid, xp_val in per_brand_xp.items():
+            if bid not in by_brand:
+                continue
+            # Resolve the per-brand contribution against the master ladder
+            # so the by_brand row shows "members who reached tier X with
+            # XP earned at this brand".
+            local_current, _ = _resolve_tier_name(tiers, int(xp_val))
+            if local_current:
+                by_brand[bid][local_current] = (
+                    by_brand[bid].get(local_current, 0) + 1
+                )
+
+    return {
+        "master_id": master_id,
+        "tiers_configured": True,
+        "sampled_users": len(user_ids),
+        "sample_limit": sample_limit,
+        "by_tier": by_tier,
+        "by_brand": by_brand,
+        "aggregate_xp_distribution": xp_hist,
+    }
+
+
+@router.get("/{master_id}/user/{user_id}/tier-progress")
+async def master_user_tier_progress(
+    master_id: str,
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Return a user's master tier + progress toward the next rung.
+
+    Useful for the merchant Portal "you're 1,200 XP away from Gold" widget
+    and for the user-facing progress bar. Tells the caller which brands
+    are contributing how much XP so the UX can suggest "earn 200 more at
+    gym Jingan to tip you over".
+    """
+    await _require_master(r, master_id)
+    out = await _resolve_master_tier_internal(r, master_id, user_id)
+    tiers = out.get("tiers") or []
+    agg_xp = int(out.get("aggregated_xp") or 0)
+    per_brand_xp: dict[str, int] = {
+        k: int(v) for k, v in (out.get("per_brand_xp") or {}).items()
+    }
+    total = sum(per_brand_xp.values()) or 1
+    contributing: list[dict[str, Any]] = []
+    for bid, xp_val in sorted(per_brand_xp.items(), key=lambda t: -t[1]):
+        # last_activity: read the most recent ts from brand:{bid}:attr_incoming
+        # (best-effort — falls back to 0 when unknown).
+        last_ts = 0.0
+        try:
+            last_pair = await r.zrevrange(
+                f"brand:{bid}:attr_incoming", 0, 0, withscores=True
+            )
+            if last_pair:
+                last_ts = float(last_pair[0][1])
+        except Exception:  # noqa: BLE001
+            last_ts = 0.0
+        contributing.append(
+            {
+                "brand_id": bid,
+                "xp": int(xp_val),
+                "xp_share": round(xp_val / total, 4) if total else 0.0,
+                "last_activity": last_ts,
+            }
+        )
+
+    next_threshold = out.get("next_master_tier_threshold")
+    xp_to_next = (
+        max(int(next_threshold) - agg_xp, 0) if next_threshold is not None else 0
+    )
+    current_tier = out.get("current_master_tier")
+
+    # Find current tier's xp_min for progress percent.
+    current_xp_min = 0
+    for t in tiers:
+        if t["name"] == current_tier:
+            current_xp_min = int(t["xp_min"])
+            break
+    if next_threshold is not None:
+        span = max(int(next_threshold) - current_xp_min, 1)
+        progress_pct = min(
+            100.0, max(0.0, ((agg_xp - current_xp_min) / span) * 100.0)
+        )
+    else:
+        progress_pct = 100.0 if current_tier else 0.0
+
+    return {
+        "master_id": master_id,
+        "user_id": user_id,
+        "current_tier": current_tier,
+        "aggregated_xp": agg_xp,
+        "next_tier_threshold": next_threshold,
+        "xp_to_next": xp_to_next,
+        "progress_pct": round(progress_pct, 2),
+        "contributing_brands": contributing,
+        "aggregation": out.get("aggregation"),
+        "rule": out.get("rule"),
+    }
+
+
 async def resolve_master_tier(
     r: aioredis.Redis, user_id: str, brand_id: str
 ) -> str | None:

@@ -716,9 +716,18 @@ async def log_sensitive_pi_internal(
         )
     anomaly = bool(signals)
 
+    severity = "none"
+    if anomaly_count > threshold * 3:
+        severity = "high"
+    elif anomaly_count > threshold:
+        severity = "medium"
+    elif anomaly_count > threshold * 0.75:
+        severity = "low"
+
     if anomaly:
         entry["anomaly"] = True
         entry["anomaly_signals"] = signals
+        entry["severity"] = severity
         payload = json.dumps(entry)
         logger.warning(
             "compliance.pii.anomaly user=%s field=%s count=%d threshold=%d",
@@ -736,6 +745,42 @@ async def log_sensitive_pi_internal(
     pipe.ltrim(user_key, 0, PII_AUDIT_MAX_USER - 1)
     pipe.lpush(brand_key, payload)
     pipe.ltrim(brand_key, 0, PII_AUDIT_MAX_BRAND - 1)
+    # Cross-brand anomaly log (queryable by /audit/anomalies)
+    if anomaly:
+        anom_entry = {
+            "audit_id": audit_id,
+            "ts": now,
+            "user_id": user_id,
+            "brand_id": brand_id,
+            "field": field,
+            "action": action,
+            "count": anomaly_count,
+            "threshold": threshold,
+            "severity": severity,
+            "signals": signals,
+        }
+        pipe.lpush(
+            "compliance:pii_anomaly_log",
+            json.dumps(anom_entry),
+        )
+        pipe.ltrim("compliance:pii_anomaly_log", 0, PII_AUDIT_MAX_BRAND - 1)
+        pipe.lpush(
+            f"compliance:pii_anomaly_log:brand:{brand_id}",
+            json.dumps(anom_entry),
+        )
+        pipe.ltrim(
+            f"compliance:pii_anomaly_log:brand:{brand_id}",
+            0,
+            PII_AUDIT_MAX_BRAND - 1,
+        )
+    # Per-brand write/read counters (last 30d rolling — via per-day buckets)
+    day_bucket = now // 86400
+    counter_key = f"compliance:pii_counter:brand:{brand_id}:{day_bucket}"
+    if action == "write":
+        pipe.hincrby(counter_key, "writes", 1)
+    elif action in ("access", "export"):
+        pipe.hincrby(counter_key, "reads", 1)
+    pipe.expire(counter_key, 31 * 86400)  # keep 31d for 30d rollups
     await pipe.execute()
 
     return {
@@ -1159,15 +1204,345 @@ async def anomaly_check(
     )
 
 
+# ── Endpoints: PIPL §51 audit aliases (/audit/*) ──────────────────────────
+#
+# Sibling teams (老郑/老蔡) expect ``/compliance/audit/*`` paths to mirror the
+# existing ``/compliance/sensitive-pi/*`` audit endpoints. Alias the trail
+# reads here so regulator-facing tooling has a stable URL shape.
+
+
+@router.get("/audit/brand/{brand_id}")
+async def get_brand_audit_alias(
+    brand_id: str,
+    from_ts: int | None = None,
+    to_ts: int | None = None,
+    action: str | None = None,
+    field: str | None = None,
+    accessor_user_id: str | None = None,
+    limit: int = 200,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Alias of ``/sensitive-pi/brand/{brand_id}/audit`` (PIPL §51)."""
+    return await get_brand_audit(
+        brand_id=brand_id,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        action=action,
+        field=field,
+        accessor_user_id=accessor_user_id,
+        limit=limit,
+        r=r,
+    )
+
+
+@router.get("/audit/user/{user_id}/sensitive")
+async def get_user_sensitive_audit_alias(
+    user_id: str,
+    from_ts: int | None = None,
+    to_ts: int | None = None,
+    action: str | None = None,
+    field: str | None = None,
+    limit: int = 100,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Alias of ``/sensitive-pi/{user_id}/audit`` (PIPL §51)."""
+    return await get_user_audit(
+        user_id=user_id,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        action=action,
+        field=field,
+        limit=limit,
+        r=r,
+    )
+
+
+_SEVERITY_RANK: dict[str, int] = {"low": 1, "medium": 2, "high": 3}
+
+
+@router.get("/audit/anomalies")
+async def get_audit_anomalies(
+    brand_id: str | None = None,
+    min_severity: Literal["low", "medium", "high"] = "low",
+    from_ts: int | None = None,
+    to_ts: int | None = None,
+    limit: int = 200,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return historical anomaly detections for SOC review.
+
+    Backed by ``compliance:pii_anomaly_log`` (cross-brand) or
+    ``compliance:pii_anomaly_log:brand:{brand_id}`` when scoped.
+    """
+    if limit < 1 or limit > 2000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit must be between 1 and 2000",
+        )
+    threshold_rank = _SEVERITY_RANK.get(min_severity, 1)
+
+    list_key = (
+        f"compliance:pii_anomaly_log:brand:{brand_id}"
+        if brand_id
+        else "compliance:pii_anomaly_log"
+    )
+    raws = await r.lrange(list_key, 0, PII_AUDIT_MAX_BRAND - 1)
+
+    out: list[dict[str, Any]] = []
+    severity_counts: dict[str, int] = {"low": 0, "medium": 0, "high": 0}
+    for raw in raws:
+        try:
+            e = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        ts = e.get("ts", 0)
+        if from_ts is not None and ts < from_ts:
+            continue
+        if to_ts is not None and ts > to_ts:
+            continue
+        sev = e.get("severity") or "low"
+        if _SEVERITY_RANK.get(sev, 0) < threshold_rank:
+            continue
+        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+        if len(out) < limit:
+            out.append(e)
+
+    return {
+        "brand_id": brand_id,
+        "min_severity": min_severity,
+        "count": len(out),
+        "anomalies": out,
+        "summary": {"severity_counts": severity_counts},
+    }
+
+
+# ── Endpoints: retention class registry ──────────────────────────────────
+#
+# Used by ``/api/v1/consent/data/delete`` to know which scopes carry a
+# legal-hold retention requirement and must NOT be erased.
+
+VALID_RETENTION_SCOPES: set[str] = {
+    "medical_data",
+    "medical_record_retention",
+    "financial_data",
+    "financial_proof",
+    "kyc",
+    "pii_kyc",
+    "audit",
+    "audio_video_recording",
+    "tax",
+    "general",
+}
+
+
+class RetentionClassConfigure(BaseModel):
+    scope: str = Field(..., min_length=1, max_length=64)
+    retention_years: int = Field(..., ge=1, le=100)
+    mandatory: bool = True
+    citation: str | None = Field(default=None, max_length=256)
+
+
+@router.post("/retention-class/configure")
+async def configure_retention_class(
+    body: RetentionClassConfigure,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Register / update a retention-class policy for ``scope``.
+
+    The retention class is consulted by ``/consent/data/delete`` so that
+    legally-mandated retention windows (e.g. medical records 15y, KYC
+    audit 5y) are honored over a user's right-to-erasure request.
+    """
+    if body.scope not in VALID_RETENTION_SCOPES:
+        # Allow unknown scopes — just log; do not reject.
+        logger.info(
+            "compliance.retention.unknown_scope %s", body.scope
+        )
+    record = {
+        "scope": body.scope,
+        "retention_years": str(body.retention_years),
+        "mandatory": "1" if body.mandatory else "0",
+        "citation": body.citation or "",
+        "configured_at": str(int(time.time())),
+    }
+    await r.hset("compliance:retention_classes", body.scope, json.dumps(record))
+    return {"ok": True, **record, "retention_years": body.retention_years, "mandatory": body.mandatory}
+
+
+@router.get("/retention-class")
+async def list_retention_classes(
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return every configured retention class."""
+    raw = await r.hgetall("compliance:retention_classes")
+    classes: list[dict[str, Any]] = []
+    for scope, payload in raw.items():
+        try:
+            rec = json.loads(payload)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        try:
+            rec["retention_years"] = int(rec.get("retention_years", 0))
+        except (TypeError, ValueError):
+            rec["retention_years"] = 0
+        rec["mandatory"] = rec.get("mandatory") in ("1", "true", "True")
+        classes.append(rec)
+    return {"count": len(classes), "classes": classes}
+
+
+async def get_retention_classes_internal(
+    r: aioredis.Redis,
+) -> dict[str, dict[str, Any]]:
+    """Return ``{scope: {retention_years, mandatory, citation}}``.
+
+    Sibling routers (consent.delete_data) call this to decide which keys
+    they must NOT delete.
+    """
+    raw = await r.hgetall("compliance:retention_classes")
+    out: dict[str, dict[str, Any]] = {}
+    for scope, payload in raw.items():
+        try:
+            rec = json.loads(payload)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        try:
+            years = int(rec.get("retention_years", 0))
+        except (TypeError, ValueError):
+            years = 0
+        out[scope] = {
+            "retention_years": years,
+            "mandatory": rec.get("mandatory") in ("1", "true", "True"),
+            "citation": rec.get("citation") or None,
+        }
+    return out
+
+
+# ── Endpoints: brand compliance dashboard ────────────────────────────────
+
+
+@router.get("/brand/{brand_id}/dashboard")
+async def get_brand_compliance_dashboard(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """One-shot regulator-facing dashboard for a brand.
+
+    Aggregates 30d PII write/read counters, open anomalies, consent
+    compliance rate, document signatures, last audit export. Hits only
+    pre-computed counters so it's O(30) reads.
+    """
+    now = int(time.time())
+    today_bucket = now // 86400
+    total_writes = 0
+    total_reads = 0
+    counter_keys = [
+        f"compliance:pii_counter:brand:{brand_id}:{today_bucket - i}"
+        for i in range(30)
+    ]
+    # HASH counters — batched via pipeline.
+    pipe = r.pipeline()
+    for k in counter_keys:
+        pipe.hgetall(k)
+    bucket_results = await pipe.execute()
+    for raw in bucket_results:
+        if not raw:
+            continue
+        try:
+            total_writes += int(raw.get("writes", 0) or 0)
+        except (TypeError, ValueError):
+            pass
+        try:
+            total_reads += int(raw.get("reads", 0) or 0)
+        except (TypeError, ValueError):
+            pass
+
+    # Anomaly counts (open = high+medium, resolved = low or older)
+    anom_raws = await r.lrange(
+        f"compliance:pii_anomaly_log:brand:{brand_id}",
+        0,
+        PII_AUDIT_MAX_BRAND - 1,
+    )
+    anomalies_open = 0
+    anomalies_resolved = 0
+    cutoff = now - 7 * 86400
+    for raw in anom_raws:
+        try:
+            e = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        sev = e.get("severity", "low")
+        ts = e.get("ts", 0)
+        if ts >= cutoff and sev in ("medium", "high"):
+            anomalies_open += 1
+        else:
+            anomalies_resolved += 1
+
+    # Consent compliance — opportunistic: ratio of users in brand audit
+    # who also carry a non-empty consent:user record.
+    audit_raws = await r.lrange(
+        f"compliance:pii_audit:brand:{brand_id}", 0, 2000
+    )
+    distinct_users: set[str] = set()
+    for raw in audit_raws:
+        try:
+            e = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        uid = e.get("user_id")
+        if uid:
+            distinct_users.add(uid)
+    granted_users = 0
+    if distinct_users:
+        pipe = r.pipeline()
+        for uid in distinct_users:
+            pipe.exists(f"consent:user:{uid}")
+        results = await pipe.execute()
+        granted_users = sum(1 for x in results if x)
+    consent_rate = (
+        granted_users / len(distinct_users) if distinct_users else 0.0
+    )
+
+    # Document signatures count (best-effort: brand has no direct list,
+    # this is a global tally for now).
+    doc_sigs = 0
+    try:
+        doc_sigs = await r.hlen("compliance:document_sig_index") or 0
+    except Exception:
+        doc_sigs = 0
+
+    # Last audit export (per brand-level marker)
+    last_export = await r.get(f"compliance:last_audit_export:brand:{brand_id}")
+    try:
+        last_export_ts = int(last_export) if last_export else None
+    except (TypeError, ValueError):
+        last_export_ts = None
+
+    return {
+        "brand_id": brand_id,
+        "generated_at": now,
+        "total_pii_writes_30d": total_writes,
+        "total_pii_reads_30d": total_reads,
+        "anomalies_open": anomalies_open,
+        "anomalies_resolved": anomalies_resolved,
+        "consent_compliance_rate": round(consent_rate, 4),
+        "tracked_users": len(distinct_users),
+        "consenting_users": granted_users,
+        "document_signatures_count": doc_sigs,
+        "last_audit_export": last_export_ts,
+    }
+
+
 # ── Public exports ────────────────────────────────────────────────────────
 
 __all__ = [
     "router",
     "scan_internal",
     "log_sensitive_pi_internal",
+    "get_retention_classes_internal",
     "VALID_INDUSTRIES",
     "VALID_PII_FIELDS",
     "VALID_PII_ACTIONS",
+    "VALID_RETENTION_SCOPES",
     "ANOMALY_THRESHOLDS",
     "REQUIRED_DISCLAIMERS",
 ]

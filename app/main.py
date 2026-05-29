@@ -291,6 +291,12 @@ KiX = TikTok Ads for Gamification.
         disputes.router, prefix="/api/v1/disputes", tags=["disputes"]
     )
 
+    # ── Fraud / AML / Trust-Score / Incidents (cross-brand spine) ──────
+    from app.routers import fraud
+    app.include_router(
+        fraud.router, prefix="/api/v1/fraud", tags=["fraud"]
+    )
+
     # ── Geofence: Location-Based Discovery (store geo + push triggers) ─
     from app.routers import geofence
     app.include_router(
@@ -418,6 +424,14 @@ KiX = TikTok Ads for Gamification.
         push_engine.router,
         prefix="/api/v1/push",
         tags=["push"],
+    )
+
+    # ── Transactions: universal commerce ledger (purchase/refund/...) ──
+    from app.routers import transactions
+    app.include_router(
+        transactions.router,
+        prefix="/api/v1/transactions",
+        tags=["transactions"],
     )
 
     # ── Root redirect to Landing Page ──────────────────────────────────

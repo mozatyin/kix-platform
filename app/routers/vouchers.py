@@ -510,6 +510,67 @@ class NetworkConfigRequest(BaseModel):
     )
 
 
+class CommissionSplit(BaseModel):
+    """Custom commission split for cross-brand voucher redemption.
+
+    When a voucher is issued by brand A and redeemed at brand B, the
+    transaction value flows according to this split. Default is
+    issuer_pct=0, kix_pct=0.30, redeemer_pct=0.70 (KiX takes 30%, redeemer
+    keeps the rest, issuer gets nothing — it was a gift). Templates may
+    override this with any split that sums to 1.0.
+    """
+    issuer_pct: float = Field(..., ge=0.0, le=1.0)
+    kix_pct: float = Field(..., ge=0.0, le=1.0)
+    redeemer_pct: float = Field(..., ge=0.0, le=1.0)
+
+    @field_validator("redeemer_pct")
+    @classmethod
+    def _validate_sum(cls, v: float, info: Any) -> float:
+        # Pydantic v2 passes other field values in info.data.
+        issuer = (info.data or {}).get("issuer_pct", 0.0)
+        kix = (info.data or {}).get("kix_pct", 0.0)
+        total = issuer + kix + v
+        if not (0.999 <= total <= 1.001):
+            raise ValueError(
+                f"commission_split must sum to 1.0 (got {total:.4f})"
+            )
+        return v
+
+
+class VoucherCancelRequest(BaseModel):
+    cancelled_by: Literal["user", "issuer", "admin"]
+    reason: str = Field("", max_length=500)
+    refund_to_user: bool | None = None
+
+
+class BulkCancelRequest(BaseModel):
+    voucher_ids: list[str] = Field(..., min_length=1, max_length=100)
+    cancelled_by: Literal["user", "issuer", "admin"]
+    reason: str = Field("", max_length=500)
+
+
+class BulkIssueRequest(BaseModel):
+    brand_id: str = Field(..., min_length=1, max_length=128)
+    template_id: str | None = Field(None, max_length=64)
+    user_ids: list[str] = Field(..., min_length=1, max_length=1000)
+    values: list[int] | None = None
+    expires_at: int | None = Field(None, ge=0)
+    conditions: dict[str, Any] = Field(default_factory=dict)
+    source: Literal["campaign", "gift", "promo", "purchase", "support"] = "campaign"
+    transferable: bool = True
+    max_uses: int = Field(1, ge=1, le=100)
+
+    @field_validator("values")
+    @classmethod
+    def _validate_values(cls, v: list[int] | None) -> list[int] | None:
+        if v is None:
+            return v
+        for x in v:
+            if not isinstance(x, int) or x < 0:
+                raise ValueError("values entries must be non-negative ints")
+        return v
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # Optional integration hooks  (fail-soft — never block redemption)
 # ══════════════════════════════════════════════════════════════════════════
@@ -1938,4 +1999,311 @@ async def configure_network(
         "ok": True, "master_id": master_id, "policy": body.policy,
         "commission_bps": body.commission_bps,
         "custom_rules": body.custom_rules or {},
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Cancellation flows  (single + bulk)  +  bulk-issue cohort issuance
+# ══════════════════════════════════════════════════════════════════════════
+
+async def _do_cancel(
+    r: aioredis.Redis, *, voucher_id: str, cancelled_by: str, reason: str,
+    refund_to_user: bool | None,
+) -> dict[str, Any]:
+    """Cancel a single voucher.
+
+    Semantics:
+      * ``issued`` → ``cancelled`` (was a gift, no refund needed).
+      * If voucher is reserved against an order (status==``claimed`` and
+        ``reserved_against_order`` set), release the hold.
+      * ``redeemed``/``void``/``expired``/``cancelled`` cannot be cancelled.
+    """
+    key = _k_voucher(voucher_id)
+    state = await r.hgetall(key)
+    if not state:
+        raise HTTPException(
+            status_code=404, detail=f"voucher_id={voucher_id} not found"
+        )
+    cur_status = state.get("status", "")
+    if cur_status in ("redeemed", "void", "expired", "cancelled"):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "ok": False, "reason": "invalid_status",
+                "current_status": cur_status,
+                "voucher_id": voucher_id,
+            },
+        )
+
+    was_reserved = bool(state.get("reserved_against_order"))
+    holder = state.get("holder_user_id", "")
+    issuer = state.get("issuer_brand_id", "")
+    cancel_ts = _now()
+
+    pipe = r.pipeline()
+    update: dict[str, str] = {
+        "status": "cancelled",
+        "cancelled_at": str(cancel_ts),
+        "cancelled_by": cancelled_by,
+        "cancel_reason": reason,
+        "previous_status": cur_status,
+    }
+    if was_reserved:
+        # Release the hold — strip the reservation marker.
+        update["reserved_against_order"] = ""
+        update["reservation_released_at"] = str(cancel_ts)
+    pipe.hset(key, mapping=update)
+    pipe.rpush(
+        _k_voucher_redemption_history(voucher_id),
+        _dumps({
+            "type": "cancel",
+            "voucher_id": voucher_id,
+            "cancelled_by": cancelled_by,
+            "reason": reason,
+            "previous_status": cur_status,
+            "was_reserved": was_reserved,
+            "ts": cancel_ts,
+        }),
+    )
+    if issuer:
+        pipe.hincrby(_k_brand_stats(issuer), "cancelled", 1)
+    await pipe.execute()
+
+    # Best-effort push notification to holder.
+    if holder:
+        await _enqueue_notification(
+            r, holder, kind="voucher_cancelled",
+            payload={
+                "voucher_id": voucher_id,
+                "reason": reason,
+                "cancelled_by": cancelled_by,
+                "was_reserved": was_reserved,
+                "refund_to_user": bool(refund_to_user) if refund_to_user is not None else False,
+            },
+        )
+
+    return {
+        "ok": True,
+        "voucher_id": voucher_id,
+        "status": "cancelled",
+        "previous_status": cur_status,
+        "was_reserved": was_reserved,
+        "cancelled_by": cancelled_by,
+    }
+
+
+@cross_store_router.post(
+    "/{voucher_id}/cancel",
+    summary="Cancel a voucher (user / issuer / admin)",
+)
+async def cancel_voucher(
+    voucher_id: str,
+    body: VoucherCancelRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    return await _do_cancel(
+        r,
+        voucher_id=voucher_id,
+        cancelled_by=body.cancelled_by,
+        reason=body.reason,
+        refund_to_user=body.refund_to_user,
+    )
+
+
+@cross_store_router.post(
+    "/bulk-cancel",
+    summary="Cancel up to 100 vouchers in one call",
+)
+async def bulk_cancel_vouchers(
+    body: BulkCancelRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    cancelled_count = 0
+    failed: list[dict[str, Any]] = []
+    for vid in body.voucher_ids:
+        try:
+            await _do_cancel(
+                r,
+                voucher_id=vid,
+                cancelled_by=body.cancelled_by,
+                reason=body.reason,
+                refund_to_user=None,
+            )
+            cancelled_count += 1
+        except HTTPException as exc:
+            failed.append({
+                "vid": vid,
+                "reason": exc.detail if isinstance(exc.detail, str)
+                          else (exc.detail or {}).get("reason", "unknown")
+                          if isinstance(exc.detail, dict) else str(exc.detail),
+                "status_code": exc.status_code,
+            })
+        except Exception as exc:  # pragma: no cover
+            failed.append({"vid": vid, "reason": f"internal:{exc}"})
+
+    return {
+        "ok": True,
+        "cancelled_count": cancelled_count,
+        "failed_count": len(failed),
+        "failed": failed,
+    }
+
+
+@cross_store_router.post(
+    "/bulk-issue",
+    status_code=status.HTTP_201_CREATED,
+    summary="Issue same voucher to a cohort (up to 1000 users)",
+)
+async def bulk_issue_vouchers(
+    body: BulkIssueRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Issue the same voucher to N users.
+
+    Per-user value can vary via ``values`` (must be same length as
+    ``user_ids``); otherwise inherits the template's value or 0. Each issued
+    voucher inherits the template policy (transferable, conditions,
+    relational_conditions, commission_split). Partial failures are reported
+    in ``failed`` so the caller can retry only those.
+    """
+    if body.values is not None and len(body.values) != len(body.user_ids):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"values length ({len(body.values)}) must equal "
+                f"user_ids length ({len(body.user_ids)})"
+            ),
+        )
+
+    # Inherit template default value if no per-user values supplied.
+    template_default_value: int | None = None
+    if body.values is None and body.template_id:
+        tpl_raw = await r.get(
+            _k_voucher_template(body.brand_id, body.template_id)
+        )
+        if tpl_raw:
+            try:
+                tpl = json.loads(tpl_raw)
+                vobj = tpl.get("value") or {}
+                if vobj.get("type") == "fixed":
+                    template_default_value = int(
+                        float(vobj.get("amount", 0)) * 100
+                    )
+                elif "default_value_cents" in tpl:
+                    template_default_value = int(tpl["default_value_cents"])
+            except (json.JSONDecodeError, TypeError, ValueError):
+                template_default_value = None
+
+    issued: list[str] = []
+    failed: list[dict[str, Any]] = []
+
+    for idx, uid in enumerate(body.user_ids):
+        per_value = (
+            body.values[idx]
+            if body.values is not None
+            else template_default_value
+        )
+        try:
+            req = IssueVoucherRequest(
+                template_id=body.template_id,
+                user_id=uid,
+                redeemable_at="issuer_only",
+                value_cents=per_value,
+                expires_at=body.expires_at,
+                conditions=body.conditions,
+                source=body.source,
+                transferable=body.transferable,
+                max_uses=body.max_uses,
+            )
+            res = await _do_issue(r, issuer_brand_id=body.brand_id, body=req)
+            issued.append(res["voucher_id"])
+        except HTTPException as exc:
+            failed.append({
+                "user_id": uid,
+                "reason": (
+                    exc.detail if isinstance(exc.detail, str)
+                    else str(exc.detail)
+                ),
+                "status_code": exc.status_code,
+            })
+        except Exception as exc:  # pragma: no cover
+            failed.append({"user_id": uid, "reason": f"internal:{exc}"})
+
+    logger.info(
+        "Bulk issue: brand=%s template=%s requested=%d issued=%d failed=%d",
+        body.brand_id, body.template_id or "-",
+        len(body.user_ids), len(issued), len(failed),
+    )
+
+    return {
+        "ok": True,
+        "issued_count": len(issued),
+        "voucher_ids": issued,
+        "failed_count": len(failed),
+        "failed": failed,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Commission-split on voucher templates
+# ══════════════════════════════════════════════════════════════════════════
+
+class TemplateCommissionSplitRequest(BaseModel):
+    brand_id: str = Field(..., min_length=1)
+    template_id: str = Field(..., min_length=1, max_length=64)
+    commission_split: CommissionSplit
+
+
+@cross_store_router.post(
+    "/templates/commission-split",
+    summary="Attach a custom commission split to a voucher template",
+)
+async def attach_template_commission_split(
+    body: TemplateCommissionSplitRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Persist a ``commission_split`` on a voucher template.
+
+    When a voucher minted from this template is redeemed cross-brand, the
+    settlement engine looks up the template's split (issuer/kix/redeemer)
+    rather than applying the default 30% KiX take. The default behaviour
+    persists when no split is set: KiX takes 30%, redeemer keeps 70%,
+    issuer gets nothing (the voucher was a gift).
+    """
+    split_dump = body.commission_split.model_dump()
+    key = _k_voucher_template(body.brand_id, body.template_id)
+    raw = await r.get(key)
+    if raw:
+        try:
+            tpl = json.loads(raw)
+            if not isinstance(tpl, dict):
+                tpl = {}
+        except json.JSONDecodeError:
+            tpl = {}
+    else:
+        tpl = {
+            "template_id": body.template_id,
+            "brand_id": body.brand_id,
+            "created_at": _now(),
+        }
+
+    tpl["commission_split"] = split_dump
+    tpl["updated_at"] = _now()
+    await r.set(key, _dumps(tpl))
+    try:
+        await r.sadd(
+            f"brand:{body.brand_id}:voucher_templates", body.template_id
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.debug("template set-register failed: %s", exc)
+
+    logger.info(
+        "Template %s/%s commission_split set: %s",
+        body.brand_id, body.template_id, split_dump,
+    )
+    return {
+        "ok": True,
+        "brand_id": body.brand_id,
+        "template_id": body.template_id,
+        "commission_split": split_dump,
     }

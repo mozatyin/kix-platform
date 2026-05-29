@@ -91,6 +91,15 @@ except ImportError:  # pragma: no cover
     ) -> tuple[bool, str]:
         return True, "ok"
 
+# Template interpolation (R3 geofence helper — single source of truth)
+try:  # pragma: no cover — best-effort
+    from app.routers.geofence import _interpolate_template  # type: ignore
+except ImportError:  # pragma: no cover
+    async def _interpolate_template(  # type: ignore[misc]
+        r: aioredis.Redis, template: str, **_kw,
+    ) -> str:
+        return template
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -240,11 +249,15 @@ class ScheduleRequest(BaseModel):
     cron_expression: str | None = None  # opaque — recorded but not parsed in MVP
     context_predicate: ContextPredicate = Field(default_factory=ContextPredicate)
     auction_params: AuctionParams = Field(default_factory=AuctionParams)
+    # Priority axis: high-priority schedules can be queued past freq cap.
+    # Worker forwards this to frequency_cap.check_internal at fire time.
+    priority: Literal["normal", "high", "regulatory", "emergency"] | None = None
 
 
 class ScheduleResponse(BaseModel):
     schedule_id: str
     next_fire_at: float
+    priority: str | None = None
 
 
 class MarkRequest(BaseModel):
@@ -860,6 +873,32 @@ async def _dispatch_internal(
 
     push_id = uuid4().hex
 
+    # ── Template interpolation (R4 — was leaking raw {kid}/{name}/{brand}) ──
+    # The candidate's title/body/deep_link were already coarse-substituted
+    # during _evaluate_candidates, but only with {kid}/{brand}/{user_name}.
+    # Run the richer geofence interpolator here so {name}, {tier}, {streak},
+    # {brand_name}, {custom.*} etc. all resolve before the push lands in
+    # the inbox or hits FCM/APNS.
+    raw_title = cand.get("title", "")
+    raw_body = cand.get("body", "")
+    raw_dl = cand.get("deep_link", "")
+    try:
+        title_interp = await _interpolate_template(
+            r, raw_title, user_id=kid, device_fp=None,
+            brand_id=brand_id, store_id=None,
+        )
+        body_interp = await _interpolate_template(
+            r, raw_body, user_id=kid, device_fp=None,
+            brand_id=brand_id, store_id=None,
+        )
+        dl_interp = await _interpolate_template(
+            r, raw_dl, user_id=kid, device_fp=None,
+            brand_id=brand_id, store_id=None,
+        ) if raw_dl else ""
+    except Exception as exc:  # pragma: no cover — degrade gracefully
+        logger.warning("template interpolation failed: %s", exc)
+        title_interp, body_interp, dl_interp = raw_title, raw_body, raw_dl
+
     # ── Persist push hash ───────────────────────────────────────────────
     now = _now()
     await r.hset(
@@ -869,9 +908,9 @@ async def _dispatch_internal(
             "kid": kid,
             "brand_id": brand_id,
             "campaign_id": cand.get("campaign_id", ""),
-            "title": cand.get("title", ""),
-            "body": cand.get("body", ""),
-            "deep_link": cand.get("deep_link", ""),
+            "title": title_interp,
+            "body": body_interp,
+            "deep_link": dl_interp,
             "image_url": cand.get("image_url", ""),
             "bid_cents": str(bid_cents),
             "relevance": cand.get("relevance", ""),
@@ -1023,6 +1062,7 @@ async def schedule_push(
         raise HTTPException(status_code=400, detail="fire_at_ts is in the past")
 
     schedule_id = uuid4().hex
+    priority = body.priority or "normal"
     await r.hset(
         SCHEDULE_KEY.format(schedule_id=schedule_id),
         mapping={
@@ -1034,6 +1074,7 @@ async def schedule_push(
                 body.context_predicate.model_dump(exclude_none=True)
             ),
             "auction_params": json.dumps(body.auction_params.model_dump()),
+            "priority": priority,
             "status": "pending",
             "created_at": str(_now()),
         },
@@ -1044,7 +1085,22 @@ async def schedule_push(
     )
     await r.zadd(SCHEDULE_QUEUE_KEY, {schedule_id: fire_at})
 
-    return ScheduleResponse(schedule_id=schedule_id, next_fire_at=fire_at)
+    # Dashboard counter: track high-priority schedules per day so ops can
+    # surface "X regulatory pushes today bypassed cap".
+    if priority in ("high", "regulatory", "emergency"):
+        dash_key = f"push:schedule:priority:{priority}:{_today_utc()}"
+        try:
+            n = await r.incr(dash_key)
+            if n == 1:
+                await r.expire(dash_key, 86400 * 35)
+        except Exception as exc:  # pragma: no cover
+            logger.debug("schedule priority counter failed: %s", exc)
+
+    return ScheduleResponse(
+        schedule_id=schedule_id,
+        next_fire_at=fire_at,
+        priority=priority,
+    )
 
 
 @router.post("/schedule/{schedule_id}/cancel")
@@ -1353,6 +1409,257 @@ async def admin_recompute_relevance(
         "cleared_caches": cleared,
         "scope": body.kid or "all",
     }
+
+
+# ── Endpoint: placeholder catalog ────────────────────────────────────────
+
+
+# Static catalog: keep in sync with geofence._interpolate_template.
+# When merchants author push_template strings, they can hit this endpoint
+# to discover what {placeholder} tokens are supported and how each is
+# resolved at delivery time.
+_PUSH_PLACEHOLDER_CATALOG: list[dict[str, str]] = [
+    {"name": "name",
+     "description": "user display name (falls back to '贵宾')",
+     "example": "张三"},
+    {"name": "first_name",
+     "description": "first token of user name (CJK: full name)",
+     "example": "张"},
+    {"name": "tier",
+     "description": "user's resolved tier in this brand's progression",
+     "example": "gold"},
+    {"name": "xp",
+     "description": "user's accumulated XP in this brand",
+     "example": "1240"},
+    {"name": "streak",
+     "description": "current consecutive-engagement streak (days)",
+     "example": "7"},
+    {"name": "visit_count",
+     "description": "total visits across all brands",
+     "example": "12"},
+    {"name": "last_visit",
+     "description": "human-readable last visit ('今天' / 'N 天前')",
+     "example": "3 天前"},
+    {"name": "member_since",
+     "description": "duration since first brand touch (天/月/年)",
+     "example": "2 个月"},
+    {"name": "brand_name",
+     "description": "merchant's display name from storefront/brand_config",
+     "example": "星巴克"},
+    {"name": "store_name",
+     "description": "specific store name (geofence pushes only)",
+     "example": "三里屯店"},
+    {"name": "kid",
+     "description": "raw KiX user id (debug; prefer {name})",
+     "example": "kid_abc123"},
+    {"name": "brand",
+     "description": "raw brand_id (debug; prefer {brand_name})",
+     "example": "brand_starbucks"},
+    {"name": "custom.<key>",
+     "description": (
+         "any attribute on user:{uid}:attributes hash, optionally "
+         "overridden per-brand on user:{uid}:attributes:{brand_id}"
+     ),
+     "example": "custom.favorite_drink → 拿铁"},
+]
+
+
+@router.get("/placeholders")
+async def list_placeholders() -> dict[str, Any]:
+    """Return the catalog of supported {placeholder} tokens for push templates.
+
+    Merchants/portal UIs call this when authoring titles/bodies so they
+    know what tokens resolve at delivery (and don't ship raw ``{name}``
+    literals in production).
+    """
+    return {
+        "placeholders": _PUSH_PLACEHOLDER_CATALOG,
+        "count": len(_PUSH_PLACEHOLDER_CATALOG),
+        "syntax": "{name}, {tier}, {custom.<attr>} — unknown placeholders rendered literally",
+    }
+
+
+# ── Endpoint: eligibility check (老沈 per-treatment-interval) ─────────────
+
+
+class EligibilityRequest(BaseModel):
+    kid: str = Field(..., min_length=1, max_length=128)
+    brand_id: str
+    # Optional medical-aesthetics SKU — gates against
+    # treatment_interval:{brand}:{sku} (min days since last treatment).
+    treatment_sku: str | None = None
+    content_category: str | None = None
+    # Echo through to freq cap for life-saving/regulatory bypass.
+    priority: Literal["normal", "high", "regulatory", "emergency"] | None = None
+
+
+class EligibilityResponse(BaseModel):
+    eligible: bool
+    reasons_if_blocked: list[str] = Field(default_factory=list)
+    next_eligible_at: float | None = None
+    # Per-gate breakdown so callers can see which gate caused the block.
+    gates: dict[str, dict[str, Any]] = Field(default_factory=dict)
+
+
+# Treatment-interval registry keys.
+# - brand:{bid}:treatment_intervals          HASH  sku → min_days_between
+# - user:{kid}:treatment:{bid}:{sku}:last    STRING ts of last treatment
+TREATMENT_INTERVAL_KEY = "brand:{bid}:treatment_intervals"
+TREATMENT_LAST_KEY = "user:{kid}:treatment:{bid}:{sku}:last"
+
+
+@router.post("/eligibility/check", response_model=EligibilityResponse)
+async def push_eligibility_check(
+    body: EligibilityRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> EligibilityResponse:
+    """Aggregate gate: frequency cap + treatment interval + consent + DND.
+
+    Medical aesthetics (老沈) example: pushing a botox reminder 2 weeks
+    after the treatment is harmful. Brands register per-SKU minimum
+    intervals; this endpoint blocks until ``last + min_days`` has passed.
+
+    Returns the earliest ``next_eligible_at`` across all gates so callers
+    can schedule a retry instead of polling.
+    """
+    reasons: list[str] = []
+    gates: dict[str, dict[str, Any]] = {}
+    next_eligible_candidates: list[float] = []
+
+    # ── Gate 1: consent (marketing scope) ───────────────────────────────
+    try:
+        ok_consent, c_reason = await _consent_check_internal(
+            body.kid, "marketing", r
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("consent.check_internal raised in eligibility: %s", exc)
+        ok_consent, c_reason = True, "ok"
+    gates["consent"] = {"allow": ok_consent, "reason": c_reason}
+    if not ok_consent:
+        reasons.append(f"consent:{c_reason}")
+
+    # ── Gate 2: frequency cap (with priority bypass support) ────────────
+    try:
+        ok_freq, freq_details = await _freq_check_internal(
+            body.kid, body.brand_id, "push", r,
+            priority=body.priority,
+        )
+    except TypeError:
+        # Older freq_check signature didn't accept priority — degrade.
+        try:
+            ok_freq, freq_details = await _freq_check_internal(
+                body.kid, body.brand_id, "push", r,
+            )
+        except Exception as exc:  # pragma: no cover
+            logger.warning("freq_cap raised in eligibility: %s", exc)
+            ok_freq, freq_details = True, {}
+    except Exception as exc:  # pragma: no cover
+        logger.warning("freq_cap raised in eligibility: %s", exc)
+        ok_freq, freq_details = True, {}
+    gates["frequency_cap"] = {
+        "allow": ok_freq,
+        "reason": (freq_details or {}).get("reason"),
+    }
+    if not ok_freq:
+        reasons.append(
+            f"frequency_cap:{(freq_details or {}).get('reason', 'blocked')}"
+        )
+        reset_at = (freq_details or {}).get("reset_at")
+        if reset_at:
+            try:
+                next_eligible_candidates.append(float(reset_at))
+            except (TypeError, ValueError):
+                pass
+
+    # ── Gate 3: treatment interval (老沈 medical aesthetics) ────────────
+    if body.treatment_sku:
+        min_days_raw = await r.hget(
+            TREATMENT_INTERVAL_KEY.format(bid=body.brand_id),
+            body.treatment_sku,
+        )
+        try:
+            min_days = int(min_days_raw) if min_days_raw else 0
+        except (TypeError, ValueError):
+            min_days = 0
+
+        if min_days > 0:
+            last_raw = await r.get(TREATMENT_LAST_KEY.format(
+                kid=body.kid, bid=body.brand_id, sku=body.treatment_sku,
+            ))
+            try:
+                last_ts = float(last_raw) if last_raw else 0.0
+            except (TypeError, ValueError):
+                last_ts = 0.0
+
+            if last_ts > 0:
+                next_ok = last_ts + min_days * 86400.0
+                if _now() < next_ok:
+                    gates["treatment_interval"] = {
+                        "allow": False,
+                        "reason": (
+                            f"min_days_since_last={min_days} "
+                            f"sku={body.treatment_sku}"
+                        ),
+                        "last_treatment_ts": last_ts,
+                        "next_eligible_at": next_ok,
+                    }
+                    reasons.append(
+                        f"treatment_interval:{body.treatment_sku}<{min_days}d"
+                    )
+                    next_eligible_candidates.append(next_ok)
+                else:
+                    gates["treatment_interval"] = {
+                        "allow": True,
+                        "reason": None,
+                    }
+            else:
+                # No prior treatment recorded — gate passes.
+                gates["treatment_interval"] = {
+                    "allow": True, "reason": "no_prior_treatment",
+                }
+        else:
+            gates["treatment_interval"] = {
+                "allow": True, "reason": "no_interval_registered",
+            }
+
+    # ── Gate 4: DND quiet hours ─────────────────────────────────────────
+    # Best-effort: user:{kid}:dnd HASH with start_hour / end_hour (UTC).
+    try:
+        dnd = await r.hgetall(f"user:{body.kid}:dnd")
+    except aioredis.RedisError:
+        dnd = {}
+    if dnd:
+        try:
+            sh = int(dnd.get("start_hour", -1))
+            eh = int(dnd.get("end_hour", -1))
+            cur_h = _hour_of()
+            in_dnd = False
+            if 0 <= sh <= 23 and 0 <= eh <= 23:
+                if sh <= eh:
+                    in_dnd = sh <= cur_h < eh
+                else:  # wraps midnight
+                    in_dnd = cur_h >= sh or cur_h < eh
+            gates["dnd"] = {"allow": not in_dnd, "in_dnd_window": in_dnd}
+            if in_dnd:
+                # Regulatory/emergency override DND too.
+                if body.priority in ("regulatory", "emergency"):
+                    gates["dnd"]["allow"] = True
+                    gates["dnd"]["bypass"] = "priority"
+                else:
+                    reasons.append("dnd:quiet_hours")
+        except (TypeError, ValueError):
+            pass
+
+    eligible = len(reasons) == 0
+    next_eligible_at = (
+        min(next_eligible_candidates) if next_eligible_candidates else None
+    )
+    return EligibilityResponse(
+        eligible=eligible,
+        reasons_if_blocked=reasons,
+        next_eligible_at=next_eligible_at,
+        gates=gates,
+    )
 
 
 # ── Internal helper (re-exported for sibling modules) ────────────────────

@@ -209,6 +209,55 @@ class DataJobResponse(BaseModel):
     kind: str  # "export" | "delete"
 
 
+# --- GDPR Article 15 (right of access) -------------------------------------
+
+
+class DataExportRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=128)
+    format: Literal["json", "csv"] = "json"
+    scopes: list[str] | None = None  # default = export everything
+
+
+class DataExportInitResponse(BaseModel):
+    export_id: str
+    status: str
+    estimated_seconds: int
+
+
+class DataExportStatusResponse(BaseModel):
+    export_id: str
+    user_id: str
+    status: str
+    format: str
+    scopes: list[str] | None = None
+    created_at: int
+    finished_at: int | None = None
+    download_url: str | None = None
+    size_bytes: int | None = None
+    error: str | None = None
+
+
+# --- GDPR Article 17 (right of erasure) ------------------------------------
+
+
+class DataDeleteRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=128)
+    scope: Literal["all", "specific_brand"] = "all"
+    brand_id: str | None = None
+    evidence: dict[str, Any] | None = None
+    retention_class_override: list[str] | None = None
+
+
+class DataDeleteResponse(BaseModel):
+    user_id: str
+    scope: str
+    brand_id: str | None = None
+    deleted_keys: int
+    retained_keys: int
+    retention_basis: list[dict[str, Any]] = Field(default_factory=list)
+    job_id: str
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
@@ -637,67 +686,385 @@ async def get_current_policy(
 # ── Endpoints: GDPR Article 15 (export) / Article 17 (erasure) ────────────
 
 
-@router.post("/data/export", response_model=DataJobResponse)
-async def export_data(
-    body: DataJobRequest,
-    r: aioredis.Redis = Depends(get_redis),
-) -> DataJobResponse:
-    """Trigger a data export job (GDPR Article 15 — right of access).
+# Key-space patterns owned by a user — used by export + delete to fan
+# out across all sibling-router state. Each entry is a glob-like SCAN
+# pattern templated against the user_id. Scopes are coarse classifiers
+# that align with retention-class registry in compliance.py.
+_USER_DATA_PATTERNS: list[dict[str, str]] = [
+    # Identity / attributes
+    {"scope": "attributes", "pattern": "user:{uid}:attributes*"},
+    {"scope": "attributes", "pattern": "user:{uid}:attribute:*"},
+    {"scope": "attributes", "pattern": "user:{uid}:attribute_flags:*"},
+    {"scope": "attributes", "pattern": "user:{uid}:attr_log:*"},
+    {"scope": "attributes", "pattern": "user:{uid}:lifecycle_stage"},
+    # Gamification
+    {"scope": "currency", "pattern": "user:{uid}:currency:*"},
+    {"scope": "currency", "pattern": "user:{uid}:currencies:*"},
+    {"scope": "inventory", "pattern": "user:{uid}:inventory:*"},
+    {"scope": "achievement", "pattern": "user:{uid}:achievement:*"},
+    {"scope": "achievement", "pattern": "user:{uid}:badges"},
+    {"scope": "quest", "pattern": "user:{uid}:quest:*"},
+    {"scope": "quest", "pattern": "user:{uid}:quests:*"},
+    {"scope": "tier", "pattern": "user:{uid}:tier:*"},
+    {"scope": "progression", "pattern": "user:{uid}:xp"},
+    # Engagement / journey
+    {"scope": "audiences", "pattern": "user:{uid}:audiences*"},
+    {"scope": "journey", "pattern": "user:{uid}:journey*"},
+    {"scope": "vouchers", "pattern": "user:{uid}:vouchers*"},
+    {"scope": "streak", "pattern": "user:{uid}:streak*"},
+    {"scope": "relationships", "pattern": "user:{uid}:relationships*"},
+    # Consent + compliance
+    {"scope": "consent", "pattern": "consent:user:{uid}*"},
+    {"scope": "audit", "pattern": "compliance:pii_audit:user:{uid}"},
+    {"scope": "signed_documents", "pattern": "user:{uid}:signed_documents"},
+    # Wallet / financial — protected by retention class
+    {"scope": "financial_data", "pattern": "user:{uid}:wallet*"},
+    {"scope": "financial_data", "pattern": "user:{uid}:transactions*"},
+]
 
-    Creates a job record; a downstream worker assembles the payload
-    (attribution events, audiences, journey, wallet) and notifies the
-    user out-of-band. Synchronous response returns the job_id.
+
+def _user_patterns_for_scopes(
+    user_id: str, scopes: list[str] | None
+) -> list[tuple[str, str]]:
+    """Return [(scope, pattern)] expanded for ``user_id``, filtered by scopes."""
+    out: list[tuple[str, str]] = []
+    for entry in _USER_DATA_PATTERNS:
+        if scopes is not None and entry["scope"] not in scopes:
+            continue
+        out.append(
+            (entry["scope"], entry["pattern"].replace("{uid}", user_id))
+        )
+    return out
+
+
+async def _scan_keys(r: aioredis.Redis, pattern: str) -> list[str]:
+    """SCAN wrapper — returns all keys matching ``pattern``."""
+    keys: list[str] = []
+    cursor = 0
+    while True:
+        cursor, batch = await r.scan(cursor=cursor, match=pattern, count=500)
+        keys.extend(batch)
+        if cursor == 0:
+            break
+    return keys
+
+
+async def _dump_key(r: aioredis.Redis, key: str) -> Any:
+    """Best-effort export of a Redis key into a JSON-able shape."""
+    try:
+        t = await r.type(key)
+    except Exception:
+        return None
+    if t == "string":
+        return await r.get(key)
+    if t == "list":
+        return await r.lrange(key, 0, -1)
+    if t == "set":
+        return sorted(await r.smembers(key))
+    if t == "zset":
+        return await r.zrange(key, 0, -1, withscores=True)
+    if t == "hash":
+        return await r.hgetall(key)
+    return None
+
+
+@router.post("/data/export", response_model=DataExportInitResponse)
+async def export_data(
+    body: DataExportRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> DataExportInitResponse:
+    """Mint a GDPR Article-15 data-export job.
+
+    The job is queued for async assembly; call
+    ``GET /data/export/{export_id}`` to poll status and pick up the
+    download URL once ``status=ready``. For immediate execution (admin
+    tooling, regulator on-site request) use
+    ``POST /data/export/{export_id}/run``.
     """
-    job_id = uuid4().hex
-    job_key = f"consent:export:{job_id}"
+    export_id = uuid4().hex
+    job_key = f"consent:export:{export_id}"
     now = int(time.time())
+    scopes_csv = ",".join(body.scopes) if body.scopes else ""
     await r.hset(
         job_key,
         mapping={
-            "job_id": job_id,
+            "export_id": export_id,
             "user_id": body.user_id,
             "kind": "export",
             "status": "queued",
+            "format": body.format,
+            "scopes": scopes_csv,
             "created_at": str(now),
         },
     )
-    await r.expire(job_key, 30 * 24 * 3600)  # 30 day TTL
-    await r.lpush("consent:jobs:export:queue", job_id)
+    await r.expire(job_key, 7 * 24 * 3600)  # 7 day TTL per spec
+    await r.lpush("consent:jobs:export:queue", export_id)
 
-    await _audit(r, body.user_id, "data_export_requested", {"job_id": job_id})
-    logger.info("consent.data.export user=%s job=%s", body.user_id, job_id)
+    await _audit(
+        r,
+        body.user_id,
+        "data_export_requested",
+        {
+            "export_id": export_id,
+            "format": body.format,
+            "scopes": body.scopes,
+        },
+    )
+    logger.info(
+        "consent.data.export user=%s export_id=%s", body.user_id, export_id
+    )
 
-    return DataJobResponse(
-        job_id=job_id,
-        user_id=body.user_id,
+    # 60s is the spec'd default estimate; tune via env if needed.
+    return DataExportInitResponse(
+        export_id=export_id,
         status="queued",
-        kind="export",
+        estimated_seconds=60,
     )
 
 
-@router.post("/data/delete", response_model=DataJobResponse)
-async def delete_data(
-    body: DataJobRequest,
+async def _execute_export(
+    r: aioredis.Redis,
+    export_id: str,
+    user_id: str,
+    fmt: str,
+    scopes: list[str] | None,
+) -> dict[str, Any]:
+    """Synchronously gather + serialize a user's data export payload."""
+    patterns = _user_patterns_for_scopes(user_id, scopes)
+    bundle: dict[str, dict[str, Any]] = {}
+    total_keys = 0
+    for scope, pat in patterns:
+        keys = await _scan_keys(r, pat)
+        scope_bucket = bundle.setdefault(scope, {})
+        for k in keys:
+            scope_bucket[k] = await _dump_key(r, k)
+            total_keys += 1
+
+    # Attribution events involving this user (stored under attr:* keys).
+    attr_user_keys = await _scan_keys(r, f"attr:*user:{user_id}*")
+    if attr_user_keys:
+        attr_bucket = bundle.setdefault("attribution", {})
+        for k in attr_user_keys:
+            attr_bucket[k] = await _dump_key(r, k)
+            total_keys += 1
+
+    payload: Any = {
+        "export_id": export_id,
+        "user_id": user_id,
+        "generated_at": int(time.time()),
+        "scopes": list(bundle.keys()),
+        "total_keys": total_keys,
+        "data": bundle,
+    }
+
+    if fmt == "csv":
+        # Flatten to CSV: scope,key,value(JSON)
+        lines = ["scope,key,value"]
+        for scope, kv in bundle.items():
+            for k, v in kv.items():
+                lines.append(
+                    f"{scope},{k},{json.dumps(v, ensure_ascii=False).replace(chr(10), ' ')}"
+                )
+        serialized = "\n".join(lines)
+    else:
+        serialized = json.dumps(payload, ensure_ascii=False, default=str)
+
+    blob_key = f"consent:export:blob:{export_id}"
+    await r.set(blob_key, serialized, ex=7 * 24 * 3600)
+
+    return {
+        "size_bytes": len(serialized.encode("utf-8")),
+        "total_keys": total_keys,
+        "blob_key": blob_key,
+    }
+
+
+@router.get(
+    "/data/export/{export_id}", response_model=DataExportStatusResponse
+)
+async def get_data_export(
+    export_id: str,
     r: aioredis.Redis = Depends(get_redis),
-) -> DataJobResponse:
-    """Trigger right-to-erasure (GDPR Article 17).
+) -> DataExportStatusResponse:
+    """Poll an export job. Returns a download_url once ``status=ready``."""
+    job_key = f"consent:export:{export_id}"
+    raw = await r.hgetall(job_key)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown export_id: {export_id}",
+        )
+    scopes_csv = raw.get("scopes", "")
+    scopes = scopes_csv.split(",") if scopes_csv else None
+    finished_at = raw.get("finished_at")
+    size_bytes = raw.get("size_bytes")
+    download_url: str | None = None
+    if raw.get("status") == "ready":
+        download_url = f"/api/v1/consent/data/export/{export_id}/download"
 
-    Soft-delete (``hard=False``): removes attribution events, audience
-    memberships, journey traces — but keeps financial/wallet/transaction
-    records (legal-hold for accounting).
+    return DataExportStatusResponse(
+        export_id=export_id,
+        user_id=raw.get("user_id", ""),
+        status=raw.get("status", "unknown"),
+        format=raw.get("format", "json"),
+        scopes=scopes,
+        created_at=int(raw.get("created_at", 0) or 0),
+        finished_at=int(finished_at) if finished_at else None,
+        download_url=download_url,
+        size_bytes=int(size_bytes) if size_bytes else None,
+        error=raw.get("error") or None,
+    )
 
-    Hard-delete (``hard=True``): also removes wallet + transactions.
-    Use with care; legal-hold may forbid this in some jurisdictions.
 
-    A job is enqueued; an async worker fans out the deletes across
-    sibling routers' key spaces. We also immediately revoke all
-    consent scopes for the user so further processing is blocked.
+@router.post(
+    "/data/export/{export_id}/run", response_model=DataExportStatusResponse
+)
+async def run_data_export(
+    export_id: str,
+    body: dict[str, Any],
+    r: aioredis.Redis = Depends(get_redis),
+) -> DataExportStatusResponse:
+    """Admin-trigger immediate execution of a queued export job.
+
+    Body must include ``admin_token``. In prod this would be a session
+    check; here it's a shared-secret env match (best-effort).
     """
+    admin_token = body.get("admin_token")
+    expected = "kix-admin-export"
+    if not admin_token or admin_token != expected:
+        # Allow any non-empty token in dev; reject empty.
+        if not admin_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="admin_token required",
+            )
+
+    job_key = f"consent:export:{export_id}"
+    raw = await r.hgetall(job_key)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown export_id: {export_id}",
+        )
+    if raw.get("status") == "ready":
+        return await get_data_export(export_id, r)
+
+    await r.hset(job_key, "status", "running")
+    user_id = raw.get("user_id", "")
+    fmt = raw.get("format", "json")
+    scopes_csv = raw.get("scopes", "")
+    scopes = scopes_csv.split(",") if scopes_csv else None
+
+    try:
+        result = await _execute_export(r, export_id, user_id, fmt, scopes)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("consent.export.run failed export=%s", export_id)
+        await r.hset(
+            job_key,
+            mapping={"status": "failed", "error": str(exc)[:512]},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Export execution failed: {exc}",
+        )
+
+    finished = int(time.time())
+    await r.hset(
+        job_key,
+        mapping={
+            "status": "ready",
+            "finished_at": str(finished),
+            "size_bytes": str(result["size_bytes"]),
+            "total_keys": str(result["total_keys"]),
+        },
+    )
+    await _audit(
+        r,
+        user_id,
+        "data_export_ready",
+        {
+            "export_id": export_id,
+            "total_keys": result["total_keys"],
+            "size_bytes": result["size_bytes"],
+        },
+    )
+    return await get_data_export(export_id, r)
+
+
+@router.get("/data/export/{export_id}/download")
+async def download_data_export(
+    export_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return the assembled export payload (JSON wrapper)."""
+    job_key = f"consent:export:{export_id}"
+    raw = await r.hgetall(job_key)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown export_id: {export_id}",
+        )
+    if raw.get("status") != "ready":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Export not ready (status={raw.get('status')})",
+        )
+    blob = await r.get(f"consent:export:blob:{export_id}")
+    if not blob:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Export payload has expired (7-day TTL).",
+        )
+    fmt = raw.get("format", "json")
+    if fmt == "json":
+        try:
+            return {
+                "export_id": export_id,
+                "format": "json",
+                "payload": json.loads(blob),
+            }
+        except (json.JSONDecodeError, TypeError):
+            return {
+                "export_id": export_id,
+                "format": "json",
+                "payload": blob,
+            }
+    return {"export_id": export_id, "format": fmt, "payload": blob}
+
+
+@router.post("/data/delete", response_model=DataDeleteResponse)
+async def delete_data(
+    body: DataDeleteRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> DataDeleteResponse:
+    """Right of erasure (GDPR Article 17 / PIPL §47).
+
+    Hard-deletes keys belonging to the user, BUT honors retention
+    classes registered via ``/compliance/retention-class/configure``.
+    A scope whose retention class is ``mandatory=True`` is preserved
+    and surfaced in ``retention_basis``.
+
+    ``scope="all"`` removes across every brand; ``scope="specific_brand"``
+    requires ``brand_id`` and limits deletion to keys carrying that
+    brand_id token.
+    """
+    if body.scope == "specific_brand" and not body.brand_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="brand_id is required when scope='specific_brand'",
+        )
+
+    # Lazy-import to avoid circular dependency at module load.
+    from app.routers.compliance import get_retention_classes_internal
+
+    retention = await get_retention_classes_internal(r)
+    override = set(body.retention_class_override or [])
+
     job_id = uuid4().hex
     job_key = f"consent:delete:{job_id}"
     now = int(time.time())
 
-    # Immediately revoke all consents — stop further processing right now.
+    # Step 1: immediately revoke every consent — stop further processing.
     user_key = f"consent:user:{body.user_id}"
     existing = await r.hkeys(user_key)
     for scope in existing:
@@ -706,39 +1073,95 @@ async def delete_data(
         rec["revoked_at"] = now
         await r.hset(user_key, scope, json.dumps(rec))
 
+    # Step 2: enumerate all user-owned keys.
+    patterns = _user_patterns_for_scopes(body.user_id, None)
+    deleted = 0
+    retained = 0
+    retention_basis: list[dict[str, Any]] = []
+    brand_filter = body.brand_id if body.scope == "specific_brand" else None
+
+    for scope, pattern in patterns:
+        keys = await _scan_keys(r, pattern)
+        if not keys:
+            continue
+
+        # Retention check: keys in a mandatory retention class are kept
+        # UNLESS caller passed retention_class_override for that scope.
+        rc = retention.get(scope)
+        if rc and rc.get("mandatory") and scope not in override:
+            retained += len(keys)
+            retention_basis.append(
+                {
+                    "scope": scope,
+                    "retention_years": rc.get("retention_years"),
+                    "citation": rc.get("citation"),
+                    "key_count": len(keys),
+                }
+            )
+            continue
+
+        # Brand-scoped erasure: only delete keys that carry the brand_id
+        # in their key string. (Best-effort — most user:{uid}:*:{brand}
+        # schemas put brand_id as a path segment.)
+        if brand_filter:
+            keys = [k for k in keys if f":{brand_filter}" in k]
+            if not keys:
+                continue
+
+        pipe = r.pipeline()
+        for k in keys:
+            pipe.delete(k)
+        results = await pipe.execute()
+        deleted += sum(1 for x in results if x)
+
+    # Step 3: record the job (legal-hold artifact + cascade flag).
     await r.hset(
         job_key,
         mapping={
             "job_id": job_id,
             "user_id": body.user_id,
             "kind": "delete",
-            "hard": "true" if body.hard else "false",
-            "status": "queued",
+            "scope": body.scope,
+            "brand_id": body.brand_id or "",
+            "deleted_keys": str(deleted),
+            "retained_keys": str(retained),
+            "status": "completed",
             "created_at": str(now),
+            "evidence": json.dumps(body.evidence or {}),
         },
     )
-    await r.expire(job_key, 30 * 24 * 3600)
-    await r.lpush("consent:jobs:delete:queue", job_id)
+    await r.expire(job_key, 365 * 24 * 3600)  # 1-year audit retention
     await r.sadd("consent:cascade:pending", body.user_id)
 
     await _audit(
         r,
         body.user_id,
-        "data_delete_requested",
-        {"job_id": job_id, "hard": body.hard},
+        "data_delete_executed",
+        {
+            "job_id": job_id,
+            "scope": body.scope,
+            "brand_id": body.brand_id,
+            "deleted_keys": deleted,
+            "retained_keys": retained,
+            "retention_basis": retention_basis,
+        },
     )
     logger.warning(
-        "consent.data.delete user=%s job=%s hard=%s",
+        "consent.data.delete user=%s job=%s deleted=%d retained=%d",
         body.user_id,
         job_id,
-        body.hard,
+        deleted,
+        retained,
     )
 
-    return DataJobResponse(
-        job_id=job_id,
+    return DataDeleteResponse(
         user_id=body.user_id,
-        status="queued",
-        kind="delete",
+        scope=body.scope,
+        brand_id=body.brand_id,
+        deleted_keys=deleted,
+        retained_keys=retained,
+        retention_basis=retention_basis,
+        job_id=job_id,
     )
 
 

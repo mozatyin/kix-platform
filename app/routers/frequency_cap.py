@@ -267,6 +267,12 @@ class CheckRequest(_UserIdent):
     # "banner" / "geofence" slot checks before tier_overrides could apply.
     slot: Literal["push", "feed", "interstitial", "main", "banner", "geofence"]
     user_tier: str | None = None
+    # Priority axis (老蔡 healthcare / 老郑 finance / 老周 fitness):
+    #   - "normal"     : default — all caps apply
+    #   - "high"       : 2x cap multiplier (more lenient)
+    #   - "regulatory" : bypass all caps (e.g. 信披, mandatory disclosure)
+    #   - "emergency"  : bypass all caps (e.g. life-saving / trainer cancel)
+    priority: Literal["normal", "high", "regulatory", "emergency"] | None = None
 
 
 class CheckResponse(BaseModel):
@@ -279,6 +285,8 @@ class CheckResponse(BaseModel):
     # Lets callers / sims verify tier_overrides actually took effect.
     tier: str | None = None
     effective_caps: dict[str, int] = Field(default_factory=dict)
+    # Echo back the priority axis if set — dashboards filter on this.
+    priority: str | None = None
 
 
 class RecordRequest(_UserIdent):
@@ -325,6 +333,11 @@ class AdminConfigRequest(BaseModel):
 # ── Core logic (in-process callable) ─────────────────────────────────────
 
 
+K_PRIORITY_BYPASS = "freq:user:{uid}:priority_bypass:{date}"  # COUNTER per day
+PRIORITY_BYPASS_LEVELS = {"regulatory", "emergency"}
+PRIORITY_HIGH_MULTIPLIER = 2
+
+
 async def check_internal(
     user_id: str | None,
     brand_id: str,
@@ -333,6 +346,7 @@ async def check_internal(
     *,
     device_fingerprint: str | None = None,
     user_tier: str | None = None,
+    priority: str | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     """Decide whether ``user`` may see ``brand_id`` right now.
 
@@ -362,11 +376,51 @@ async def check_internal(
     )
     user_override = await _load_user_override(r, user_id)
     cfg = _effective_caps(base_cfg, tier, user_override)
-    # Common debug payload added to every return.
-    _debug = {"tier": tier, "effective_caps": dict(cfg)}
     now = time.time()
     date = _today_str(now)
     week = _week_str(now)
+
+    # ── Priority bypass (老蔡 healthcare / 老郑 finance / 老周 fitness) ──
+    # Regulatory + emergency notifications skip every cap. We still record
+    # the bypass for audit + dashboard ("X bypasses today").
+    if priority in PRIORITY_BYPASS_LEVELS:
+        bypass_key = K_PRIORITY_BYPASS.format(uid=uid, date=date)
+        try:
+            n = await r.incr(bypass_key)
+            if n == 1:
+                await r.expire(bypass_key, SECONDS_DAY * 2)
+        except aioredis.RedisError as exc:
+            logger.warning("priority_bypass counter failed: %s", exc)
+        logger.info(
+            "freq_cap priority_bypass user=%s brand=%s slot=%s priority=%s",
+            uid, brand_id, slot, priority,
+        )
+        return True, {
+            "reason": "priority_bypass",
+            "current_count": 0,
+            "cap": 0,
+            "reset_at": _reset_at_end_of_day(now),
+            "tier": tier,
+            "effective_caps": dict(cfg),
+            "priority": priority,
+        }
+
+    # ── High-priority leniency: 2x multiplier on numeric cap fields ──
+    if priority == "high":
+        cfg = dict(cfg)
+        for f in ("global_daily", "global_weekly",
+                  "per_brand_daily", "per_brand_weekly",
+                  "pacing_hourly_cap"):
+            try:
+                if int(cfg.get(f, 0)) > 0:
+                    cfg[f] = int(cfg[f]) * PRIORITY_HIGH_MULTIPLIER
+            except (TypeError, ValueError):
+                continue
+
+    # Common debug payload added to every return.
+    _debug = {"tier": tier, "effective_caps": dict(cfg)}
+    if priority:
+        _debug["priority"] = priority
 
     # Paused list — soft pause (e.g. user complained, brand backed off).
     if await r.sismember(K_PAUSED.format(uid=uid), brand_id):
@@ -552,6 +606,7 @@ async def check_cap(
         r,
         device_fingerprint=req.device_fingerprint,
         user_tier=req.user_tier,
+        priority=req.priority,
     )
     return CheckResponse(
         allow=allow,
@@ -561,6 +616,7 @@ async def check_cap(
         reset_at=int(details.get("reset_at", _reset_at_end_of_day())),
         tier=details.get("tier"),
         effective_caps=details.get("effective_caps") or {},
+        priority=details.get("priority"),
     )
 
 
@@ -726,3 +782,67 @@ async def get_config(
 ) -> dict[str, Any]:
     """Read merged (defaults + Redis-stored) cap configuration."""
     return {"ok": True, "config": await _load_config(r)}
+
+
+@router.get("/effective-caps", response_model=dict)
+async def get_effective_caps(
+    user_id: str | None = None,
+    brand_id: str | None = None,
+    user_tier: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return the merged cap layers for a given (user, brand, tier) trio.
+
+    This is the explicit observability hook the sims/tests demand: it
+    reveals exactly which default → tier_override → user_override layers
+    fed into ``check_internal``. If ``effective`` here doesn't reflect a
+    just-written ``tier_overrides`` value, the bug is in writes — not in
+    the check path (which calls the same helpers).
+
+    Returns:
+      * ``default_caps``     — DEFAULT_CONFIG (compile-time baseline)
+      * ``stored_caps``      — what's in Redis (post-defaults overlay,
+                               no tier applied)
+      * ``tier``             — resolved tier name (or null)
+      * ``tier_override``    — fields the resolved tier overrides (or {})
+      * ``user_override``    — fields the per-user override pins (or {})
+      * ``effective``        — final values check_internal will compare
+                               against (same helper, no drift possible)
+      * ``all_tier_overrides`` — full tier-override map (debug aid)
+    """
+    base_cfg = await _load_config(r)
+    tier = await _resolve_user_tier(
+        r, user_id=user_id, brand_id=brand_id, user_tier=user_tier
+    )
+    user_override = await _load_user_override(r, user_id)
+
+    tier_map = base_cfg.get("tier_overrides") or {}
+    tier_override: dict[str, int] = {}
+    if tier and isinstance(tier_map, dict):
+        raw_tier = tier_map.get(tier) or {}
+        for fk, fv in raw_tier.items():
+            if fk in CAP_FIELDS:
+                try:
+                    tier_override[fk] = int(fv)
+                except (TypeError, ValueError):
+                    continue
+
+    stored_caps = {
+        f: int(base_cfg.get(f, DEFAULT_CONFIG.get(f, 0))) for f in CAP_FIELDS
+    }
+    effective = _effective_caps(base_cfg, tier, user_override)
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "tier": tier,
+        "default_caps": dict(DEFAULT_CONFIG),
+        "stored_caps": stored_caps,
+        "tier_override": tier_override,
+        "user_override": user_override,
+        "effective": effective,
+        "all_tier_overrides": (
+            tier_map if isinstance(tier_map, dict) else {}
+        ),
+    }
