@@ -822,6 +822,171 @@ textarea.form-input{
 #tut-tooltip[data-pos="right"]::before { top: 30px; left: -8px; transform: rotate(-135deg); }
 #tut-tooltip[data-pos="left"]::before { top: 30px; right: -8px; transform: rotate(45deg); }
 #tut-tooltip[data-pos="center"]::before { display: none; }
+
+/* ═══════════════════ Conditions Builder ═══════════════════ */
+.conditions-builder {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0,252,0,0.03);
+  border: 1px solid var(--green-border);
+  border-radius: 8px;
+}
+.conditions-builder .cb-header {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 12px;
+}
+.conditions-builder .cb-header h4 {
+  margin: 0; font-size: 14px; color: var(--text);
+}
+.conditions-builder .cb-header h4 small {
+  color: var(--text-dim); font-weight: 400; font-size: 11px;
+}
+.conditions-builder .cb-toggle-all {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.conditions-builder .cb-toggle-all:hover {
+  border-color: var(--green); color: var(--green);
+}
+.cb-section {
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+}
+.cb-section summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  list-style: none;
+}
+.cb-section summary::-webkit-details-marker { display: none; }
+.cb-section summary::before {
+  content: '▸ ';
+  color: var(--text-dim);
+  display: inline-block;
+  width: 14px;
+  transition: transform 0.15s;
+}
+.cb-section[open] > summary::before {
+  content: '▾ ';
+}
+.cb-fields {
+  padding: 12px;
+  display: grid; gap: 8px;
+}
+.cb-fields > p {
+  margin: 0 0 4px 0;
+}
+.cb-fields label {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.cb-fields label input[type="checkbox"] {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.cb-fields > label > input[type="checkbox"] {
+  flex-direction: row;
+}
+.cb-fields input, .cb-fields select {
+  padding: 6px 10px;
+  background: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+.cb-fields input:focus, .cb-fields select:focus {
+  outline: none; border-color: var(--green);
+}
+.cb-days { display: flex; gap: 4px; margin-top: 2px; }
+.cb-days button {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  background: var(--dark);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.cb-days button.active {
+  background: var(--green);
+  color: var(--dark);
+  border-color: var(--green);
+}
+.cb-hours-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.cb-hours-row input { width: 90px; }
+.cb-rule {
+  display: flex; gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px;
+  background: var(--card);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.cb-rule select, .cb-rule input {
+  padding: 4px 8px;
+  background: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.cb-rule input[type="number"] { width: 90px; }
+.cb-remove-rule {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(255,68,68,.2);
+  width: 24px; height: 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  margin-left: auto;
+}
+.cb-add-rule {
+  background: transparent;
+  border: 1px dashed var(--green);
+  color: var(--green);
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+}
+.cb-add-rule:hover {
+  background: var(--green-bg);
+}
+.cb-summary {
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--dark);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.cb-summary strong {
+  color: var(--text);
+  margin-right: 6px;
+}
 </style>
 </head>
 <body>
@@ -3327,12 +3492,14 @@ function openConfigModal(moduleId){
 
   const existing=engagementState.activeModules[moduleId];
   const existingParams=(existing&&existing.params)||{};
+  const existingConditions=(existing&&existing.conditions)||{};
   const body=document.getElementById('modal-body');
 
+  let fieldsHTML='';
   if(!meta.config_schema||meta.config_schema.length===0){
-    body.innerHTML='<p style="color:var(--text-dim);font-size:13px">No parameters — just enable to use. / 此模块无需参数，启用即可使用。</p>';
+    fieldsHTML='<p style="color:var(--text-dim);font-size:13px">No parameters — just enable to use. / 此模块无需参数，启用即可使用。</p>';
   }else{
-    body.innerHTML=meta.config_schema.map(f=>{
+    fieldsHTML=meta.config_schema.map(f=>{
       const val=existingParams[f.key]!==undefined?existingParams[f.key]:(f.default!==undefined?f.default:'');
       const inputType=f.type==='number'?'number':'text';
       return `<div class="form-group">
@@ -3341,12 +3508,24 @@ function openConfigModal(moduleId){
       </div>`;
     }).join('');
   }
+  body.innerHTML=fieldsHTML+'<div id="module-modal-conditions" style="margin-top:16px"></div>';
+
+  // Reset and mount ConditionsBuilder
+  window._pending_conditions=existingConditions||{};
+  if(window.ConditionsBuilder){
+    window.ConditionsBuilder.mount('module-modal-conditions',{
+      initial_conditions: existingConditions||{},
+      on_change: (c)=>{ window._pending_conditions=c; }
+    });
+  }
+
   document.getElementById('module-modal').classList.add('active');
 }
 
 function closeModuleModal(){
   document.getElementById('module-modal').classList.remove('active');
   engagementState.editingModuleId=null;
+  window._pending_conditions=null;
 }
 
 async function saveModuleConfig(){
@@ -3365,13 +3544,15 @@ async function saveModuleConfig(){
     params[key]=v;
   });
 
+  const conditions=window._pending_conditions||{};
+
   const btn=document.getElementById('modal-save-btn');
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    // Save config
+    // Save config (params + conditions)
     const res=await apiFetch(
       '/api/v1/brands/'+state.brandId+'/modules/'+moduleId+'/config',
-      {method:'POST',json:params,noAuth:true}
+      {method:'POST',json:Object.assign({},params,{conditions:conditions}),noAuth:true}
     );
     if(!res.ok)throw new Error('Save failed ('+res.status+')');
 
@@ -3875,6 +4056,391 @@ async function applyGeneratedAsTutorial() {
       navigate(hash);
     }
   });
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONDITIONS BUILDER — Reusable panel for module config modals
+// Usage: ConditionsBuilder.mount('target-id', {initial_conditions, on_change})
+// ═══════════════════════════════════════════════════════════════════════
+window.ConditionsBuilder = (function(){
+
+  const METRICS = [
+    {value:'invites_converted', label:'邀请转化数 / Invites converted'},
+    {value:'games_played', label:'游戏次数 / Games played'},
+    {value:'purchase_amount_cents', label:'消费金额 / Purchase amount'},
+    {value:'streak', label:'连续天数 / Streak days'},
+    {value:'badge_count', label:'勋章数 / Badge count'}
+  ];
+
+  const OPS = [
+    {value:'>=', label:'≥'},
+    {value:'>',  label:'>'},
+    {value:'==', label:'='},
+    {value:'<=', label:'≤'},
+    {value:'<',  label:'<'}
+  ];
+
+  function escHtml(s){
+    return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderPanelHTML(){
+    const metricOpts = METRICS.map(m=>`<option value="${m.value}">${escHtml(m.label)}</option>`).join('');
+    const opOpts = OPS.map(o=>`<option value="${escHtml(o.value)}">${escHtml(o.label)}</option>`).join('');
+    return `
+      <div class="cb-header">
+        <h4>📋 业务条件 / Business Conditions <small>(可选 / optional)</small></h4>
+        <button type="button" class="cb-toggle-all">展开全部 / Expand all</button>
+      </div>
+
+      <details class="cb-section" data-key="supply">
+        <summary>🎁 库存 Supply</summary>
+        <div class="cb-fields">
+          <label>总数 Total Supply
+            <input type="number" data-field="total_supply" placeholder="不限制 = 留空 / Unlimited = blank">
+          </label>
+          <label>总预算 (元) Budget (CNY)
+            <input type="number" data-field="budget_yuan" placeholder="可选 / Optional">
+          </label>
+        </div>
+      </details>
+
+      <details class="cb-section" data-key="eligibility">
+        <summary>👥 资格 Eligibility</summary>
+        <div class="cb-fields">
+          <label>Tier 要求 / Tier required
+            <select data-field="tier_required">
+              <option value="">无 / None</option>
+              <option value="green">green</option>
+              <option value="gold">gold</option>
+            </select>
+          </label>
+          <label style="flex-direction:row;align-items:center">
+            <input type="checkbox" data-field="first_time_user_only"> 仅首次用户 / First-time users only
+          </label>
+          <label>用户标签 (包含) / User segments (include)
+            <input type="text" data-field="segment_include" placeholder="如: shanghai_white_collar (逗号分隔 / comma-separated)">
+          </label>
+          <label>最小账号天数 / Min account age (days)
+            <input type="number" data-field="min_account_age_days" placeholder="0">
+          </label>
+        </div>
+      </details>
+
+      <details class="cb-section" data-key="frequency">
+        <summary>🔁 频次 Frequency</summary>
+        <div class="cb-fields">
+          <label>每用户每日 / Per user / day
+            <input type="number" data-field="per_user_per_day" placeholder="不限 / Unlimited">
+          </label>
+          <label>每用户每周 / Per user / week
+            <input type="number" data-field="per_user_per_week">
+          </label>
+          <label>每用户终身 / Per user lifetime
+            <input type="number" data-field="per_user_total">
+          </label>
+          <label>全局每日 (跨用户) / Global per day
+            <input type="number" data-field="global_per_day">
+          </label>
+        </div>
+      </details>
+
+      <details class="cb-section" data-key="time">
+        <summary>📅 时间 Time</summary>
+        <div class="cb-fields">
+          <label>开始 / Start
+            <input type="datetime-local" data-field="valid_from">
+          </label>
+          <label>结束 / End
+            <input type="datetime-local" data-field="valid_until">
+          </label>
+          <label>周几 / Days of week
+            <div class="cb-days">
+              <button type="button" data-day="0">一</button>
+              <button type="button" data-day="1">二</button>
+              <button type="button" data-day="2">三</button>
+              <button type="button" data-day="3">四</button>
+              <button type="button" data-day="4">五</button>
+              <button type="button" data-day="5">六</button>
+              <button type="button" data-day="6">日</button>
+            </div>
+          </label>
+          <label>时段 / Hours
+            <div class="cb-hours-row">
+              <input type="number" min="0" max="23" data-field="hour_start" placeholder="开始时 / from">
+              <span style="color:var(--text-dim)">—</span>
+              <input type="number" min="0" max="23" data-field="hour_end" placeholder="结束时 / to">
+            </div>
+          </label>
+        </div>
+      </details>
+
+      <details class="cb-section" data-key="prereq">
+        <summary>🎯 前置行为 Action Prerequisites</summary>
+        <div class="cb-fields">
+          <p style="font-size:12px;color:var(--text-dim)">用户必须完成以下条件才能触发 / User must satisfy these conditions</p>
+          <div id="cb-rules-list" data-cb-rules-list></div>
+          <button type="button" class="cb-add-rule">+ 添加条件 / Add condition</button>
+        </div>
+      </details>
+
+      <div class="cb-summary">
+        <strong>当前条件总结 / Summary:</strong>
+        <span data-cb-summary-text>无条件（所有人随时） / No conditions (everyone, anytime)</span>
+      </div>
+    `;
+  }
+
+  function ruleHTML(){
+    const metricOpts = METRICS.map(m=>`<option value="${m.value}">${escHtml(m.label)}</option>`).join('');
+    const opOpts = OPS.map(o=>`<option value="${escHtml(o.value)}">${escHtml(o.label)}</option>`).join('');
+    return `
+      <span>当 / When</span>
+      <select data-field="metric">${metricOpts}</select>
+      <select data-field="op">${opOpts}</select>
+      <input type="number" data-field="value" placeholder="值 / value">
+      <button type="button" class="cb-remove-rule">×</button>
+    `;
+  }
+
+  // Per-instance state held on the root element
+  function _root(targetId){
+    return typeof targetId==='string' ? document.getElementById(targetId) : targetId;
+  }
+
+  function _q(root, sel){ return root.querySelector(sel); }
+  function _qa(root, sel){ return Array.from(root.querySelectorAll(sel)); }
+
+  function _buildConditionsObject(root){
+    const c = {};
+    // supply
+    const supply = {};
+    const ts = +_q(root,'[data-field=total_supply]').value;
+    if (ts) supply.total_supply = ts;
+    const by = +_q(root,'[data-field=budget_yuan]').value;
+    if (by) supply.budget_cents = Math.round(by * 100);
+    if (Object.keys(supply).length) c.supply = supply;
+
+    // eligibility
+    const eligibility = {};
+    const tr = _q(root,'[data-field=tier_required]').value;
+    if (tr) eligibility.tier_required = tr;
+    if (_q(root,'[data-field=first_time_user_only]').checked) eligibility.first_time_user_only = true;
+    const si = _q(root,'[data-field=segment_include]').value.trim();
+    if (si) eligibility.user_segment_include = si.split(',').map(s => s.trim()).filter(Boolean);
+    const ma = +_q(root,'[data-field=min_account_age_days]').value;
+    if (ma) eligibility.min_account_age_days = ma;
+    if (Object.keys(eligibility).length) c.eligibility = eligibility;
+
+    // frequency
+    const frequency = {};
+    const fields = ['per_user_per_day', 'per_user_per_week', 'per_user_total', 'global_per_day'];
+    for (const f of fields) {
+      const v = +_q(root, `[data-field=${f}]`).value;
+      if (v) frequency[f] = v;
+    }
+    if (Object.keys(frequency).length) c.frequency = frequency;
+
+    // time
+    const time = {};
+    const vf = _q(root,'[data-field=valid_from]').value;
+    if (vf) {
+      const d = new Date(vf);
+      if (!isNaN(d.getTime())) time.valid_from = d.toISOString();
+    }
+    const vu = _q(root,'[data-field=valid_until]').value;
+    if (vu) {
+      const d = new Date(vu);
+      if (!isNaN(d.getTime())) time.valid_until = d.toISOString();
+    }
+    const days = _qa(root,'.cb-days button.active').map(b => +b.dataset.day);
+    if (days.length) time.valid_days_of_week = days;
+    const hsRaw = _q(root,'[data-field=hour_start]').value;
+    const heRaw = _q(root,'[data-field=hour_end]').value;
+    if (hsRaw !== '' || heRaw !== '') {
+      const hs = hsRaw === '' ? 0 : +hsRaw;
+      const he = heRaw === '' ? 23 : +heRaw;
+      time.valid_hours_local = [hs, he];
+    }
+    if (Object.keys(time).length) c.time = time;
+
+    // prereq rules
+    const rules = _qa(root,'.cb-rule').map(el => ({
+      type: 'count',
+      metric: el.querySelector('[data-field=metric]').value,
+      op: el.querySelector('[data-field=op]').value,
+      value: +el.querySelector('[data-field=value]').value
+    })).filter(r => r.value);
+    if (rules.length) c.action_prerequisites = {rules, composition: 'AND'};
+
+    return c;
+  }
+
+  function _populateFromConditions(root, c){
+    if (!c) return;
+
+    // supply
+    if (c.supply){
+      if (c.supply.total_supply != null) _q(root,'[data-field=total_supply]').value = c.supply.total_supply;
+      if (c.supply.budget_cents != null) _q(root,'[data-field=budget_yuan]').value = c.supply.budget_cents / 100;
+    }
+
+    // eligibility
+    if (c.eligibility){
+      const e = c.eligibility;
+      if (e.tier_required) _q(root,'[data-field=tier_required]').value = e.tier_required;
+      if (e.first_time_user_only) _q(root,'[data-field=first_time_user_only]').checked = true;
+      if (Array.isArray(e.user_segment_include)) _q(root,'[data-field=segment_include]').value = e.user_segment_include.join(', ');
+      else if (typeof e.user_segment_include === 'string') _q(root,'[data-field=segment_include]').value = e.user_segment_include;
+      if (e.min_account_age_days != null) _q(root,'[data-field=min_account_age_days]').value = e.min_account_age_days;
+    }
+
+    // frequency
+    if (c.frequency){
+      ['per_user_per_day','per_user_per_week','per_user_total','global_per_day'].forEach(f=>{
+        if (c.frequency[f] != null) _q(root, `[data-field=${f}]`).value = c.frequency[f];
+      });
+    }
+
+    // time
+    if (c.time){
+      const t = c.time;
+      if (t.valid_from) {
+        try {
+          const d = new Date(t.valid_from);
+          if (!isNaN(d.getTime())) _q(root,'[data-field=valid_from]').value = _toLocalDatetime(d);
+        } catch(e){}
+      }
+      if (t.valid_until) {
+        try {
+          const d = new Date(t.valid_until);
+          if (!isNaN(d.getTime())) _q(root,'[data-field=valid_until]').value = _toLocalDatetime(d);
+        } catch(e){}
+      }
+      if (Array.isArray(t.valid_days_of_week)){
+        _qa(root,'.cb-days button').forEach(b=>{
+          if (t.valid_days_of_week.indexOf(+b.dataset.day) >= 0) b.classList.add('active');
+        });
+      }
+      if (Array.isArray(t.valid_hours_local) && t.valid_hours_local.length === 2){
+        _q(root,'[data-field=hour_start]').value = t.valid_hours_local[0];
+        _q(root,'[data-field=hour_end]').value = t.valid_hours_local[1];
+      }
+    }
+
+    // prereq rules
+    if (c.action_prerequisites && Array.isArray(c.action_prerequisites.rules)){
+      const list = _q(root,'[data-cb-rules-list]');
+      c.action_prerequisites.rules.forEach(r=>{
+        const div = _addRuleDom(root, list);
+        if (r.metric) div.querySelector('[data-field=metric]').value = r.metric;
+        if (r.op) div.querySelector('[data-field=op]').value = r.op;
+        if (r.value != null) div.querySelector('[data-field=value]').value = r.value;
+      });
+    }
+  }
+
+  function _toLocalDatetime(d){
+    // Format Date to "YYYY-MM-DDTHH:MM" in local time
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function _addRuleDom(root, list){
+    const div = document.createElement('div');
+    div.className = 'cb-rule';
+    div.innerHTML = ruleHTML();
+    div.querySelector('.cb-remove-rule').addEventListener('click', () => {
+      div.remove();
+      _handleChange(root);
+    });
+    div.querySelectorAll('select, input').forEach(el => {
+      el.addEventListener('change', () => _handleChange(root));
+      el.addEventListener('input', () => _handleChange(root));
+    });
+    list.appendChild(div);
+    return div;
+  }
+
+  function _updateSummary(root, c){
+    const parts = [];
+    if (c.supply && c.supply.total_supply) parts.push(`限量${c.supply.total_supply}份 / limit ${c.supply.total_supply}`);
+    if (c.supply && c.supply.budget_cents) parts.push(`预算¥${(c.supply.budget_cents/100).toFixed(0)}`);
+    if (c.eligibility && c.eligibility.tier_required) parts.push(`${c.eligibility.tier_required}+`);
+    if (c.eligibility && c.eligibility.first_time_user_only) parts.push('仅首次 / first-time');
+    if (c.frequency && c.frequency.per_user_per_day) parts.push(`每日${c.frequency.per_user_per_day}次`);
+    if (c.frequency && c.frequency.per_user_total) parts.push(`终身${c.frequency.per_user_total}次`);
+    if (c.time && c.time.valid_until) {
+      try { parts.push(`截止${new Date(c.time.valid_until).toLocaleDateString()}`); } catch(e){}
+    }
+    if (c.time && Array.isArray(c.time.valid_days_of_week)) parts.push(`${c.time.valid_days_of_week.length}天/周`);
+    if (c.action_prerequisites && c.action_prerequisites.rules) parts.push(`满足${c.action_prerequisites.rules.length}个前置 / ${c.action_prerequisites.rules.length} prereq`);
+    const el = _q(root,'[data-cb-summary-text]');
+    if (el) el.textContent = parts.length ? parts.join(' · ') : '无条件（所有人随时） / No conditions (everyone, anytime)';
+  }
+
+  function _handleChange(root){
+    const c = _buildConditionsObject(root);
+    root._cbCurrent = c;
+    _updateSummary(root, c);
+    if (typeof root._cbOnChange === 'function') {
+      try { root._cbOnChange(c); } catch(e){ console.error('[ConditionsBuilder] on_change error', e); }
+    }
+  }
+
+  return {
+    mount(targetId, options){
+      options = options || {};
+      const root = _root(targetId);
+      if (!root) {
+        console.warn('[ConditionsBuilder] target not found:', targetId);
+        return;
+      }
+      root.classList.add('conditions-builder');
+      root.innerHTML = renderPanelHTML();
+      root._cbCurrent = options.initial_conditions || {};
+      root._cbOnChange = options.on_change || null;
+
+      _populateFromConditions(root, root._cbCurrent);
+
+      // Wire change listeners on all current inputs/selects (except day buttons & rule list)
+      root.querySelectorAll('.cb-fields > label input, .cb-fields > label select, .cb-hours-row input').forEach(el => {
+        el.addEventListener('change', () => _handleChange(root));
+        el.addEventListener('input', () => _handleChange(root));
+      });
+      root.querySelectorAll('.cb-days button').forEach(b => {
+        b.addEventListener('click', (e) => {
+          e.preventDefault();
+          b.classList.toggle('active');
+          _handleChange(root);
+        });
+      });
+      root.querySelector('.cb-add-rule').addEventListener('click', (e) => {
+        e.preventDefault();
+        const list = root.querySelector('[data-cb-rules-list]');
+        _addRuleDom(root, list);
+        _handleChange(root);
+      });
+      root.querySelector('.cb-toggle-all').addEventListener('click', (e) => {
+        e.preventDefault();
+        const sections = root.querySelectorAll('.cb-section');
+        const allOpen = Array.from(sections).every(s => s.open);
+        sections.forEach(s => { s.open = !allOpen; });
+        e.target.textContent = allOpen ? '展开全部 / Expand all' : '收起全部 / Collapse all';
+      });
+
+      _updateSummary(root, root._cbCurrent);
+      return {
+        getConditions: () => _buildConditionsObject(root)
+      };
+    },
+
+    getConditions(targetId){
+      const root = _root(targetId);
+      if (!root) return {};
+      return _buildConditionsObject(root);
+    }
+  };
 })();
 </script>
 

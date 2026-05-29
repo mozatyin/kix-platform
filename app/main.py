@@ -199,6 +199,12 @@ def create_app() -> FastAPI:
         tutorials.router, prefix="/api/v1/tutorials", tags=["tutorials"]
     )
 
+    # ── Conditions Engine: unified gating across all gamification ──────
+    from app.routers import conditions
+    app.include_router(
+        conditions.router, prefix="/api/v1/conditions", tags=["conditions"]
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
