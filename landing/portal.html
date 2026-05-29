@@ -1089,6 +1089,30 @@ textarea.form-input{
 .tier-row code { font-size: 11px; color: var(--text-dim); margin-left: auto; }
 .tier-threshold { color: var(--green); font-weight: 600; }
 .tier-perks { color: var(--text-dim); font-size: 13px; flex: 1; }
+
+/* Ads Manager */
+.ads-pane { padding: 16px 0; }
+.ads-loading { padding: 24px; color: var(--text-dim); }
+.wallet-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px; margin-bottom: 20px; }
+.wallet-balance, .wallet-stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.wallet-balance { border-color: var(--green-border); background: rgba(0,252,0,0.05); }
+.wallet-label { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+.wallet-value { font-size: 28px; font-weight: 700; color: var(--green); letter-spacing: -0.5px; }
+.wallet-balance small, .wallet-stat small { color: var(--text-dim); font-size: 11px; }
+.wallet-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.campaign-table th, .campaign-table td { padding: 8px; font-size: 13px; }
+.status-active { color: var(--green); font-weight: 600; }
+.status-paused { color: var(--text-dim); font-weight: 600; }
+.status-ended { color: var(--danger); font-weight: 600; }
+.status-draft { color: var(--text-dim); }
+.pos { color: var(--green); }
+.neg { color: var(--danger); }
+#campaign-modal .modal-body label { display: block; margin-bottom: 12px; font-size: 12px; color: var(--text-dim); }
+#campaign-modal .modal-body label input,
+#campaign-modal .modal-body label select { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; background: var(--dark); border: 1px solid var(--border-light); color: var(--text); border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+#campaign-modal .modal-body label input:focus,
+#campaign-modal .modal-body label select:focus { outline: none; border-color: var(--green); }
+#campaign-modal .modal-body h4 { color: var(--green); font-size: 13px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 </style>
 </head>
 <body>
@@ -1558,6 +1582,9 @@ textarea.form-input{
 
     <!-- Monitoring View -->
     <div id="view-monitoring" class="view"></div>
+
+    <!-- Ads Manager View -->
+    <div id="view-ads" class="view"></div>
   </div>
 
   <!-- Module Config Modal -->
@@ -1628,6 +1655,10 @@ textarea.form-input{
     <div class="nav-item" data-view="primitives" onclick="navigate('primitives')">
       <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" stroke="none"/></svg>
       <span>Primitives</span>
+    </div>
+    <div class="nav-item" data-view="ads" onclick="navigate('ads')">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 13h2l3 6 4-10 3 6h6v-2h-4l-5-10-4 10-2-4H3z" fill="currentColor" stroke="none"/></svg>
+      <span>Ads</span>
     </div>
     <div class="nav-item" data-view="settings" onclick="navigate('settings')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2353,6 +2384,7 @@ function navigate(view){
     case'rules':if(window.RulesEditorView)RulesEditorView.render();break;
     case'monitoring':if(window.MonitoringView)MonitoringView.render();break;
     case'primitives':if(window.PrimitivesAdminView)PrimitivesAdminView.render();break;
+    case'ads':if(window.AdsView)AdsView.render();break;
   }
 }
 
@@ -2361,7 +2393,7 @@ function showApp(){
   document.getElementById('app-shell').className='active';
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads'];
   navigate(validViews.includes(hash)?hash:'dashboard');
 }
 
@@ -4193,7 +4225,7 @@ async function applyGeneratedAsTutorial() {
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }
@@ -4622,5 +4654,6 @@ window.ConditionsBuilder = (function(){
 
 <!-- ─── Primitives Admin View Module ────────────────────────────────── -->
 <script src="/landing/sdk/portal-views/primitives_admin.js"></script>
+<script src="/landing/sdk/portal-views/ads.js"></script>
 </body>
 </html>

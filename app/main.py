@@ -205,6 +205,35 @@ def create_app() -> FastAPI:
         conditions.router, prefix="/api/v1/conditions", tags=["conditions"]
     )
 
+    # ── Attribution: invite tokens, 7-day last-touch, anti-fraud ───────
+    from app.routers import attribution
+    app.include_router(
+        attribution.router,
+        prefix="/api/v1/attribution",
+        tags=["attribution"],
+    )
+
+    # ── Merchant Wallet + Billing: topup / charge / refund / forecast ──
+    from app.routers import wallet
+    app.include_router(
+        wallet.router, prefix="/api/v1/wallet", tags=["wallet"]
+    )
+
+    # ── Geofence: Location-Based Discovery (store geo + push triggers) ─
+    from app.routers import geofence
+    app.include_router(
+        geofence.router, prefix="/api/v1/geofence", tags=["geofence"]
+    )
+
+    # ── Campaign Manager + Auction Engine (Google-Ads-style) ───────────
+    from app.routers import campaigns, auction
+    app.include_router(
+        campaigns.router, prefix="/api/v1/campaigns", tags=["campaigns"]
+    )
+    app.include_router(
+        auction.router, prefix="/api/v1/auction", tags=["auction"]
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
