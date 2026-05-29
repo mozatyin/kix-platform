@@ -434,6 +434,46 @@ KiX = TikTok Ads for Gamification.
         tags=["transactions"],
     )
 
+    # ── Consumer Wallet: per-user balance (deposits, prepaid, payouts) ─
+    from app.routers import user_wallet
+    app.include_router(
+        user_wallet.router,
+        prefix="/api/v1/user-wallet",
+        tags=["user_wallet"],
+    )
+
+    # ── Deposit lifecycle: typed wrapper around user-wallet freezes ────
+    from app.routers import deposits
+    app.include_router(
+        deposits.router,
+        prefix="/api/v1/deposits",
+        tags=["deposits"],
+    )
+
+    # ── Dynamic Pricing: time/demand/inventory rule-driven quotes ──────
+    from app.routers import pricing
+    app.include_router(
+        pricing.router,
+        prefix="/api/v1/pricing",
+        tags=["pricing"],
+    )
+
+    # ── Accounts: B2B company entities + buying committee + org chart ──
+    from app.routers import accounts
+    app.include_router(
+        accounts.router,
+        prefix="/api/v1/accounts",
+        tags=["accounts"],
+    )
+
+    # ── Subscriptions: SaaS/membership/streaming + NDR/GRR metrics ─────
+    from app.routers import subscriptions
+    app.include_router(
+        subscriptions.router,
+        prefix="/api/v1/subscriptions",
+        tags=["subscriptions"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():

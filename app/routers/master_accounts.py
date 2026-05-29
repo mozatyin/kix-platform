@@ -3121,6 +3121,1554 @@ async def master_dashboard(
     }
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# FEATURE — Master-wide rollup endpoints
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Why this exists
+# ---------------
+# Multi-brand merchants (a 10-gym chain, a multi-LOB hospital, a B2B SaaS
+# with sub-brands) currently have to hand-merge per-brand endpoints. P0s
+# across 老梁/老郑/老石/老蔡/老韩 demand a single master-level surface for
+# reports, attribution journeys, compliance audits, XP, audiences,
+# inventory, transactions, health, and alerts.
+#
+# Implementation pattern (used by every rollup below):
+#   1. Resolve the master's attached brands via `master:{mid}:brands` SET.
+#   2. For each brand, fetch the brand-level data — parallelised with
+#      asyncio.gather() so latency is O(slowest_brand), not O(sum).
+#   3. Aggregate per spec (totals, per-brand breakdown, dedup, etc.).
+#   4. Cache result in `master:{mid}:rollup:{key}` STRING (JSON) with a
+#      TTL between 5 and 30 min depending on data volatility.
+#
+# Pagination: very large masters (>= 100 brands) can pass ?limit_brands
+# to clip the per-brand fan-out; the rollup still completes but the
+# `truncated` flag is set on the response so the dashboard can warn.
+# ─────────────────────────────────────────────────────────────────────────
+
+import asyncio  # noqa: E402  — kept local to this feature block
+
+_ROLLUP_CACHE_TTL_SHORT = 5 * 60        # 5 minutes (health, alerts)
+_ROLLUP_CACHE_TTL_MEDIUM = 15 * 60      # 15 minutes (reports, txns)
+_ROLLUP_CACHE_TTL_LONG = 30 * 60        # 30 minutes (audiences, inventory)
+_LARGE_MASTER_BRAND_THRESHOLD = 100     # paginate above this
+
+
+def _k_rollup_cache(master_id: str, key: str) -> str:
+    return f"master:{master_id}:rollup:{key}"
+
+
+async def _attached_brand_ids(
+    r: aioredis.Redis, master_id: str, limit_brands: int | None = None
+) -> tuple[list[str], bool]:
+    """Return (sorted brand_ids, truncated_flag).
+
+    `truncated` is True when the caller passed ``limit_brands`` and the
+    master actually has more brands than that — the dashboard should
+    surface a warning so HQ knows the rollup is partial.
+    """
+    raw = await r.smembers(_k_master_brands(master_id))
+    brand_ids = sorted(raw)
+    truncated = False
+    if limit_brands is not None and limit_brands > 0 and len(brand_ids) > limit_brands:
+        brand_ids = brand_ids[:limit_brands]
+        truncated = True
+    return brand_ids, truncated
+
+
+async def _rollup_cache_get(r: aioredis.Redis, master_id: str, key: str) -> Any | None:
+    try:
+        raw = await r.get(_k_rollup_cache(master_id, key))
+    except Exception:  # noqa: BLE001
+        return None
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+async def _rollup_cache_set(
+    r: aioredis.Redis, master_id: str, key: str, payload: Any, ttl: int
+) -> None:
+    try:
+        await r.set(_k_rollup_cache(master_id, key), json.dumps(payload), ex=ttl)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "rollup cache write failed master=%s key=%s", master_id, key, exc_info=True
+        )
+
+
+def _ts_window(from_ts: float | None, to_ts: float | None) -> tuple[float, float]:
+    """Defaults: last 30 days when bounds aren't supplied."""
+    now = time.time()
+    return (
+        from_ts if from_ts is not None else now - 30 * 86400,
+        to_ts if to_ts is not None else now,
+    )
+
+
+def _period_bucket_from_iso(iso_or_ts: Any, period: str) -> str:
+    """Bucket ISO-string OR unix-ts into ``period``-shaped label."""
+    try:
+        ts = float(iso_or_ts)
+    except (TypeError, ValueError):
+        try:
+            dt = datetime.fromisoformat(str(iso_or_ts).replace("Z", "+00:00"))
+            ts = dt.timestamp()
+        except (TypeError, ValueError):
+            ts = 0.0
+    return _period_bucket(ts, period)
+
+
+# ── Per-brand fetchers (used by gather()) ────────────────────────────────
+async def _fetch_brand_attribution(
+    r: aioredis.Redis, brand_id: str, from_ts: float, to_ts: float
+) -> dict[str, Any]:
+    """Conversion + revenue counters for a brand in window."""
+    try:
+        events = await r.zrangebyscore(
+            f"brand:{brand_id}:attr_incoming", from_ts, to_ts
+        )
+    except Exception:  # noqa: BLE001
+        events = []
+    conversions = 0
+    revenue_cents = 0
+    for ev_id in events or []:
+        try:
+            ev = await r.hgetall(f"attr:{ev_id}")
+        except Exception:  # noqa: BLE001
+            ev = {}
+        if not ev:
+            continue
+        if ev.get("event_type") == "conversion" or ev.get("is_conversion") in (
+            "1", "true", True
+        ):
+            conversions += 1
+            try:
+                revenue_cents += int(ev.get("revenue_cents") or ev.get("amount") or 0)
+            except (TypeError, ValueError):
+                pass
+    return {
+        "brand_id": brand_id,
+        "conversions": conversions,
+        "revenue_cents": revenue_cents,
+    }
+
+
+async def _fetch_brand_auction(
+    r: aioredis.Redis, brand_id: str
+) -> dict[str, Any]:
+    """Auction counters — uses brand-stats hash + spend counter when present."""
+    try:
+        stats_raw = await r.hgetall(f"brand:{brand_id}:auction_stats") or {}
+    except Exception:  # noqa: BLE001
+        stats_raw = {}
+    try:
+        spend = int(await r.get(f"brand:{brand_id}:auction_spend_cents") or 0)
+    except Exception:  # noqa: BLE001
+        spend = 0
+
+    def _g(field: str) -> int:
+        try:
+            return int(stats_raw.get(field, 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    return {
+        "brand_id": brand_id,
+        "impressions": _g("impressions"),
+        "clicks": _g("clicks"),
+        "conversions": _g("conversions"),
+        "spend_cents": spend or _g("spend_cents"),
+    }
+
+
+async def _fetch_brand_wallet(
+    r: aioredis.Redis, brand_id: str
+) -> dict[str, Any]:
+    """Wallet topup + charge totals for a brand."""
+    try:
+        topup = int(await r.get(f"wallet:{brand_id}:total_topup") or 0)
+    except Exception:  # noqa: BLE001
+        topup = 0
+    try:
+        charge = int(await r.get(f"wallet:{brand_id}:total_spent") or 0)
+    except Exception:  # noqa: BLE001
+        charge = 0
+    try:
+        balance = int(await r.get(f"wallet:{brand_id}:balance") or 0)
+    except Exception:  # noqa: BLE001
+        balance = 0
+    return {
+        "brand_id": brand_id,
+        "topup_cents": topup,
+        "charge_cents": charge,
+        "balance_cents": balance,
+    }
+
+
+async def _fetch_brand_transactions(
+    r: aioredis.Redis,
+    brand_id: str,
+    from_ts: float,
+    to_ts: float,
+    type_filter: str | None = None,
+) -> dict[str, Any]:
+    """Walk the brand's tx list and aggregate by type."""
+    try:
+        tx_ids = await r.lrange(f"wallet:{brand_id}:transactions", 0, -1)
+    except Exception:  # noqa: BLE001
+        tx_ids = []
+    count = 0
+    gmv_cents = 0
+    by_type: dict[str, int] = {}
+    items: list[dict[str, Any]] = []
+    for tx_id in tx_ids or []:
+        # transactions live as topup/charge/refund hashes; we sniff each.
+        ev = None
+        for prefix in ("wallet:topup:", "wallet:charge:", "wallet:refund:"):
+            try:
+                got = await r.hgetall(f"{prefix}{tx_id}")
+            except Exception:  # noqa: BLE001
+                got = {}
+            if got:
+                ev = got
+                break
+        if not ev:
+            continue
+        try:
+            ts = float(ev.get("created_at") or ev.get("confirmed_at") or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        if ts and (ts < from_ts or ts > to_ts):
+            continue
+        ttype = "topup" if "topup_id" in ev else (
+            "charge" if "charge_id" in ev else "refund"
+        )
+        if type_filter and ttype != type_filter:
+            continue
+        try:
+            amt = int(ev.get("amount") or 0)
+        except (TypeError, ValueError):
+            amt = 0
+        count += 1
+        gmv_cents += amt
+        by_type[ttype] = by_type.get(ttype, 0) + amt
+        items.append(
+            {
+                "tx_id": tx_id,
+                "brand_id": brand_id,
+                "type": ttype,
+                "amount_cents": amt,
+                "ts": ts,
+            }
+        )
+    return {
+        "brand_id": brand_id,
+        "count": count,
+        "gmv_cents": gmv_cents,
+        "by_type": by_type,
+        "items": items,
+    }
+
+
+async def _fetch_brand_reservations(
+    r: aioredis.Redis, brand_id: str, from_ts: float, to_ts: float
+) -> dict[str, Any]:
+    """Reservations created/honored/no-show in window."""
+    try:
+        rids = await r.zrangebyscore(
+            f"brand:{brand_id}:reservations", from_ts, to_ts
+        )
+    except Exception:  # noqa: BLE001
+        rids = []
+    created = 0
+    honored = 0
+    no_show = 0
+    for rid in rids or []:
+        try:
+            res = await r.hgetall(f"reservation:{rid}")
+        except Exception:  # noqa: BLE001
+            res = {}
+        if not res:
+            continue
+        created += 1
+        status_ = res.get("status", "")
+        if status_ == "honored":
+            honored += 1
+        elif status_ == "no_show":
+            no_show += 1
+    return {
+        "brand_id": brand_id,
+        "created": created,
+        "honored": honored,
+        "no_show": no_show,
+    }
+
+
+async def _fetch_brand_compliance(
+    r: aioredis.Redis, brand_id: str, from_ts: float, to_ts: float
+) -> dict[str, Any]:
+    """Compliance counters — writes and anomalies in window."""
+    pii_writes = 0
+    anomalies = 0
+    try:
+        raws = await r.lrange(
+            f"compliance:pii_audit:brand:{brand_id}", 0, 5000
+        )
+    except Exception:  # noqa: BLE001
+        raws = []
+    for raw in raws or []:
+        try:
+            e = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        ts = e.get("ts", 0)
+        try:
+            ts_f = float(ts)
+        except (TypeError, ValueError):
+            ts_f = 0.0
+        if ts_f and (ts_f < from_ts or ts_f > to_ts):
+            continue
+        if e.get("action") == "write":
+            pii_writes += 1
+        if e.get("anomaly"):
+            anomalies += 1
+    return {
+        "brand_id": brand_id,
+        "pii_writes": pii_writes,
+        "anomalies": anomalies,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Reports rollup
+# ─────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/{master_id}/reports/consolidated")
+async def reports_consolidated(
+    master_id: str,
+    from_ts: float | None = None,
+    to_ts: float | None = None,
+    dimension: Literal["daily", "weekly", "monthly"] = "daily",
+    limit_brands: int | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """One-shot consolidated report across every attached brand.
+
+    Aggregates attribution, auction, wallet, transactions, reservations,
+    and compliance into a single payload. Per-brand breakdowns ride along
+    so the HQ dashboard can render both totals AND the heat map.
+    """
+    await _require_master(r, master_id)
+    from_ts, to_ts = _ts_window(from_ts, to_ts)
+
+    cache_key = f"reports:consolidated:{from_ts}:{to_ts}:{dimension}:{limit_brands}"
+    cached = await _rollup_cache_get(r, master_id, cache_key)
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids, truncated = await _attached_brand_ids(r, master_id, limit_brands)
+
+    # Parallel fan-out.
+    attr_res, auc_res, wal_res, tx_res, rsv_res, comp_res = await asyncio.gather(
+        asyncio.gather(*[_fetch_brand_attribution(r, b, from_ts, to_ts) for b in brand_ids]),
+        asyncio.gather(*[_fetch_brand_auction(r, b) for b in brand_ids]),
+        asyncio.gather(*[_fetch_brand_wallet(r, b) for b in brand_ids]),
+        asyncio.gather(*[_fetch_brand_transactions(r, b, from_ts, to_ts) for b in brand_ids]),
+        asyncio.gather(*[_fetch_brand_reservations(r, b, from_ts, to_ts) for b in brand_ids]),
+        asyncio.gather(*[_fetch_brand_compliance(r, b, from_ts, to_ts) for b in brand_ids]),
+    )
+
+    # Roll up.
+    attribution = {
+        "total_conversions": sum(d["conversions"] for d in attr_res),
+        "total_revenue_cents": sum(d["revenue_cents"] for d in attr_res),
+        "by_brand": {d["brand_id"]: d for d in attr_res},
+    }
+    auction = {
+        "impressions": sum(d["impressions"] for d in auc_res),
+        "clicks": sum(d["clicks"] for d in auc_res),
+        "conversions": sum(d["conversions"] for d in auc_res),
+        "spend_cents": sum(d["spend_cents"] for d in auc_res),
+        "by_brand": {d["brand_id"]: d for d in auc_res},
+    }
+    wallet = {
+        "topup_cents": sum(d["topup_cents"] for d in wal_res),
+        "charge_cents": sum(d["charge_cents"] for d in wal_res),
+        "by_brand": {d["brand_id"]: d for d in wal_res},
+    }
+    tx_by_type: dict[str, int] = {}
+    for d in tx_res:
+        for k, v in d["by_type"].items():
+            tx_by_type[k] = tx_by_type.get(k, 0) + v
+    transactions = {
+        "count": sum(d["count"] for d in tx_res),
+        "gmv_cents": sum(d["gmv_cents"] for d in tx_res),
+        "by_brand": {d["brand_id"]: {"count": d["count"], "gmv_cents": d["gmv_cents"]} for d in tx_res},
+        "by_type": tx_by_type,
+    }
+    reservations = {
+        "created": sum(d["created"] for d in rsv_res),
+        "honored": sum(d["honored"] for d in rsv_res),
+        "no_show": sum(d["no_show"] for d in rsv_res),
+        "by_brand": {d["brand_id"]: d for d in rsv_res},
+    }
+    compliance = {
+        "pii_writes": sum(d["pii_writes"] for d in comp_res),
+        "anomalies": sum(d["anomalies"] for d in comp_res),
+        "by_brand": {d["brand_id"]: d for d in comp_res},
+    }
+
+    result = {
+        "master_id": master_id,
+        "period": {"from_ts": from_ts, "to_ts": to_ts, "dimension": dimension},
+        "total_brands": len(brand_ids),
+        "truncated": truncated,
+        "attribution": attribution,
+        "auction": auction,
+        "wallet": wallet,
+        "transactions": {
+            **transactions,
+            # Items list intentionally omitted from the consolidated payload
+            # to keep response size bounded; use /transactions/all for items.
+        },
+        "reservations": reservations,
+        "compliance": compliance,
+        "_cached": False,
+    }
+    await _rollup_cache_set(r, master_id, cache_key, result, _ROLLUP_CACHE_TTL_MEDIUM)
+    return result
+
+
+@router.get("/{master_id}/attribution/journey/{user_id}")
+async def master_user_journey(
+    master_id: str,
+    user_id: str,
+    limit: int = 200,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """User's attribution journey across ALL master brands.
+
+    Reads the per-user journey list and projects only those events whose
+    source_brand OR target_brand sits inside the master's attached set,
+    so brands outside this corporate root never leak in.
+    """
+    await _require_master(r, master_id)
+    if limit < 1 or limit > 2000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit must be between 1 and 2000",
+        )
+
+    attached = await r.smembers(_k_master_brands(master_id))
+    event_ids = await r.lrange(f"user:{user_id}:attr_journey", 0, limit - 1)
+    events: list[dict[str, Any]] = []
+    brands_touched: set[str] = set()
+    for eid in event_ids or []:
+        ev = await r.hgetall(f"attr:{eid}") or {}
+        if not ev:
+            continue
+        src = ev.get("source_brand") or ""
+        tgt = ev.get("target_brand") or ""
+        # Only project events that touched a brand inside this master.
+        scoped = (src and src in attached) or (tgt and tgt in attached)
+        if not scoped:
+            continue
+        ts = ev.get("timestamp") or ev.get("ts") or 0
+        try:
+            ts_f = float(ts)
+        except (TypeError, ValueError):
+            ts_f = 0.0
+        marker = tgt if tgt in attached else src
+        events.append(
+            {
+                "event_id": eid,
+                "ts": ts_f,
+                "event_type": ev.get("event_type") or ev.get("type"),
+                "source_brand": src or None,
+                "target_brand": tgt or None,
+                "brand_marker": marker,
+                "campaign_id": ev.get("campaign_id"),
+                "revenue_cents": int(ev.get("revenue_cents") or 0)
+                if ev.get("revenue_cents") else None,
+            }
+        )
+        if marker:
+            brands_touched.add(marker)
+    events.sort(key=lambda e: e["ts"])
+
+    return {
+        "master_id": master_id,
+        "user_id": user_id,
+        "count": len(events),
+        "brands_touched": sorted(brands_touched),
+        "events": events,
+    }
+
+
+@router.get("/{master_id}/revenue/by-brand")
+async def revenue_by_brand_timeseries(
+    master_id: str,
+    from_ts: float | None = None,
+    to_ts: float | None = None,
+    period: Literal["daily", "monthly"] = "daily",
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Time-series revenue per brand inside the master."""
+    await _require_master(r, master_id)
+    from_ts, to_ts = _ts_window(from_ts, to_ts)
+
+    cache_key = f"revenue:by_brand:{from_ts}:{to_ts}:{period}"
+    cached = await _rollup_cache_get(r, master_id, cache_key)
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    async def _series(brand_id: str) -> dict[str, Any]:
+        try:
+            event_ids = await r.zrangebyscore(
+                f"brand:{brand_id}:attr_incoming", from_ts, to_ts
+            )
+        except Exception:  # noqa: BLE001
+            event_ids = []
+        buckets: dict[str, int] = {}
+        for ev_id in event_ids or []:
+            ev = await r.hgetall(f"attr:{ev_id}") or {}
+            if not ev:
+                continue
+            if ev.get("event_type") != "conversion" and ev.get("is_conversion") not in (
+                "1", "true", True
+            ):
+                continue
+            try:
+                rev = int(ev.get("revenue_cents") or ev.get("amount") or 0)
+            except (TypeError, ValueError):
+                rev = 0
+            try:
+                ts = float(ev.get("timestamp") or 0)
+            except (TypeError, ValueError):
+                ts = 0.0
+            bucket = _period_bucket(ts or from_ts, period)
+            buckets[bucket] = buckets.get(bucket, 0) + rev
+        return {"brand_id": brand_id, "series": buckets}
+
+    per_brand = await asyncio.gather(*[_series(b) for b in brand_ids])
+
+    # Time axis = union of bucket labels.
+    axis: set[str] = set()
+    for ent in per_brand:
+        axis.update(ent["series"].keys())
+    sorted_axis = sorted(axis)
+
+    series_payload = []
+    for ent in per_brand:
+        series_payload.append(
+            {
+                "brand_id": ent["brand_id"],
+                "points": [
+                    {"bucket": b, "revenue_cents": ent["series"].get(b, 0)}
+                    for b in sorted_axis
+                ],
+                "total_revenue_cents": sum(ent["series"].values()),
+            }
+        )
+
+    result = {
+        "master_id": master_id,
+        "period": period,
+        "from_ts": from_ts,
+        "to_ts": to_ts,
+        "axis": sorted_axis,
+        "series": series_payload,
+        "_cached": False,
+    }
+    await _rollup_cache_set(r, master_id, cache_key, result, _ROLLUP_CACHE_TTL_MEDIUM)
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Compliance rollup
+# ─────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/{master_id}/compliance/audit")
+async def compliance_audit_rollup(
+    master_id: str,
+    from_ts: int | None = None,
+    to_ts: int | None = None,
+    action: str | None = None,
+    severity: str | None = None,
+    limit: int = 500,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Merged PII audit trail across all attached brands.
+
+    Each entry is annotated with `brand_id` so HQ can route follow-ups
+    to the right outlet. Sorted reverse-chronological so the freshest
+    incidents bubble up.
+    """
+    await _require_master(r, master_id)
+    if limit < 1 or limit > 5000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit must be between 1 and 5000",
+        )
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    async def _read(brand_id: str) -> list[dict[str, Any]]:
+        try:
+            raws = await r.lrange(
+                f"compliance:pii_audit:brand:{brand_id}", 0, 2000
+            )
+        except Exception:  # noqa: BLE001
+            raws = []
+        out: list[dict[str, Any]] = []
+        for raw in raws or []:
+            try:
+                e = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            ts = e.get("ts", 0)
+            try:
+                ts_i = int(float(ts))
+            except (TypeError, ValueError):
+                ts_i = 0
+            if from_ts is not None and ts_i < from_ts:
+                continue
+            if to_ts is not None and ts_i > to_ts:
+                continue
+            if action and e.get("action") != action:
+                continue
+            if severity and e.get("severity") != severity:
+                continue
+            e["brand_id"] = brand_id
+            out.append(e)
+        return out
+
+    per_brand = await asyncio.gather(*[_read(b) for b in brand_ids])
+    merged: list[dict[str, Any]] = []
+    for sub in per_brand:
+        merged.extend(sub)
+    merged.sort(key=lambda e: e.get("ts", 0), reverse=True)
+    sliced = merged[:limit]
+
+    return {
+        "master_id": master_id,
+        "count": len(sliced),
+        "total_matched": len(merged),
+        "filters": {
+            "from_ts": from_ts,
+            "to_ts": to_ts,
+            "action": action,
+            "severity": severity,
+        },
+        "entries": sliced,
+    }
+
+
+@router.get("/{master_id}/compliance/dashboard")
+async def compliance_dashboard_rollup(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Aggregate of every brand-level compliance dashboard.
+
+    Sums 30-day PII counters, open anomalies, resolved anomalies, and
+    averages the consent-compliance rate (weighted by tracked_users).
+    Per-brand breakdowns ride along.
+    """
+    await _require_master(r, master_id)
+
+    cache_key = "compliance:dashboard"
+    cached = await _rollup_cache_get(r, master_id, cache_key)
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    # Import lazily to avoid pulling compliance imports at module load.
+    from app.routers.compliance import get_brand_compliance_dashboard
+
+    async def _one(bid: str) -> dict[str, Any]:
+        try:
+            return await get_brand_compliance_dashboard(bid, r=r)
+        except HTTPException:
+            return {"brand_id": bid, "error": "fetch_failed"}
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "compliance dashboard fetch failed brand=%s", bid, exc_info=True
+            )
+            return {"brand_id": bid, "error": "fetch_failed"}
+
+    per_brand = await asyncio.gather(*[_one(b) for b in brand_ids])
+
+    totals = {
+        "total_pii_writes_30d": 0,
+        "total_pii_reads_30d": 0,
+        "anomalies_open": 0,
+        "anomalies_resolved": 0,
+        "tracked_users": 0,
+        "consenting_users": 0,
+        "document_signatures_count": 0,
+    }
+    for d in per_brand:
+        if "error" in d:
+            continue
+        for k in totals:
+            try:
+                totals[k] += int(d.get(k, 0) or 0)
+            except (TypeError, ValueError):
+                pass
+
+    consent_rate = (
+        totals["consenting_users"] / totals["tracked_users"]
+        if totals["tracked_users"]
+        else 0.0
+    )
+
+    result = {
+        "master_id": master_id,
+        "brand_count": len(brand_ids),
+        "totals": totals,
+        "consent_compliance_rate": round(consent_rate, 4),
+        "by_brand": per_brand,
+        "_cached": False,
+    }
+    await _rollup_cache_set(r, master_id, cache_key, result, _ROLLUP_CACHE_TTL_MEDIUM)
+    return result
+
+
+@router.get("/{master_id}/compliance/anomalies-rolled-up")
+async def compliance_anomalies_rolled_up(
+    master_id: str,
+    from_ts: int | None = None,
+    to_ts: int | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Cross-brand anomalies deduplicated by (user, field, day).
+
+    Same user repeatedly hammered the same PII field across multiple
+    stores in the same day collapses to one anomaly group with the
+    brands involved listed so HQ can see network-wide patterns.
+    """
+    await _require_master(r, master_id)
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    async def _read(brand_id: str) -> list[dict[str, Any]]:
+        try:
+            raws = await r.lrange(
+                f"compliance:pii_anomaly_log:brand:{brand_id}", 0, 5000
+            )
+        except Exception:  # noqa: BLE001
+            raws = []
+        out: list[dict[str, Any]] = []
+        for raw in raws or []:
+            try:
+                e = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            ts = e.get("ts", 0)
+            try:
+                ts_i = int(float(ts))
+            except (TypeError, ValueError):
+                ts_i = 0
+            if from_ts is not None and ts_i < from_ts:
+                continue
+            if to_ts is not None and ts_i > to_ts:
+                continue
+            e["brand_id"] = brand_id
+            out.append(e)
+        return out
+
+    per_brand = await asyncio.gather(*[_read(b) for b in brand_ids])
+
+    # Dedup by (user_id, field, day_bucket).
+    groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for sub in per_brand:
+        for e in sub:
+            uid = e.get("user_id", "?")
+            field = e.get("field", "?")
+            try:
+                day = datetime.fromtimestamp(
+                    float(e.get("ts", 0)), tz=timezone.utc
+                ).strftime("%Y-%m-%d")
+            except (TypeError, ValueError, OSError):
+                day = "?"
+            key = (uid, field, day)
+            g = groups.get(key)
+            if g is None:
+                g = {
+                    "user_id": uid,
+                    "field": field,
+                    "day": day,
+                    "count": 0,
+                    "brands": [],
+                    "max_severity": "low",
+                    "first_ts": e.get("ts"),
+                    "last_ts": e.get("ts"),
+                }
+                groups[key] = g
+            g["count"] += 1
+            bid = e.get("brand_id", "?")
+            if bid not in g["brands"]:
+                g["brands"].append(bid)
+            sev_rank = {"low": 1, "medium": 2, "high": 3}
+            if sev_rank.get(e.get("severity", "low"), 1) > sev_rank.get(
+                g["max_severity"], 1
+            ):
+                g["max_severity"] = e.get("severity", "low")
+            try:
+                ts_v = float(e.get("ts", 0))
+                if not g["first_ts"] or ts_v < float(g["first_ts"]):
+                    g["first_ts"] = ts_v
+                if not g["last_ts"] or ts_v > float(g["last_ts"]):
+                    g["last_ts"] = ts_v
+            except (TypeError, ValueError):
+                pass
+
+    grouped = sorted(
+        groups.values(),
+        key=lambda g: (-g["count"], -len(g["brands"])),
+    )
+    return {
+        "master_id": master_id,
+        "group_count": len(grouped),
+        "anomalies": grouped,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# XP / tier rollup
+# ─────────────────────────────────────────────────────────────────────────
+
+
+_VALID_XP_DISTRIBUTIONS = {"equal", "by_recent_activity"}
+
+
+class MasterXPGrantBody(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=128)
+    total_xp: int = Field(..., gt=0, le=1_000_000)
+    distribution: str = Field("equal", min_length=1, max_length=128)
+
+    @field_validator("distribution")
+    @classmethod
+    def _dist_shape(cls, v: str):
+        if v in _VALID_XP_DISTRIBUTIONS:
+            return v
+        if v.startswith("to_brand_id_") and len(v) > len("to_brand_id_"):
+            return v
+        raise ValueError(
+            "distribution must be 'equal', 'by_recent_activity', or 'to_brand_id_<bid>'"
+        )
+
+
+@router.get("/{master_id}/user/{user_id}/xp-breakdown")
+async def master_user_xp_breakdown(
+    master_id: str,
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """User XP across all master brands.
+
+    Reads the existing global `user:{uid}:xp` counter as `total_xp`, then
+    attempts to attribute it across brands using per-brand activity
+    markers (last attribution event ts). When no per-brand attribution
+    data exists the breakdown returns only the global total.
+    """
+    await _require_master(r, master_id)
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    try:
+        total_xp = int(await r.get(f"user:{user_id}:xp") or 0)
+    except Exception:  # noqa: BLE001
+        total_xp = 0
+
+    async def _per(bid: str) -> dict[str, Any]:
+        # Optional per-brand xp counter if any caller has begun writing it.
+        try:
+            xp = int(await r.get(f"user:{user_id}:brand:{bid}:xp") or 0)
+        except Exception:  # noqa: BLE001
+            xp = 0
+        # Last activity in the brand: max ts on brand:{bid}:attr_incoming
+        # for events with this user.
+        last_ts = 0.0
+        try:
+            event_ids = await r.zrevrangebyscore(
+                f"brand:{bid}:attr_incoming", "+inf", "-inf", start=0, num=200
+            )
+        except Exception:  # noqa: BLE001
+            event_ids = []
+        for eid in event_ids or []:
+            ev = await r.hgetall(f"attr:{eid}") or {}
+            if ev.get("user_id") == user_id:
+                try:
+                    last_ts = max(last_ts, float(ev.get("timestamp") or 0))
+                except (TypeError, ValueError):
+                    pass
+                break  # zrevrangebyscore is desc — first match is freshest.
+        return {"brand_id": bid, "xp": xp, "last_activity": last_ts or None}
+
+    per_brand = await asyncio.gather(*[_per(b) for b in brand_ids])
+
+    sum_per_brand = sum(d["xp"] for d in per_brand)
+    aggregation_method = "per_brand_counter" if sum_per_brand > 0 else "global_only"
+
+    return {
+        "kid": user_id,
+        "master_id": master_id,
+        "total_xp": total_xp,
+        "by_brand": per_brand,
+        "aggregation_method": aggregation_method,
+    }
+
+
+@router.post("/{master_id}/xp/grant", status_code=status.HTTP_201_CREATED)
+async def master_xp_grant(
+    master_id: str,
+    body: MasterXPGrantBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Distribute a chunk of XP across the master's brands.
+
+    Distribution policies:
+      * equal               — split evenly across all attached brands.
+      * by_recent_activity  — weighted by per-brand activity in last 30d.
+      * to_brand_id_<bid>   — drop the entire grant onto a single brand.
+
+    Per-brand XP is written to `user:{uid}:brand:{bid}:xp` AND the global
+    `user:{uid}:xp` counter (so existing leaderboards keep working).
+    """
+    await _require_master(r, master_id)
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    if not brand_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="master has no attached brands",
+        )
+
+    shares: dict[str, int] = {}
+    if body.distribution == "equal":
+        base = body.total_xp // len(brand_ids)
+        rem = body.total_xp - base * len(brand_ids)
+        for i, bid in enumerate(brand_ids):
+            shares[bid] = base + (1 if i < rem else 0)
+    elif body.distribution == "by_recent_activity":
+        now = time.time()
+        from_ts = now - 30 * 86400
+        weights: dict[str, int] = {}
+        for bid in brand_ids:
+            try:
+                cnt = await r.zcount(
+                    f"brand:{bid}:attr_incoming", from_ts, "+inf"
+                )
+            except Exception:  # noqa: BLE001
+                cnt = 0
+            weights[bid] = int(cnt or 0)
+        total_w = sum(weights.values())
+        if total_w == 0:
+            # Fall back to equal if no recent activity anywhere.
+            base = body.total_xp // len(brand_ids)
+            rem = body.total_xp - base * len(brand_ids)
+            for i, bid in enumerate(brand_ids):
+                shares[bid] = base + (1 if i < rem else 0)
+        else:
+            running = 0
+            ordered = sorted(brand_ids)
+            for bid in ordered[:-1]:
+                s = int(round(body.total_xp * (weights[bid] / total_w)))
+                shares[bid] = s
+                running += s
+            shares[ordered[-1]] = body.total_xp - running
+    else:
+        # to_brand_id_<bid>
+        target = body.distribution[len("to_brand_id_"):]
+        if target not in brand_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"brand_id={target} not attached to master={master_id}",
+            )
+        shares = {bid: 0 for bid in brand_ids}
+        shares[target] = body.total_xp
+
+    grant_id = f"mxg_{uuid4().hex[:20]}"
+    now = _now_iso()
+    pipe = r.pipeline()
+    for bid, amt in shares.items():
+        if amt > 0:
+            pipe.incrby(f"user:{body.user_id}:brand:{bid}:xp", amt)
+    pipe.incrby(f"user:{body.user_id}:xp", body.total_xp)
+    pipe.hset(
+        f"master:{master_id}:xp_grants:{grant_id}",
+        mapping={
+            "grant_id": grant_id,
+            "user_id": body.user_id,
+            "total_xp": body.total_xp,
+            "distribution": body.distribution,
+            "shares_json": json.dumps(shares),
+            "created_at": now,
+        },
+    )
+    pipe.expire(f"master:{master_id}:xp_grants:{grant_id}", 90 * 86400)
+    await pipe.execute()
+
+    logger.info(
+        "master_xp_grant master=%s user=%s total=%d distribution=%s",
+        master_id,
+        body.user_id,
+        body.total_xp,
+        body.distribution,
+    )
+    return {
+        "grant_id": grant_id,
+        "master_id": master_id,
+        "user_id": body.user_id,
+        "total_xp": body.total_xp,
+        "distribution": body.distribution,
+        "shares": shares,
+        "created_at": now,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Audience rollup
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class CloneAudienceBody(BaseModel):
+    source_brand_id: str = Field(..., min_length=1, max_length=128)
+    audience_id: str = Field(..., min_length=1, max_length=128)
+
+
+@router.get("/{master_id}/audiences/cross-brand")
+async def audiences_cross_brand(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """List audiences that span multiple brands in the master.
+
+    For chain-level marketing we surface every audience whose member set
+    overlaps with users that are also active on at least one other
+    attached brand. Empty/missing audiences are skipped.
+    """
+    await _require_master(r, master_id)
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    audiences: dict[str, dict[str, Any]] = {}
+    for bid in brand_ids:
+        try:
+            aids = await r.smembers(f"brand:{bid}:audiences")
+        except Exception:  # noqa: BLE001
+            aids = set()
+        for aid in aids or []:
+            try:
+                meta = await r.hgetall(f"audience:{aid}") or {}
+            except Exception:  # noqa: BLE001
+                meta = {}
+            entry = audiences.setdefault(
+                aid,
+                {
+                    "audience_id": aid,
+                    "name": meta.get("name"),
+                    "brands": [],
+                    "size": 0,
+                },
+            )
+            if bid not in entry["brands"]:
+                entry["brands"].append(bid)
+            try:
+                size = await r.scard(f"audience:{aid}:members")
+            except Exception:  # noqa: BLE001
+                size = 0
+            entry["size"] = max(entry["size"], int(size or 0))
+
+    spanning = [a for a in audiences.values() if len(a["brands"]) >= 2]
+    spanning.sort(key=lambda a: (-len(a["brands"]), -a["size"]))
+
+    return {
+        "master_id": master_id,
+        "count": len(spanning),
+        "audiences": spanning,
+    }
+
+
+@router.post(
+    "/{master_id}/audiences/clone-to-all-brands",
+    status_code=status.HTTP_201_CREATED,
+)
+async def clone_audience_to_all_brands(
+    master_id: str,
+    body: CloneAudienceBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Clone an audience to every attached brand.
+
+    The source audience hash is duplicated under a new audience_id per
+    target brand, members are SUNIONSTORE'd over, and the new audience
+    is indexed in each brand's `brand:{bid}:audiences` SET. Source is
+    untouched. A clone for the source brand itself is skipped (it's
+    already there).
+    """
+    await _require_master(r, master_id)
+    attached = await r.smembers(_k_master_brands(master_id))
+    if body.source_brand_id not in attached:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"source_brand_id={body.source_brand_id} not attached to master",
+        )
+
+    source_meta = await r.hgetall(f"audience:{body.audience_id}")
+    if not source_meta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"audience_id={body.audience_id} not found",
+        )
+
+    targets = sorted(b for b in attached if b != body.source_brand_id)
+    cloned: list[dict[str, Any]] = []
+    now = _now_iso()
+
+    for bid in targets:
+        new_aid = f"aud_{uuid4().hex[:20]}"
+        new_meta = dict(source_meta)
+        new_meta["audience_id"] = new_aid
+        new_meta["brand_id"] = bid
+        new_meta["cloned_from"] = body.audience_id
+        new_meta["cloned_at"] = now
+        # Persist hash + indices + members.
+        pipe = r.pipeline()
+        pipe.hset(f"audience:{new_aid}", mapping=new_meta)
+        pipe.sadd(f"brand:{bid}:audiences", new_aid)
+        # Copy members in one Redis-side op.
+        pipe.sunionstore(
+            f"audience:{new_aid}:members",
+            [f"audience:{body.audience_id}:members"],
+        )
+        await pipe.execute()
+        try:
+            size = await r.scard(f"audience:{new_aid}:members")
+        except Exception:  # noqa: BLE001
+            size = 0
+        cloned.append(
+            {"brand_id": bid, "audience_id": new_aid, "size": int(size or 0)}
+        )
+
+    logger.info(
+        "master_audience_clone master=%s source=%s targets=%d",
+        master_id,
+        body.audience_id,
+        len(cloned),
+    )
+    return {
+        "master_id": master_id,
+        "source_audience_id": body.audience_id,
+        "source_brand_id": body.source_brand_id,
+        "cloned": cloned,
+        "count": len(cloned),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Inventory / commerce rollup
+# ─────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/{master_id}/inventory/cross-brand")
+async def inventory_cross_brand(
+    master_id: str,
+    limit_per_brand: int = 50,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Listings / products across attached brands.
+
+    Pages each brand's active-listings ZSET (score=created_at, newest
+    first) and rolls them into a single list keyed by brand. Designed
+    for marketplace masters with a global storefront pane.
+    """
+    await _require_master(r, master_id)
+    if limit_per_brand < 1 or limit_per_brand > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit_per_brand must be between 1 and 500",
+        )
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    async def _per(bid: str) -> dict[str, Any]:
+        try:
+            lids = await r.zrevrange(
+                f"brand:{bid}:listings:active", 0, limit_per_brand - 1
+            )
+        except Exception:  # noqa: BLE001
+            lids = []
+        items: list[dict[str, Any]] = []
+        for lid in lids or []:
+            try:
+                listing = await r.hgetall(f"listing:{lid}")
+            except Exception:  # noqa: BLE001
+                listing = {}
+            if not listing:
+                continue
+            listing["listing_id"] = lid
+            listing["brand_id"] = bid
+            items.append(listing)
+        return {"brand_id": bid, "count": len(items), "items": items}
+
+    per_brand = await asyncio.gather(*[_per(b) for b in brand_ids])
+    total = sum(d["count"] for d in per_brand)
+    return {
+        "master_id": master_id,
+        "brand_count": len(brand_ids),
+        "total_listings": total,
+        "by_brand": per_brand,
+    }
+
+
+@router.get("/{master_id}/transactions/all")
+async def transactions_all(
+    master_id: str,
+    from_ts: float | None = None,
+    to_ts: float | None = None,
+    type: str | None = None,  # noqa: A002 — query param name is fixed
+    limit: int = 500,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Merged transaction stream from all attached brands."""
+    await _require_master(r, master_id)
+    if limit < 1 or limit > 5000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit must be between 1 and 5000",
+        )
+
+    type_filter = type
+    if type_filter and type_filter not in {"topup", "charge", "refund"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="type must be one of topup, charge, refund",
+        )
+
+    from_ts, to_ts = _ts_window(from_ts, to_ts)
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    per_brand = await asyncio.gather(
+        *[_fetch_brand_transactions(r, b, from_ts, to_ts, type_filter) for b in brand_ids]
+    )
+
+    merged: list[dict[str, Any]] = []
+    for d in per_brand:
+        merged.extend(d["items"])
+    merged.sort(key=lambda e: e.get("ts", 0), reverse=True)
+    sliced = merged[:limit]
+
+    by_type: dict[str, int] = {}
+    for d in per_brand:
+        for k, v in d["by_type"].items():
+            by_type[k] = by_type.get(k, 0) + v
+
+    return {
+        "master_id": master_id,
+        "from_ts": from_ts,
+        "to_ts": to_ts,
+        "count": len(sliced),
+        "total_matched": len(merged),
+        "totals": {
+            "gmv_cents": sum(d["gmv_cents"] for d in per_brand),
+            "count": sum(d["count"] for d in per_brand),
+            "by_type": by_type,
+        },
+        "transactions": sliced,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Health and alerts
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _classify_severity(metric: str, value: float) -> str:
+    """Bucket a metric into low/medium/high severity for the issues list."""
+    if metric == "balance_low" and value < 1000_00:  # < $1000
+        return "high" if value < 100_00 else "medium"
+    if metric == "low_qs" and value < 5.0:
+        return "high" if value < 3.0 else "medium"
+    if metric == "low_ctr" and value < 0.01:
+        return "medium"
+    return "low"
+
+
+@router.get("/{master_id}/health/check")
+async def master_health_check(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Comprehensive health view — any brand issue bubbles up to master.
+
+    Walks every attached brand and surfaces:
+      * low balance (wallet_balance < $1k)
+      * low quality score (avg_qs < 5)
+      * low ctr (< 1%)
+      * raw health_alerts entries from `brand:{bid}:health_alerts`
+    Overall status is the worst of {healthy, degraded, critical}, where
+    any 'high'-severity issue → critical, any 'medium' → degraded.
+    """
+    await _require_master(r, master_id)
+
+    cache_key = "health:check"
+    cached = await _rollup_cache_get(r, master_id, cache_key)
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    async def _per(bid: str) -> dict[str, Any]:
+        try:
+            balance = int(await r.get(f"wallet:{bid}:balance") or 0)
+        except Exception:  # noqa: BLE001
+            balance = 0
+        try:
+            stats = await r.hgetall(f"brand:{bid}:auction_stats") or {}
+        except Exception:  # noqa: BLE001
+            stats = {}
+        try:
+            avg_qs = float(stats.get("avg_qs", 0) or 0)
+        except (TypeError, ValueError):
+            avg_qs = 0.0
+        try:
+            impressions = int(stats.get("impressions", 0) or 0)
+            clicks = int(stats.get("clicks", 0) or 0)
+            conversions = int(stats.get("conversions", 0) or 0)
+        except (TypeError, ValueError):
+            impressions = clicks = conversions = 0
+        ctr = (clicks / impressions) if impressions else 0.0
+        cvr = (conversions / clicks) if clicks else 0.0
+
+        # Raw alerts feed from any subsystem that emits to brand:{bid}:health_alerts.
+        raw_alerts: list[dict[str, Any]] = []
+        try:
+            raws = await r.lrange(f"brand:{bid}:health_alerts", 0, -1)
+        except Exception:  # noqa: BLE001
+            raws = []
+        for raw in raws or []:
+            try:
+                a = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(a, dict):
+                a.setdefault("brand_id", bid)
+                raw_alerts.append(a)
+
+        return {
+            "brand_id": bid,
+            "balance_cents": balance,
+            "avg_qs": avg_qs,
+            "ctr": ctr,
+            "cvr": cvr,
+            "impressions": impressions,
+            "raw_alerts": raw_alerts,
+        }
+
+    per_brand = await asyncio.gather(*[_per(b) for b in brand_ids])
+
+    issues: list[dict[str, Any]] = []
+    cohort_qs: list[float] = []
+    cohort_ctr: list[float] = []
+    cohort_cvr: list[float] = []
+
+    for d in per_brand:
+        if d["impressions"] > 0:
+            cohort_qs.append(d["avg_qs"])
+            cohort_ctr.append(d["ctr"])
+            cohort_cvr.append(d["cvr"])
+        if d["balance_cents"] < 1000_00:
+            issues.append(
+                {
+                    "brand_id": d["brand_id"],
+                    "type": "low_balance",
+                    "severity": _classify_severity("balance_low", d["balance_cents"]),
+                    "message": f"balance={d['balance_cents']/100:.2f}",
+                }
+            )
+        if d["impressions"] >= 100 and d["avg_qs"] < 5.0:
+            issues.append(
+                {
+                    "brand_id": d["brand_id"],
+                    "type": "low_quality_score",
+                    "severity": _classify_severity("low_qs", d["avg_qs"]),
+                    "message": f"avg_qs={d['avg_qs']:.2f}",
+                }
+            )
+        if d["impressions"] >= 100 and d["ctr"] < 0.01:
+            issues.append(
+                {
+                    "brand_id": d["brand_id"],
+                    "type": "low_ctr",
+                    "severity": _classify_severity("low_ctr", d["ctr"]),
+                    "message": f"ctr={d['ctr']:.4f}",
+                }
+            )
+        for a in d["raw_alerts"]:
+            issues.append(
+                {
+                    "brand_id": d["brand_id"],
+                    "type": a.get("type", "alert"),
+                    "severity": a.get("severity", "low"),
+                    "message": a.get("message", ""),
+                }
+            )
+
+    has_critical = any(i["severity"] == "high" for i in issues)
+    has_degraded = any(i["severity"] == "medium" for i in issues)
+    overall = (
+        "critical" if has_critical else ("degraded" if has_degraded else "healthy")
+    )
+
+    def _avg(xs: list[float]) -> float:
+        return sum(xs) / len(xs) if xs else 0.0
+
+    cohort_size = len(cohort_qs)
+    healthy_brands = sum(
+        1
+        for d in per_brand
+        if not any(i["brand_id"] == d["brand_id"] and i["severity"] in ("medium", "high") for i in issues)
+    )
+    cohort_health = (healthy_brands / len(per_brand)) if per_brand else 1.0
+
+    result = {
+        "master_id": master_id,
+        "overall_status": overall,
+        "issues": issues,
+        "metrics": {
+            "avg_qs": round(_avg(cohort_qs), 4),
+            "ctr": round(_avg(cohort_ctr), 6),
+            "conversion_rate": round(_avg(cohort_cvr), 6),
+            "cohort_health": round(cohort_health, 4),
+            "cohort_size": cohort_size,
+        },
+        "brand_count": len(brand_ids),
+        "_cached": False,
+    }
+    await _rollup_cache_set(r, master_id, cache_key, result, _ROLLUP_CACHE_TTL_SHORT)
+    return result
+
+
+@router.get("/{master_id}/alerts")
+async def master_alerts(
+    master_id: str,
+    severity: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Cross-brand alerts (budget exhaustion, anomalies, fraud)."""
+    await _require_master(r, master_id)
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    alerts: list[dict[str, Any]] = []
+
+    async def _gather_brand(bid: str) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        # 1) raw health_alerts list
+        try:
+            raws = await r.lrange(f"brand:{bid}:health_alerts", 0, -1)
+        except Exception:  # noqa: BLE001
+            raws = []
+        for raw in raws or []:
+            try:
+                a = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(a, dict):
+                a.setdefault("brand_id", bid)
+                a.setdefault("category", "health")
+                out.append(a)
+        # 2) budget exhaustion — balance vs daily_budget
+        try:
+            balance = int(await r.get(f"wallet:{bid}:balance") or 0)
+            daily = int(await r.get(f"wallet:{bid}:daily_budget") or 0)
+        except Exception:  # noqa: BLE001
+            balance, daily = 0, 0
+        if daily and balance <= daily:
+            out.append(
+                {
+                    "brand_id": bid,
+                    "category": "budget",
+                    "type": "budget_exhausted",
+                    "severity": "high" if balance == 0 else "medium",
+                    "message": f"balance={balance} <= daily_budget={daily}",
+                }
+            )
+        # 3) fraud signals — recent entries
+        try:
+            fr = await r.lrange(f"brand:{bid}:fraud_signals", 0, 20)
+        except Exception:  # noqa: BLE001
+            fr = []
+        for raw in fr or []:
+            try:
+                a = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(a, dict):
+                a["brand_id"] = bid
+                a.setdefault("category", "fraud")
+                a.setdefault("severity", a.get("severity", "medium"))
+                out.append(a)
+        # 4) compliance anomalies (last day)
+        try:
+            anom_raws = await r.lrange(
+                f"compliance:pii_anomaly_log:brand:{bid}", 0, 100
+            )
+        except Exception:  # noqa: BLE001
+            anom_raws = []
+        cutoff = time.time() - 86400
+        for raw in anom_raws or []:
+            try:
+                e = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            try:
+                ts_v = float(e.get("ts", 0))
+            except (TypeError, ValueError):
+                ts_v = 0.0
+            if ts_v < cutoff:
+                continue
+            out.append(
+                {
+                    "brand_id": bid,
+                    "category": "compliance",
+                    "type": "pii_anomaly",
+                    "severity": e.get("severity", "low"),
+                    "message": (
+                        f"user={e.get('user_id', '?')} field={e.get('field', '?')}"
+                    ),
+                }
+            )
+        return out
+
+    per_brand = await asyncio.gather(*[_gather_brand(b) for b in brand_ids])
+    for sub in per_brand:
+        alerts.extend(sub)
+
+    if severity:
+        alerts = [a for a in alerts if a.get("severity") == severity]
+
+    sev_rank = {"high": 3, "medium": 2, "low": 1}
+    alerts.sort(key=lambda a: sev_rank.get(a.get("severity", "low"), 0), reverse=True)
+
+    return {
+        "master_id": master_id,
+        "count": len(alerts),
+        "alerts": alerts,
+    }
+
+
 # ── Public re-exports ────────────────────────────────────────────────────
 __all__ = [
     "router",

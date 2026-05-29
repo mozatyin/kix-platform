@@ -243,6 +243,11 @@ class ConversionCheckRequest(BaseModel):
     # (wedding / anniversary funnels need 30-90 days).
     impression_token: str | None = None
     campaign_id: str | None = None
+    # Optional account_id — when present, the conversion is attributed
+    # to the ACCOUNT (B2B) rather than only the single user. Buying-committee
+    # members share equal-weight credit. See /track/conversion-co for the
+    # explicit per-user weighted variant.
+    account_id: str | None = None
 
 
 class ConversionCheckResponse(BaseModel):
@@ -985,6 +990,8 @@ async def track_conversion(
                 meta["attributed_meta"] = {}
         except Exception:
             pass
+    if req.account_id:
+        meta["account_id"] = req.account_id
 
     event_id, ts = await _persist_event(
         r,
@@ -998,6 +1005,25 @@ async def track_conversion(
 
     # Idempotency record — tie order_id to event_id for replay protection.
     await r.set(idem_key, event_id, ex=EVENT_TTL_SECONDS)
+
+    # Account-level rollup. When account_id is present we index the
+    # conversion under the account journey so /attribution/account/{aid}/journey
+    # can report ABM ROI. Also share credit equally across the buying
+    # committee for downstream commission accounting.
+    if req.account_id:
+        try:
+            await _rollup_account_conversion(
+                r,
+                account_id=req.account_id,
+                event_id=event_id,
+                ts=ts,
+                amount_cents=req.amount_cents,
+            )
+        except Exception as exc:  # noqa: BLE001 — never block conversion path
+            logger.warning(
+                "account rollup failed account_id=%s err=%s",
+                req.account_id, exc,
+            )
 
     if not attributed_event:
         return ConversionCheckResponse(
@@ -2394,4 +2420,355 @@ async def brand_user_recency(
         brand_id=brand_id,
         total_users=len(days_since),
         buckets=buckets,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Co-Attribution — B2B multi-decision-maker conversions
+#
+# A B2B sale rarely has one signer. The CEO decided, the CTO greenlit the
+# tech fit, procurement actually signed. Last-touch attribution to one
+# user_id loses the buying committee. /track/conversion-co records the
+# split explicitly with caller-supplied weights, so each user's commission
+# rolls up proportionally and downstream ABM dashboards can attribute the
+# full account journey.
+# ═══════════════════════════════════════════════════════════════════════════
+
+CO_ATTRIBUTION_ROLES = {"decider", "influencer", "signer", "end_user"}
+
+
+class CoAttributionEntry(BaseModel):
+    user_id: str = Field(min_length=1)
+    role: Literal["decider", "influencer", "signer", "end_user"]
+    weight: float = Field(ge=0.0, le=1.0)
+
+
+class CoAttributionConversionRequest(BaseModel):
+    target_brand: str = Field(min_length=1)
+    order_id: str = Field(min_length=1)
+    amount_cents: int = Field(ge=0)
+    co_attribution: list[CoAttributionEntry] = Field(min_length=1)
+    account_id: str | None = None
+    source_brand: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class CoAttributionUserSplit(BaseModel):
+    user_id: str
+    role: str
+    weight: float
+    share_amount_cents: int
+    commission_cents: int
+    kix_take_cents: int
+    user_take_cents: int
+
+
+class CoAttributionConversionResponse(BaseModel):
+    attributed: bool
+    event_id: str
+    target_brand: str
+    account_id: str | None
+    total_amount_cents: int
+    total_commission_cents: int
+    total_kix_take_cents: int
+    attributed_users: list[CoAttributionUserSplit]
+
+
+WEIGHT_SUM_TOLERANCE = 1e-3
+
+
+async def _rollup_account_conversion(
+    r: aioredis.Redis,
+    *,
+    account_id: str,
+    event_id: str,
+    ts: float,
+    amount_cents: int,
+) -> None:
+    """Index a conversion under the account journey + lifetime GMV.
+
+    This is what makes ``GET /attribution/account/{aid}/journey`` work,
+    and it's what feeds ABM ROI dashboards.
+    """
+    pipe = r.pipeline(transaction=True)
+    pipe.zadd(f"account:{account_id}:attr_journey", {event_id: ts})
+    # Cap journey ZSET so a chatty account can't blow memory.
+    pipe.zremrangebyrank(f"account:{account_id}:attr_journey", 0, -1001)
+    pipe.expire(f"account:{account_id}:attr_journey", EVENT_TTL_SECONDS)
+    if amount_cents > 0:
+        pipe.incrby(f"account:{account_id}:gmv_lifetime", amount_cents)
+        pipe.hincrby(f"account:{account_id}:conversions", "count", 1)
+    await pipe.execute()
+
+
+@router.post(
+    "/track/conversion-co",
+    response_model=CoAttributionConversionResponse,
+)
+async def track_conversion_co(
+    req: CoAttributionConversionRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Records a conversion split across multiple users with weights.
+
+    The caller is responsible for choosing the weights — typically the
+    buying-committee membership and role context drives this. We enforce
+    ``Σ weights == 1`` (within 1e-3 tolerance) so commission math doesn't
+    silently double- or under-bill.
+
+    Idempotent on (target_brand, order_id) — replays return the cached
+    decision.
+    """
+    if not req.co_attribution:
+        raise HTTPException(status_code=400, detail="co_attribution_required")
+
+    # Validate roles + weights.
+    weight_sum = 0.0
+    seen_users: set[str] = set()
+    for entry in req.co_attribution:
+        if entry.role not in CO_ATTRIBUTION_ROLES:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "invalid_role", "user_id": entry.user_id},
+            )
+        if entry.user_id in seen_users:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "duplicate_user", "user_id": entry.user_id},
+            )
+        seen_users.add(entry.user_id)
+        weight_sum += entry.weight
+
+    if abs(weight_sum - 1.0) > WEIGHT_SUM_TOLERANCE:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "weights_must_sum_to_one", "weight_sum": weight_sum},
+        )
+
+    # Consent — every named user must have cross_brand_tracking.
+    for entry in req.co_attribution:
+        await _enforce_consent(entry.user_id, r, endpoint="track_conversion_co")
+
+    # Idempotency.
+    idem_key = f"attr:order_co:{req.target_brand}:{req.order_id}"
+    existing = await r.get(idem_key)
+    if existing:
+        cached = await r.get(f"attr:co_result:{existing}")
+        if cached:
+            try:
+                return CoAttributionConversionResponse(**json.loads(cached))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    now = _now()
+    meta = dict(req.context or {})
+    meta["order_id"] = req.order_id
+    meta["co_attribution"] = [
+        {"user_id": e.user_id, "role": e.role, "weight": e.weight}
+        for e in req.co_attribution
+    ]
+    if req.account_id:
+        meta["account_id"] = req.account_id
+
+    # Persist a single conversion event keyed off the *first* user (the
+    # primary record). Per-user splits live in meta so any dashboard can
+    # reconstruct the full picture.
+    primary_user = req.co_attribution[0].user_id
+    event_id, ts = await _persist_event(
+        r,
+        stage=STAGE_CONVERSION,
+        user_id=primary_user,
+        source_brand=req.source_brand,
+        target_brand=req.target_brand,
+        value_cents=req.amount_cents,
+        meta=meta,
+    )
+
+    # Per-user split: each user gets pro-rated commission. Take rate is
+    # derived from the *target* brand's tier — co-attribution is an
+    # account-level concept, not a brand-acquisition one.
+    target_tier = await _pick_take_rate_tier(r, req.target_brand)
+    commission_rate = target_tier["commission_rate"]
+    kix_fraction = target_tier["kix_take"]
+
+    splits: list[CoAttributionUserSplit] = []
+    total_commission = 0
+    total_kix = 0
+    pipe = r.pipeline(transaction=True)
+    for entry in req.co_attribution:
+        share = int(round(req.amount_cents * entry.weight))
+        commission = int(round(share * commission_rate))
+        kix_cents = int(round(commission * kix_fraction))
+        user_cents = commission - kix_cents
+        total_commission += commission
+        total_kix += kix_cents
+
+        splits.append(CoAttributionUserSplit(
+            user_id=entry.user_id,
+            role=entry.role,
+            weight=round(entry.weight, 6),
+            share_amount_cents=share,
+            commission_cents=commission,
+            kix_take_cents=kix_cents,
+            user_take_cents=user_cents,
+        ))
+
+        # Per-user attribution rollup. Keyed by *user* (not brand) since
+        # this is the user's "earned commission" ledger entry.
+        pipe.hincrby(f"user:{entry.user_id}:co_attr_earned", "cents", user_cents)
+        pipe.hincrby(
+            f"user:{entry.user_id}:co_attr_earned", f"role:{entry.role}_cents",
+            user_cents,
+        )
+        # Also index the event under the user's journey so cross-checks work.
+        pipe.lpush(f"user:{entry.user_id}:attr_journey", event_id)
+        pipe.ltrim(f"user:{entry.user_id}:attr_journey", 0, JOURNEY_MAX_LEN - 1)
+        pipe.expire(f"user:{entry.user_id}:attr_journey", EVENT_TTL_SECONDS)
+
+    # Target-brand commission accounting.
+    pipe.hincrby("kix:commission_collected", "cents", total_kix)
+    pipe.hincrby(
+        f"brand:{req.target_brand}:commission_paid", "cents", total_commission,
+    )
+    await pipe.execute()
+
+    # Account-level journey rollup.
+    if req.account_id:
+        await _rollup_account_conversion(
+            r,
+            account_id=req.account_id,
+            event_id=event_id,
+            ts=ts,
+            amount_cents=req.amount_cents,
+        )
+
+    resp = CoAttributionConversionResponse(
+        attributed=True,
+        event_id=event_id,
+        target_brand=req.target_brand,
+        account_id=req.account_id,
+        total_amount_cents=req.amount_cents,
+        total_commission_cents=total_commission,
+        total_kix_take_cents=total_kix,
+        attributed_users=splits,
+    )
+
+    # Cache the response for idempotent replay.
+    await r.set(idem_key, event_id, ex=EVENT_TTL_SECONDS)
+    await r.set(
+        f"attr:co_result:{event_id}", resp.json(), ex=EVENT_TTL_SECONDS,
+    )
+    _ = now  # quell linter — we use ts from _persist_event for ordering
+    return resp
+
+
+class AccountJourneyEntry(BaseModel):
+    event_id: str
+    stage: str
+    timestamp: float
+    user_id: str | None = None
+    source_brand: str | None = None
+    target_brand: str | None = None
+    value_cents: int = 0
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class AccountJourneyResponse(BaseModel):
+    account_id: str
+    count: int
+    total_gmv_cents: int
+    member_count: int
+    entries: list[AccountJourneyEntry]
+
+
+@router.get(
+    "/account/{account_id}/journey",
+    response_model=AccountJourneyResponse,
+)
+async def account_journey(
+    account_id: str,
+    limit: int = Query(default=200, ge=1, le=1000),
+    include_member_events: bool = Query(default=True),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """All attribution events tied to an account.
+
+    Sources:
+      1. Events that explicitly carried ``account_id`` (rolled into
+         ``account:{aid}:attr_journey``).
+      2. (When include_member_events=True) every member's individual
+         journey, merged + deduped — supports the "this exec saw 3 ads
+         before procurement signed" ABM narrative.
+    """
+    # Resolve account members via the accounts router helper (lazy import
+    # to avoid cycles at module load).
+    try:
+        from app.routers.accounts import get_account_members  # type: ignore
+    except ImportError:
+        get_account_members = None  # type: ignore[assignment]
+
+    # 1) Direct account journey
+    direct_ids = await r.zrevrange(
+        f"account:{account_id}:attr_journey", 0, limit - 1,
+    )
+    seen: set[str] = set(direct_ids) if direct_ids else set()
+    event_ids: list[str] = list(direct_ids) if direct_ids else []
+
+    member_count = 0
+    if include_member_events and get_account_members is not None:
+        members = await get_account_members(r, account_id)
+        member_count = len(members)
+        per_user_limit = max(20, limit // max(1, member_count or 1))
+        for m in members:
+            uid_events = await r.lrange(
+                f"user:{m.user_id}:attr_journey", 0, per_user_limit - 1,
+            )
+            for eid in uid_events:
+                if eid in seen:
+                    continue
+                seen.add(eid)
+                event_ids.append(eid)
+
+    # Hydrate events, then sort chronologically (newest first).
+    entries: list[AccountJourneyEntry] = []
+    for eid in event_ids:
+        raw = await r.hgetall(f"attr:{eid}")
+        if not raw:
+            continue
+        try:
+            meta = json.loads(raw.get("meta") or "{}")
+            if not isinstance(meta, dict):
+                meta = {}
+        except json.JSONDecodeError:
+            meta = {}
+        try:
+            ts = float(raw.get("timestamp", 0) or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        entries.append(AccountJourneyEntry(
+            event_id=eid,
+            stage=raw.get("stage", ""),
+            timestamp=ts,
+            user_id=raw.get("user_id") or None,
+            source_brand=raw.get("source_brand") or None,
+            target_brand=raw.get("target_brand") or None,
+            value_cents=int(raw.get("value_cents", 0) or 0),
+            meta=meta,
+        ))
+
+    entries.sort(key=lambda e: e.timestamp, reverse=True)
+    entries = entries[:limit]
+
+    gmv_raw = await r.get(f"account:{account_id}:gmv_lifetime")
+    try:
+        total_gmv = int(gmv_raw) if gmv_raw else 0
+    except (TypeError, ValueError):
+        total_gmv = 0
+
+    return AccountJourneyResponse(
+        account_id=account_id,
+        count=len(entries),
+        total_gmv_cents=total_gmv,
+        member_count=member_count,
+        entries=entries,
     )

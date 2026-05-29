@@ -142,6 +142,12 @@ class TopupRequest(BaseModel):
     payment_method: Literal["alipay", "wechat", "stripe", "paypal"]
     payment_token: str | None = None
     currency: str | None = None  # defaults to existing wallet currency
+    # When the payment currency differs from the wallet's base currency and
+    # ``auto_fx`` is true, we transparently convert via the FX engine and
+    # credit the wallet in its base currency. When false (legacy default for
+    # callers that opt in to strict matching), a currency mismatch raises
+    # 409 currency_mismatch.
+    auto_fx: bool = True
 
     @field_validator("currency")
     @classmethod
@@ -208,6 +214,23 @@ class ChargeRequest(BaseModel):
     reference_id: str | None = Field(default=None, max_length=128)
     idempotency_key: str | None = Field(default=None, max_length=128)
     campaign_id: str | None = None
+    # FX universal plumbing: when ``currency`` is supplied and differs from
+    # the wallet's base currency, ``auto_fx=True`` converts ``amount_cents``
+    # via the FX engine and charges in wallet currency. ``auto_fx=False``
+    # preserves the strict-match behaviour (409 currency_mismatch).
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    auto_fx: bool = True
+    allow_stale_rate: bool = False
+
+    @field_validator("currency")
+    @classmethod
+    def _cur(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if len(v) != 3 or not v.isalpha():
+            raise ValueError("currency must be a 3-letter ISO code")
+        return v
 
     @model_validator(mode="after")
     def _detail_required_for_other(self):
@@ -411,43 +434,72 @@ async def create_topup(
     """
     # Lock in the wallet's currency on first ever topup.
     cur_existing = await r.get(_k_currency(brand_id))
-    currency = (body.currency or cur_existing or DEFAULT_CURRENCY).upper()
+    wallet_currency = (cur_existing or body.currency or DEFAULT_CURRENCY).upper()
+    payment_currency = (body.currency or wallet_currency).upper()
+
     if cur_existing is None:
-        await r.set(_k_currency(brand_id), currency)
+        await r.set(_k_currency(brand_id), wallet_currency)
     elif body.currency and body.currency != cur_existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "error": "currency_mismatch",
-                "wallet_currency": cur_existing,
-                "requested": body.currency,
-            },
+        if not body.auto_fx:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "currency_mismatch",
+                    "wallet_currency": cur_existing,
+                    "requested": body.currency,
+                    "hint": "set auto_fx=true to convert via FX engine",
+                },
+            )
+
+    credited_amount = body.amount_cents
+    fx_rate: str | None = None
+    fx_stale = False
+    fx_expires_at: float | None = None
+    if (
+        body.auto_fx
+        and payment_currency != wallet_currency
+    ):
+        from app.routers.fx import convert_amount as _fx_convert
+        conv = await _fx_convert(
+            r,
+            body.amount_cents,
+            payment_currency,
+            wallet_currency,
+            allow_stale=False,
         )
+        credited_amount = int(conv["equivalent_cents"])
+        fx_rate = conv["rate"]
+        fx_stale = bool(conv["stale"])
+        fx_expires_at = conv["expires_at"]
 
     topup_id = uuid4().hex
     now = time.time()
-    await r.hset(
-        _k_topup(topup_id),
-        mapping={
-            "topup_id": topup_id,
-            "brand_id": brand_id,
-            "amount": body.amount_cents,
-            "currency": currency,
-            "payment_method": body.payment_method,
-            "payment_token": body.payment_token or "",
-            "status": "pending",
-            "created_at": now,
-            "confirmed_at": "",
-        },
-    )
+    mapping = {
+        "topup_id": topup_id,
+        "brand_id": brand_id,
+        "amount": credited_amount,
+        "currency": wallet_currency,
+        "payment_amount": body.amount_cents,
+        "payment_currency": payment_currency,
+        "payment_method": body.payment_method,
+        "payment_token": body.payment_token or "",
+        "status": "pending",
+        "created_at": now,
+        "confirmed_at": "",
+    }
+    if fx_rate is not None:
+        mapping["fx_rate"] = fx_rate
+        mapping["fx_stale"] = "1" if fx_stale else "0"
+        mapping["fx_expires_at"] = str(fx_expires_at or "")
+    await r.hset(_k_topup(topup_id), mapping=mapping)
 
     balance = int(await r.get(_k_balance(brand_id)) or 0)
     return TopupResponse(
         topup_id=topup_id,
         status="pending",
         new_balance_cents=balance,
-        amount_cents=body.amount_cents,
-        currency=currency,
+        amount_cents=credited_amount,
+        currency=wallet_currency,
     )
 
 
@@ -572,6 +624,40 @@ async def charge(
     daily_budget_key = _k_daily_budget(brand_id)
     total_key = _k_total_spent(brand_id)
 
+    # FX universal plumbing: when caller passes ``currency`` different from
+    # the wallet's base, convert through the FX engine (auto_fx=True) before
+    # any balance / daily-cap math runs. Both legs are persisted on the
+    # charge record for audit.
+    wallet_currency = await _get_currency(brand_id, r)
+    request_currency = (body.currency or wallet_currency).upper()
+    charge_amount = body.amount_cents
+    fx_rate: str | None = None
+    fx_stale = False
+    fx_expires_at: float | None = None
+    if body.currency and request_currency != wallet_currency:
+        if not body.auto_fx:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "currency_mismatch",
+                    "wallet_currency": wallet_currency,
+                    "requested": request_currency,
+                    "hint": "set auto_fx=true to convert via FX engine",
+                },
+            )
+        from app.routers.fx import convert_amount as _fx_convert
+        conv = await _fx_convert(
+            r,
+            body.amount_cents,
+            request_currency,
+            wallet_currency,
+            allow_stale=body.allow_stale_rate,
+        )
+        charge_amount = int(conv["equivalent_cents"])
+        fx_rate = conv["rate"]
+        fx_stale = bool(conv["stale"])
+        fx_expires_at = conv["expires_at"]
+
     # reference_id is optional for direct API users. Prefer the explicit
     # `reference_id`; fall back to `idempotency_key`; otherwise mint a UUID
     # so audit / refund flows always have a stable handle.
@@ -605,7 +691,7 @@ async def charge(
                 await pipe.watch(balance_key, daily_key, daily_budget_key)
 
                 balance = int(await pipe.get(balance_key) or 0)
-                if balance < body.amount_cents:
+                if balance < charge_amount:
                     await pipe.unwatch()
                     raise HTTPException(
                         status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -613,7 +699,10 @@ async def charge(
                             "ok": False,
                             "reason": "insufficient_funds",
                             "balance_cents": balance,
-                            "amount_cents": body.amount_cents,
+                            "amount_cents": charge_amount,
+                            "requested_amount_cents": body.amount_cents,
+                            "requested_currency": request_currency,
+                            "wallet_currency": wallet_currency,
                         },
                     )
 
@@ -621,7 +710,7 @@ async def charge(
                 daily_budget = int(await pipe.get(daily_budget_key) or 0)
                 if (
                     daily_budget > 0
-                    and daily_spent + body.amount_cents > daily_budget
+                    and daily_spent + charge_amount > daily_budget
                 ):
                     await pipe.unwatch()
                     raise HTTPException(
@@ -632,7 +721,7 @@ async def charge(
                             "reason": "daily_budget_exceeded",
                             "daily_spent_cents": daily_spent,
                             "daily_budget_cents": daily_budget,
-                            "attempted": body.amount_cents,
+                            "attempted": charge_amount,
                         },
                     )
 
@@ -642,35 +731,43 @@ async def charge(
                     body.reason, "other"
                 )
 
+                charge_mapping: dict[str, Any] = {
+                    "charge_id": charge_id,
+                    "brand_id": brand_id,
+                    "amount": charge_amount,
+                    "currency": wallet_currency,
+                    "reason": body.reason,
+                    "category": category,
+                    "reason_detail": body.reason_detail or "",
+                    "reference_id": ref_id,
+                    "campaign_id": body.campaign_id or "",
+                    "ts": now,
+                    "status": "completed",
+                }
+                if fx_rate is not None:
+                    charge_mapping["requested_amount"] = body.amount_cents
+                    charge_mapping["requested_currency"] = request_currency
+                    charge_mapping["fx_rate"] = fx_rate
+                    charge_mapping["fx_stale"] = "1" if fx_stale else "0"
+                    charge_mapping["fx_expires_at"] = str(fx_expires_at or "")
+
                 pipe.multi()
-                pipe.decrby(balance_key, body.amount_cents)
-                pipe.incrby(daily_key, body.amount_cents)
+                pipe.decrby(balance_key, charge_amount)
+                pipe.incrby(daily_key, charge_amount)
                 pipe.expire(daily_key, 86400 + 3600)  # +1h safety overlap
-                pipe.incrby(total_key, body.amount_cents)
-                pipe.hset(
-                    _k_charge(charge_id),
-                    mapping={
-                        "charge_id": charge_id,
-                        "brand_id": brand_id,
-                        "amount": body.amount_cents,
-                        "reason": body.reason,
-                        "category": category,
-                        "reason_detail": body.reason_detail or "",
-                        "reference_id": ref_id,
-                        "campaign_id": body.campaign_id or "",
-                        "ts": now,
-                        "status": "completed",
-                    },
-                )
+                pipe.incrby(total_key, charge_amount)
+                pipe.hset(_k_charge(charge_id), mapping=charge_mapping)
                 pipe.rpush(_k_tx_list(brand_id), charge_id)
                 pipe.ltrim(_k_tx_list(brand_id), -TX_LIST_MAX, -1)
                 await pipe.execute()
 
-                new_balance = balance - body.amount_cents
+                new_balance = balance - charge_amount
                 logger.info(
-                    "charge brand=%s amount=%s reason=%s new_balance=%s",
+                    "charge brand=%s amount=%s req=%s %s reason=%s new_balance=%s",
                     brand_id,
+                    charge_amount,
                     body.amount_cents,
+                    request_currency,
                     body.reason,
                     new_balance,
                 )
