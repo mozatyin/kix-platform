@@ -1,0 +1,7 @@
+{
+  "login.cta": "登录",
+  "logout.cta": "退出登录",
+  "welcome.message": "欢迎,{name}!",
+  "messages.count": "{count, plural, =0 {暂无消息} other {# 条新消息}}",
+  "loading": "加载中…"
+}

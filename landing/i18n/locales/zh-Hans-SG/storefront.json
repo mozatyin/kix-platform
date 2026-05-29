@@ -1,0 +1,6 @@
+{
+  "storefront.title": "KiX 商城",
+  "storefront.cta.shop": "立即选购",
+  "storefront.cart.empty": "购物车是空的",
+  "storefront.cart.items": "{count, plural, =0 {购物车是空的} other {购物车中有 # 件商品}}"
+}

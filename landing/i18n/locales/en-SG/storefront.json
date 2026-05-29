@@ -1,0 +1,6 @@
+{
+  "storefront.title": "KiX Storefront",
+  "storefront.cta.shop": "Shop now",
+  "storefront.cart.empty": "Your cart is empty",
+  "storefront.cart.items": "{count, plural, =0 {Cart is empty} one {1 item in cart} other {# items in cart}}"
+}

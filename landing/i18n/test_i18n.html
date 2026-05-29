@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX i18n — Smoke Test</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 720px; margin: 60px auto; padding: 0 24px; line-height: 1.55;
+    background: #0b0b0b; color: #eee;
+  }
+  h1 { color: #00FC00; margin-bottom: 8px }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .12em;
+       color: #888; margin-top: 36px; }
+  .row { display: flex; gap: 10px; align-items: baseline; margin: 12px 0;
+         padding: 12px 16px; background: rgba(255,255,255,.04);
+         border: 1px solid rgba(255,255,255,.08); border-radius: 8px; }
+  .row b { min-width: 180px; color: #00FC00; font-weight: 600; font-size: 13px; }
+  .row span { font-size: 16px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 4px;
+         font-size: 13px; }
+  .meta { font-size: 13px; color: #888; margin-top: 4px; }
+  .hint { background: rgba(0,252,0,.08); border: 1px solid rgba(0,252,0,.25);
+          border-radius: 8px; padding: 14px 16px; margin: 28px 0; font-size: 14px; }
+</style>
+<script src="i18next-runtime.js" defer></script>
+<script src="locale-switcher.js" defer></script>
+</head>
+<body>
+  <h1>KiX i18n Smoke Test</h1>
+  <div class="meta">Use the floating top-right widget to switch locales.
+    Current: <code id="cur-locale">…</code></div>
+
+  <div class="hint">
+    This page renders three keys from <code>common</code> namespace via
+    <code>data-i18n</code>. If they flip when you switch locales, the
+    infrastructure works.
+  </div>
+
+  <h2>1. Static text</h2>
+  <div class="row">
+    <b>login.cta</b>
+    <span data-i18n="login.cta">Login</span>
+  </div>
+
+  <h2>2. Interpolation</h2>
+  <div class="row">
+    <b>welcome.message</b>
+    <span data-i18n="welcome.message" data-i18n-opt-name="Alice">Welcome, Alice!</span>
+  </div>
+
+  <h2>3. ICU plural</h2>
+  <div class="row">
+    <b>messages.count (0)</b>
+    <span data-i18n="messages.count" data-i18n-opt-count="0">No messages</span>
+  </div>
+  <div class="row">
+    <b>messages.count (1)</b>
+    <span data-i18n="messages.count" data-i18n-opt-count="1">1 message</span>
+  </div>
+  <div class="row">
+    <b>messages.count (5)</b>
+    <span data-i18n="messages.count" data-i18n-opt-count="5">5 messages</span>
+  </div>
+
+  <h2>4. Attribute translation</h2>
+  <div class="row">
+    <b>loading (title attr)</b>
+    <span data-i18n-attr="title:loading" data-i18n="loading">Loading…</span>
+  </div>
+
+  <script>
+    function refresh() {
+      const el = document.getElementById('cur-locale');
+      if (el) el.textContent = (window.KixI18n && window.KixI18n.getLocale()) || '(loading…)';
+    }
+    document.addEventListener('kix:i18n-ready',   refresh);
+    document.addEventListener('kix:locale-changed', refresh);
+    setTimeout(refresh, 500);
+  </script>
+</body>
+</html>

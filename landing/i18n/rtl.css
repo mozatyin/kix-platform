@@ -1,0 +1,57 @@
+/* ============================================================
+ * KiX i18n — RTL preparation stylesheet (Phase 3 placeholder)
+ * ------------------------------------------------------------
+ * Loaded only when <html dir="rtl"> by i18next-runtime.js.
+ * Strategy: CSS logical properties so we never have to grep for
+ *   margin-left / padding-right again. Pages that already use
+ *   logical props get RTL for free.
+ * ============================================================ */
+
+/* Document baseline */
+html[dir="rtl"] body { text-align: start; }
+
+/* Generic containers */
+html[dir="rtl"] .container,
+html[dir="rtl"] .row,
+html[dir="rtl"] section,
+html[dir="rtl"] header,
+html[dir="rtl"] footer,
+html[dir="rtl"] main {
+  text-align: start;
+}
+
+/* Recipe: convert directional spacing → logical.
+   Author guidance: prefer these in new CSS so RTL is automatic. */
+.kix-flex            { display: flex; }
+.kix-gap-sm          { gap: 8px; }
+.kix-gap-md          { gap: 16px; }
+.kix-pad-md          { padding-block: 16px; padding-inline: 20px; }
+.kix-ms-sm           { margin-inline-start: 8px; }
+.kix-me-sm           { margin-inline-end: 8px; }
+.kix-ms-md           { margin-inline-start: 16px; }
+.kix-me-md           { margin-inline-end: 16px; }
+.kix-ps-md           { padding-inline-start: 16px; }
+.kix-pe-md           { padding-inline-end: 16px; }
+.kix-text-start      { text-align: start; }
+.kix-text-end        { text-align: end; }
+.kix-border-start    { border-inline-start: 1px solid rgba(0,0,0,.1); }
+.kix-border-end      { border-inline-end:   1px solid rgba(0,0,0,.1); }
+.kix-float-start     { float: inline-start; }
+.kix-float-end       { float: inline-end; }
+
+/* Mirror directional icons (arrows, chevrons, next/prev). Add `.kix-icon-directional`
+   to anything that should flip. Logos / brand glyphs must NOT have this class. */
+html[dir="rtl"] .kix-icon-directional,
+html[dir="rtl"] [data-i18n-mirror="true"] {
+  transform: scaleX(-1);
+}
+
+/* Bidi safety — protect English IDs / numbers embedded in Arabic copy.
+   Author can add <bdi>…</bdi> or just rely on dir="auto" on dynamic text. */
+[dir="rtl"] bdi,
+[dir="rtl"] [dir="auto"] { unicode-bidi: plaintext; }
+
+/* Floating widgets (top-right → top-left in RTL) — locale-switcher already handles
+   this via its own [dir="rtl"] rules. Keep this section open for future widgets. */
+html[dir="rtl"] .kix-top-right { right: auto; left: 14px; }
+html[dir="rtl"] .kix-top-left  { left:  auto; right: 14px; }

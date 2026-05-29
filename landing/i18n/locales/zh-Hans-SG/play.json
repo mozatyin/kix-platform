@@ -1,0 +1,6 @@
+{
+  "play.title": "在 KiX 上玩",
+  "play.cta.start": "开始游戏",
+  "play.score.points": "{points, plural, other {# 分}}",
+  "play.level.label": "第 {level} 关"
+}

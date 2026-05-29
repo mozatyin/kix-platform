@@ -1,0 +1,6 @@
+{
+  "play.title": "Play on KiX",
+  "play.cta.start": "Start playing",
+  "play.score.points": "{points, plural, one {1 point} other {# points}}",
+  "play.level.label": "Level {level}"
+}
