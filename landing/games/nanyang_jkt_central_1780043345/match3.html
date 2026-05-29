@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>消消乐 - Match-3</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <style>
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 4.5rem;
+        }
+        .screen.active {
+            display: flex;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 2px;
+            width: min(88vw, 400px);
+            aspect-ratio: 1;
+            background: #e5e7eb;
+            border-radius: 12px;
+            padding: 4px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .15);
+        }
+        #game-board .cell {
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform .12s, opacity .2s;
+            position: relative;
+        }
+        #game-board .cell:active {
+            transform: scale(.9);
+        }
+        #game-board .cell.selected {
+            box-shadow: 0 0 0 3px #fff, 0 0 0 6px #facc15;
+            z-index: 2;
+            transform: scale(1.05);
+        }
+        #game-board .cell.matched {
+            opacity: 0;
+            transform: scale(.3);
+            pointer-events: none;
+        }
+        #game-board .cell.empty {
+            background: #d1d5db !important;
+            pointer-events: none;
+        }
+        .gem-0 {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        .gem-1 {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        .gem-2 {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+        .gem-3 {
+            background: linear-gradient(135deg, #eab308, #ca8a04);
+        }
+        .gem-4 {
+            background: linear-gradient(135deg, #a855f7, #9333ea);
+        }
+        .gem-5 {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+        }
+        .hud-badge {
+            background: #1f2937;
+            color: #fbbf24;
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-weight: 700;
+            font-size: .85rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+        }
+        @keyframes pop-in {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.15);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .cell {
+            animation: pop-in .18s ease-out;
+        }
+    </style>
+<style>
+/* KiX Brand CSS — 南洋茶饮 */
+:root {
+  --kix-brand: #5B3A29;
+  --kix-accent: #F2A900;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #5B3A29, #2d1d14) !important;
+  --tw-gradient-from: #5B3A29 !important;
+  --tw-gradient-to: #2d1d14 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #5B3A29 !important;
+  background: #5B3A29 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #2d1d14 !important;
+  background: #2d1d14 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #5B3A29 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-900 text-white font-sans overflow-x-hidden">
+
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="screen active">
+        <div class="mt-16 text-5xl font-extrabold tracking-wider text-yellow-400 drop-shadow-lg">✨ 消消乐 ✨</div>
+        <div class="text-gray-300 mt-2 text-sm">Match-3 Puzzle</div>
+        <div class="flex flex-col gap-3 mt-10 w-56">
+            <button id="btn-play" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 rounded-2xl text-lg shadow-lg transition">开始游戏</button>
+            <button id="btn-level-select" class="bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 rounded-2xl shadow transition">选择关卡</button>
+            <button id="btn-shop" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-2xl shadow transition">商店</button>
+            <button id="btn-high-scores" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-2xl shadow transition">排行榜</button>
+            <button id="btn-settings" class="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2.5 rounded-2xl shadow transition">设置</button>
+        </div>
+    </div>
+
+    <!-- LEVEL SELECT SCREEN -->
+    <div id="level_select-screen" class="screen">
+        <h2 class="mt-10 text-2xl font-bold text-yellow-400">选择关卡</h2>
+        <div id="level-grid" class="grid grid-cols-4 gap-3 mt-6 w-[min(88vw,380px)]"></div>
+        <button id="btn-level-select-back" class="mt-6 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-2xl shadow transition">返回</button>
+    </div>
+
+    <!-- GAMEPLAY SCREEN -->
+    <div id="gameplay-screen" class="screen">
+        <div class="flex items-center gap-3 mt-4 flex-wrap justify-center">
+            <span class="hud-badge">🎯 目标: <span id="hud-target">1000</span></span>
+            <span class="hud-badge">⭐ 得分: <span id="hud-score">0</span></span>
+            <span class="hud-badge">👆 步数: <span id="hud-moves">30</span></span>
+            <span class="hud-badge">📊 关卡: <span id="hud-level">1</span></span>
+        </div>
+        <div id="game-board" class="mt-4"></div>
+        <div class="flex gap-3 mt-4 flex-wrap justify-center">
+            <button id="btn-booster-hammer" class="bg-red-600 hover:bg-red-500 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">🔨 锤子 <span id="booster-hammer-count">0</span></button>
+            <button id="btn-booster-shuffle" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">🔀 洗牌 <span id="booster-shuffle-count">0</span></button>
+        </div>
+    </div>
+
+    <!-- PAUSE MENU SCREEN (overlay) -->
+    <div id="pause_menu-screen" class="screen" style="position:fixed;top:0;left:0;right:0;bottom:0;z-50;background:rgba(0,0,0,0.85);justify-content:center;min-height:100vh;padding-bottom:0;">
+        <div class="text-3xl font-bold text-yellow-400 mt-8">⏸️ 暂停</div>
+        <div class="flex flex-col gap-3 mt-10 w-52">
+            <button id="btn-resume" class="bg-green-500 hover:bg-green-400 text-white font-bold py-3 rounded-2xl text-lg shadow transition">继续游戏</button>
+            <button id="btn-restart" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-2xl text-lg shadow transition">重新开始</button>
+            <button id="btn-quit" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-2xl text-lg shadow transition">退出</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div id="settings-screen" class="screen">
+        <h2 class="mt-10 text-2xl font-bold text-yellow-400">⚙️ 设置</h2>
+        <div class="mt-8 w-[min(80vw,340px)] flex flex-col gap-4">
+            <div class="flex justify-between items-center bg-gray-800 rounded-xl px-5 py-3"><span>🔊 音效</span><button id="btn-toggle-sound" class="w-14 h-7 rounded-full bg-green-500 relative transition"><span class="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform translate-x-7" id="toggle-sound-knob"></span></button></div>
+            <div class="flex justify-between items-center bg-gray-800 rounded-xl px-5 py-3"><span>🎵 音乐</span><button id="btn-toggle-music" class="w-14 h-7 rounded-full bg-green-500 relative transition"><span class="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform translate-x-7" id="toggle-music-knob"></span></button></div>
+            <div class="flex justify-between items-center bg-gray-800 rounded-xl px-5 py-3"><span>📳 震动</span><button id="btn-toggle-vibration" class="w-14 h-7 rounded-full bg-green-500 relative transition"><span class="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform translate-x-7" id="toggle-vibration-knob"></span></button></div>
+        </div>
+        <button id="btn-settings-back" class="mt-8 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-2xl shadow transition">返回</button>
+    </div>
+
+    <!-- SHOP SCREEN -->
+    <div id="shop-screen" class="screen">
+        <h2 class="mt-10 text-2xl font-bold text-yellow-400">🛒 商店</h2>
+        <span class="hud-badge mt-2">🪙 金币: <span id="shop-coins">0</span></span>
+        <div id="shop-items" class="mt-6 w-[min(85vw,360px)] flex flex-col gap-3"></div>
+        <button id="btn-shop-back" class="mt-6 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-2xl shadow transition">返回</button>
+    </div>
+
+    <!-- GAME RESULT SCREEN -->
+    <div id="game_result-screen" class="screen">
+        <div id="result-icon" class="mt-16 text-6xl"></div>
+        <div id="result-title" class="mt-3 text-3xl font-extrabold"></div>
+        <div id="result-score" class="mt-2 text-xl text-gray-300"></div>
+        <div id="result-stars" class="mt-2 text-4xl"></div>
+        <div class="flex flex-col gap-3 mt-8 w-52">
+            <button id="btn-next-level" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 rounded-2xl text-lg shadow transition hidden">下一关</button>
+            <button id="btn-retry" class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-2xl text-lg shadow transition">再试一次</button>
+            <button id="btn-result-home" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-2xl text-lg shadow transition">返回主页</button>
+        </div>
+    </div>
+
+    <!-- HIGH SCORES SCREEN -->
+    <div id="high_scores-screen" class="screen">
+        <h2 class="mt-10 text-2xl font-bold text-yellow-400">🏆 排行榜</h2>
+        <div id="high-scores-list" class="mt-6 w-[min(85vw,360px)] flex flex-col gap-2"></div>
+        <button id="btn-high-scores-back" class="mt-6 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-6 rounded-2xl shadow transition">返回</button>
+    </div>
+
+    <!-- FIXED BOTTOM ACTION BAR -->
+    <div id="bottom-action-bar" class="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-4 py-3 px-4 bg-gray-900/90 backdrop-blur border-t border-gray-700">
+        <button id="btn-bar-home" class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition hidden">🏠 主页</button>
+        <button id="btn-bar-pause" class="bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition hidden">⏸️ 暂停</button>
+        <button id="btn-bar-back" class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition hidden">↩ 返回</button>
+    </div>
+
+    <script>
+        /* ===================== GLOBAL STATE ===================== */
+        let gameState = null;
+
+        /* ===================== MANDATORY FUNCTIONS ===================== */
+
+        /** @returns {object} initial game state */
+        function initState() {
+            return {
+                screen: 'home',
+                board: [],
+                level: 1,
+                score: 0,
+                targetScore: 1000,
+                moves: 30,
+                selected: null,
+                comboLevel: 0,
+                boosters: {
+                    hammer: 0,
+                    shuffle: 0
+                },
+                coins: 500,
+                highScores: [],
+                settings: {
+                    sound: true,
+                    music: true,
+                    vibration: true
+                },
+                prevScreen: null,
+                result: null,
+                stars: 0,
+                maxLevel: 20,
+                levels: [],
+                shopItems: [
+                    { id: 'hammer', name: '🔨 锤子', price: 100, quantity: 1 },
+                    { id: 'shuffle', name: '🔀 洗牌', price: 150, quantity: 1 }
+                ]
+            };
+        }
+
+        /**
+         * @param {object} state - current game state (deep clone expected before mutation)
+         * @param {object} action - flat action object with .type and relevant props
+         * @returns {object} new game state
+         */
+        function handleAction(state, action) {
+            let newState = { ...state };
+            newState.boosters = { ...state.boosters };
+            newState.settings = { ...state.settings };
+            newState.highScores = [...(state.highScores || [])];
+
+            // Helper to start a level with given level number
+            function startLevel(s, lv) {
+                s.board = createBoard(8, 8);
+                s.moves = 30;
+                s.targetScore = 1000 * lv;
+                s.score = 0;
+                s.selected = null;
+                s.comboLevel = 0;
+                s.level = lv;
+                s.screen = 'gameplay';
+                s.result = null;
+                s.stars = 0;
+                // Ensure board has valid moves; if not, reshuffle
+                if (!boardHasValidMoves(s.board)) {
+                    s.board = createBoard(8, 8);
+                }
+            }
+
+            // Helper to end the game and record result
+            function endGame(s, resultType) {
+                s.result = resultType;
+                s.screen = 'game_result';
+                s.selected = null;
+                if (resultType === 'won') {
+                    let target = s.targetScore || 0;
+                    if (s.score >= target * 3) {
+                        s.stars = 3;
+                    } else if (s.score >= target * 2) {
+                        s.stars = 2;
+                    } else {
+                        s.stars = 1;
+                    }
+                    let entry = { name: 'Player', score: s.score, level: s.level };
+                    s.highScores = [...s.highScores, entry]
+                        .sort(function(a, b) { return b.score - a.score; })
+                        .slice(0, 10);
+                } else {
+                    s.stars = 0;
+                }
+            }
+
+            switch (action.type) {
+                case 'play': {
+                    startLevel(newState, newState.level || 1);
+                    break;
+                }
+                case 'level_select': {
+                    newState.prevScreen = newState.screen;
+                    newState.screen = 'level_select';
+                    // Generate level data
+                    let levels = [];
+                    for (let i = 1; i <= (newState.maxLevel || 20); i++) {
+                        levels.push({
+                            id: i,
+                            unlocked: i <= newState.level + 2,
+                            stars: i < newState.level ? Math.floor(Math.random() * 3) + 1 : (i === newState.level && newState.stars ? newState.stars : 0)
+                        });
+                    }
+                    newState.levels = levels;
+                    break;
+                }
+                case 'select_level': {
+                    let lv = action.levelId || action.level || 1;
+                    startLevel(newState, lv);
+                    break;
+                }
+                case 'shop': {
+                    newState.prevScreen = newState.screen;
+                    newState.screen = 'shop';
+                    break;
+                }
+                case 'high_scores': {
+                    newState.prevScreen = newState.screen;
+                    newState.screen = 'high_scores';
+                    break;
+                }
+                case 'settings': {
+                    newState.prevScreen = newState.screen;
+                    newState.screen = 'settings';
+                    break;
+                }
+                case 'back':
+                case 'go_back': {
+                    if (newState.prevScreen) {
+                        newState.screen = newState.prevScreen;
+                        newState.prevScreen = null;
+                    } else {
+                        newState.screen = 'home';
+                    }
+                    break;
+                }
+                case 'go_home':
+                case 'result_home': {
+                    newState.screen = 'home';
+                    newState.selected = null;
+                    newState.prevScreen = null;
+                    break;
+                }
+                case 'pause': {
+                    newState.prevScreen = newState.screen;
+                    newState.screen = 'pause_menu';
+                    break;
+                }
+                case 'resume': {
+                    if (newState.prevScreen) {
+                        newState.screen = newState.prevScreen;
+                        newState.prevScreen = null;
+                    } else {
+                        newState.screen = 'gameplay';
+                    }
+                    break;
+                }
+                case 'restart': {
+                    startLevel(newState, newState.level);
+                    break;
+                }
+                case 'quit': {
+                    newState.screen = 'home';
+                    newState.selected = null;
+                    newState.prevScreen = null;
+                    newState.result = null;
+                    break;
+                }
+                case 'next_level': {
+                    let nextLv = Math.min(newState.level + 1, newState.maxLevel || 100);
+                    startLevel(newState, nextLv);
+                    break;
+                }
+                case 'retry': {
+                    startLevel(newState, newState.level);
+                    break;
+                }
+                case 'toggle_sound': {
+                    newState.settings.sound = !newState.settings.sound;
+                    break;
+                }
+                case 'toggle_music': {
+                    newState.settings.music = !newState.settings.music;
+                    break;
+                }
+                case 'toggle_vibration': {
+                    newState.settings.vibration = !newState.settings.vibration;
+                    break;
+                }
+                case 'buy_item': {
+                    let itemId = action.itemId;
+                    let prices = { hammer: 100, shuffle: 150 };
+                    if (itemId && prices[itemId] && newState.coins >= prices[itemId]) {
+                        newState.coins -= prices[itemId];
+                        newState.boosters[itemId] = (newState.boosters[itemId] || 0) + 1;
+                    }
+                    break;
+                }
+                case 'use_hammer': {
+                    if (newState.selected && newState.boosters.hammer > 0 && newState.moves > 0 && newState.screen === 'gameplay') {
+                        let sel = newState.selected;
+                        let board = newState.board;
+                        if (board[sel.row] && board[sel.row][sel.col] !== undefined && board[sel.row][sel.col] !== -1) {
+                            board[sel.row][sel.col] = -1;
+                            let matches = findMatches(board);
+                            let combo = 0;
+                            while (matches.length > 0) {
+                                combo++;
+                                newState.score += calculateScore(matches.length, combo);; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+                                removeMatches(board, matches);
+                                cascadeBoard(board);
+                                fillEmptyCells(board);
+                                matches = findMatches(board);
+                            }
+                            newState.moves -= 1;
+                            newState.boosters.hammer = newState.boosters.hammer - 1;
+                            newState.selected = null;
+                            let endResult = checkGameEnd(newState);
+                            if (endResult !== 'playing') {
+                                endGame(newState, endResult);
+                            } else if (!boardHasValidMoves(newState.board)) {
+                                endGame(newState, 'lost');
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 'use_shuffle': {
+                    if (newState.boosters.shuffle > 0 && newState.moves > 0 && newState.screen === 'gameplay') {
+                        let board = newState.board;
+                        let flat = [];
+                        for (let r = 0; r < board.length; r++) {
+                            for (let c = 0; c < board[0].length; c++) {
+                                flat.push(board[r][c]);
+                            }
+                        }
+                        // Fisher-Yates shuffle
+                        for (let i = flat.length - 1; i > 0; i--) {
+                            let j = Math.floor(Math.random() * (i + 1));
+                            let tmp = flat[i];
+                            flat[i] = flat[j];
+                            flat[j] = tmp;
+                        }
+                        let idx = 0;
+                        for (let r = 0; r < board.length; r++) {
+                            for (let c = 0; c < board[0].length; c++) {
+                                board[r][c] = flat[idx++];
+                            }
+                        }
+                        let matches = findMatches(board);
+                        let combo = 0;
+                        while (matches.length > 0) {
+                            combo++;
+                            newState.score += calculateScore(matches.length, combo);
+                            removeMatches(board, matches);
+                            cascadeBoard(board);
+                            fillEmptyCells(board);
+                            matches = findMatches(board);
+                        }
+                        newState.moves -= 1;
+                        newState.boosters.shuffle = newState.boosters.shuffle - 1;
+                        newState.selected = null;
+                        let endResult = checkGameEnd(newState);
+                        if (endResult !== 'playing') {
+                            endGame(newState, endResult);
+                        } else if (!boardHasValidMoves(newState.board)) {
+                            endGame(newState, 'lost');
+                        }
+                    }
+                    break;
+                }
+                case 'cell_clicked': {
+                    let row = action.row;
+                    let col = action.col;
+                    if (row === undefined || col === undefined) break;
+                    if (newState.screen !== 'gameplay') break;
+                    if (!newState.board || newState.board.length === 0) break;
+                    if (newState.board[row][col] === -1) break;
+
+                    if (!newState.selected) {
+                        newState.selected = { row: row, col: col };
+                    } else {
+                        let sel = newState.selected;
+                        if (sel.row === row && sel.col === col) {
+                            newState.selected = null;
+                        } else if (isValidAdjacent(sel.row, sel.col, row, col)) {
+                            if (wouldCreateMatch(newState.board, sel.row, sel.col, row, col)) {
+                                newState = applySwap(newState, sel.row, sel.col, row, col);
+                                let endResult = checkGameEnd(newState);
+                                if (endResult !== 'playing') {
+                                    endGame(newState, endResult);
+                                } else if (!boardHasValidMoves(newState.board)) {
+                                    endGame(newState, 'lost');
+                                }
+                            } else {
+                                newState.selected = { row: row, col: col };
+                            }
+                        } else {
+                            newState.selected = { row: row, col: col };
+                        }
+                    }
+                    break;
+                }
+                default:
+                    // unknown action, no change
+                    break;
+            }
+            return newState;
+        }
+
+        /**
+         * @param {object} state - current game state
+         */
+        function render(state) {
+            showScreen(state.screen);
+
+            let barHome = document.getElementById('btn-bar-home');
+            let barPause = document.getElementById('btn-bar-pause');
+            let barBack = document.getElementById('btn-bar-back');
+            if (barHome) barHome.classList.add('hidden');
+            if (barPause) barPause.classList.add('hidden');
+            if (barBack) barBack.classList.add('hidden');
+
+            if (state.screen === 'gameplay') {
+                if (barHome) barHome.classList.remove('hidden');
+                if (barPause) barPause.classList.remove('hidden');
+            } else if (['level_select', 'shop', 'settings', 'high_scores', 'game_result'].indexOf(state.screen) >= 0) {
+                if (barBack) barBack.classList.remove('hidden');
+            }
+
+            if (state.screen === 'gameplay') {
+                let targetEl = document.getElementById('hud-target');
+                let scoreEl = document.getElementById('hud-score');
+                let movesEl = document.getElementById('hud-moves');
+                let levelEl = document.getElementById('hud-level');
+                let hammerCount = document.getElementById('booster-hammer-count');
+                let shuffleCount = document.getElementById('booster-shuffle-count');
+                if (targetEl) targetEl.textContent = state.targetScore;
+                if (scoreEl) scoreEl.textContent = state.score;
+                if (movesEl) movesEl.textContent = state.moves;
+                if (levelEl) levelEl.textContent = state.level;
+                if (hammerCount) hammerCount.textContent = state.boosters.hammer || 0;
+                if (shuffleCount) shuffleCount.textContent = state.boosters.shuffle || 0;
+                if (state.board && state.board.length > 0) {
+                    renderBoard(state);
+                }
+            }
+
+            if (state.screen === 'shop') {
+                let coinsEl = document.getElementById('shop-coins');
+                if (coinsEl) coinsEl.textContent = state.coins || 0;
+                let shopContainer = document.getElementById('shop-items');
+                if (shopContainer && state.shopItems) {
+                    shopContainer.innerHTML = '';
+                    state.shopItems.forEach(function(item) {
+                        let div = document.createElement('div');
+                        div.className = 'bg-gray-800 rounded-xl p-3 flex justify-between items-center';
+                        div.innerHTML = '<span>' + item.name + ' x' + (item.quantity || 1) + '</span><button class="buy-item bg-yellow-500 text-gray-900 px-3 py-1 rounded-lg" data-item-id="' + item.id + '">💰' + item.price + '</button>';
+                        shopContainer.appendChild(div);
+                        let btn = div.querySelector('.buy-item');
+                        if (btn) {
+                            btn.addEventListener('click', function() {
+                                gameState = handleAction(gameState, { type: 'buy_item', itemId: item.id });
+                                render(gameState);
+                            });
+                        }
+                    });
+                }
+            }
+
+            if (state.screen === 'level_select') {
+                let grid = document.getElementById('level-grid');
+                if (grid && state.levels) {
+                    grid.innerHTML = '';
+                    state.levels.forEach(function(level) {
+                        let btn = document.createElement('button');
+                        btn.className = 'level-btn py-3 rounded-xl text-lg font-bold shadow transition';
+                        if (level.unlocked) {
+                            btn.classList.add('bg-yellow-500', 'text-gray-900', 'hover:bg-yellow-400');
+                            btn.textContent = level.id + '\n' + '⭐'.repeat(level.stars || 0);
+                        } else {
+                            btn.classList.add('bg-gray-700', 'text-gray-500', 'cursor-not-allowed');
+                            btn.textContent = '🔒';
+                            btn.disabled = true;
+                        }
+                        grid.appendChild(btn);
+                        if (level.unlocked) {
+                            btn.addEventListener('click', function() {
+                                gameState = handleAction(gameState, { type: 'select_level', levelId: level.id });
+                                render(gameState);
+                            });
+                        }
+                    });
+                }
+            }
+
+            if (state.screen === 'game_result') {
+                let iconEl = document.getElementById('result-icon');
+                let titleEl = document.getElementById('result-title');
+                let scoreEl = document.getElementById('result-score');
+                let starsEl = document.getElementById('result-stars');
+                let nextBtn = document.getElementById('btn-next-level');
+                let won = state.result === 'won';
+                if (iconEl) iconEl.textContent = won ? '🎉' : '💔';
+                if (titleEl) titleEl.textContent = won ? '你赢了!' : '你输了!';
+                if (scoreEl) scoreEl.textContent = '得分: ' + state.score;
+                if (starsEl) {
+                    starsEl.textContent = '⭐'.repeat(state.stars || 0);
+                }
+                if (nextBtn) {
+                    if (won && state.level < (state.maxLevel || 100)) {
+                        nextBtn.classList.remove('hidden');
+                    } else {
+                        nextBtn.classList.add('hidden');
+                    }
+                }
+            }
+
+            if (state.screen === 'high_scores') {
+                let listEl = document.getElementById('high-scores-list');
+                if (listEl && state.highScores) {
+                    listEl.innerHTML = '';
+                    state.highScores.forEach(function(entry, idx) {
+                        let div = document.createElement('div');
+                        div.className = 'bg-gray-800 rounded-xl px-4 py-2 flex justify-between items-center';
+                        div.innerHTML = '<span class="text-yellow-400 font-bold">#' + (idx + 1) + '</span><span>' + (entry.name || 'Player') + '</span><span>' + entry.score + '</span><span class="text-sm text-gray-400">Lv' + (entry.level || '?') + '</span>';
+                        listEl.appendChild(div);
+                    });
+                }
+            }
+
+            if (state.screen === 'settings') {
+                let soundKnob = document.getElementById('toggle-sound-knob');
+                let musicKnob = document.getElementById('toggle-music-knob');
+                let vibKnob = document.getElementById('toggle-vibration-knob');
+                let soundBtn = document.getElementById('btn-toggle-sound');
+                let musicBtn = document.getElementById('btn-toggle-music');
+                let vibBtn = document.getElementById('btn-toggle-vibration');
+                let setToggle = function(knob, btn, enabled) {
+                    if (!knob || !btn) return;
+                    if (enabled) {
+                        knob.classList.add('translate-x-7');
+                        knob.classList.remove('translate-x-0');
+                        btn.classList.add('bg-green-500');
+                        btn.classList.remove('bg-gray-500');
+                    } else {
+                        knob.classList.remove('translate-x-7');
+                        knob.classList.add('translate-x-0');
+                        btn.classList.remove('bg-green-500');
+                        btn.classList.add('bg-gray-500');
+                    }
+                };
+                if (soundKnob && soundBtn) setToggle(soundKnob, soundBtn, state.settings.sound);
+                if (musicKnob && musicBtn) setToggle(musicKnob, musicBtn, state.settings.music);
+                if (vibKnob && vibBtn) setToggle(vibKnob, vibBtn, state.settings.vibration);
+            }
+        }
+
+        /**
+         * @param {string} screenId - base screen name (e.g. 'home', 'gameplay')
+         */
+        function showScreen(screenId) {
+            let allScreens = document.querySelectorAll('.screen');
+            for (let i = 0; i < allScreens.length; i++) {
+                allScreens[i].classList.remove('active');
+            }
+            let activeScreen = document.getElementById(screenId + '-screen');
+            if (activeScreen) {
+                activeScreen.classList.add('active');
+            }
+        }
+
+        /** Initializes game state, wires button listeners, renders initial screen */
+        function startGame() {
+            gameState = initState();
+render(gameState);
+            // Generate initial level data
+            let levels = [];
+            for (let i = 1; i <= (gameState.maxLevel || 20); i++) {
+                levels.push({
+                    id: i,
+                    unlocked: i <= gameState.level + 2,
+                    stars: 0
+                });
+            }
+            gameState.levels = levels;
+            render(gameState);
+
+            // Home screen buttons
+            let btnPlay = document.getElementById('btn-play');
+            if (btnPlay) btnPlay.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'play' }); render(gameState); });
+            let btnLevelSelect = document.getElementById('btn-level-select');
+            if (btnLevelSelect) btnLevelSelect.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'level_select' }); render(gameState); });
+            let btnShop = document.getElementById('btn-shop');
+            if (btnShop) btnShop.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'shop' }); render(gameState); });
+            let btnHighScores = document.getElementById('btn-high-scores');
+            if (btnHighScores) btnHighScores.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'high_scores' }); render(gameState); });
+            let btnSettings = document.getElementById('btn-settings');
+            if (btnSettings) btnSettings.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'settings' }); render(gameState); });
+
+            // Level select back
+            let btnLevelSelectBack = document.getElementById('btn-level-select-back');
+            if (btnLevelSelectBack) btnLevelSelectBack.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'go_back' }); render(gameState); });
+
+            // Boosters
+            let btnHammer = document.getElementById('btn-booster-hammer');
+            if (btnHammer) btnHammer.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'use_hammer' }); render(gameState); });
+            let btnShuffle = document.getElementById('btn-booster-shuffle');
+            if (btnShuffle) btnShuffle.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'use_shuffle' }); render(gameState); });
+
+            // Pause menu
+            let btnResume = document.getElementById('btn-resume');
+            if (btnResume) btnResume.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'resume' }); render(gameState); });
+            let btnRestart = document.getElementById('btn-restart');
+            if (btnRestart) btnRestart.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'restart' }); render(gameState); });
+            let btnQuit = document.getElementById('btn-quit');
+            if (btnQuit) btnQuit.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'quit' }); render(gameState); });
+
+            // Settings
+            let btnToggleSound = document.getElementById('btn-toggle-sound');
+            if (btnToggleSound) btnToggleSound.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'toggle_sound' }); render(gameState); });
+            let btnToggleMusic = document.getElementById('btn-toggle-music');
+            if (btnToggleMusic) btnToggleMusic.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'toggle_music' }); render(gameState); });
+            let btnToggleVibration = document.getElementById('btn-toggle-vibration');
+            if (btnToggleVibration) btnToggleVibration.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'toggle_vibration' }); render(gameState); });
+            let btnSettingsBack = document.getElementById('btn-settings-back');
+            if (btnSettingsBack) btnSettingsBack.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'go_back' }); render(gameState); });
+
+            // Shop back
+            let btnShopBack = document.getElementById('btn-shop-back');
+            if (btnShopBack) btnShopBack.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'go_back' }); render(gameState); });
+
+            // Game result
+            let btnNextLevel = document.getElementById('btn-next-level');
+            if (btnNextLevel) btnNextLevel.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'next_level' }); render(gameState); });
+            let btnRetry = document.getElementById('btn-retry');
+            if (btnRetry) btnRetry.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'retry' }); render(gameState); });
+            let btnResultHome = document.getElementById('btn-result-home');
+            if (btnResultHome) btnResultHome.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'result_home' }); render(gameState); });
+
+            // High scores back
+            let btnHighScoresBack = document.getElementById('btn-high-scores-back');
+            if (btnHighScoresBack) btnHighScoresBack.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'go_back' }); render(gameState); });
+
+            // Bottom bar
+            let btnBarHome = document.getElementById('btn-bar-home');
+            if (btnBarHome) btnBarHome.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'go_home' }); render(gameState); });
+            let btnBarPause = document.getElementById('btn-bar-pause');
+            if (btnBarPause) btnBarPause.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'pause' }); render(gameState); });
+            let btnBarBack = document.getElementById('btn-bar-back');
+            if (btnBarBack) btnBarBack.addEventListener('click', function() { gameState = handleAction(gameState, { type: 'go_back' }); render(gameState); });
+
+            // Board click
+            let boardEl = document.getElementById('game-board');
+            if (boardEl) {
+                boardEl.addEventListener('click', function(e) {
+                    let cell = e.target.closest('.cell');
+                    if (!cell) return;
+                    let row = parseInt(cell.getAttribute('data-row'));
+                    let col = parseInt(cell.getAttribute('data-col'));
+                    if (isNaN(row) || isNaN(col)) return;
+                    gameState = handleAction(gameState, { type: 'cell_clicked', row: row, col: col });
+                    render(gameState);
+                });
+            }
+        }
+
+        /* ===================== MATCH-3 BOARD HELPERS ===================== */
+
+        /**
+         * @param {number} rows
+         * @param {number} cols
+         * @returns {number[][]} 2D board with no initial matches
+         */
+        function createBoard(rows, cols) {
+            let board = [];
+            for (let r = 0; r < rows; r++) {
+                board[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    let forbidden = [];
+                    if (c >= 2 && board[r][c - 1] === board[r][c - 2]) {
+                        forbidden.push(board[r][c - 1]);
+                    }
+                    if (r >= 2 && board[r - 1][c] === board[r - 2][c]) {
+                        forbidden.push(board[r - 1][c]);
+                    }
+                    let piece;
+                    do {
+                        piece = generateRandomPiece();
+                    } while (forbidden.indexOf(piece) >= 0);
+                    board[r][c] = piece;
+                }
+            }
+            return board;
+        }
+
+        /**
+         * Finds all matches of 3+ identical gems in a row or column.
+         * @param {number[][]} board
+         * @returns {Array<{row:number,col:number}>} array of cell positions that are part of a match
+         */
+        function findMatches(board) {
+            let matchedPositions = {};
+            let R = board.length;
+            let C = board[0].length;
+            // Horizontal scans
+            for (let r = 0; r < R; r++) {
+                let c = 0;
+                while (c < C) {
+                    let gem = board[r][c];
+                    if (gem === -1) { c++; continue; }
+                    let start = c;
+                    while (c < C && board[r][c] === gem) c++;
+                    let len = c - start;
+                    if (len >= 3) {
+                        for (let i = start; i < c; i++) {
+                            matchedPositions[r + ',' + i] = true;
+                        }
+                    }
+                }
+            }
+            // Vertical scans
+            for (let c = 0; c < C; c++) {
+                let r = 0;
+                while (r < R) {
+                    let gem = board[r][c];
+                    if (gem === -1) { r++; continue; }
+                    let start = r;
+                    while (r < R && board[r][c] === gem) r++;
+                    let len = r - start;
+                    if (len >= 3) {
+                        for (let i = start; i < r; i++) {
+                            matchedPositions[i + ',' + c] = true;
+                        }
+                    }
+                }
+            }
+            let result = [];
+            let keys = Object.keys(matchedPositions);
+            for (let k = 0; k < keys.length; k++) {
+                let parts = keys[k].split(',');
+                result.push({ row: parseInt(parts[0]), col: parseInt(parts[1]) });
+            }
+            return result;
+        }
+
+        /**
+         * Sets matched cell positions to -1 (empty).
+         * @param {number[][]} board
+         * @param {Array<{row:number,col:number}>} matches
+         * @returns {number[][]} mutated board
+         */
+        function removeMatches(board, matches) {
+            for (let i = 0; i < matches.length; i++) {
+                let m = matches[i];
+                board[m.row][m.col] = -1;
+            }
+            return board;
+        }
+
+        /**
+         * Shifts gems downward to fill empty (-1) cells.
+         * @param {number[][]} board
+         * @returns {number[][]} mutated board after gravity
+         */
+        function cascadeBoard(board) {
+            let rows = board.length;
+            let cols = board[0].length;
+            for (let c = 0; c < cols; c++) {
+                let gems = [];
+                for (let r = 0; r < rows; r++) {
+                    if (board[r][c] !== -1) {
+                        gems.push(board[r][c]);
+                    }
+                }
+                let emptyCount = rows - gems.length;
+                for (let r = 0; r < rows; r++) {
+                    if (r < emptyCount) {
+                        board[r][c] = -1;
+                    } else {
+                        board[r][c] = gems[r - emptyCount];
+                    }
+                }
+            }
+            return board;
+        }
+
+        /**
+         * Fills empty (-1) cells with random new gems.
+         * @param {number[][]} board
+         * @returns {number[][]} mutated board
+         */
+        function fillEmptyCells(board) {
+            for (let r = 0; r < board.length; r++) {
+                for (let c = 0; c < board[r].length; c++) {
+                    if (board[r][c] === -1) {
+                        board[r][c] = generateRandomPiece();
+                    }
+                }
+            }
+            return board;
+        }
+
+        /**
+         * Runs cascade→fill→match loop until board stabilizes. Returns total matched positions across all cycles.
+         * @param {number[][]} board
+         * @returns {{board:number[][], totalMatched:number}}
+         */
+        function processBoard(board) {
+            let totalMatched = 0;
+            let matches = findMatches(board);
+            while (matches.length > 0) {
+                totalMatched += matches.length;
+                removeMatches(board, matches);
+                cascadeBoard(board);
+                fillEmptyCells(board);
+                matches = findMatches(board);
+            }
+            return { board: board, totalMatched: totalMatched };
+        }
+
+        /**
+         * Checks if two grid cells are orthogonally adjacent.
+         * @param {number} r1
+         * @param {number} c1
+         * @param {number} r2
+         * @param {number} c2
+         * @returns {boolean}
+         */
+        function isValidAdjacent(r1, c1, r2, c2) {
+            return (Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2);
+        }
+
+        /**
+         * Checks if swapping two adjacent cells would produce at least one match.
+         * @param {number[][]} board
+         * @param {number} r1
+         * @param {number} c1
+         * @param {number} r2
+         * @param {number} c2
+         * @returns {boolean}
+         */
+        function wouldCreateMatch(board, r1, c1, r2, c2) {
+            let temp = board[r1][c1];
+            board[r1][c1] = board[r2][c2];
+            board[r2][c2] = temp;
+            let matches = findMatches(board);
+            board[r2][c2] = board[r1][c1];
+            board[r1][c1] = temp;
+            return matches.length > 0;
+        }
+
+        /**
+         * Checks whether any valid swap exists on the board.
+         * @param {number[][]} board
+         * @returns {boolean}
+         */
+        function boardHasValidMoves(board) {
+            for (let r = 0; r < board.length; r++) {
+                for (let c = 0; c < board[r].length; c++) {
+                    if (board[r][c] === -1) continue;
+                    if (c + 1 < board[r].length && board[r][c + 1] !== -1) {
+                        if (wouldCreateMatch(board, r, c, r, c + 1)) return true;
+                    }
+                    if (r + 1 < board.length && board[r + 1][c] !== -1) {
+                        if (wouldCreateMatch(board, r, c, r + 1, c)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Calculates score for a set of matched gems.
+         * @param {number} matchedCount - number of gems matched
+         * @param {number} comboLevel - current combo chain level
+         * @returns {number} score earned
+         */
+        function calculateScore(matchedCount, comboLevel) {
+            return matchedCount * 10 * (comboLevel || 1);
+        }
+
+        /** @returns {number} random gem type 0-5 */
+        function generateRandomPiece() {
+            return Math.floor(Math.random() * 6);
+        }
+
+        /**
+         * Checks win/lose conditions.
+         * @param {object} state
+         * @returns {'won'|'lost'|'playing'}
+         */
+        function checkGameEnd(state) {
+            if (state.score >= state.targetScore) {
+                return 'won';
+            } else if (state.moves <= 0) {
+                return 'lost';
+            } else {
+                return 'playing';
+            }
+        }
+
+        /* ===================== RENDER HELPERS ===================== */
+
+        /**
+         * Populates #game-board with cell divs based on state.board.
+         * @param {object} state
+         */
+        function renderBoard(state) {
+            let boardEl = document.getElementById('game-board');
+            if (!boardEl) return;
+            boardEl.innerHTML = '';
+            let board = state.board;
+            if (!board || board.length === 0) return;
+            let rows = board.length;
+            let cols = board[0].length;
+            let selected = state.selected;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let cellValue = board[r][c];
+                    let cellDiv = document.createElement('div');
+                    cellDiv.classList.add('cell');
+                    if (cellValue === -1) {
+                        cellDiv.classList.add('empty');
+                    } else {
+                        cellDiv.classList.add('gem-' + cellValue);
+                    }
+                    if (selected && selected.row === r && selected.col === c) {
+                        cellDiv.classList.add('selected');
+                    }
+                    cellDiv.setAttribute('data-row', r);
+                    cellDiv.setAttribute('data-col', c);
+                    boardEl.appendChild(cellDiv);
+                }
+            }
+        }
+
+        /**
+         * Applies a swap between two adjacent cells and processes the board cascade.
+         * @param {object} state - current state (will be mutated and returned)
+         * @param {number} r1
+         * @param {number} c1
+         * @param {number} r2
+         * @param {number} c2
+         * @returns {object} updated state
+         */
+        function applySwap(state, r1, c1, r2, c2) {
+            // Deep copy the board
+            let newBoard = [];
+            for (let r = 0; r < state.board.length; r++) {
+                newBoard[r] = [];
+                for (let c = 0; c < state.board[r].length; c++) {
+                    newBoard[r][c] = state.board[r][c];
+                }
+            }
+            state.board = newBoard;
+            state.moves = state.moves - 1;
+            let board = state.board;
+            // Swap
+            let temp = board[r1][c1];
+            board[r1][c1] = board[r2][c2];
+            board[r2][c2] = temp;
+            let totalScore = 0;
+            let comboLevel = 1;
+            while (true) {
+                let matches = findMatches(board);
+                if (matches.length === 0) break;
+                totalScore += calculateScore(matches.length, comboLevel);
+                removeMatches(board, matches);
+                cascadeBoard(board);
+                fillEmptyCells(board);
+                comboLevel++;
+            }
+            state.score = state.score + totalScore;
+            state.selected = null;
+            return state;
+        }
+
+        /* ===================== INITIALIZATION ===================== */
+        document.addEventListener('DOMContentLoaded', startGame);
+    
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>
