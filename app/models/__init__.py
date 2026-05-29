@@ -22,6 +22,7 @@ from app.models._core import (
     UserProfile,
     VoucherPool,
 )
+from app.models.brand_translation import BrandTranslation
 from app.models.geofence import Geofence
 from app.models.subscription import (
     BrandSubscription,
@@ -33,6 +34,7 @@ __all__ = [
     "BrandConfig",
     "BrandLocation",
     "BrandSubscription",
+    "BrandTranslation",
     "EnergySnapshot",
     "EnergyTransaction",
     "Geofence",

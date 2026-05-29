@@ -43,6 +43,7 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
+from app.i18n.currency import get_auto_refund_threshold
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,11 @@ TERMINAL_STATES = {
     "withdrawn",
 }
 
-DEFAULT_AUTO_REFUND_UNDER_CENTS = 1000        # ¥10
+# Region-aware auto-refund threshold (see app.i18n.currency). The
+# module-level constant is the *current* region's value at import time;
+# code that needs the precise per-region value should call
+# :func:`get_auto_refund_threshold` directly.
+DEFAULT_AUTO_REFUND_UNDER_CENTS = get_auto_refund_threshold()
 DEFAULT_SLA_RESPONSE_HOURS = 48
 DEFAULT_MAX_DISPUTES_PER_MONTH = 200
 GOOD_STANDING_DISPUTE_RATE = 0.05             # < 5% → auto-approve eligible

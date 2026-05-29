@@ -39,6 +39,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, get_read_db
+from app.i18n.currency import (
+    get_primary_currency,
+    get_subscription_price_cents,
+)
 from app.models.subscription import BrandSubscription, SubscriptionHistory
 from app.redis_client import get_redis
 
@@ -422,10 +426,24 @@ async def _resolve_brand_tier(
     return await _get_brand_tier(r, brand_id)
 
 
-def _tier_price_cents(tier: str, billing: str) -> int:
+def _tier_price_cents(tier: str, billing: str, region: str | None = None) -> int:
+    """Return the active region's MSRP for ``(tier, billing)``.
+
+    Falls back to the legacy CN-only ``TIERS`` table when the price book
+    doesn't have an entry — this preserves backwards-compatibility with
+    older tests that pre-date the per-region price book.
+    """
+    price = get_subscription_price_cents(tier, billing, region)
+    if price:
+        return price
     if billing == "annual":
         return TIERS[tier]["annual_cents"]
     return TIERS[tier]["monthly_cents"]
+
+
+def _tier_price_currency(region: str | None = None) -> str:
+    """Currency in which a subscription is billed for the given region."""
+    return get_primary_currency(region)
 
 
 def _cycle_seconds(billing: str) -> int:

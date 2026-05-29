@@ -23,6 +23,9 @@ dependencies = [
     # i18n runtime — Project Fluent (ICU MessageFormat). Catalog files
     # live in app/i18n/catalogs/. Required by app.i18n at import time.
     "fluent.runtime>=0.4.0",
+    # Locale-aware number/date/currency formatting (CLDR-backed).
+    # Wired through app.i18n.formatting & app.i18n.currency.
+    "babel>=2.14",
 ]
 
 [project.optional-dependencies]

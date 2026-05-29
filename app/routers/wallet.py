@@ -35,6 +35,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api_standards import error_response, list_response, mint_id
+from app.i18n.currency import convert as fx_convert
 from app.redis_client import get_redis
 from app.region import get_region_config, get_primary_currency, is_currency_supported
 
@@ -464,6 +465,21 @@ async def _get_currency(brand_id: str, r: aioredis.Redis) -> str:
     return cur or DEFAULT_CURRENCY
 
 
+async def _get_brand_locale(brand_id: str, r: aioredis.Redis) -> str:
+    """Best-effort lookup of a brand's preferred locale.
+
+    Reads ``brand:{bid}:locale`` (set by the portal) and falls back to
+    ``en-SG``. Used by the additive email notification hooks so the
+    welcome/wallet/dispute emails go out in the right language.
+    """
+    val = await r.get(f"brand:{brand_id}:locale")
+    if not val:
+        return "en-SG"
+    if isinstance(val, (bytes, bytearray)):
+        val = val.decode()
+    return val or "en-SG"
+
+
 async def _get_auto_recharge_config(
     brand_id: str, r: aioredis.Redis
 ) -> AutoRechargeConfig | None:
@@ -655,6 +671,21 @@ async def _v2_maybe_trigger(brand_id, new_balance, r):
     )
     if 0 < new_balance < warning_at:
         await r.set(_k_wallet_low_notif(brand_id), "1", ex=86400)
+        # Locale-aware email notification (additive — best-effort; never
+        # crashes the auto-recharge path). See app/email_templates/.
+        try:
+            from app.services.email_template_service import enqueue_email
+            await enqueue_email(
+                r,
+                brand_id=brand_id,
+                template_id="wallet_low_balance",
+                locale=await _get_brand_locale(brand_id, r),
+                brand_name=brand_id,
+                balance_display=f"{new_balance / 100:.2f}",
+                threshold_display=f"{warning_at / 100:.2f}",
+            )
+        except Exception as exc:  # pragma: no cover — never block recharge
+            logger.warning("wallet_low_email enqueue failed brand=%s: %s", brand_id, exc)
 
     if new_balance >= cfg.threshold_cents:
         return
@@ -2748,3 +2779,191 @@ async def reverse_commission(
         refunded_amount_cents=refund_amt,
         commission_clawback=commission_clawback,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Multi-currency wallet (additive — does not displace single-currency)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Redis schema additions (all keyed under the existing wallet namespace
+# so cleanup tooling already covers them):
+#
+#     wallet:brand:{bid}:balances        HASH  field=<CCY>  value=<cents>
+#
+# The legacy single-currency balance (``wallet:{bid}:balance`` /
+# ``wallet:{bid}:currency``) remains the source of truth for the primary
+# currency. The HASH below shadows it: writes go to BOTH on primary-
+# currency ops, and reads merge the two. Brands that only ever transact
+# in one currency see no behavioural change.
+
+_MC_HASH_KEY_FMT = "wallet:brand:{bid}:balances"
+
+
+def _k_mc_balances(brand_id: str) -> str:
+    return _MC_HASH_KEY_FMT.format(bid=brand_id)
+
+
+async def _mc_get_all_balances(
+    r: aioredis.Redis,
+    brand_id: str,
+) -> dict[str, int]:
+    """Return ``{currency: balance_cents}`` for every currency the brand holds.
+
+    Merges the legacy single-currency balance with the multi-currency
+    HASH so existing wallets show up even before they're migrated.
+    """
+    legacy_balance = int(await r.get(_k_balance(brand_id)) or 0)
+    legacy_currency = (
+        await r.get(_k_currency(brand_id))
+    ) or get_primary_currency()
+    legacy_currency = legacy_currency.upper()
+
+    raw = await r.hgetall(_k_mc_balances(brand_id))
+    out: dict[str, int] = {
+        cur.upper(): int(val) for cur, val in raw.items() if val
+    }
+    # Legacy balance wins when both present (it's the live mutating field).
+    if legacy_balance or legacy_currency in out:
+        out[legacy_currency] = legacy_balance
+    return out
+
+
+class MultiCurrencyBalances(BaseModel):
+    """Response envelope for ``GET /{brand_id}/balances``."""
+
+    brand_id: str
+    primary_currency: str
+    balances: dict[str, int]  # {ISO: cents}
+
+
+@router.get("/{brand_id}/balances", response_model=MultiCurrencyBalances)
+async def get_multi_currency_balances(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> MultiCurrencyBalances:
+    """Return every wallet balance the brand holds, keyed by currency.
+
+    The legacy single-currency endpoint :func:`get_wallet` still works
+    and reads the same primary-currency balance — this endpoint is
+    additive for brands that operate in multiple currencies.
+    """
+    balances = await _mc_get_all_balances(r, brand_id)
+    primary = (
+        await r.get(_k_currency(brand_id))
+    ) or get_primary_currency()
+    return MultiCurrencyBalances(
+        brand_id=brand_id,
+        primary_currency=primary.upper(),
+        balances=balances,
+    )
+
+
+class ConvertRequest(BaseModel):
+    """Inter-currency conversion between two of a brand's wallet balances."""
+
+    from_currency: str = Field(..., min_length=3, max_length=8)
+    to_currency: str = Field(..., min_length=3, max_length=8)
+    amount_cents: int = Field(..., gt=0, le=10_000_000_000)
+
+
+class ConvertResponse(BaseModel):
+    brand_id: str
+    from_currency: str
+    to_currency: str
+    debited_cents: int
+    credited_cents: int
+    balances: dict[str, int]
+    note: str
+
+
+@router.post("/{brand_id}/convert", response_model=ConvertResponse)
+async def convert_wallet_currency(
+    brand_id: str,
+    body: ConvertRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> ConvertResponse:
+    """Convert between the brand's wallet currencies (STUB FX).
+
+    Uses :func:`app.i18n.currency.convert`, which currently returns the
+    input amount with a WARN log (no live FX rate plumbed in). The
+    debit/credit still execute against the brand's balances so the API
+    contract is real — only the rate is a placeholder.
+    """
+    src = body.from_currency.upper()
+    dst = body.to_currency.upper()
+    if src == dst:
+        raise error_response(
+            status.HTTP_400_BAD_REQUEST,
+            "same_currency",
+            "from_currency must differ from to_currency",
+        )
+
+    balances = await _mc_get_all_balances(r, brand_id)
+    src_bal = balances.get(src, 0)
+    if src_bal < body.amount_cents:
+        raise error_response(
+            status.HTTP_409_CONFLICT,
+            "insufficient_balance",
+            f"wallet {src} balance {src_bal} < requested {body.amount_cents}",
+            available_cents=src_bal,
+            currency=src,
+        )
+
+    credited = fx_convert(body.amount_cents, src, dst)
+
+    # Debit src, credit dst. We mutate the legacy single-currency keys
+    # only when src/dst match the brand's pinned currency; everything
+    # else lives in the multi-currency HASH.
+    primary_raw = await r.get(_k_currency(brand_id))
+    primary = (primary_raw or get_primary_currency()).upper()
+
+    async with r.pipeline(transaction=True) as pipe:
+        if src == primary:
+            pipe.decrby(_k_balance(brand_id), body.amount_cents)
+        else:
+            pipe.hincrby(_k_mc_balances(brand_id), src, -body.amount_cents)
+        if dst == primary:
+            pipe.incrby(_k_balance(brand_id), credited)
+        else:
+            pipe.hincrby(_k_mc_balances(brand_id), dst, credited)
+        await pipe.execute()
+
+    new_balances = await _mc_get_all_balances(r, brand_id)
+    note = (
+        "FX rate stubbed — amount unchanged across currencies; "
+        "wire a real FX provider before enabling cross-currency settlement."
+    )
+    logger.warning(
+        "wallet_convert_stub brand=%s %s→%s amount=%s",
+        brand_id, src, dst, body.amount_cents,
+    )
+    return ConvertResponse(
+        brand_id=brand_id,
+        from_currency=src,
+        to_currency=dst,
+        debited_cents=body.amount_cents,
+        credited_cents=credited,
+        balances=new_balances,
+        note=note,
+    )
+
+
+@router.get("/{brand_id}/balance")
+async def get_primary_balance_alias(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Backwards-compat alias returning only the primary-currency balance.
+
+    Brands that haven't opted into multi-currency walle ts continue to
+    hit this — same data, less wire format.
+    """
+    balance = int(await r.get(_k_balance(brand_id)) or 0)
+    primary_raw = await r.get(_k_currency(brand_id))
+    primary = (primary_raw or get_primary_currency()).upper()
+    return {
+        "brand_id": brand_id,
+        "currency": primary,
+        "balance_cents": balance,
+    }
+

@@ -205,6 +205,20 @@ and the shim helpers in `app.api_standards`.
     )
     app.include_router(streak.router, prefix="/api/v1/streak", tags=["streak"])
     app.include_router(brands.router, prefix="/api/v1/brands", tags=["brands"])
+
+    # ── i18n: brand translation sidecar (merchant + admin) ─────────────
+    from app.routers import brand_translations as _i18n_brand_router
+    app.include_router(
+        _i18n_brand_router.router,
+        prefix="/api/v1/brands",
+        tags=["brand-translations"],
+    )
+    app.include_router(
+        _i18n_brand_router.admin_router,
+        prefix="/api/v1/admin",
+        tags=["admin-translations"],
+    )
+
     app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
     app.include_router(
         vouchers.router, prefix="/api/v1/brands", tags=["vouchers"]

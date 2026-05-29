@@ -36,6 +36,7 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator
 
+from app.i18n.currency import get_primary_currency
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,11 @@ router = APIRouter()
 
 
 # ── Constants ────────────────────────────────────────────────────────────
-DEFAULT_CURRENCY = "CNY"
+# ``DEFAULT_CURRENCY`` is retained as a backwards-compat alias for legacy
+# callers that imported the symbol. New code paths should call
+# :func:`app.i18n.currency.get_primary_currency` instead so the value
+# tracks the active region.
+DEFAULT_CURRENCY = get_primary_currency()
 MAX_WATCH_RETRIES = 8
 TX_LIST_MAX = 10_000
 IDEM_TTL_SECONDS = 24 * 3600
@@ -121,7 +126,11 @@ def _today() -> str:
 
 # ── Pydantic models ──────────────────────────────────────────────────────
 class CreateWalletRequest(BaseModel):
-    currency: str = Field(DEFAULT_CURRENCY, min_length=3, max_length=3)
+    currency: str = Field(
+        default_factory=get_primary_currency,
+        min_length=3,
+        max_length=3,
+    )
     initial_amount_cents: int = Field(0, ge=0, le=100_000_000)
 
     @field_validator("currency")

@@ -52,6 +52,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
 import redis.asyncio as aioredis
 
+from app.i18n.currency import get_primary_currency
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -218,7 +219,11 @@ class CreateListingRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=256)
     description: str = Field("", max_length=8192)
     price_cents: int = Field(..., ge=0, le=10_000_000_000)
-    currency: str = Field("CNY", min_length=3, max_length=8)
+    currency: str = Field(
+        default_factory=get_primary_currency,
+        min_length=3,
+        max_length=8,
+    )
     category: str = Field(..., min_length=1, max_length=64)
     subcategory: str | None = Field(None, max_length=64)
     photos: list[str] = Field(default_factory=list, max_length=_MAX_PHOTOS)
