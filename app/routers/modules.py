@@ -44,6 +44,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.redis_client import get_redis
+from app.routers.conditions import (
+    _check_and_reserve_module,
+    commit_reservation_internal,
+    refund_reservation_internal,
+)
 
 router = APIRouter()
 
@@ -179,32 +184,48 @@ async def roulette_spin(body: RouletteSpinBody, r: aioredis.Redis = Depends(get_
     if not wheel:
         raise HTTPException(400, detail="Empty wheel")
 
-    # Pay the cost
-    await _spend_energy(r, body.brand_id, body.user_id, body.cost_energy)
+    # ── Conditions gate ─────────────────────────────────────────────────
+    ok, rid_or_blockers, hints = await _check_and_reserve_module(
+        r, body.brand_id, body.user_id, "reward_roulette", value_cents=0,
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=403,
+            detail={"blocked_by": rid_or_blockers, "fix_hints": hints},
+        )
+    reservation_id = rid_or_blockers
 
-    # Spin
-    seed = int.from_bytes(uuid.uuid4().bytes[:8], "big")
-    prize = _weighted_choice(wheel, "weight", seed=seed)
+    try:
+        # Pay the cost
+        await _spend_energy(r, body.brand_id, body.user_id, body.cost_energy)
 
-    # Auto-grant common reward types
-    granted: dict[str, Any] = {}
-    rtype = prize.get("reward_type")
-    rval = prize.get("reward_value", 0)
-    if rtype == "energy" and rval:
-        granted["new_energy_balance"] = await _add_energy(r, body.brand_id, body.user_id, int(rval))
-    elif rtype == "xp" and rval:
-        granted["new_xp"] = await _award_xp(r, body.user_id, int(rval))
+        # Spin
+        seed = int.from_bytes(uuid.uuid4().bytes[:8], "big")
+        prize = _weighted_choice(wheel, "weight", seed=seed)
 
-    # Log spin (last 50)
-    log_key = f"user:{body.user_id}:module:roulette:{body.brand_id}:log"
-    await r.lpush(log_key, json.dumps({"ts": _iso(_utcnow()), "prize": prize, "seed": seed}))
-    await r.ltrim(log_key, 0, 49)
+        # Auto-grant common reward types
+        granted: dict[str, Any] = {}
+        rtype = prize.get("reward_type")
+        rval = prize.get("reward_value", 0)
+        if rtype == "energy" and rval:
+            granted["new_energy_balance"] = await _add_energy(r, body.brand_id, body.user_id, int(rval))
+        elif rtype == "xp" and rval:
+            granted["new_xp"] = await _award_xp(r, body.user_id, int(rval))
 
-    return {
-        "prize": {"label": prize["label"], "reward_type": rtype, "reward_value": rval},
-        "animation_seed": seed,
-        "granted": granted,
-    }
+        # Log spin (last 50)
+        log_key = f"user:{body.user_id}:module:roulette:{body.brand_id}:log"
+        await r.lpush(log_key, json.dumps({"ts": _iso(_utcnow()), "prize": prize, "seed": seed}))
+        await r.ltrim(log_key, 0, 49)
+
+        await commit_reservation_internal(r, reservation_id)
+        return {
+            "prize": {"label": prize["label"], "reward_type": rtype, "reward_value": rval},
+            "animation_seed": seed,
+            "granted": granted,
+        }
+    except Exception as exc:
+        await refund_reservation_internal(r, reservation_id, reason=str(exc))
+        raise
 
 
 @router.get("/roulette/{user_id}/history")
@@ -483,12 +504,37 @@ async def pass_buy(body: PassBuyBody, r: aioredis.Redis = Depends(get_redis)):
     cfg_raw = await r.get(_pass_cfg_key(body.brand_id, body.season_id))
     if not cfg_raw:
         raise HTTPException(404, detail="Season not configured")
-    key = _pass_user_key(body.user_id, body.brand_id, body.season_id)
-    is_premium = await r.hget(key, "is_premium")
-    if is_premium == "1":
-        return {"ok": True, "already_premium": True}
-    await r.hset(key, mapping={"is_premium": "1", "purchased_at": _iso(_utcnow())})
-    return {"ok": True, "is_premium": True}
+    cfg = json.loads(cfg_raw)
+    price_cents = int(cfg.get("price_cents", 0) or 0)
+
+    # ── Conditions gate (budget = pass price) ───────────────────────────
+    ok, rid_or_blockers, hints = await _check_and_reserve_module(
+        r, body.brand_id, body.user_id, "battle_pass", value_cents=price_cents,
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=403,
+            detail={"blocked_by": rid_or_blockers, "fix_hints": hints},
+        )
+    reservation_id = rid_or_blockers
+
+    try:
+        key = _pass_user_key(body.user_id, body.brand_id, body.season_id)
+        is_premium = await r.hget(key, "is_premium")
+        if is_premium == "1":
+            # No-op success — still consume the reservation so frequency
+            # counters reflect the call attempt? No: refund, idempotent reentry.
+            await refund_reservation_internal(r, reservation_id, reason="already_premium")
+            return {"ok": True, "already_premium": True}
+        await r.hset(key, mapping={"is_premium": "1", "purchased_at": _iso(_utcnow())})
+        await commit_reservation_internal(r, reservation_id)
+        return {"ok": True, "is_premium": True}
+    except HTTPException:
+        await refund_reservation_internal(r, reservation_id, reason="http_error")
+        raise
+    except Exception as exc:
+        await refund_reservation_internal(r, reservation_id, reason=str(exc))
+        raise
 
 
 @router.post("/pass/award-xp")
@@ -1022,12 +1068,29 @@ async def tourney_join(tourney_id: str, body: TourneyJoinBody, r: aioredis.Redis
     members_key = f"{_tourney_key(tourney_id)}:participants"
     if await r.sismember(members_key, body.user_id):
         return {"ok": True, "already_joined": True}
-    cost = int(cfg.get("entry_cost_energy", 0))
-    if cost > 0:
-        await _spend_energy(r, cfg["brand_id"], body.user_id, cost)
-    await r.sadd(members_key, body.user_id)
-    await r.zadd(f"{_tourney_key(tourney_id)}:scores", {body.user_id: 0}, nx=True)
-    return {"ok": True, "tourney_id": tourney_id, "entry_cost_paid": cost}
+
+    # ── Conditions gate ─────────────────────────────────────────────────
+    ok, rid_or_blockers, hints = await _check_and_reserve_module(
+        r, cfg["brand_id"], body.user_id, "tourney", value_cents=0,
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=403,
+            detail={"blocked_by": rid_or_blockers, "fix_hints": hints},
+        )
+    reservation_id = rid_or_blockers
+
+    try:
+        cost = int(cfg.get("entry_cost_energy", 0))
+        if cost > 0:
+            await _spend_energy(r, cfg["brand_id"], body.user_id, cost)
+        await r.sadd(members_key, body.user_id)
+        await r.zadd(f"{_tourney_key(tourney_id)}:scores", {body.user_id: 0}, nx=True)
+        await commit_reservation_internal(r, reservation_id)
+        return {"ok": True, "tourney_id": tourney_id, "entry_cost_paid": cost}
+    except Exception as exc:
+        await refund_reservation_internal(r, reservation_id, reason=str(exc))
+        raise
 
 
 @router.post("/tourney/{tourney_id}/submit")
@@ -1136,40 +1199,58 @@ async def collection_draw(body: CollectionDrawBody, r: aioredis.Redis = Depends(
         raise HTTPException(404, detail="Collection not configured")
     cfg = json.loads(raw)
     items = cfg["items"]
-    await _spend_energy(r, body.brand_id, body.user_id, body.cost_energy)
-    seed = int.from_bytes(uuid.uuid4().bytes[:8], "big")
-    picked = _weighted_choice(items, "drop_weight", seed=seed)
 
-    owned_key = f"{_col_user_key(body.user_id, body.brand_id, body.collection_id)}:owned"
-    is_new = await r.sadd(owned_key, picked["id"]) == 1
-    # Track duplicate counts
-    await r.hincrby(f"{_col_user_key(body.user_id, body.brand_id, body.collection_id)}:counts", picked["id"], 1)
+    # ── Conditions gate ─────────────────────────────────────────────────
+    ok, rid_or_blockers, hints = await _check_and_reserve_module(
+        r, body.brand_id, body.user_id, "collection", value_cents=0,
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=403,
+            detail={"blocked_by": rid_or_blockers, "fix_hints": hints},
+        )
+    reservation_id = rid_or_blockers
 
-    completion_granted: dict[str, Any] = {}
-    if is_new:
-        owned_count = await r.scard(owned_key)
-        if owned_count >= len(items):
-            # 100% completion — auto-grant the big reward, idempotent
-            done_flag = f"{_col_user_key(body.user_id, body.brand_id, body.collection_id)}:completed"
-            if not await r.get(done_flag):
-                reward = cfg.get("completion_reward", {})
-                if reward.get("xp"):
-                    completion_granted["xp"] = await _award_xp(r, body.user_id, int(reward["xp"]))
-                if reward.get("energy"):
-                    completion_granted["energy"] = await _add_energy(
-                        r, body.brand_id, body.user_id, int(reward["energy"])
-                    )
-                if reward.get("badge"):
-                    await r.sadd(f"user:{body.user_id}:badges", str(reward["badge"]))
-                    completion_granted["badge"] = str(reward["badge"])
-                await r.set(done_flag, "1")
-                completion_granted["completion_unlocked"] = True
-    return {
-        "item": picked,
-        "is_new": is_new,
-        "animation_seed": seed,
-        "completion_granted": completion_granted,
-    }
+    try:
+        await _spend_energy(r, body.brand_id, body.user_id, body.cost_energy)
+        seed = int.from_bytes(uuid.uuid4().bytes[:8], "big")
+        picked = _weighted_choice(items, "drop_weight", seed=seed)
+
+        owned_key = f"{_col_user_key(body.user_id, body.brand_id, body.collection_id)}:owned"
+        is_new = await r.sadd(owned_key, picked["id"]) == 1
+        # Track duplicate counts
+        await r.hincrby(f"{_col_user_key(body.user_id, body.brand_id, body.collection_id)}:counts", picked["id"], 1)
+
+        completion_granted: dict[str, Any] = {}
+        if is_new:
+            owned_count = await r.scard(owned_key)
+            if owned_count >= len(items):
+                # 100% completion — auto-grant the big reward, idempotent
+                done_flag = f"{_col_user_key(body.user_id, body.brand_id, body.collection_id)}:completed"
+                if not await r.get(done_flag):
+                    reward = cfg.get("completion_reward", {})
+                    if reward.get("xp"):
+                        completion_granted["xp"] = await _award_xp(r, body.user_id, int(reward["xp"]))
+                    if reward.get("energy"):
+                        completion_granted["energy"] = await _add_energy(
+                            r, body.brand_id, body.user_id, int(reward["energy"])
+                        )
+                    if reward.get("badge"):
+                        await r.sadd(f"user:{body.user_id}:badges", str(reward["badge"]))
+                        completion_granted["badge"] = str(reward["badge"])
+                    await r.set(done_flag, "1")
+                    completion_granted["completion_unlocked"] = True
+
+        await commit_reservation_internal(r, reservation_id)
+        return {
+            "item": picked,
+            "is_new": is_new,
+            "animation_seed": seed,
+            "completion_granted": completion_granted,
+        }
+    except Exception as exc:
+        await refund_reservation_internal(r, reservation_id, reason=str(exc))
+        raise
 
 
 @router.get("/collection/{user_id}")

@@ -35,6 +35,11 @@ from pydantic import BaseModel, Field, field_validator
 import redis.asyncio as aioredis
 
 from app.redis_client import get_redis
+from app.routers.conditions import (
+    _check_and_reserve_module,
+    commit_reservation_internal,
+    refund_reservation_internal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -390,65 +395,88 @@ async def issue_voucher(
 ):
     template = await _load_template(r, body.brand_id, template_id)
 
-    # Enforce total_supply atomically.
-    total_supply = (template.get("conditions") or {}).get("total_supply")
-    if total_supply is not None:
-        issued = await r.incr(_k_template_issued(template_id))
-        if issued > int(total_supply):
-            # Roll back the counter.
-            await r.decr(_k_template_issued(template_id))
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="Voucher supply exhausted",
-            )
-    else:
-        await r.incr(_k_template_issued(template_id))
-
-    vid = uuid4().hex[:16]
-    code = _gen_code()
-    # Ensure code uniqueness
-    for _ in range(5):
-        if await r.setnx(_k_code(code), vid):
-            break
-        code = _gen_code()
-    else:
-        raise HTTPException(
-            status_code=500, detail="Failed to allocate unique code"
-        )
-
-    expires_at = _now() + int(template["expires_in_days"]) * 86400
-    voucher = {
-        "voucher_id": vid,
-        "code": code,
-        "template_id": template_id,
-        "brand_id": body.brand_id,
-        "user_id": body.user_id,
-        "status": "active",
-        "issued_at": str(_now()),
-        "expires_at": str(expires_at),
-        "reason": body.reason or "",
-        "stackable": "1" if template.get("stackable") else "0",
-        "transferable": "1" if template.get("transferable") else "0",
-        "value": json.dumps(template["value"]),
-    }
-    pipe = r.pipeline()
-    pipe.hset(_k_voucher(vid), mapping=voucher)
-    pipe.expireat(_k_voucher(vid), expires_at + 30 * 86400)  # keep 30d after
-    pipe.rpush(_k_user_vouchers(body.user_id, body.brand_id), vid)
-    await pipe.execute()
-
-    logger.info(
-        "Voucher issued: vid=%s template=%s user=%s brand=%s",
-        vid,
-        template_id,
-        body.user_id,
-        body.brand_id,
+    # ── Conditions Engine gate (brand module: voucher_template) ─────────
+    # If the merchant has configured conditions on the voucher_template
+    # module for this brand, gate the issuance behind a reservation. This
+    # is layered ON TOP of the legacy per-template ``total_supply`` cap
+    # below (the two are independent).
+    ok, rid_or_blockers, hints = await _check_and_reserve_module(
+        r, body.brand_id, body.user_id, "voucher_template", value_cents=0,
     )
-    return {
-        "voucher_id": vid,
-        "code": code,
-        "expires_at": expires_at,
-    }
+    if not ok:
+        raise HTTPException(
+            status_code=403,
+            detail={"blocked_by": rid_or_blockers, "fix_hints": hints},
+        )
+    reservation_id = rid_or_blockers
+
+    try:
+        # Enforce total_supply atomically.
+        total_supply = (template.get("conditions") or {}).get("total_supply")
+        if total_supply is not None:
+            issued = await r.incr(_k_template_issued(template_id))
+            if issued > int(total_supply):
+                # Roll back the counter.
+                await r.decr(_k_template_issued(template_id))
+                raise HTTPException(
+                    status_code=status.HTTP_410_GONE,
+                    detail="Voucher supply exhausted",
+                )
+        else:
+            await r.incr(_k_template_issued(template_id))
+
+        vid = uuid4().hex[:16]
+        code = _gen_code()
+        # Ensure code uniqueness
+        for _ in range(5):
+            if await r.setnx(_k_code(code), vid):
+                break
+            code = _gen_code()
+        else:
+            raise HTTPException(
+                status_code=500, detail="Failed to allocate unique code"
+            )
+
+        expires_at = _now() + int(template["expires_in_days"]) * 86400
+        voucher = {
+            "voucher_id": vid,
+            "code": code,
+            "template_id": template_id,
+            "brand_id": body.brand_id,
+            "user_id": body.user_id,
+            "status": "active",
+            "issued_at": str(_now()),
+            "expires_at": str(expires_at),
+            "reason": body.reason or "",
+            "stackable": "1" if template.get("stackable") else "0",
+            "transferable": "1" if template.get("transferable") else "0",
+            "value": json.dumps(template["value"]),
+        }
+        pipe = r.pipeline()
+        pipe.hset(_k_voucher(vid), mapping=voucher)
+        pipe.expireat(_k_voucher(vid), expires_at + 30 * 86400)  # keep 30d after
+        pipe.rpush(_k_user_vouchers(body.user_id, body.brand_id), vid)
+        await pipe.execute()
+
+        logger.info(
+            "Voucher issued: vid=%s template=%s user=%s brand=%s",
+            vid,
+            template_id,
+            body.user_id,
+            body.brand_id,
+        )
+        await commit_reservation_internal(r, reservation_id)
+        return {
+            "voucher_id": vid,
+            "code": code,
+            "expires_at": expires_at,
+        }
+    except HTTPException:
+        await refund_reservation_internal(r, reservation_id, reason="http_error")
+        raise
+    except Exception as exc:
+        await refund_reservation_internal(r, reservation_id, reason=str(exc))
+        raise
 
 
 @router.post(

@@ -28,6 +28,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.redis_client import get_redis
+from app.routers.conditions import (
+    _check_and_reserve_module,
+    commit_reservation_internal,
+    refund_reservation_internal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -357,77 +362,97 @@ async def claim_coupon(
             "idempotent_replay": True,
         }
 
-    tiers = await _load_tiers(r, body.brand_id)
-    if not tiers:
+    # ── Conditions gate (brand module: score_to_coupon) ────────────────
+    ok, rid_or_blockers, hints = await _check_and_reserve_module(
+        r, body.brand_id, body.user_id, "score_to_coupon", value_cents=0,
+        action_context={"score": body.score, "game_slug": body.game_slug},
+    )
+    if not ok:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No coupon tiers configured for this brand",
+            status_code=403,
+            detail={"blocked_by": rid_or_blockers, "fix_hints": hints},
         )
+    reservation_id = rid_or_blockers
 
-    matched = _pick_highest_tier(tiers, body.score)
-    if matched is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Score {body.score} does not meet any tier threshold",
-        )
+    try:
+        tiers = await _load_tiers(r, body.brand_id)
+        if not tiers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No coupon tiers configured for this brand",
+            )
 
-    coupon_id = _gen_id("cpn")
-    code = await _generate_unique_code(r, body.brand_id)
-    expires_in_days = int(matched.get("expires_in_days", 30))
-    expires_at_dt = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
-    expires_at_ts = int(expires_at_dt.timestamp())
-    created_ts = _now_ts()
+        matched = _pick_highest_tier(tiers, body.score)
+        if matched is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Score {body.score} does not meet any tier threshold",
+            )
 
-    coupon_hash = {
-        "coupon_id": coupon_id,
-        "user_id": body.user_id,
-        "brand_id": body.brand_id,
-        "tier_name": str(matched.get("name", "")),
-        "discount_type": str(matched.get("discount_type", "percent")),
-        "discount_value": str(matched.get("discount_value", 0)),
-        "max_redeems_per_user": str(matched.get("max_redeems_per_user", 1)),
-        "expires_at": expires_at_dt.isoformat(),
-        "expires_at_ts": str(expires_at_ts),
-        "status": "active",
-        "code": code,
-        "created_at": _now_iso(),
-        "created_ts": str(created_ts),
-        "game_slug": body.game_slug,
-        "session_id": body.session_id,
-        "score": str(body.score),
-    }
+        coupon_id = _gen_id("cpn")
+        code = await _generate_unique_code(r, body.brand_id)
+        expires_in_days = int(matched.get("expires_in_days", 30))
+        expires_at_dt = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+        expires_at_ts = int(expires_at_dt.timestamp())
+        created_ts = _now_ts()
 
-    # Atomic-ish: pipeline the writes
-    pipe = r.pipeline()
-    pipe.hset(_k_coupon(coupon_id), mapping=coupon_hash)
-    pipe.expireat(_k_coupon(coupon_id), expires_at_ts + 86400 * 90)  # keep 90d post-expiry
-    pipe.zadd(_k_user_coupons(body.user_id, body.brand_id), {coupon_id: expires_at_ts})
-    pipe.set(session_key, coupon_id, ex=86400 * 30)
-    await pipe.execute()
-
-    # Analytics
-    await _bump(r, body.brand_id, "coupons_claimed")
-    await _log_transaction(
-        r,
-        body.brand_id,
-        "coupon_claimed",
-        {
+        coupon_hash = {
             "coupon_id": coupon_id,
             "user_id": body.user_id,
-            "tier": matched.get("name"),
-            "score": body.score,
+            "brand_id": body.brand_id,
+            "tier_name": str(matched.get("name", "")),
+            "discount_type": str(matched.get("discount_type", "percent")),
+            "discount_value": str(matched.get("discount_value", 0)),
+            "max_redeems_per_user": str(matched.get("max_redeems_per_user", 1)),
+            "expires_at": expires_at_dt.isoformat(),
+            "expires_at_ts": str(expires_at_ts),
+            "status": "active",
+            "code": code,
+            "created_at": _now_iso(),
+            "created_ts": str(created_ts),
             "game_slug": body.game_slug,
-        },
-    )
+            "session_id": body.session_id,
+            "score": str(body.score),
+        }
 
-    return {
-        "coupon_id": coupon_id,
-        "tier_name": matched.get("name"),
-        "discount_type": matched.get("discount_type"),
-        "discount_value": float(matched.get("discount_value", 0)),
-        "expires_at": expires_at_dt.isoformat(),
-        "code": code,
-    }
+        # Atomic-ish: pipeline the writes
+        pipe = r.pipeline()
+        pipe.hset(_k_coupon(coupon_id), mapping=coupon_hash)
+        pipe.expireat(_k_coupon(coupon_id), expires_at_ts + 86400 * 90)  # keep 90d post-expiry
+        pipe.zadd(_k_user_coupons(body.user_id, body.brand_id), {coupon_id: expires_at_ts})
+        pipe.set(session_key, coupon_id, ex=86400 * 30)
+        await pipe.execute()
+
+        # Analytics
+        await _bump(r, body.brand_id, "coupons_claimed")
+        await _log_transaction(
+            r,
+            body.brand_id,
+            "coupon_claimed",
+            {
+                "coupon_id": coupon_id,
+                "user_id": body.user_id,
+                "tier": matched.get("name"),
+                "score": body.score,
+                "game_slug": body.game_slug,
+            },
+        )
+
+        await commit_reservation_internal(r, reservation_id)
+        return {
+            "coupon_id": coupon_id,
+            "tier_name": matched.get("name"),
+            "discount_type": matched.get("discount_type"),
+            "discount_value": float(matched.get("discount_value", 0)),
+            "expires_at": expires_at_dt.isoformat(),
+            "code": code,
+        }
+    except HTTPException:
+        await refund_reservation_internal(r, reservation_id, reason="http_error")
+        raise
+    except Exception as exc:
+        await refund_reservation_internal(r, reservation_id, reason=str(exc))
+        raise
 
 
 @router.get("/coupons/{user_id}")

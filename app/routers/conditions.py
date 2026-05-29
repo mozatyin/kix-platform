@@ -1314,3 +1314,236 @@ async def campaign_audit(
         except (TypeError, ValueError):
             continue
     return {"ok": True, "campaign_id": campaign_id, "entries": entries}
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Module integration helpers
+# ═════════════════════════════════════════════════════════════════════════
+#
+# These helpers let any gamification module endpoint gate its action behind
+# the conditions engine without HTTP self-calls. The contract:
+#
+#     1. Call  await _check_and_reserve_module(...)  at the top of the
+#        action handler.  If the module has no conditions configured, the
+#        helper returns (True, None, {}) and the handler runs unmodified
+#        (backward compatible).
+#
+#     2. On the success path, call  await commit_reservation_internal(r, rid)
+#        once the underlying action has succeeded — this bumps frequency
+#        counters and marks the reservation as a real claim.
+#
+#     3. On failure, call  await refund_reservation_internal(r, rid, reason)
+#        which returns supply / budget to the pool.
+#
+# The internal helpers share all logic with the public /commit and /refund
+# endpoints (they were factored out of them) so behaviour is identical.
+
+
+async def _check_and_reserve_module(
+    r: aioredis.Redis,
+    brand_id: str,
+    user_id: str,
+    module_id: str,
+    value_cents: int = 0,
+    action_context: dict[str, Any] | None = None,
+) -> tuple[bool, str | None, dict[str, str]]:
+    """Load a module's conditions and reserve atomically.
+
+    Returns ``(ok, reservation_id_or_blockers, fix_hints)``:
+
+      * ``(True, None, {})`` — module has no conditions → allow, no reservation.
+      * ``(True, rid, {})``  — reservation succeeded; caller must later
+                               commit_reservation_internal(r, rid)
+                               or refund_reservation_internal(r, rid, reason).
+      * ``(False, blocker_codes, hints)`` — gated; caller should surface
+                               ``hints`` and short-circuit the action.
+
+    When ``ok`` is False, the second tuple element is a single comma-joined
+    string of blocker codes (so callers can shove it straight into
+    ``HTTPException.detail``); the third element is the bilingual fix-hint
+    map.
+    """
+    raw = await r.hget(f"brand:{brand_id}:modules", module_id)
+    if not raw:
+        return True, None, {}
+
+    try:
+        cfg = json.loads(raw)
+    except (TypeError, ValueError):
+        return True, None, {}
+
+    # Conditions may live at the top level or nested under "params" —
+    # both shapes have been observed depending on where the ConditionsBuilder
+    # UI wrote them.
+    cond_dict = cfg.get("conditions")
+    if cond_dict is None:
+        cond_dict = (cfg.get("params") or {}).get("conditions")
+    if not cond_dict:
+        return True, None, {}
+
+    try:
+        conditions = FullConditions(**cond_dict)
+    except Exception as exc:  # malformed config — fail open with a log
+        logger.warning(
+            "conditions._check_and_reserve_module: bad conditions for "
+            "brand=%s module=%s: %s", brand_id, module_id, exc,
+        )
+        return True, None, {}
+
+    # The campaign_id is synthesized per (brand, module) so that the
+    # supply / frequency counters are isolated and the audit log is
+    # discoverable from the dashboard.
+    campaign_id = f"module:{brand_id}:{module_id}"
+
+    req = ReserveRequest(
+        brand_id=brand_id,
+        user_id=user_id,
+        campaign_id=campaign_id,
+        conditions=conditions,
+        value_cents=value_cents,
+        action_context=action_context or {},
+    )
+    # Direct in-process call — no HTTP, shares the redis connection.
+    result = await reserve_conditions(req, r)
+    if not result.ok:
+        return False, ",".join(result.blocked_by), result.fix_hints
+    return True, result.reservation_id, {}
+
+
+async def commit_reservation_internal(
+    r: aioredis.Redis,
+    reservation_id: str,
+) -> dict[str, Any] | None:
+    """Internal-call variant of POST /commit.
+
+    Idempotent on no-op: missing reservations or already-committed ones
+    return ``None`` rather than raising, because module handlers shouldn't
+    crash a successful action just because the reservation TTL expired
+    between reserve and commit. Mis-state events are logged.
+    """
+    if not reservation_id:
+        return None
+    res = await r.hgetall(_k_reservation(reservation_id))
+    if not res:
+        logger.warning(
+            "conditions.commit_reservation_internal: reservation %s not "
+            "found (likely expired); action proceeded uncounted",
+            reservation_id,
+        )
+        return None
+
+    status_str = res.get("status", "reserved")
+    if status_str == "committed":
+        return None
+    if status_str == "refunded":
+        logger.warning(
+            "conditions.commit_reservation_internal: reservation %s "
+            "already refunded; refusing to commit",
+            reservation_id,
+        )
+        return None
+
+    campaign_id = res["campaign_id"]
+    user_id = res["user_id"]
+    value_cents = int(res.get("value_cents", 0) or 0)
+
+    today = _today_str()
+    isoweek = _isoweek_str()
+    ym = _ym_str()
+    hour = _hour_bucket()
+
+    pipe = r.pipeline(transaction=True)
+    pipe.incr(_k_user_daily(campaign_id, user_id, today))
+    pipe.expire(_k_user_daily(campaign_id, user_id, today), 86400)
+    pipe.incr(_k_user_weekly(campaign_id, user_id, isoweek))
+    pipe.expire(_k_user_weekly(campaign_id, user_id, isoweek), 604800)
+    pipe.incr(_k_user_monthly(campaign_id, user_id, ym))
+    pipe.expire(_k_user_monthly(campaign_id, user_id, ym), 2678400)
+    pipe.incr(_k_user_total(campaign_id, user_id))
+    pipe.incr(_k_global_daily(campaign_id, today))
+    pipe.expire(_k_global_daily(campaign_id, today), 86400)
+    pipe.incr(_k_hourly(campaign_id, hour))
+    pipe.expire(_k_hourly(campaign_id, hour), 86400 * 31)
+    pipe.incr(_k_claims(campaign_id))
+    pipe.sadd(_k_unique_users(campaign_id), user_id)
+    pipe.set(_k_user_claimed(campaign_id, user_id), "1")
+    pipe.hset(_k_reservation(reservation_id), mapping={
+        "status": "committed",
+        "committed_at": str(time.time()),
+    })
+    pipe.expire(_k_reservation(reservation_id), 86400 * 7)
+    await pipe.execute()
+
+    await _audit(
+        r, campaign_id, user_id, "commit",
+        extra={"reservation_id": reservation_id, "value_cents": value_cents},
+    )
+
+    return {
+        "ok": True,
+        "reservation_id": reservation_id,
+        "campaign_id": campaign_id,
+        "user_id": user_id,
+        "value_cents": value_cents,
+    }
+
+
+async def refund_reservation_internal(
+    r: aioredis.Redis,
+    reservation_id: str,
+    reason: str = "",
+) -> dict[str, Any] | None:
+    """Internal-call variant of POST /refund.
+
+    Returns supply + budget to the pool. Soft-fails (returns None, logs)
+    on missing / already-refunded reservations — module handlers don't
+    need to dance around the cleanup path. Refusing to refund a committed
+    reservation is preserved as a hard log line (but not an exception)
+    because if it happened the upstream logic has a bug.
+    """
+    if not reservation_id:
+        return None
+    res = await r.hgetall(_k_reservation(reservation_id))
+    if not res:
+        return None
+
+    status_str = res.get("status", "reserved")
+    if status_str == "refunded":
+        return None
+    if status_str == "committed":
+        logger.error(
+            "conditions.refund_reservation_internal: refusing to refund "
+            "already-committed reservation %s", reservation_id,
+        )
+        return None
+
+    campaign_id = res["campaign_id"]
+    user_id = res["user_id"]
+    supply_consumed = int(res.get("supply_consumed", 0) or 0)
+    budget_consumed = int(res.get("budget_consumed", 0) or 0)
+
+    pipe = r.pipeline(transaction=True)
+    if supply_consumed > 0:
+        pipe.incrby(_k_supply(campaign_id), supply_consumed)
+    if budget_consumed > 0:
+        pipe.incrby(_k_budget(campaign_id), budget_consumed)
+    pipe.hset(_k_reservation(reservation_id), mapping={
+        "status": "refunded",
+        "refunded_at": str(time.time()),
+        "refund_reason": reason or "",
+    })
+    pipe.expire(_k_reservation(reservation_id), 86400 * 7)
+    await pipe.execute()
+
+    await _audit(
+        r, campaign_id, user_id, "refund",
+        extra={"reservation_id": reservation_id, "reason": reason},
+    )
+
+    return {
+        "ok": True,
+        "reservation_id": reservation_id,
+        "campaign_id": campaign_id,
+        "user_id": user_id,
+        "reason": reason,
+    }
