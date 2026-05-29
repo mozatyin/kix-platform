@@ -89,6 +89,15 @@ def create_app() -> FastAPI:
     app.include_router(
         vouchers.router, prefix="/api/v1/brands", tags=["vouchers"]
     )
+    # Cross-store voucher lifecycle (issue / redeem / transfer / void /
+    # master network configuration). Lives in the same module as the
+    # legacy brand-pool router but mounts at the global /api/v1/vouchers
+    # prefix.
+    app.include_router(
+        vouchers.cross_store_router,
+        prefix="/api/v1/vouchers",
+        tags=["vouchers-cross-store"],
+    )
     app.include_router(reward.router, prefix="/internal/reward", tags=["reward"])
     app.include_router(qr.router, prefix="/internal/qr", tags=["qr"])
     app.include_router(
