@@ -1,8 +1,9 @@
-# KiX 平台商业化 v2 — AI 时代的护城河
+# KiX 平台商业化 v2 — 广告平台模式（TikTok Ads / Google Ads for Gamification）
 
-> **核心论断**: AI 让所有软件功能在 12 个月内被复刻。卖软件 = 慢性自杀。
-> 唯一可持续护城河 = **多方商家之间的用户连接网络**。
-> 收入只来自连接产生的真实交易，不来自工具。
+> **核心论断**: KiX 是广告平台。像 TikTok Ads / Google Ads / Meta Ads。
+> **商家之间永远看不到对方。** KiX 是每个商家唯一的合同对手方。
+> 软件功能 12 个月内被 AI 复刻 → 全部免费送出。
+> 真正护城河 = 拍卖算法 + 跨商家用户池 + 单向网络合约。
 
 ---
 
@@ -12,143 +13,215 @@
 
 | 类型 | 代表 | 当前状况 | AI 时代展望 |
 |------|------|---------|------------|
-| **卖软件 SaaS** | Salesforce, HubSpot | 巨人但增长放缓 | ⚠️ AI 复刻威胁严重 |
-| **卖订阅** | Shopify, Notion | 稳定但增长压力大 | ⚠️ 商家自建 AI 工具替代 |
-| **卖功能模块** | Bunchball, Smartico | 中等规模 | 🔴 AI Recipe 直接复刻 |
-| **卖连接** | VISA, 美团, 抖音 | 持续增长 | ✅ AI 无法复刻网络效应 |
-| **卖广告** | Google, Meta | 主导 | ✅ AI 优化精度更高 |
+| **卖软件 SaaS** | Salesforce, HubSpot | 巨人但增长放缓 | AI 复刻威胁严重 |
+| **卖订阅** | Shopify, Notion | 稳定但增长压力大 | 商家自建 AI 工具替代 |
+| **卖功能模块** | Bunchball, Smartico | 中等规模 | AI Recipe 直接复刻 |
+| **卖广告（拍卖网络）** | Google Ads, TikTok Ads, Meta Ads | 主导 + 高速增长 | AI 优化精度更高，护城河更深 |
+| **卖连接（清算网络）** | VISA, Mastercard | 持续增长 | AI 无法复刻网络效应 |
 
 ### Academic — 第一性原理
 
 ```
 软件 marginal cost (AI 时代) → ε（趋近零）
-连接 marginal cost  → 0 但 network value ∝ N²
+拍卖网络 marginal cost → 0 但 network value ∝ N²
+广告主出价竞争 → KiX 不需协调任何 bilateral 关系
 ```
 
 **梅特卡夫定律**: 网络价值 = 节点数² × 连接成本(0) = 指数级增长
+**单边网络合约**: 每个商家只与 KiX 签约（N 份合同），而非彼此互签（N² 份合同）→ 可扩展性根本差异
 
-软件每多一份卖出去边际成本接近零 → AI 竞争对手免费送 → **软件价格趋零**
-
-网络每多一个商家加入 → 已有商家的用户池连接价值 ↑² → 锁定效应
-
-**结论**: 软件做免费的赠品。连接才是真正的资产。
+**结论**: 软件做免费的赠品。**拍卖算法 + 单边合约 + 用户池**才是真正的资产。
 
 ### Reality — KiX 的位置
 
 | KiX 资产 | 是否能被 AI 复刻？ | 价值 |
 |---------|-------------------|------|
-| 100 Recipe 模板 | ✅ 容易复刻（3 个月内） | 短期护城河 |
-| 30+ Gamification 模块 | ✅ AI 几周可重建 | 工具，免费 |
-| Tutorial / NL Generator | ✅ AI 易复刻 | 工具，免费 |
-| AI 游戏生成 | ⚠️ ELTM 难复刻但可被超越 | 中期护城河 |
-| **跨商家用户网络** | ❌ 无法复刻（除非挖走商家） | **真正护城河** |
+| 100 Recipe 模板 | 容易复刻（3 个月内） | 短期护城河 |
+| 30+ Gamification 模块 | AI 几周可重建 | 工具，免费 |
+| Tutorial / NL Generator | AI 易复刻 | 工具，免费 |
+| AI 游戏生成 | ELTM 难复刻但可被超越 | 中期护城河 |
+| **拍卖算法 + Quality Score** | 难复刻（需历史数据） | 中长期护城河 |
+| **跨商家用户池（单边合约）** | 无法复刻（除非挖走商家） | **真正护城河** |
 
 ---
 
-## ② VISA 模型的启示（业界对标）
+## ② VISA 模型的启示：拍卖驱动，而非 interchange fee
 
 来源：[Card Network Economics - Spark](https://www.spark.money/research/card-network-economics-visa-mastercard)
 
-**VISA 的洞察**：
-- VISA 自己不发卡、不开店、不收 interchange fee（这是发卡行收的）
-- VISA 只收**网络接入费**（每笔交易 0.1-0.2%）
-- VISA 不靠交易额抽佣，靠**让交易能发生**收钱
-- 市值 $500B，业务"无聊"但稳如泰山
+**KiX 借鉴 VISA 的两点**：
+- VISA 自己不发卡、不开店；KiX 自己不开店、不持有用户
+- VISA 是 two-sided network：一边补贴（持卡人免费），另一边变现（商家付）
 
-**关键**: VISA 是 **two-sided network**，
-- 一边补贴（持卡人免费）
-- 另一边变现（商家付 interchange）
-- 自己只做连接，不做工具
+**KiX 与 VISA 的关键不同**：
+- VISA 收 **interchange fee**（每笔固定百分比）
+- KiX 收 **拍卖费**（商家自己出价决定）→ 更接近 Google Ads / TikTok Ads 模型
+- VISA 不区分用户来源；KiX 严格区分「我的用户」vs「别人的用户」，只对后者收费
+
+**Why 拍卖 > interchange**：
+- interchange 是固定成本 → 商家觉得「被抽税」（参考美团 12.6% 引发的反弹）
+- 拍卖是商家自主定价 → 商家觉得「我在投资 ROI」（参考 Google Ads / TikTok 没有大规模商家叛逃）
 
 ### 美团的对照 — 反面教材
 
 来源：[Meituan 抽佣 - SCMP](https://www.scmp.com/tech/article/3133065/)
 
-美团对餐厅抽佣：
-- 独家合作 16%
-- 非独家 21%
-- 新店 **26%**（被业界投诉）
-- 平均 12.6%
+美团对餐厅抽佣 16-26%，被业界投诉「吸血虫」→ 抖音/快手撬墙脚。
 
-商家投诉：「美团是吸血虫」。导致：
-- 监管介入
-- 商家联合抵制
-- 抖音/快手撬墙脚
+**教训**: 固定抽佣率太高 → 商家逃离。**拍卖让商家自决定花多少**，根本消除这个问题。
 
-**教训**: 抽佣率太高 → 商家逃离 → 网络瓦解。
-
-### Plenti 的失败 — 关键警示
+### Plenti 的失败 — 「双方签约」死刑判决
 
 来源：[Plenti 失败分析 - Manish Grover](https://www.manishgrover.com/failure-plenti-back-stone-ages-loyalty/)
 
 Amex 投 $1 亿做跨品牌联盟 Plenti（2015-2018）：
-- 合作品牌：Macy's, AT&T, Netflix, Exxon, RiteAid, Chilli's
+- 合作品牌：Macy's, AT&T, Netflix, Exxon, RiteAid, Chilli's — **品牌互相之间签约**
 - **3 年关闭**
 - 死因：Macy's 退出 → 多米诺骨牌 → 全员退出
+- **60% 联盟忠诚度项目 10 年内死亡**
 
-**60% 联盟忠诚度项目 10 年内死亡。**
-
-**为什么死？**
-- 商家想要的是**自家用户数据**，不是共享
+**为什么死？根因 = bilateral 合约结构**：
+- 商家想要的是自家用户数据，不是被迫与竞争对手共享
+- 合约方退出 = 整个网络瓦解
+- 「谁说了算」没人有决策权
 - 大品牌发现自建标准忠诚度更好
-- 「点数兑换跨品牌」混淆品牌识别
-- 联盟没人有决策权
 
-**KiX 必须避开 Plenti 陷阱**：
-- ❌ 不要让品牌共享积分
-- ❌ 不要稀释品牌识别
-- ❌ 不要强制跨品牌
-- ✅ 每个品牌完全自治（自己的 Gamification）
-- ✅ 用户主动选择加入跨品牌发现
-- ✅ KiX 只在「跨品牌带新」时收费
+**KiX 已显式规避 Plenti 陷阱**：
+
+| Plenti 做错的 | KiX 怎么做 |
+|--------------|-----------|
+| 品牌互相签约 | **品牌只与 KiX 签约**（单边合约） |
+| 共享积分（混淆品牌识别） | 每个品牌的积分/Tier/Voucher 完全独立 |
+| 联盟集体决策 | KiX 拍卖算法决策（中心化、确定性） |
+| 品牌互相看到对方策略 | **商家永远看不到其他商家** |
+| 任一品牌退出 = 网络瓦解 | 任一商家退出 = 网络稳定（其他商家继续拍卖） |
+
+> **partnerships.py 模块**: 标记为 OPTIONAL / 高级功能（joint campaigns only，需要商家明确双向同意），**不在主路径上**。99% 的商家永远不会用到它。
+> 主路径 = 单边合约 + 拍卖 + 算法撮合。
 
 ---
 
-## ③ KiX 的明确商业模式：只有两条收入线
+## ③ 商家的两种模式（每个商家两种角色之一或并存）
 
-### 收入线 #1: **跨店带新订单的提成**
+### 模式 FREE — 管理自己的现有用户
+
+**全功能 Gamification SaaS，永久免费、无上限。**
+
+✅ 全部 50+ Gamification 模块
+✅ 全部 100 Recipe 模板
+✅ AI 游戏生成（ELTM）
+✅ Analytics / Push / SMS / A/B / White Label
+✅ 无月费 / 无订阅 / 无 SaaS 费 / 无功能上限
+
+**用于**: 已有用户的留存、激活、复购、社群运营。商家自己的用户、自己玩 Gamification。
+
+### 模式 PAID — 通过拍卖买别人的用户（新客获取）
+
+**只对「new_users_only」拍卖。商家永远不会为自己已有用户付费。**
+
+商家进入 Ads Manager（partner.letskix.com/ads），像 TikTok Ads / Google Ads 一样：
+
+```
+1. 充值钱包
+2. 创建 Campaign，默认 target_audience=new_users_only
+3. 选择出价策略（CPA / CPS / CPM / CPV / CPE）
+4. KiX 拍卖算法在背后撮合，商家不需要知道任何其他商家的存在
+5. 只在 KiX 真实交付一个新用户/订单时扣款
+```
+
+---
+
+## ④ KiX 的明确收入线（拍卖驱动，多策略并行）
+
+### Revenue Line 1: **CPS** — 新客成交订单分成
 
 **机制**:
 ```
-用户 U 在 A 商家玩游戏 → 解锁了"附近 B 商家的优惠券" → U 去了 B 消费
-                                                            ↓
-                                              B 收到 KiX 推送的新用户订单
-                                                            ↓
-                                                  KiX 抽 X% 提成
+商家 B 在 Ads Manager 出价: 「新客成交订单我愿付 8% 给 KiX」
+KiX 拍卖在合适时机把 B 的 offer 展给 B 没有的用户 U
+U 在 B 完成首次成交 → KiX 抽 8%
+B 不知道这个用户从哪个商家过来，KiX 也不告诉 U 这是「跨品牌」
 ```
 
 **关键设计**:
-- A 和 B 都在 KiX 平台上，但 U 之前不是 B 的用户
-- 必须可归因（device fingerprint + invite token）
-- B 通过 KiX 推送获得 U → 这单的成本（包括传统营销成本）省了
-- KiX 抽 5-15%（远低于美团 12.6%，因为我们不送货）
+- 只对 new_users_only 收费（U 必须之前不是 B 的用户）
+- 拍卖决定哪些商家的 offer 被展给 U
+- 商家自定出价（5-15% 区间，远低于美团 12.6%）
 
-**预期数据**:
-- 商家 LTV/CAC 比通常 3-5x
-- 传统获客 CAC: ¥30-200 / 用户
-- KiX 通过游戏带来的用户：商家 0 成本获取
-- 商家"愿意付的最高价格" ≈ 节省的 CAC = ¥30-200
-
-### 收入线 #2: **纯拉新 CPA**
+### Revenue Line 2: **CPA** — 每个新注册用户固定单价
 
 **机制**:
 ```
-商家 X 在 KiX 后台设："我要 1000 个新用户，¥20 / 个"
-KiX 通过病毒触发器（ShareToWin / 跨品牌曝光）拉来 1000 个新注册
-每个新注册 + 完成首次互动 → KiX 收 ¥20 × 1000 = ¥20,000
+商家 X 在 Ads Manager: 「我要新用户，¥20 / 个」
+KiX 拍卖 + Quality Score 匹配最相关的 KiX 用户
+每个新注册 + 完成首次互动 → KiX 收 ¥20
 ```
-
-**关键设计**:
-- 只在有真实新用户到达时收费
-- 商家自己定 CPA 上限 → 自动出价
-- KiX 通过算法把 KiX 用户网络中"最相关"的用户推给最高出价商家
-- 不投广告位（不像拼多多）→ 通过 Gamification 自然引导
 
 **对标**:
 - Facebook Ads CPA: ¥50-300
 - 抖音电商 CPA: ¥30-200
 - 美团广告 CPA: ¥40-150
-- KiX CPA: ¥10-100（基于游戏引导，质量高）
+- **KiX CPA: ¥10-100**（基于游戏引导，质量分加权）
+
+### Revenue Line 3-5: **CPM / CPV / CPE**（TikTok parity）
+
+| 策略 | 收费触发 | 适用场景 |
+|------|---------|---------|
+| **CPM** | 每千次曝光 | 品牌曝光、新店启动 |
+| **CPV** | 每次进店访问 | 线下流量（geofence + QR） |
+| **CPE** | 每次游戏完成 | 互动深度（Gamification 原生） |
+
+商家在 Ads Manager 自由组合。**所有策略共享同一个拍卖引擎**（`auction.py`：Quality-adjusted Vickrey GSP）。
+
+---
+
+## ⑤ How a Merchant Joins（商家加入流程）
+
+```
+1. 在 partner.letskix.com 注册
+   → 立即获得免费 SaaS（FREE 模式）：完整 Gamification 管理自己用户
+
+2. 想要获取新用户（不是自己现有的）？
+   → 进入 Ads Manager
+   → 充值钱包（wallet.py）
+   → 创建 Campaign（campaigns.py）
+       默认 target_audience = new_users_only
+       选出价策略 = CPA / CPS / CPM / CPV / CPE
+       设出价上限
+   → KiX 拍卖（auction.py）+ Quality Score 在背后运作
+
+3. 商家永远不需要知道：
+   ✗ 其他商家是谁
+   ✗ 其他商家在出价什么
+   ✗ 用户上一个 touch 是哪个商家
+   ✗ 任何 bilateral 合约
+
+4. KiX 交付新用户/订单 → 扣钱包余额
+   不交付 → 不扣
+```
+
+**KiX 是每个商家唯一的合同对手方。** 商家与 KiX 签 ToS，KiX 与所有商家签 ToS，**商家之间永远不签任何东西**。
+
+---
+
+## ⑥ 对标 TikTok Ads / Google Ads / Meta Ads
+
+| Feature | TikTok Ads | Google Ads | Meta Ads | **KiX** |
+|---------|-----------|-----------|----------|---------|
+| Auction-based bidding | ✅ | ✅ | ✅ | ✅ |
+| Brand-to-brand contracts | ❌ | ❌ | ❌ | ❌ |
+| Existing-customer exclusion (default) | ✅ | ✅ | ✅ | ✅ |
+| Quality Score | ✅ | ✅ | ✅ | ✅ |
+| Smart bidding (auto-optimize) | ✅ | ✅ | ✅ | ✅ (`auction.py` Smart Bidding) |
+| Custom Audiences + Lookalike | ✅ | ✅ | ✅ | ✅ (`audiences.py`) |
+| Frequency cap | ✅ | ✅ | ✅ | ✅ (`frequency_cap.py`) |
+| Conversion pixel | ✅ | ✅ | ✅ | ✅ (`pixel.py`) |
+| **Free SaaS for managing own users** | ❌ | ❌ | ❌ | ✅ **(KiX unique)** |
+| **Gamification-native ad units** | ❌ | ❌ | ❌ | ✅ **(KiX unique)** |
+
+**KiX 在标准广告平台之上多了两件事**：
+1. 商家管理自己用户的部分（FREE 模式）= 全功能 SaaS 永久免费
+2. 广告位载体 = 游戏（CPE 互动深度远高于 banner/feed）
 
 ---
 
@@ -156,146 +229,126 @@ KiX 通过病毒触发器（ShareToWin / 跨品牌曝光）拉来 1000 个新注
 
 **完整免费功能清单（永久）**:
 
-✅ 平台注册、登录、Dashboard、API
-✅ 游戏定制、AI 生成（ELTM）
-✅ 50+ Gamification 模块全部
-✅ 100 Recipe 模板全部
-✅ NL Generator AI 配方
-✅ Tutorial Engine 教程
-✅ Conditions Engine 条件
-✅ RuleEngine 规则
-✅ Analytics 数据分析
-✅ SDK / Embed Widget
-✅ Push / SMS 通道（成本价转给商家，不加价）
-✅ A/B 测试引擎
-✅ 多语言翻译
-✅ White Label（去 logo）
-✅ 客服工具
-✅ 培训认证
-✅ 客户成功 1对1（前 100 商家）
+- 平台注册、登录、Dashboard、API
+- 游戏定制、AI 生成（ELTM）
+- 50+ Gamification 模块全部
+- 100 Recipe 模板全部
+- NL Generator AI 配方
+- Tutorial Engine 教程
+- Conditions Engine 条件
+- RuleEngine 规则
+- Analytics 数据分析
+- SDK / Embed Widget
+- Push / SMS 通道（成本价转给商家，不加价）
+- A/B 测试引擎
+- 多语言翻译
+- White Label（去 logo）
+- 客服工具 / 培训认证 / 客户成功 1对1（前 100 商家）
 
 **为什么这些全免费**：
-**因为 AI 让所有这些 12 个月内会被竞争对手免费送出。** 我们先发，先送。
+**因为 AI 让所有这些 12 个月内会被竞争对手免费送出。** 我们先发，先送，把 100 → 1000 → 10000 商家锁进网络。
 
 ---
 
-## 两条收入线的关键设计
+## 拍卖系统的关键设计
 
-### 设计 1: 归因系统（必须先建）
+### 设计 1: 归因（attribution.py）
 
-**因为不能归因 = 不能收费。**
+只有可归因才能收费。每次拍卖产生一个 `impression_token`，pixel/SDK 回传后形成归因链。
 
-每个跨品牌交互必须可追溯：
-- 用户在哪个商家玩游戏获得的"跨品牌券"
-- 用户从哪个 KiX 触发器进入哪个商家
-- 商家收到的订单是否来自 KiX 网络
-
-技术实现：
 ```python
-# 用户在 A 玩游戏
-GET /api/v1/network/cross-brand-discover?user_id=U&from_brand=A
-  → 返回附近 B/C/D 商家的优惠券 + invite_token
+# 用户被拍卖结果展示
+GET /api/v1/auction/serve?user_id=U&context=...
+  → 返回中标商家 B 的 offer + impression_token
 
-# 用户使用 token 访问 B
-POST /api/v1/network/attribute-visit
-  Body: {user_id, invite_token, target_brand=B}
-  → 记录归因链 A→B
+# 用户访问 B
+POST /api/v1/attribution/track/click
+  Body: {impression_token, user_id}
 
-# B 商家用户消费
-POST /api/v1/network/record-conversion
-  Body: {user_id, brand=B, amount_cents, order_id}
-  → 检查 7 天内归因链 → 若有 A→B，KiX 抽 X%
+# B 商家用户消费（pixel 自动回传）
+POST /api/v1/attribution/track/conversion
+  Body: {user_id, target_brand=B, amount_cents, order_id}
+  → 7 天 last-touch attribution window
+  → 若 U 是 B 的 new user → 按出价策略扣 B 钱包
 ```
+
+商家 B 永远只与 KiX 交互。看不到 U 之前在哪里、看不到其他商家。
 
 ### 设计 2: 商家对价表（透明）
 
 | 服务 | KiX 收费 | 商家可控 |
 |------|---------|---------|
-| 平台基础功能 | ¥0 | — |
-| 跨品牌带新单 | 订单金额 × 5-15% | 自己选是否开启跨品牌网络 |
-| 纯 CPA 拉新 | ¥10-100 / 新用户 | 自己设上限和触发条件 |
+| FREE 模式 — 管理自己用户的全部 SaaS | ¥0 | 完全自主 |
+| PAID — CPA（新用户） | 商家出价（参考 ¥10-100/人） | 自己设上限 |
+| PAID — CPS（新客成交分成） | 商家出价（参考 5-15%） | 自己设上限 |
+| PAID — CPM / CPV / CPE | 商家出价 | 自己设上限 |
 
-只有上面两行。其他一切免费。
+只有「出价就收，不出就不收」一条铁律。
 
 ### 设计 3: 商家退出零成本
 
-如果商家不爽：
-- 关闭跨品牌网络 → 不被推送 → 不收费
-- 关闭 CPA → 不再花钱
-- 平台基础功能继续免费用
+- 关闭所有 PAID Campaigns → 不再扣钱包 → 钱包余额可提现（payouts.py）
+- FREE 模式永久保留 → 自家用户的 Gamification 继续跑
+- 没有沉没成本，没有锁定
 
-**没有沉没成本，没有锁定，商家不爽随时走。这是吸引商家加入的核心**。
-
-但走了 = 失去跨品牌用户来源。多数商家会留。
+**但**：退出 = 失去 KiX 用户池的新客获取通道。这是网络效应的真正锁定，不是合同锁定。
 
 ---
 
-## 财务模型测算（基于实际归因转化率）
+## 财务模型测算（基于拍卖驱动）
 
 ### 假设
 
-- 100 商家加入
-- 每商家平均 10,000 注册用户
-- 跨品牌发现激活率：5%（500 用户/商家/月跨品牌发现）
-- 跨品牌发现 → 转化率：10%（50 用户/商家/月跨品牌消费）
-- 平均订单 ¥100
-- KiX 抽 10%
+- 1000 商家加入（500 仅 FREE，500 同时跑 PAID）
+- PAID 商家平均月预算 ¥3,000
+- KiX take（拍卖均价 + Quality adjust）: ~80% spend efficiency
+- KiX 月收入 ≈ 500 × ¥3,000 = ¥1.5M
+- 年化 ≈ ¥18M
 
-### 单商家月贡献
+### 10,000 商家（成熟期）
 
-| 项 | 数字 |
-|----|------|
-| 跨品牌带来的订单 | 50 × ¥100 = ¥5000 |
-| KiX 抽佣 | ¥500 |
-| CPA 拉新（部分商家） | 50 用户 × ¥20 = ¥1000（约 30% 商家用） |
-| 月贡献 | ¥500 + ¥300（CPA 平均化） = **¥800/月** |
+- 7000 跑 PAID，平均月预算 ¥5,000（网络效应抬升 ROI）
+- KiX 月收入 ≈ 7000 × ¥5,000 = ¥35M
+- 年化 ≈ **¥420M**
 
-### 100 商家年化
+### 100,000 商家（梦想）
 
-100 商家 × ¥800/月 × 12 = **¥960K/年**
+- 网络效应 + Quality Score 数据复利 → 商家 ROI 上升 → 平均预算 ¥10,000
+- KiX 年化 → **¥几十亿级**
 
-### 1,000 商家年化（成熟期）
-
-- 用户网络规模效应：每商家用户跨品牌发现 + 转化率翻倍（5% → 10%，10% → 20%）
-- 单商家月贡献 → ¥3,200
-- 1000 商家 × ¥3,200 × 12 = **¥38.4M / 年**
-
-### 10,000 商家年化（梦想）
-
-网络效应继续放大 → 单商家 ¥10K-20K / 月 → **¥1.2B-2.4B / 年**
+对比：TikTok Ads 2023 年广告收入 ~$200B 全球，Google Ads ~$240B。**拍卖驱动的天花板就是这个量级**。
 
 ---
 
 ## 关键启动顺序
 
 ```
-阶段 0 — 现在：免费招商家
-  目标：100 商家上平台
+阶段 0 — 现在：免费招商家（FREE 模式）
+  目标：100 商家上平台，全部用 FREE
   收入：¥0
-  动作：免费送一切，找种子商家
+  动作：免费送一切 SaaS，找种子商家
   时间：3 个月
 
-阶段 1 — 建归因系统
-  目标：可追溯跨品牌用户流动
-  收入：¥0（实验）
-  动作：开发 attribution + invite token
+阶段 1 — 建拍卖系统（已完成 ✓）
+  ✓ campaigns.py (21 endpoints)
+  ✓ auction.py (8 endpoints, Quality-adjusted Vickrey GSP)
+  ✓ wallet.py (10 endpoints)
+  ✓ attribution.py (22 endpoints)
+  ✓ pixel.py / frequency_cap.py / audiences.py / disputes.py
+
+阶段 2 — 启动 PAID（CPA 优先）
+  目标：30 商家试 CPA，验证 ROI
+  收入：实验性 ¥30-100K / 月
   时间：1-2 个月
 
-阶段 2 — 启动 CPA
-  目标：商家愿意付费拉新（小规模验证）
-  收入：实验性 ¥5-10K / 月
-  动作：让 10 个商家试 CPA，看 ROI
-  时间：1 个月
+阶段 3 — 全策略上线（CPS + CPM + CPV + CPE）
+  目标：商家自主配置组合策略
+  收入：¥500K-2M / 月
+  时间：3-6 个月
 
-阶段 3 — 启动跨品牌带新单
-  目标：用户跨商家流动，KiX 抽成
-  收入：¥10-50K / 月
-  动作：跨品牌发现 + 优惠券 + 抽佣
-  时间：3 个月
-
-阶段 4 — 规模化
-  目标：网络效应启动，自动增长
-  收入：¥1M / 月起
+阶段 4 — 规模化 + 网络效应
+  目标：拍卖数据复利、Quality Score 收敛
+  收入：¥10M+ / 月
   时间：6 个月后
 ```
 
@@ -303,14 +356,14 @@ POST /api/v1/network/record-conversion
 
 ## 必须避开的 3 个陷阱
 
-### 陷阱 1: Plenti 多米诺
-**不要让品牌共享积分系统。** 每个品牌的积分/Tier/Voucher 完全独立。KiX 只做"发现层"。
+### 陷阱 1: Plenti / 双方签约 — **已显式规避**
+**严格禁止任何 bilateral 合约出现在主路径。** 商家之间永远互不可见。partnerships.py 仅 OPTIONAL 高级功能（joint campaigns，需双向显式同意），不在主路径。
 
-### 陷阱 2: 美团抽佣过高
-**抽佣不能超过商家"节省的 CAC"。** 5-15% 是上限。超过商家就跑。
+### 陷阱 2: 美团固定抽佣过高
+**KiX 不固定抽佣。** 商家自己出价，KiX 不强加百分比。这从根本上消除「被抽税」感。
 
 ### 陷阱 3: 跨品牌冷启动鸡和蛋
-**需要前 100 商家+50 万用户才有跨品牌价值。** 在那之前所有"跨品牌"都是空话。前 6 个月不要承诺这个，先做单品牌价值。
+**需要前 1000 商家 + 100 万用户才有拍卖深度。** 在那之前 PAID 模式只是 demo。前 6 个月主推 FREE 模式价值，让商家先把自己用户运营好。
 
 ---
 
@@ -318,13 +371,14 @@ POST /api/v1/network/record-conversion
 
 | 平台 | 本质 | 收费方式 | KiX 差异 |
 |------|------|---------|---------|
-| Shopify | 卖建站 SaaS | 月费 + 支付 | 我们功能更多 + 免费 |
-| Smartico | 卖 Gamification SaaS | 月费 | 我们也提供 + 免费 |
-| 美团 | 卖外卖流量 | 抽佣 12-26% | 我们抽 5-15%，覆盖更多场景 |
-| Plenti | 共享积分 | 失败 | 我们不共享，只做发现 |
-| VISA | 网络连接 | 网络费 0.1-0.2% | 我们抽佣高（提供 Gamification 增值） |
+| Shopify | 卖建站 SaaS | 月费 + 支付 | KiX 功能更多 + 完全免费 |
+| Smartico | 卖 Gamification SaaS | 月费 | KiX 也提供，且免费 |
+| Google Ads / TikTok Ads | 拍卖广告网络 | 商家出价 | KiX 同结构 + 多了 FREE SaaS 层 |
+| 美团 | 固定抽佣外卖网络 | 12-26% 抽佣 | KiX 不固定抽佣，商家出价 |
+| Plenti（已倒闭） | 双方签约联盟 | 失败模型 | KiX 单边合约，根本规避 |
+| VISA | 清算网络 | 0.1-0.2% | KiX 用拍卖代替固定费率 |
 
-**KiX 独特：免费 SaaS + 中等抽佣 + Gamification 增值**
+**KiX 独特组合：免费 SaaS（FREE）+ 拍卖广告网络（PAID）+ Gamification 原生载体**
 
 ---
 
@@ -332,49 +386,55 @@ POST /api/v1/network/record-conversion
 
 ### 商业团队的销售话术
 
-> 「这个平台全免费。不收月费。不收订阅。功能比 Shopify + Smartico + Bunchball 加起来还多。
+> 「这个平台像 TikTok Ads / Google Ads，但更好。
 >
-> 我们怎么赚钱？只有两种：
-> 1. 如果我们通过游戏帮你带来一个新客，你愿意付多少？
-> 2. 如果我们通过跨品牌网络给你导流一笔交易，我们抽多少？
+> 你管理自己用户的所有 Gamification 功能 — **永久免费**。
 >
-> 全是 performance-based。你赚我们才赚。」
+> 想要别人家的用户？进 Ads Manager，出价 CPA / CPS / CPM / CPV / CPE，KiX 拍卖给你撮合。你只在我们真的交付新用户时付钱。
+>
+> 你不需要和任何其他商家打交道。你的对手方只有 KiX。」
 
 ### 技术团队的实施重点
 
-**P0 优先级翻新**：
-- 归因系统（device fingerprint + invite token + 7 天 attribution window）
-- 跨品牌发现 API（用户在 A 时推 B/C/D）
-- 转化追踪（B 收到 KiX 来的单）
-- 透明账单（商家能看到每笔归因）
+**P0（已完成）**：
+- ✓ 拍卖引擎（auction.py，Quality-adjusted Vickrey GSP）
+- ✓ 归因系统（attribution.py，7 天 last-touch + 多触点）
+- ✓ 钱包 + 自动扣款（wallet.py）
+- ✓ Campaign 层级 + Review Queue（campaigns.py）
 
-**P1**:
-- CPA 出价系统
-- 自动结算
-- 商家可视化报表
+**P1**：
+- Smart Bidding 优化（auction.py 已有骨架）
+- Lookalike 算法精度提升（audiences.py）
+- Quality Score 数据复利
+
+**OPTIONAL（不在主路径）**：
+- partnerships.py — joint campaigns，需要双向显式同意。大部分商家用不到。
 
 ### 产品团队的方向
 
-- 跨品牌发现 UI（用户视角）
-- 商家"打开/关闭跨品牌"开关
-- 归因透明面板（商家能看到 KiX 带来的每个用户和订单）
-- "我节省了多少 CAC" 报告（让商家感受到价值）
+- Ads Manager UI（参考 TikTok Ads Manager / Google Ads UI）
+- Quality Score 透明化（让商家看到为什么自己排名第 N）
+- 归因透明面板（每笔扣款都能追溯到 impression）
+- 「我节省了多少传统获客 CAC」报告（情绪关键）
 
 ---
 
 ## 参考来源
 
 - [Card Network Economics - Spark](https://www.spark.money/research/card-network-economics-visa-mastercard)
-- [VISA 实际运作 - PitchGrade](https://pitchgrade.com/research/how-visa-makes-money)
+- [Google Ads Auction Mechanics](https://support.google.com/google-ads/answer/142918)
+- [TikTok Ads Bidding Methods](https://ads.tiktok.com/help/article/bidding-methods)
+- [Meta Ads Auction](https://www.facebook.com/business/help/430291176997542)
 - [Meituan 抽佣率 - SCMP](https://www.scmp.com/tech/article/3133065/)
 - [Plenti 失败分析](https://www.manishgrover.com/failure-plenti-back-stone-ages-loyalty/)
-- [Coalition Loyalty Programs Guide](https://www.trueloyal.com/blog/coalition-loyalty-programs-guide/)
 - [60% Coalition 项目 10 年内死亡](https://ascendantloyalty.com/coalition-loyalty-programs-successes-and-failures/)
 
 ---
 
 ## 一句话总结
 
-**软件免费。网络收费。**
+**KiX = TikTok Ads for Gamification。**
 
-我们卖的不是产品，是商家在我们网络里能挣到的钱。
+商家管理自己用户全免费；想要别人的用户就来出价，KiX 拍卖算法撮合。商家永远不与其他商家打交道，KiX 是唯一合同对手方。
+
+软件免费，拍卖收费，单边合约 N 而非 N²，网络效应才是真正护城河。

@@ -750,3 +750,397 @@ async def fcfs_state(
         "status": label,
         "reward_per_claim": json.loads(state.get("reward") or "{}"),
     }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 6. Generic Event-Driven Triggers (register / fire / list / disable)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# Plumbing for "when X happens to user U, do Y" — a thin, brand-isolated
+# trigger registry that downstream services (reservations, cart, vouchers,
+# achievements, ...) can fire via POST /triggers/{tid}/fire.
+#
+# State (per trigger):
+#   trigger:{tid}                 HASH   (config + counters)
+#   brand:{bid}:triggers          SET    (all trigger ids)
+#   brand:{bid}:triggers:{event}  SET    (lookup by event_type)
+#   trigger:{tid}:fires:{uid}     STR    (cooldown counter; TTL = cooldown_s)
+#   trigger:{tid}:user_count:{uid} STR   (lifetime per-user count, no TTL)
+#
+# The action payload is opaque from this router's point of view — we
+# resolve the recipient_user_id_attr indirection and emit/structure the
+# action, but the actual side-effect (issue_voucher etc.) is delegated to
+# the appropriate downstream module via the returned ``action`` payload.
+
+
+_VALID_EVENT_TYPES = {
+    "reservation_no_show",
+    "cart_abandoned",
+    "subscription_renewal_due",
+    "attribute_threshold",
+    "voucher_redeemed",
+    "first_purchase",
+    "churn_risk",
+    "achievement_unlocked",
+}
+
+_VALID_ACTION_TYPES = {
+    "issue_voucher",
+    "send_push",
+    "award_xp",
+    "fire_achievement",
+    "webhook",
+    "create_audience_member",
+}
+
+
+class TriggerSchedule(BaseModel):
+    start: int | None = None  # epoch seconds
+    end: int | None = None    # epoch seconds
+    hours: list[int] | None = None  # active hours-of-day UTC (0-23)
+
+
+class TriggerAction(BaseModel):
+    type: str = Field(..., min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+    # When set, the action target is resolved by reading the named user
+    # attribute (e.g. "parent_of") on the actor; useful for kid → parent
+    # notifications, sub-account → master, etc.
+    recipient_user_id_attr: str | None = None
+
+
+class TriggerRegister(BaseModel):
+    brand_id: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1)
+    event_type: str = Field(..., min_length=1)
+    event_filter: dict[str, Any] = Field(default_factory=dict)
+    action: TriggerAction
+    cooldown_seconds: int = Field(default=0, ge=0)
+    max_fires_per_user: int = Field(default=0, ge=0)  # 0 = unlimited
+    schedule: TriggerSchedule | None = None
+
+
+class TriggerFire(BaseModel):
+    actor_user_id: str = Field(..., min_length=1)
+    event_data: dict[str, Any] = Field(default_factory=dict)
+
+
+def _k_trigger(tid: str) -> str:
+    return f"trigger:{tid}"
+
+
+def _k_brand_triggers(bid: str) -> str:
+    return f"brand:{bid}:triggers"
+
+
+def _k_brand_event_triggers(bid: str, event_type: str) -> str:
+    return f"brand:{bid}:triggers:{event_type}"
+
+
+def _k_trigger_fires(tid: str, uid: str) -> str:
+    return f"trigger:{tid}:fires:{uid}"
+
+
+def _k_trigger_user_count(tid: str, uid: str) -> str:
+    return f"trigger:{tid}:user_count:{uid}"
+
+
+def _new_trigger_id() -> str:
+    return f"trg_{uuid4().hex[:12]}"
+
+
+def _trigger_to_dict(state: dict[str, Any]) -> dict[str, Any]:
+    """Decode HASH back into typed dict (action/event_filter/schedule are JSON)."""
+    out: dict[str, Any] = dict(state)
+    for f in ("event_filter", "action", "schedule"):
+        raw = out.get(f)
+        if raw:
+            try:
+                out[f] = json.loads(raw)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                out[f] = {}
+        else:
+            out[f] = None if f == "schedule" else {}
+    for f in ("cooldown_seconds", "max_fires_per_user", "fired_count", "created_at"):
+        if f in out:
+            try:
+                out[f] = int(out[f])
+            except (TypeError, ValueError):
+                out[f] = 0
+    out["active"] = out.get("active", "1") == "1"
+    return out
+
+
+def _event_filter_matches(filt: dict[str, Any], event_data: dict[str, Any]) -> bool:
+    """Trivial equality match: every key in filt must equal that key in event_data.
+
+    Empty filter matches everything. Values are compared as strings so
+    callers don't need to worry about int/string mismatches across the
+    HTTP boundary.
+    """
+    if not filt:
+        return True
+    for k, v in filt.items():
+        if str(event_data.get(k)) != str(v):
+            return False
+    return True
+
+
+def _schedule_active(sched: dict[str, Any] | None, now: int) -> tuple[bool, str | None]:
+    if not sched:
+        return True, None
+    start = sched.get("start")
+    end = sched.get("end")
+    hours = sched.get("hours")
+    if start is not None and now < int(start):
+        return False, "not_yet_active"
+    if end is not None and now > int(end):
+        return False, "schedule_expired"
+    if hours:
+        hr = datetime.fromtimestamp(now, tz=timezone.utc).hour
+        if hr not in [int(h) for h in hours]:
+            return False, "outside_active_hours"
+    return True, None
+
+
+@router.post(
+    "/register",
+    summary="Register a generic event-driven trigger",
+    status_code=status.HTTP_201_CREATED,
+)
+async def trigger_register(
+    body: TriggerRegister,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    if body.event_type not in _VALID_EVENT_TYPES:
+        raise HTTPException(
+            422,
+            detail={
+                "reason": "unknown_event_type",
+                "event_type": body.event_type,
+                "valid": sorted(_VALID_EVENT_TYPES),
+            },
+        )
+    if body.action.type not in _VALID_ACTION_TYPES:
+        raise HTTPException(
+            422,
+            detail={
+                "reason": "unknown_action_type",
+                "action_type": body.action.type,
+                "valid": sorted(_VALID_ACTION_TYPES),
+            },
+        )
+
+    tid = _new_trigger_id()
+    now = _now()
+    sched_payload = body.schedule.model_dump() if body.schedule else None
+    record = {
+        "trigger_id": tid,
+        "brand_id": body.brand_id,
+        "name": body.name,
+        "event_type": body.event_type,
+        "event_filter": json.dumps(body.event_filter, separators=(",", ":")),
+        "action": json.dumps(body.action.model_dump(), separators=(",", ":")),
+        "cooldown_seconds": str(body.cooldown_seconds),
+        "max_fires_per_user": str(body.max_fires_per_user),
+        "schedule": json.dumps(sched_payload, separators=(",", ":")) if sched_payload else "",
+        "active": "1",
+        "fired_count": "0",
+        "created_at": str(now),
+    }
+    pipe = r.pipeline()
+    pipe.hset(_k_trigger(tid), mapping=record)
+    pipe.sadd(_k_brand_triggers(body.brand_id), tid)
+    pipe.sadd(_k_brand_event_triggers(body.brand_id, body.event_type), tid)
+    await pipe.execute()
+    return {
+        "trigger_id": tid,
+        "active": True,
+        "brand_id": body.brand_id,
+        "event_type": body.event_type,
+    }
+
+
+async def _resolve_recipient(
+    r: aioredis.Redis,
+    actor_user_id: str,
+    brand_id: str,
+    attr: str | None,
+) -> str:
+    """Resolve indirection: if recipient_user_id_attr set, look up that attr
+    on the actor; fall back to the actor when unset / not found.
+
+    Reads user attribute via the canonical user attributes HASH (matches
+    primitives.py: ``user:{uid}:attributes:{bid}`` then global
+    ``user:{uid}:attributes``).
+    """
+    if not attr:
+        return actor_user_id
+    val = await r.hget(f"user:{actor_user_id}:attributes:{brand_id}", attr)
+    if val:
+        return val
+    val = await r.hget(f"user:{actor_user_id}:attributes", attr)
+    if val:
+        return val
+    # No mapping found — fall back to actor (callers can detect via
+    # equal actor/recipient if they care).
+    return actor_user_id
+
+
+@router.post(
+    "/{trigger_id}/fire",
+    summary="Fire a trigger; runs filter + cooldown + max-fire checks",
+)
+async def trigger_fire(
+    trigger_id: str,
+    body: TriggerFire,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    raw = await r.hgetall(_k_trigger(trigger_id))
+    if not raw:
+        raise HTTPException(404, "Trigger not found")
+    state = _trigger_to_dict(raw)
+
+    blockers: list[str] = []
+    if not state.get("active", True):
+        blockers.append("trigger_disabled")
+
+    now = _now()
+    ok_sched, sched_reason = _schedule_active(state.get("schedule"), now)
+    if not ok_sched and sched_reason:
+        blockers.append(sched_reason)
+
+    if not _event_filter_matches(state.get("event_filter") or {}, body.event_data):
+        blockers.append("event_filter_no_match")
+
+    actor = body.actor_user_id
+    cooldown = int(state.get("cooldown_seconds", 0) or 0)
+    max_fires = int(state.get("max_fires_per_user", 0) or 0)
+
+    if cooldown > 0:
+        cd_key = _k_trigger_fires(trigger_id, actor)
+        # If the cooldown key exists, the actor fired within the window.
+        if await r.exists(cd_key):
+            ttl = await r.ttl(cd_key)
+            blockers.append(f"cooldown_active:{max(ttl, 0)}s")
+
+    if max_fires > 0:
+        uc_key = _k_trigger_user_count(trigger_id, actor)
+        used = int(await r.get(uc_key) or 0)
+        if used >= max_fires:
+            blockers.append("max_fires_per_user_reached")
+
+    if blockers:
+        return {
+            "fired": False,
+            "trigger_id": trigger_id,
+            "blockers": blockers,
+        }
+
+    action_cfg = state.get("action") or {}
+    recipient = await _resolve_recipient(
+        r,
+        actor_user_id=actor,
+        brand_id=state.get("brand_id", ""),
+        attr=action_cfg.get("recipient_user_id_attr"),
+    )
+
+    action_id = f"act_{uuid4().hex[:12]}"
+    pipe = r.pipeline()
+    pipe.hincrby(_k_trigger(trigger_id), "fired_count", 1)
+    if cooldown > 0:
+        pipe.set(_k_trigger_fires(trigger_id, actor), str(now), ex=cooldown)
+    if max_fires > 0:
+        pipe.incr(_k_trigger_user_count(trigger_id, actor))
+    # Append a structured log entry for downstream consumers.
+    log_key = f"trigger:{trigger_id}:log"
+    log_entry = {
+        "action_id": action_id,
+        "actor_user_id": actor,
+        "recipient_user_id": recipient,
+        "fired_at": now,
+        "event_data": body.event_data,
+        "action": action_cfg,
+    }
+    pipe.rpush(log_key, json.dumps(log_entry, separators=(",", ":")))
+    pipe.ltrim(log_key, -500, -1)
+    await pipe.execute()
+
+    return {
+        "fired": True,
+        "trigger_id": trigger_id,
+        "action_id": action_id,
+        "actor_user_id": actor,
+        "recipient_user_id": recipient,
+        "action": action_cfg,
+        "event_type": state.get("event_type"),
+    }
+
+
+@router.get(
+    "/brand/{brand_id}",
+    summary="List all triggers registered for a brand",
+)
+async def trigger_list_brand(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    ids = await r.smembers(_k_brand_triggers(brand_id))
+    out: list[dict[str, Any]] = []
+    for tid in sorted(ids or []):
+        raw = await r.hgetall(_k_trigger(tid))
+        if raw:
+            out.append(_trigger_to_dict(raw))
+    return {"brand_id": brand_id, "count": len(out), "triggers": out}
+
+
+@router.get(
+    "/{trigger_id}",
+    summary="Get a single trigger's configuration + counters",
+)
+async def trigger_get(
+    trigger_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    raw = await r.hgetall(_k_trigger(trigger_id))
+    if not raw:
+        raise HTTPException(404, "Trigger not found")
+    return _trigger_to_dict(raw)
+
+
+@router.post(
+    "/{trigger_id}/disable",
+    summary="Mark a trigger inactive (idempotent)",
+)
+async def trigger_disable(
+    trigger_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    if not await r.exists(_k_trigger(trigger_id)):
+        raise HTTPException(404, "Trigger not found")
+    await r.hset(_k_trigger(trigger_id), "active", "0")
+    return {"ok": True, "trigger_id": trigger_id, "active": False}
+
+
+@router.delete(
+    "/{trigger_id}",
+    summary="Delete a trigger and its lookup pointers",
+)
+async def trigger_delete(
+    trigger_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    raw = await r.hgetall(_k_trigger(trigger_id))
+    if not raw:
+        raise HTTPException(404, "Trigger not found")
+    brand_id = raw.get("brand_id", "")
+    event_type = raw.get("event_type", "")
+    pipe = r.pipeline()
+    pipe.delete(_k_trigger(trigger_id))
+    if brand_id:
+        pipe.srem(_k_brand_triggers(brand_id), trigger_id)
+        if event_type:
+            pipe.srem(_k_brand_event_triggers(brand_id, event_type), trigger_id)
+    pipe.delete(f"trigger:{trigger_id}:log")
+    await pipe.execute()
+    return {"ok": True, "trigger_id": trigger_id, "deleted": True}

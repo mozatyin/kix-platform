@@ -321,10 +321,43 @@ def create_app() -> FastAPI:
         tags=["reservations"],
     )
 
+    # ── KiX ID: universal identity + OAuth-like merchant Connect ───────
+    from app.routers import kix_id
+    app.include_router(
+        kix_id.router, prefix="/api/v1/kix-id", tags=["kix_id"]
+    )
+
+    # ── Push Engine: right-time / right-place / right-user delivery ────
+    from app.routers import push_engine
+    app.include_router(
+        push_engine.router,
+        prefix="/api/v1/push",
+        tags=["push"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
         return RedirectResponse(url="/landing/index.html")
+
+    # ── Vanity URL for KiX App (`/app/*` → `/landing/app/*`) ───────────
+    # Lets us advertise `partner.letskix.com/app/` as the user-facing
+    # front door while keeping the static bundle under /landing/app/.
+    from fastapi import Request as _Request
+
+    @app.get("/app")
+    @app.get("/app/")
+    async def kix_app_root(request: _Request):
+        qs = ("?" + request.url.query) if request.url.query else ""
+        return RedirectResponse(url=f"/landing/app/index.html{qs}")
+
+    @app.get("/app/{path:path}")
+    async def kix_app_passthrough(path: str, request: _Request):
+        qs = ("?" + request.url.query) if request.url.query else ""
+        target = (
+            f"/landing/app/{path}" if path else "/landing/app/index.html"
+        )
+        return RedirectResponse(url=f"{target}{qs}")
 
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os

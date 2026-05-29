@@ -1,0 +1,581 @@
+/* ============================================================
+   KiX App — Mobile-first dark theme
+   Aesthetic: TikTok / WeChat hybrid
+   Primary green: #00FC00
+   ============================================================ */
+
+:root {
+  --kix-primary: #00FC00;
+  --kix-primary-dim: #00b800;
+  --kix-bg: #0a0a0a;
+  --kix-bg-elev: #161616;
+  --kix-bg-card: #1c1c1c;
+  --kix-bg-card-hover: #242424;
+  --kix-border: #2a2a2a;
+  --kix-text: #f5f5f5;
+  --kix-text-dim: #a0a0a0;
+  --kix-text-mute: #6e6e6e;
+  --kix-danger: #ff4757;
+  --kix-warn: #ffa726;
+  --kix-radius: 14px;
+  --kix-radius-sm: 8px;
+  --kix-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --kix-header-h: 56px;
+  --kix-nav-h: 64px;
+  --kix-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+              "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial,
+              sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--kix-bg);
+  color: var(--kix-text);
+  font-family: var(--kix-font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100vh;
+  padding-top: var(--kix-header-h);
+  padding-bottom: calc(var(--kix-nav-h) + env(safe-area-inset-bottom, 0));
+}
+
+/* ── Top Bar ───────────────────────────────────────────────── */
+.kix-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--kix-header-h);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--kix-border);
+  z-index: 100;
+}
+
+.kix-logo {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--kix-primary);
+  letter-spacing: -0.5px;
+}
+
+.kix-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.kix-id {
+  color: var(--kix-text-dim);
+  font-family: SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kix-rewards {
+  background: rgba(0, 252, 0, 0.12);
+  color: var(--kix-primary);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* ── Bottom Nav ────────────────────────────────────────────── */
+.kix-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--kix-nav-h);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  display: flex;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--kix-border);
+  z-index: 100;
+}
+
+.kix-nav button {
+  flex: 1;
+  position: relative;
+  background: transparent;
+  border: 0;
+  color: var(--kix-text-mute);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 8px 0 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.kix-nav button .ico { font-size: 22px; line-height: 1; }
+.kix-nav button .lbl { line-height: 1; }
+
+.kix-nav button.active { color: var(--kix-primary); }
+.kix-nav button:active { transform: scale(0.94); }
+
+.badge {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 22px);
+  background: var(--kix-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden { display: none !important; }
+
+/* ── Main Container ────────────────────────────────────────── */
+.kix-main {
+  padding: 16px;
+  min-height: calc(100vh - var(--kix-header-h) - var(--kix-nav-h));
+}
+
+.kix-main h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.kix-main h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 18px 0 12px;
+}
+
+.kix-main h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.kix-main p {
+  margin: 4px 0;
+  color: var(--kix-text-dim);
+}
+
+.kix-main code {
+  font-family: SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  background: var(--kix-bg-card);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--kix-primary);
+}
+
+/* ── Welcome / Hero ────────────────────────────────────────── */
+.kix-welcome {
+  padding: 8px 4px 4px;
+  margin-bottom: 12px;
+}
+
+.kix-welcome h1 {
+  background: linear-gradient(120deg, var(--kix-primary), #5cffaa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Cards (generic) ───────────────────────────────────────── */
+.kix-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.kix-card {
+  background: var(--kix-bg-card);
+  border-radius: var(--kix-radius);
+  padding: 16px 14px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+  border: 1px solid var(--kix-border);
+}
+
+.kix-card:active {
+  transform: scale(0.97);
+  background: var(--kix-bg-card-hover);
+}
+
+.kix-card h3 { margin-bottom: 6px; }
+.kix-card p {
+  font-size: 12px;
+  color: var(--kix-text-mute);
+  margin: 0;
+}
+
+/* ── Discover list ─────────────────────────────────────────── */
+.kix-discover { margin-top: 8px; }
+
+.kix-discover-card {
+  background: var(--kix-bg-card);
+  border-radius: var(--kix-radius);
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border: 1px solid var(--kix-border);
+  transition: background 0.15s;
+}
+
+.kix-discover-card:active { background: var(--kix-bg-card-hover); }
+.kix-discover-card h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.kix-discover-card p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--kix-text-dim);
+}
+.kix-discover-card small {
+  color: var(--kix-text-mute);
+  font-size: 11px;
+}
+
+/* ── Inbox / Push items ────────────────────────────────────── */
+.kix-push-item {
+  background: var(--kix-bg-card);
+  border-radius: var(--kix-radius);
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border: 1px solid var(--kix-border);
+  position: relative;
+}
+
+.kix-push-item.unread::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--kix-primary);
+  box-shadow: 0 0 8px var(--kix-primary);
+}
+
+.kix-push-item.read { opacity: 0.62; }
+
+.kix-push-item h3 { font-size: 15px; margin-bottom: 4px; }
+.kix-push-item p {
+  font-size: 13px;
+  color: var(--kix-text-dim);
+  margin: 0 0 6px;
+}
+.kix-push-item small {
+  color: var(--kix-text-mute);
+  font-size: 11px;
+}
+
+/* ── Game cards ────────────────────────────────────────────── */
+.kix-game-card {
+  background: linear-gradient(135deg, var(--kix-bg-card), #221f1f);
+  border-radius: var(--kix-radius);
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border: 1px solid var(--kix-border);
+  transition: transform 0.15s;
+}
+
+.kix-game-card:active { transform: scale(0.98); }
+.kix-game-card h3 { font-size: 15px; margin-bottom: 6px; }
+.kix-game-card p {
+  font-size: 13px;
+  color: var(--kix-text-dim);
+  margin: 0 0 6px;
+}
+.kix-game-card small {
+  color: var(--kix-text-mute);
+  font-size: 11px;
+}
+
+/* ── Rewards / Vouchers ────────────────────────────────────── */
+.kix-rewards-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(0, 252, 0, 0.08), rgba(0, 252, 0, 0.02));
+  border: 1px solid rgba(0, 252, 0, 0.18);
+  border-radius: var(--kix-radius);
+  padding: 16px 8px;
+  margin: 8px 0 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.kix-voucher-card {
+  background: var(--kix-bg-card);
+  border-left: 3px solid var(--kix-primary);
+  border-radius: var(--kix-radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.kix-voucher-card h3 { font-size: 15px; margin-bottom: 4px; }
+.kix-voucher-card p {
+  margin: 0 0 4px;
+  color: var(--kix-text);
+  font-size: 13px;
+}
+.kix-voucher-card small {
+  color: var(--kix-text-mute);
+  font-size: 11px;
+}
+
+/* ── Profile ──────────────────────────────────────────────── */
+.kix-profile-section {
+  background: var(--kix-bg-card);
+  border-radius: var(--kix-radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--kix-border);
+}
+
+.kix-profile-section h3 {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--kix-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kix-profile-section label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--kix-text-dim);
+}
+
+.kix-profile-section input,
+.kix-profile-section select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: var(--kix-bg);
+  border: 1px solid var(--kix-border);
+  border-radius: var(--kix-radius-sm);
+  color: var(--kix-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.kix-profile-section input:focus,
+.kix-profile-section select:focus {
+  outline: none;
+  border-color: var(--kix-primary);
+}
+
+.kix-profile-section button {
+  margin-top: 8px;
+  padding: 10px 18px;
+  background: var(--kix-primary);
+  color: #000;
+  border: 0;
+  border-radius: var(--kix-radius-sm);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kix-profile-section button:active { background: var(--kix-primary-dim); }
+
+.kix-profile-section a {
+  display: block;
+  padding: 8px 0;
+  color: var(--kix-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--kix-border);
+  font-size: 14px;
+}
+
+.kix-profile-section a:last-child { border-bottom: 0; }
+
+.kix-grant-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--kix-border);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.kix-grant-item:last-child { border-bottom: 0; }
+.kix-grant-item .scopes {
+  font-size: 11px;
+  color: var(--kix-text-mute);
+  flex: 1;
+  text-align: center;
+}
+
+.kix-grant-item button {
+  background: transparent;
+  border: 1px solid var(--kix-danger);
+  color: var(--kix-danger);
+  padding: 4px 10px;
+  border-radius: var(--kix-radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Brand Welcome Overlay (QR scan) ──────────────────────── */
+.kix-brand-welcome {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.kix-brand-welcome h1 { font-size: 28px; margin-bottom: 8px; }
+.kix-brand-welcome .brand-tag {
+  display: inline-block;
+  background: rgba(0, 252, 0, 0.12);
+  color: var(--kix-primary);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.kix-cta {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 24px auto 0;
+  padding: 14px 24px;
+  background: var(--kix-primary);
+  color: #000;
+  border: 0;
+  border-radius: var(--kix-radius);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  text-decoration: none;
+}
+
+.kix-cta:active { background: var(--kix-primary-dim); }
+
+/* ── Loading / Empty States ───────────────────────────────── */
+.kix-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--kix-text-mute);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--kix-border);
+  border-top-color: var(--kix-primary);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty {
+  text-align: center;
+  color: var(--kix-text-mute);
+  padding: 40px 20px;
+  font-size: 13px;
+}
+
+/* ── Toast ─────────────────────────────────────────────────── */
+.kix-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--kix-nav-h) + 20px);
+  transform: translateX(-50%);
+  background: var(--kix-bg-elev);
+  color: var(--kix-text);
+  border: 1px solid var(--kix-border);
+  border-radius: var(--kix-radius-sm);
+  padding: 10px 18px;
+  font-size: 13px;
+  box-shadow: var(--kix-shadow);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.kix-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* ── Responsive: Tablet + Desktop ─────────────────────────── */
+@media (min-width: 640px) {
+  .kix-main { max-width: 720px; margin: 0 auto; padding: 24px; }
+  .kix-cards { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 960px) {
+  body { padding-bottom: 32px; }
+  .kix-nav {
+    position: sticky;
+    bottom: auto;
+    top: 0;
+    height: var(--kix-header-h);
+    border-top: 0;
+    border-bottom: 1px solid var(--kix-border);
+    justify-content: center;
+    gap: 12px;
+    z-index: 99;
+  }
+  .kix-nav button {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 6px;
+    padding: 0 16px;
+    font-size: 13px;
+  }
+  .kix-nav button .ico { font-size: 16px; }
+  .badge { top: 8px; right: 4px; }
+  body { padding-top: calc(var(--kix-header-h) * 2); }
+  .kix-main { max-width: 960px; padding: 32px; }
+  .kix-cards { grid-template-columns: repeat(4, 1fr); }
+}

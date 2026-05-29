@@ -262,7 +262,10 @@ class _UserIdent(BaseModel):
 
 class CheckRequest(_UserIdent):
     brand_id: str
-    slot: Literal["push", "feed", "interstitial"]
+    # Accept the full VALID_SLOTS set — earlier the Literal here only
+    # covered push/feed/interstitial which 422'd legitimate "main" /
+    # "banner" / "geofence" slot checks before tier_overrides could apply.
+    slot: Literal["push", "feed", "interstitial", "main", "banner", "geofence"]
     user_tier: str | None = None
 
 
@@ -272,11 +275,15 @@ class CheckResponse(BaseModel):
     current_count: int
     cap: int
     reset_at: int
+    # Observability: which tier resolved + the effective caps applied.
+    # Lets callers / sims verify tier_overrides actually took effect.
+    tier: str | None = None
+    effective_caps: dict[str, int] = Field(default_factory=dict)
 
 
 class RecordRequest(_UserIdent):
     brand_id: str
-    slot: Literal["push", "feed", "interstitial"]
+    slot: Literal["push", "feed", "interstitial", "main", "banner", "geofence"]
     impression_token: str
 
 
@@ -344,6 +351,8 @@ async def check_internal(
             "current_count": 0,
             "cap": 0,
             "reset_at": _reset_at_end_of_day(),
+            "tier": None,
+            "effective_caps": {},
         }
 
     uid = _resolve_user_key(user_id, device_fingerprint)
@@ -353,6 +362,8 @@ async def check_internal(
     )
     user_override = await _load_user_override(r, user_id)
     cfg = _effective_caps(base_cfg, tier, user_override)
+    # Common debug payload added to every return.
+    _debug = {"tier": tier, "effective_caps": dict(cfg)}
     now = time.time()
     date = _today_str(now)
     week = _week_str(now)
@@ -364,6 +375,7 @@ async def check_internal(
             "current_count": 0,
             "cap": 0,
             "reset_at": _reset_at_end_of_day(now),
+            **_debug,
         }
 
     # Recency — same brand, < N minutes ago.
@@ -379,6 +391,7 @@ async def check_internal(
                         "current_count": 0,
                         "cap": 0,
                         "reset_at": int(last_ts + recency_min * 60),
+                        **_debug,
                     }
             except (TypeError, ValueError):
                 pass
@@ -391,6 +404,7 @@ async def check_internal(
             "current_count": brand_day,
             "cap": cfg["per_brand_daily"],
             "reset_at": _reset_at_end_of_day(now),
+            **_debug,
         }
 
     # Per-brand weekly.
@@ -401,6 +415,7 @@ async def check_internal(
             "current_count": brand_week,
             "cap": cfg["per_brand_weekly"],
             "reset_at": int(now + SECONDS_WEEK),
+            **_debug,
         }
 
     # Global daily.
@@ -411,6 +426,7 @@ async def check_internal(
             "current_count": global_day,
             "cap": cfg["global_daily"],
             "reset_at": _reset_at_end_of_day(now),
+            **_debug,
         }
 
     # Global weekly.
@@ -421,6 +437,7 @@ async def check_internal(
             "current_count": global_week,
             "cap": cfg["global_weekly"],
             "reset_at": int(now + SECONDS_WEEK),
+            **_debug,
         }
 
     # Pacing — soft brake: if hour bucket is full, defer to next hour.
@@ -440,6 +457,7 @@ async def check_internal(
                 "current_count": pacing_count,
                 "cap": pacing_cap,
                 "reset_at": reset_at,
+                **_debug,
             }
 
     # All gates passed.
@@ -448,6 +466,7 @@ async def check_internal(
         "current_count": brand_day,
         "cap": cfg["per_brand_daily"],
         "reset_at": _reset_at_end_of_day(now),
+        **_debug,
     }
 
 
@@ -540,6 +559,8 @@ async def check_cap(
         current_count=int(details.get("current_count", 0)),
         cap=int(details.get("cap", 0)),
         reset_at=int(details.get("reset_at", _reset_at_end_of_day())),
+        tier=details.get("tier"),
+        effective_caps=details.get("effective_caps") or {},
     )
 
 

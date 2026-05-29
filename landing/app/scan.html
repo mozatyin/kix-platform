@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>KiX — 正在打开…</title>
+  <link rel="stylesheet" href="/landing/app/app.css">
+  <style>
+    body { padding-top: 0; padding-bottom: 0; }
+    .scan-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .scan-wrap .kix-logo { font-size: 42px; margin-bottom: 16px; }
+    .scan-wrap p { color: var(--kix-text-dim); margin: 6px 0; }
+    .scan-actions { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px; }
+    .scan-actions .kix-cta.secondary {
+      background: transparent;
+      color: var(--kix-primary);
+      border: 1px solid var(--kix-primary);
+    }
+    .scan-debug {
+      margin-top: 36px;
+      font-family: SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      color: var(--kix-text-mute);
+      opacity: 0.55;
+      max-width: 320px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="scan-wrap">
+    <div class="kix-logo">KiX</div>
+    <div class="spinner"></div>
+    <p id="scan-status">正在打开 KiX App…</p>
+    <p style="font-size:12px;color:var(--kix-text-mute);">若 App 未自动启动，请选择下方</p>
+
+    <div class="scan-actions" id="scan-actions" style="display:none;">
+      <a class="kix-cta" id="open-app-btn" href="#">在 App 中打开</a>
+      <a class="kix-cta secondary" id="open-web-btn" href="#">在浏览器中继续</a>
+    </div>
+
+    <div class="scan-debug" id="scan-debug"></div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ── Parse incoming query ─────────────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    const query = location.search || '';
+
+    // Build deep-link to native app (universal/custom scheme)
+    const deepLink = 'kixapp://scan' + query;
+    // Web fallback inside the bundled SPA
+    const webLink = '/landing/app/' + query;
+
+    document.getElementById('scan-debug').textContent =
+      'qr=' + (params.get('qr') || '-') + ' · b=' + (params.get('b') || '-') + ' · s=' + (params.get('s') || '-');
+
+    // ── Detection ────────────────────────────────────────────────────
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = isIOS || isAndroid;
+
+    let appLaunched = false;
+    const startTs = Date.now();
+
+    // If we are hidden quickly, the app likely opened.
+    function onVisibilityChange() {
+      if (document.hidden && (Date.now() - startTs) < 4000) {
+        appLaunched = true;
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    function showFallback(msg) {
+      document.getElementById('scan-status').textContent = msg || '请选择打开方式';
+      const acts = document.getElementById('scan-actions');
+      acts.style.display = 'flex';
+      document.getElementById('open-app-btn').href = deepLink;
+      document.getElementById('open-web-btn').href = webLink;
+    }
+
+    function tryDeepLink() {
+      if (!isMobile) {
+        // Desktop: skip deep-link, go straight to web app
+        location.replace(webLink);
+        return;
+      }
+      // Attempt deep-link via hidden iframe (iOS Safari + some Android browsers)
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = deepLink;
+        document.body.appendChild(iframe);
+        setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 1500);
+      } catch (_) {}
+
+      // Also assign location for browsers that respect that path
+      setTimeout(() => {
+        if (!appLaunched) {
+          try { location.href = deepLink; } catch (_) {}
+        }
+      }, 50);
+
+      // After 1.6s, if we are still here, fall back to web
+      setTimeout(() => {
+        if (!appLaunched && !document.hidden) {
+          // Auto-redirect to web app — keeps the user in flow
+          location.replace(webLink);
+        }
+      }, 1600);
+
+      // Show manual choice after 2.4s as ultimate fallback
+      setTimeout(() => {
+        if (!appLaunched) showFallback();
+      }, 2400);
+    }
+
+    // Kick off
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryDeepLink);
+    } else {
+      tryDeepLink();
+    }
+  })();
+  </script>
+</body>
+</html>

@@ -1,16 +1,42 @@
 """Cross-brand partnership router.
 
-Allows two **independent** brands (potentially owned by different masters)
-to formally agree on voucher exchange, joint campaigns, or cross-promotion.
-The classic motivating case: 老李's book-club brand wants to co-promote with
-a coffee-shop chain so members can redeem a free latte on their second visit.
+⚠️ OPTIONAL ADD-ON, NOT MAIN PATH
+==================================
 
-This module is intentionally distinct from the master/brand hierarchy:
+**This module is NOT the default user-acquisition flow on KiX.**
 
-  * `master_accounts` covers HQ → store rollups (single owner, many outlets).
-  * `voucher` / `voucher_builder` cover a single brand's own templates.
-  * **Partnerships** cover *peer* brands with different owners co-signing
-    an agreement and exchanging value across the boundary.
+The default KiX model is **brand-only-talks-to-KiX**. Brands NEVER see each
+other on the platform. User acquisition is handled by the KiX **auction
+algorithm** which routes users to brands without any bilateral agreement
+between merchants. Cross-brand voucher distribution likewise happens *only*
+through the auction — KiX decides; brands do not negotiate with peers.
+
+This module exists ONLY for a rare advanced case: two brands that want to
+formally **co-market** (e.g. a co-branded event, a joint product launch,
+a shared sponsorship). 99% of merchants will never need this. If you are
+building user-acquisition flows, look at ``/api/v1/auction/run`` instead.
+
+See ``PLATFORM_OVERVIEW.md`` and ``MONETIZATION_V2.md`` for the canonical
+model. The Plenti-style "coalition of brands swapping value bilaterally"
+pattern is explicitly NOT what KiX does — it failed there and we will not
+re-implement it here.
+
+What this module IS for
+-----------------------
+  * ``joint_campaign``   — Two brands jointly fund / run a single campaign
+                           (shared event, co-branded launch). Spend is split.
+  * ``shared_event``     — Two brands co-host an event / collaboration with
+                           no shared spend; just formal acknowledgement.
+
+What this module is NOT for
+---------------------------
+  * ❌ Voucher exchange between brands (use the auction).
+  * ❌ Generic "cross-promotion" agreements (use the auction).
+  * ❌ Any default user-acquisition routing (use the auction).
+
+KiX still mediates these arrangements — they are not pure peer-to-peer.
+The ``kix_arbitrated`` flag on the terms is ``True`` by default and the
+platform reserves the right to suspend / arbitrate a partnership.
 
 Lifecycle (state machine)
 --------------------------
@@ -35,23 +61,22 @@ Redis schema
         terminate_reason, reject_reason, evidence_url, notes
 
     brand:{bid}:partnerships           SET    pids the brand is party to
-    partnership:{pid}:bridged_vouchers LIST   JSON {voucher_id, recipient_user_id, at}
-    partnership:{pid}:stats            HASH   {vouchers_exchanged,
-                                                conversions_attributed,
+    partnership:{pid}:stats            HASH   {conversions_attributed,
                                                 gmv_generated_cents,
                                                 joint_campaigns_count}
     partnership:{pid}:joint_campaigns  SET    campaign_ids spawned by this pship
 
+(Note: the legacy ``partnership:{pid}:bridged_vouchers`` LIST has been
+removed. Cross-brand voucher flows are exclusively auction-driven.)
+
 Integration points (try/except, never break callers)
 ----------------------------------------------------
-  * `vouchers.redeem`     — if a voucher's `redeemable_at` resolves to
-                            `"partnership:{pid}"` the redeemer must call
-                            `assert_active(pid)` before allowing.
-  * `attribution.track`   — if a conversion crosses a partnership bridge,
-                            commissions should be split per terms.
+  * ``attribution.track`` — if a conversion is attributed to a co-marketing
+                            event, commissions may be split per terms.
 
-These hooks live in this module as helper coroutines (`assert_active`,
-`record_conversion`); other routers may import them defensively.
+(Note: the legacy ``vouchers.redeem`` integration that resolved
+``redeemable_at = "partnership:{pid}"`` is removed. Vouchers no longer
+cross brand boundaries via partnerships; the auction owns that path.)
 """
 
 from __future__ import annotations
@@ -74,19 +99,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# Standard deprecation breadcrumb attached to every legacy response so that
+# integrators discover the auction-first model without reading the docs.
+_DEPRECATION_NOTE = (
+    "main user acquisition uses /api/v1/auction/run; partnerships are only "
+    "for joint marketing events"
+)
+
+
 # ── Constants ────────────────────────────────────────────────────────────
 
+# Partnership types — restricted to the two legitimate co-marketing cases.
+#
+#   joint_campaign  — Two brands jointly fund a single campaign. Shared
+#                     spend (``commission_split_bps`` applies).
+#   shared_event    — Two brands co-host an event / collaboration with
+#                     no shared spend. Pure acknowledgement.
+#
+# REMOVED:
+#   voucher_exchange — wrong path; cross-brand vouchers go via auction.
+#   cross_promotion  — vague; covered by auction.
+#   co_marketing     — renamed to ``shared_event`` for clarity.
 PartnershipType = Literal[
-    "voucher_exchange",
     "joint_campaign",
-    "cross_promotion",
-    "co_marketing",
+    "shared_event",
 ]
 VALID_TYPES: set[str] = {
-    "voucher_exchange",
     "joint_campaign",
-    "cross_promotion",
-    "co_marketing",
+    "shared_event",
 }
 
 PartnershipStatus = Literal[
@@ -95,14 +135,12 @@ PartnershipStatus = Literal[
 TERMINAL_STATES: set[str] = {"rejected", "expired", "terminated"}
 
 AttributionCredit = Literal["first_touch", "split_50_50", "last_touch"]
-VoucherAcceptance = Literal["all", "specific_templates", "none"]
 
 # Defaults
 DEFAULT_PROPOSAL_TTL_DAYS = 14
 DEFAULT_DURATION_DAYS = 90
 MAX_DURATION_DAYS = 365 * 2
 MAX_NOTES_LEN = 2048
-MAX_BRIDGED_LIST = 1000
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────
@@ -115,14 +153,18 @@ class PartnershipTerms(BaseModel):
         default=None,
         ge=0,
         le=10_000,
-        description="basis points (0-10000) of commission to proposer; "
-                    "remainder goes to target. Only meaningful when both "
-                    "parties share attribution.",
+        description="basis points (0-10000) of shared campaign spend / "
+                    "attributed commission allocated to proposer; remainder "
+                    "goes to target. Only meaningful for joint_campaign "
+                    "partnerships where both parties share spend.",
     )
-    voucher_acceptance_policy: VoucherAcceptance = "all"
-    acceptable_template_ids: list[str] = Field(default_factory=list)
     attribution_credit: AttributionCredit = "split_50_50"
-    cap_users_per_day: int | None = Field(default=None, ge=1)
+    kix_arbitrated: bool = Field(
+        default=True,
+        description="KiX still mediates this partnership; brands are not "
+                    "pure peers. KiX reserves the right to arbitrate / "
+                    "suspend. Always True in production.",
+    )
 
 
 class ProposeRequest(BaseModel):
@@ -151,16 +193,6 @@ class TerminateRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=MAX_NOTES_LEN)
 
 
-class VoucherBridgeRequest(BaseModel):
-    brand_id: str = Field(
-        ..., min_length=1,
-        description="brand id of the party issuing the voucher (must be one "
-                    "of the two partners).",
-    )
-    voucher_id: str = Field(..., min_length=1)
-    recipient_user_id: str = Field(..., min_length=1)
-
-
 class JointCampaignRequest(BaseModel):
     campaign: dict[str, Any]
     contribution_split_bps: dict[str, int] = Field(
@@ -179,10 +211,6 @@ def _k_partnership(pid: str) -> str:
 
 def _k_brand_partnerships(bid: str) -> str:
     return f"brand:{bid}:partnerships"
-
-
-def _k_bridged_vouchers(pid: str) -> str:
-    return f"partnership:{pid}:bridged_vouchers"
 
 
 def _k_stats(pid: str) -> str:
@@ -285,7 +313,12 @@ async def _persist_status(
 
 
 async def assert_active(r: aioredis.Redis, pid: str) -> dict[str, str]:
-    """Raise unless partnership is currently active. Used by vouchers."""
+    """Raise unless partnership is currently active.
+
+    Retained for attribution / joint-campaign callers. NOT used by the
+    voucher router any more — cross-brand voucher distribution is
+    auction-driven, not partnership-mediated.
+    """
     record = await _load(r, pid)
     _expire_if_needed(record)
     if record.get("status") == "expired":
@@ -323,17 +356,15 @@ async def propose(
     body: ProposeRequest,
     r: aioredis.Redis = Depends(get_redis),
 ) -> dict[str, Any]:
-    """Brand A proposes a partnership to Brand B. Returns the new pid."""
+    """Propose a **co-marketing arrangement** between two brands.
+
+    NOT a user-acquisition channel. Use this only for formal
+    joint-campaign / shared-event arrangements. Returns the new pid.
+    """
     if body.proposer_brand_id == body.target_brand_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="proposer_brand_id and target_brand_id must differ",
-        )
-    if body.terms.voucher_acceptance_policy == "specific_templates" and \
-            not body.terms.acceptable_template_ids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="acceptable_template_ids required when policy=specific_templates",
         )
 
     pid = f"pship_{uuid4().hex[:16]}"
@@ -367,6 +398,7 @@ async def propose(
         "partnership_id": pid,
         "status": "proposed",
         "expires_at": expires_at,
+        "deprecated": _DEPRECATION_NOTE,
     }
 
 
@@ -408,7 +440,12 @@ async def accept(
             "target_signed_at": now,
         },
     )
-    return {"partnership_id": partnership_id, "status": "active", "signed_at": now}
+    return {
+        "partnership_id": partnership_id,
+        "status": "active",
+        "signed_at": now,
+        "deprecated": _DEPRECATION_NOTE,
+    }
 
 
 @router.post("/{partnership_id}/reject")
@@ -431,7 +468,11 @@ async def reject(
     if body.reason:
         mapping["reject_reason"] = body.reason
     await r.hset(_k_partnership(partnership_id), mapping=mapping)
-    return {"partnership_id": partnership_id, "status": "rejected"}
+    return {
+        "partnership_id": partnership_id,
+        "status": "rejected",
+        "deprecated": _DEPRECATION_NOTE,
+    }
 
 
 @router.post("/{partnership_id}/terminate")
@@ -478,7 +519,11 @@ async def terminate(
             "partnership.cascade enumeration failed pid=%s", partnership_id,
         )
 
-    return {"partnership_id": partnership_id, "status": "terminated"}
+    return {
+        "partnership_id": partnership_id,
+        "status": "terminated",
+        "deprecated": _DEPRECATION_NOTE,
+    }
 
 
 @router.get("/{partnership_id}")
@@ -519,96 +564,6 @@ async def list_for_brand(
     return {"brand_id": brand_id, "count": len(out), "partnerships": out}
 
 
-@router.post("/{partnership_id}/voucher-bridge")
-async def voucher_bridge(
-    partnership_id: str,
-    body: VoucherBridgeRequest,
-    r: aioredis.Redis = Depends(get_redis),
-) -> dict[str, Any]:
-    """Issue a voucher across the partnership boundary.
-
-    The issuing brand must be one of the two partners. The partnership must
-    be active and of type 'voucher_exchange'. Acceptance policy is enforced
-    against the voucher's underlying template if available.
-    """
-    record = await assert_active(r, partnership_id)
-    if record.get("type") != "voucher_exchange":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Partnership type is {record.get('type')!r}, not voucher_exchange",
-        )
-    _assert_party(record, body.brand_id)
-
-    try:
-        terms = json.loads(record.get("terms_json", "{}"))
-    except json.JSONDecodeError:
-        terms = {}
-
-    # Optional policy check: if specific_templates, verify voucher's template
-    # is on the acceptable list. Done best-effort against vouchers store.
-    policy = terms.get("voucher_acceptance_policy", "all")
-    if policy == "none":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Partnership voucher_acceptance_policy=none — bridging disabled",
-        )
-    if policy == "specific_templates":
-        allowed = set(terms.get("acceptable_template_ids", []))
-        template_id: str | None = None
-        try:
-            v_payload = await r.hget(f"voucher:{body.voucher_id}", "template_id")
-            if v_payload:
-                template_id = v_payload
-        except Exception:
-            logger.exception(
-                "voucher_bridge: failed reading voucher %s", body.voucher_id,
-            )
-        if template_id is not None and template_id not in allowed:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"voucher template {template_id!r} not in acceptable list",
-            )
-
-    # Daily cap (best-effort, per partnership)
-    cap = terms.get("cap_users_per_day")
-    if isinstance(cap, int) and cap > 0:
-        day_key = f"partnership:{partnership_id}:bridge_count:{datetime.now(timezone.utc).date().isoformat()}"
-        try:
-            current = await r.incr(day_key)
-            if current == 1:
-                await r.expire(day_key, 2 * 86400)
-            if current > cap:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"daily bridge cap of {cap} reached",
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            logger.exception(
-                "voucher_bridge: cap check failed pid=%s", partnership_id,
-            )
-
-    record_payload = {
-        "voucher_id": body.voucher_id,
-        "issuing_brand_id": body.brand_id,
-        "recipient_user_id": body.recipient_user_id,
-        "at": _now_iso(),
-    }
-    pipe = r.pipeline()
-    pipe.lpush(_k_bridged_vouchers(partnership_id), json.dumps(record_payload))
-    pipe.ltrim(_k_bridged_vouchers(partnership_id), 0, MAX_BRIDGED_LIST - 1)
-    pipe.hincrby(_k_stats(partnership_id), "vouchers_exchanged", 1)
-    await pipe.execute()
-
-    return {
-        "partnership_id": partnership_id,
-        "bridged": True,
-        "voucher_id": body.voucher_id,
-        "recipient_user_id": body.recipient_user_id,
-    }
-
-
 @router.get("/{partnership_id}/stats")
 async def get_stats(
     partnership_id: str,
@@ -618,7 +573,6 @@ async def get_stats(
     raw = await r.hgetall(_k_stats(partnership_id))
     return {
         "partnership_id": partnership_id,
-        "vouchers_exchanged": int(raw.get("vouchers_exchanged", 0) or 0),
         "conversions_attributed": int(raw.get("conversions_attributed", 0) or 0),
         "gmv_generated_cents": int(raw.get("gmv_generated_cents", 0) or 0),
         "joint_campaigns_count": int(raw.get("joint_campaigns_count", 0) or 0),
@@ -633,13 +587,17 @@ async def create_joint_campaign(
 ) -> dict[str, Any]:
     """Spawn a shared campaign owned by both partners.
 
+    This is the **legitimate** use case for partnerships: two brands jointly
+    funding / running a single campaign (co-branded event, shared launch).
+    Spend is split per ``contribution_split_bps``.
+
     The actual campaign is stored as a minimal record here; the caller is
-    expected to wire it up via the regular `campaigns` router for richer
+    expected to wire it up via the regular ``campaigns`` router for richer
     targeting (we deliberately do not import campaigns.create to keep this
     module loosely coupled). Returns the new campaign_id.
     """
     record = await assert_active(r, partnership_id)
-    if record.get("type") not in {"joint_campaign", "co_marketing"}:
+    if record.get("type") not in {"joint_campaign", "shared_event"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(

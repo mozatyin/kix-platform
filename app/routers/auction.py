@@ -39,6 +39,7 @@ import redis.asyncio as aioredis
 
 from app.redis_client import get_redis
 from app.routers.audiences import campaign_audience_matches
+from datetime import datetime, timezone
 from app.routers.campaigns import (
     ACTIVE_CAMPAIGNS_KEY,
     AUCTION_ELIGIBLE_STATUSES,
@@ -414,6 +415,135 @@ async def _get_reserve_cents(r: aioredis.Redis, slot: str) -> int:
         return 0
 
 
+# ── Existing-customer exclusion (TikTok/Google/Facebook parity) ─────────
+#
+# Acquisition campaigns by default skip users already known to the
+# advertiser, so merchants don't pay to "buy back" their own customers.
+# A user counts as an existing customer if any of:
+#   1. They're a member of ``brand:{bid}:users`` (registered)
+#   2. They have a prior ``conversion`` event in ``brand:{bid}:attr_incoming``
+#   3. They belong to an audience flagged ``is_existing_customer_list=1``
+#
+# The probe is cached for 60s per (brand, user) to keep the hot auction
+# path fast — small brands (< 1000 users) skip cache since the SET probe
+# alone is sub-millisecond.
+
+EXISTING_CHECK_CACHE_KEY = "existing_check:{brand_id}:{user_id}"
+EXISTING_CHECK_TTL = 60
+EXISTING_CHECK_CACHE_MIN_BRAND_SIZE = 1000
+
+AUCTION_SKIPPED_EXISTING_KEY = "brand:{brand_id}:auction_skipped:existing_customer:{date}"
+AUCTION_SKIPPED_EXISTING_TTL = 86400 * 35  # ~5 weeks of daily counters
+
+
+def _today_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+async def _is_existing_customer(
+    r: aioredis.Redis, user_id: str | None, brand_id: str
+) -> bool:
+    """Return True iff ``user_id`` is already a customer of ``brand_id``.
+
+    Sources (any one is sufficient):
+      1. Member of ``brand:{bid}:users`` SET
+      2. Has a prior ``conversion`` event in ``brand:{bid}:attr_incoming`` ZSET
+      3. Member of any audience tagged ``is_existing_customer_list``
+
+    Result is cached for 60s per (brand, user) for brands above the
+    minimum size threshold; tiny brands skip cache (SISMEMBER is faster
+    than the round-trip).
+    """
+    if not user_id or not brand_id:
+        return False
+
+    # Estimate brand size cheaply to decide on caching.
+    try:
+        brand_size = await r.scard(f"brand:{brand_id}:users")
+    except Exception:  # pragma: no cover — never break the auction
+        brand_size = 0
+
+    cache_key = EXISTING_CHECK_CACHE_KEY.format(brand_id=brand_id, user_id=user_id)
+    use_cache = brand_size >= EXISTING_CHECK_CACHE_MIN_BRAND_SIZE
+
+    if use_cache:
+        cached = await r.get(cache_key)
+        if cached is not None:
+            return cached == "1"
+
+    result = False
+
+    # Source 1: registered users SET
+    try:
+        if await r.sismember(f"brand:{brand_id}:users", user_id):
+            result = True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("existing_customer SET probe failed: %s", exc)
+
+    # Source 2: prior conversion event in attribution log
+    if not result:
+        try:
+            events = await r.zrevrange(f"brand:{brand_id}:attr_incoming", 0, 50)
+            for eid in events or []:
+                e = await r.hgetall(f"attr:{eid}")
+                if not e:
+                    continue
+                if e.get("user_id") == user_id and e.get("stage") == "conversion":
+                    result = True
+                    break
+        except Exception as exc:  # pragma: no cover
+            logger.warning("existing_customer attr probe failed: %s", exc)
+
+    # Source 3: audience flag
+    if not result:
+        try:
+            from app.routers.audiences import get_user_audience_memberships
+            memberships = await get_user_audience_memberships(user_id, r)
+            for aid in memberships:
+                audience = await r.hgetall(f"audience:{aid}")
+                if not audience:
+                    continue
+                if (
+                    audience.get("brand_id") == brand_id
+                    and audience.get("is_existing_customer_list") == "1"
+                ):
+                    result = True
+                    break
+        except ImportError:  # pragma: no cover
+            pass
+        except Exception as exc:  # pragma: no cover
+            logger.warning("existing_customer audience probe failed: %s", exc)
+
+    if use_cache:
+        try:
+            await r.set(cache_key, "1" if result else "0", ex=EXISTING_CHECK_TTL)
+        except Exception:  # pragma: no cover
+            pass
+
+    return result
+
+
+async def _record_existing_customer_skip(
+    r: aioredis.Redis, brand_id: str
+) -> None:
+    """Bump the per-brand daily counter of skipped impressions.
+
+    Lets merchants see "we saved you ¥X by not buying back your own
+    customers" on their dashboard.
+    """
+    if not brand_id:
+        return
+    key = AUCTION_SKIPPED_EXISTING_KEY.format(
+        brand_id=brand_id, date=_today_utc()
+    )
+    try:
+        n = await r.incr(key)
+        if n == 1:
+            await r.expire(key, AUCTION_SKIPPED_EXISTING_TTL)
+    except Exception:  # pragma: no cover
+        pass
+
+
 # ── Pacing (don't burn the daily budget at 9am) ──────────────────────────
 
 
@@ -630,6 +760,28 @@ async def run_auction(
             cid, body.user_id, r
         ):
             continue
+
+        # Existing-customer exclusion (TikTok/Google/Facebook parity).
+        # Default is "new_users_only" — acquisition campaigns skip users
+        # who are already customers of the advertising brand. Merchants
+        # opt into ``retargeting_only`` or ``all`` to override.
+        target_audience = (
+            c.get("target_audience") or "new_users_only"
+        ).lower()
+        cand_brand_id = c.get("brand_id", "")
+        if body.user_id and cand_brand_id:
+            if target_audience in ("new_users_only", "", None):
+                if await _is_existing_customer(
+                    r, body.user_id, cand_brand_id
+                ):
+                    await _record_existing_customer_skip(r, cand_brand_id)
+                    continue
+            elif target_audience == "retargeting_only":
+                if not await _is_existing_customer(
+                    r, body.user_id, cand_brand_id
+                ):
+                    continue
+            # target_audience == "all" → no existing-customer filter.
 
         if not await _has_budget(r, c):
             continue
@@ -1384,6 +1536,33 @@ async def admin_explain(
                 row["dropped"] = "exclude_user"
                 rows.append(row)
                 continue
+        # Existing-customer exclusion check (mirrors run_auction).
+        target_audience = (
+            c.get("target_audience") or "new_users_only"
+        ).lower()
+        cand_brand_id = c.get("brand_id", "")
+        row["target_audience"] = target_audience
+        existing_check = "skipped_all"
+        if body.user_id and cand_brand_id and target_audience != "all":
+            is_existing = await _is_existing_customer(
+                r, body.user_id, cand_brand_id
+            )
+            if target_audience in ("new_users_only", "", None):
+                if is_existing:
+                    row["dropped"] = "existing_customer"
+                    row["existing_customer_check"] = "failed_existing"
+                    rows.append(row)
+                    continue
+                existing_check = "passed"
+            elif target_audience == "retargeting_only":
+                if not is_existing:
+                    row["dropped"] = "not_existing_customer"
+                    row["existing_customer_check"] = "failed_not_existing"
+                    rows.append(row)
+                    continue
+                existing_check = "passed"
+        row["existing_customer_check"] = existing_check
+
         if not await _has_budget(r, c):
             row["dropped"] = "budget_exhausted"
             rows.append(row)
@@ -1497,4 +1676,52 @@ async def admin_explain(
             for (rank, bid, qs, pacing, cand) in eligible
         ],
         "all_candidates": rows,
+    }
+
+
+# ── Admin: existing-customer savings ─────────────────────────────────────
+
+
+@router.get("/admin/savings/{brand_id}")
+async def admin_savings(
+    brand_id: str,
+    date: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """How many auction impressions were skipped today because the user
+    was already a customer of this brand — i.e. money the merchant did
+    not waste buying back its own users.
+
+    Estimated savings = ``skipped × average_CPA`` (cents). ``average_CPA``
+    is derived from the brand's aggregate spend / conversions; falls back
+    to a conservative 50¢ placeholder if no historical data exists.
+    """
+    day = date or _today_utc()
+    key = AUCTION_SKIPPED_EXISTING_KEY.format(brand_id=brand_id, date=day)
+    raw = await r.get(key)
+    try:
+        skipped = int(raw) if raw is not None else 0
+    except (TypeError, ValueError):
+        skipped = 0
+
+    # Estimate average CPA from brand-aggregated stats. The brand stats
+    # key shape is `brand:{bid}:stats` — best-effort lookup; missing data
+    # falls back to a conservative 50¢ placeholder so the dashboard still
+    # shows a non-zero figure.
+    avg_cpa_cents = 50
+    try:
+        brand_stats = await r.hgetall(f"brand:{brand_id}:stats")
+        spend = int(brand_stats.get("spend_cents", 0) or 0)
+        convs = int(brand_stats.get("conversions", 0) or 0)
+        if convs > 0 and spend > 0:
+            avg_cpa_cents = max(1, spend // convs)
+    except Exception:  # pragma: no cover
+        pass
+
+    return {
+        "brand_id": brand_id,
+        "date": day,
+        "existing_customers_skipped": skipped,
+        "average_cpa_cents": avg_cpa_cents,
+        "estimated_savings_cents": skipped * avg_cpa_cents,
     }

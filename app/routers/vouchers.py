@@ -16,6 +16,22 @@ use case: a voucher minted in store A can be redeemed at store B if both
 stores are in the same master account and the master's
 ``voucher_network`` policy allows it.
 
+Cross-brand redemption is handled via the KiX auction algorithm. Vouchers
+themselves are local to the issuer or the master, never to bilateral
+partnerships. The supported ``redeemable_at`` shapes are:
+
+  * ``"issuer_only"`` — only the issuing brand may redeem.
+  * ``"any_in_master:{master_id}"`` — any brand inside the same master
+    account (multi-store chain) may redeem, subject to the master's
+    network policy.
+  * ``list[brand_id]`` — an explicit allow-list set by the issuer as a
+    KiX-policy gift (NOT a contract). The receiving brand gets no
+    automatic payout — this is co-marketing, not an auction settlement.
+
+Partnership-based redemption (``"partnership:{pid}"``) is removed.
+Cross-brand value flow goes through the auction engine, not through
+voucher metadata.
+
 Redis schema (cross-store)::
 
     voucher:{vid}                    HASH    full voucher state
@@ -385,6 +401,39 @@ def _network_allows(
 
 # ── Pydantic models ───────────────────────────────────────────────────────
 
+class RelationalConditions(BaseModel):
+    """Household / family / bundle / cohort / temporal / cumulative predicates.
+
+    Distinct from per-user-local conditions (``min_purchase_cents``,
+    ``tier_required``, ``first_time_user_only``) which live under the
+    ``conditions`` field. These predicates evaluate against the redeemer's
+    relationships, bundle holdings, cohort membership, and historical activity
+    across the master account.
+    """
+
+    # ── Household / family ─────────────────────────────────────────────────
+    min_children_count: int | None = Field(None, ge=0)
+    min_household_members: int | None = Field(None, ge=0)
+    sibling_discount: bool | None = None  # requires a sibling already enrolled
+    relationship_type_required: str | None = Field(None, max_length=64)
+
+    # ── Bundle / multi-item ───────────────────────────────────────────────
+    bundle_required: list[str] | None = None  # template_ids user must hold
+    min_bundle_count: int | None = Field(None, ge=0)
+
+    # ── Group / cohort ────────────────────────────────────────────────────
+    same_master_member: bool | None = None
+    same_audience_required: str | None = Field(None, max_length=128)
+
+    # ── Time / sequence ───────────────────────────────────────────────────
+    after_purchase_within_days: int | None = Field(None, ge=0, le=3650)
+    after_relationship_added_days: int | None = Field(None, ge=0, le=3650)
+
+    # ── Cumulative ────────────────────────────────────────────────────────
+    cumulative_spend_min_cents: int | None = Field(None, ge=0)
+    visit_count_min: int | None = Field(None, ge=0)
+
+
 class IssueVoucherRequest(BaseModel):
     template_id: str | None = Field(None, max_length=64)
     user_id: str = Field(..., min_length=1, max_length=128)
@@ -393,6 +442,7 @@ class IssueVoucherRequest(BaseModel):
     value_cents: int | None = Field(None, ge=0)
     expires_at: int | None = Field(None, ge=0)
     conditions: dict[str, Any] = Field(default_factory=dict)
+    relational_conditions: dict[str, Any] | None = None
     source: Literal["campaign", "gift", "promo", "purchase", "support"] = "campaign"
     transferable: bool = True
     max_uses: int = Field(1, ge=1, le=100)
@@ -400,6 +450,13 @@ class IssueVoucherRequest(BaseModel):
     @field_validator("redeemable_at")
     @classmethod
     def _validate_redeemable_at(cls, v: Any) -> Any:
+        # Defense-in-depth: reject the removed ``partnership:{pid}`` scheme
+        # with a clear, actionable error message before any other parsing.
+        if isinstance(v, str) and v.startswith("partnership:"):
+            raise ValueError(
+                "Partnership-based redemption removed — use "
+                "'issuer_only', 'any_in_master:{mid}', or a list of brand_ids."
+            )
         if isinstance(v, str):
             if v not in REDEEMABLE_PRESETS:
                 raise ValueError(
@@ -412,6 +469,11 @@ class IssueVoucherRequest(BaseModel):
             for b in v:
                 if not isinstance(b, str) or not b:
                     raise ValueError("redeemable_at list entries must be brand_ids")
+                if b.startswith("partnership:"):
+                    raise ValueError(
+                        "Partnership-based redemption removed — "
+                        "redeemable_at list entries must be plain brand_ids."
+                    )
             return v
         raise ValueError("redeemable_at must be a preset string or list of brand_ids")
 
@@ -554,6 +616,33 @@ async def _do_issue(
     if expires_at and expires_at <= issued_at:
         raise HTTPException(status_code=400, detail="expires_at must be in the future")
 
+    # Validate relational_conditions against schema if provided. If not
+    # provided on the request, try to inherit from the template.
+    rel_cond_dict: dict[str, Any] = {}
+    if body.relational_conditions:
+        try:
+            rel_cond_dict = RelationalConditions(
+                **body.relational_conditions
+            ).model_dump(exclude_none=True)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"invalid relational_conditions: {exc}",
+            )
+    elif body.template_id:
+        # Inherit relational_conditions from the template if present.
+        tpl_raw = await r.get(_k_voucher_template(issuer_brand_id, body.template_id))
+        if tpl_raw:
+            try:
+                tpl = json.loads(tpl_raw)
+                tpl_rel = tpl.get("relational_conditions")
+                if isinstance(tpl_rel, dict) and tpl_rel:
+                    rel_cond_dict = RelationalConditions(
+                        **tpl_rel
+                    ).model_dump(exclude_none=True)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+
     voucher: dict[str, str] = {
         "voucher_id": vid,
         "template_id": body.template_id or "",
@@ -565,6 +654,7 @@ async def _do_issue(
         "value_cents": str(body.value_cents if body.value_cents is not None else 0),
         "residual_cents": str(body.value_cents if body.value_cents is not None else 0),
         "conditions": _dumps(body.conditions or {}),
+        "relational_conditions": _dumps(rel_cond_dict),
         "source": body.source,
         "status": "issued",
         "transferable": "1" if body.transferable else "0",
@@ -644,6 +734,18 @@ async def issue_voucher_global(
 # ── Redeem ───────────────────────────────────────────────────────────────
 
 def _parse_redeemable_at(raw: str | Any) -> Any:
+    """Decode the stored ``redeemable_at`` field into a normalised shape.
+
+    Supported shapes (post-cleanup):
+      * ``"issuer_only"``
+      * ``"any_in_master:{master_id}"``
+      * ``list[brand_id]`` (JSON-encoded on disk)
+
+    The legacy ``"partnership:{pid}"`` scheme is removed; if a stale
+    voucher hash from before this cleanup still carries one, we surface it
+    untouched so the redeem path can reject it with ``unknown_redeemable_at``
+    rather than silently honouring it.
+    """
     if isinstance(raw, str):
         if raw.startswith("any_in_master:") or raw in REDEEMABLE_PRESETS:
             return raw
@@ -659,7 +761,26 @@ async def _validate_redeemable_at(
     voucher: dict[str, str],
     at_brand_id: str,
 ) -> tuple[bool, str | None, dict[str, Any]]:
-    """Return (allowed, reject_reason, network_meta)."""
+    """Return ``(allowed, reject_reason, network_meta)``.
+
+    Three legal cross-brand paths (in order of frequency):
+
+    1. ``issuer_only`` — cross-brand always rejected.
+    2. ``any_in_master:{mid}`` — intra-master multi-store chain. The
+       master's voucher_network policy is consulted; KiX takes its
+       configured intra-master commission (default 0%).
+    3. ``list[brand_id]`` — explicit allow-list set by the issuer. This
+       is **rare** (mostly co-marketing): a voucher issued by Brand A
+       redeemed at Brand B. KiX takes its standard CPS commission.
+       Brand A gets nothing automatic — the voucher was a gift, not an
+       auction win. Cross-master entries in the list use
+       ``DEFAULT_CROSS_MASTER_COMMISSION_BPS``.
+
+    Partnership-based redemption (``"partnership:{pid}"``) is **removed**.
+    Any stale stored voucher carrying this scheme is rejected here with
+    ``unknown_redeemable_at`` and must be re-issued under one of the
+    three legal shapes above.
+    """
     issuer = voucher.get("issuer_brand_id", "")
     redeemable_at = _parse_redeemable_at(voucher.get("redeemable_at", "issuer_only"))
     is_cross_brand = at_brand_id != issuer
@@ -736,6 +857,281 @@ def _check_conditions(
     return True, None
 
 
+# ── Relational predicate evaluator ────────────────────────────────────────
+#
+# Redis key conventions consumed (created by sibling modules; missing keys
+# evaluate as "empty set" and conditions that require them will reject):
+#
+#   user:{uid}:relationship_by_type:{type}  SET    related user_ids
+#   user:{uid}:relationship_added_at:{type} HASH   {related_uid: ts_added}
+#   user:{uid}:household                    SET    user_ids in the household
+#   user:{uid}:purchases                    ZSET   score=ts, member=order_id
+#   user:{uid}:audiences                    SET    audience_ids (see audiences.py)
+#   brand:{bid}:users                       SET    enrolled users (see attribution.py)
+#   master:{mid}:brands                     SET    brands in master
+#   brand:{bid}:master                      STR    master_id for brand
+#
+# When a relational condition requires inspecting state that does not yet
+# exist (e.g. household tracking not implemented), the call returns
+# (False, "<missing_data_reason>") so that merchants cannot accidentally
+# auto-redeem on missing data.
+
+async def _evaluate_relational_conditions(
+    r: aioredis.Redis,
+    *,
+    voucher: dict[str, str],
+    redeemer_user_id: str,
+    at_brand_id: str,
+) -> tuple[bool, str | None, list[str]]:
+    """Evaluate household / bundle / cohort / temporal predicates.
+
+    Returns ``(ok, first_blocker, passed_checks)``.  ``passed_checks`` is
+    populated for use by the simulate endpoint so the merchant UI can show
+    which predicates were satisfied.
+    """
+    raw_cond = voucher.get("relational_conditions") or "{}"
+    cond = _safe_loads(raw_cond, {}) or {}
+    if not cond:
+        return True, None, []
+
+    passes: list[str] = []
+    now = _now()
+
+    # ── Household / family ─────────────────────────────────────────────
+    if cond.get("min_children_count") is not None:
+        need = int(cond["min_children_count"])
+        children = await r.smembers(
+            f"user:{redeemer_user_id}:relationship_by_type:parent_of"
+        )
+        have = len(children or [])
+        if have < need:
+            return False, f"requires {need} children, has {have}", passes
+        passes.append(f"min_children_count>={need}")
+
+    if cond.get("min_household_members") is not None:
+        need = int(cond["min_household_members"])
+        household = await r.smembers(f"user:{redeemer_user_id}:household")
+        have = len(household or [])
+        if have < need:
+            return False, f"requires {need} household members, has {have}", passes
+        passes.append(f"min_household_members>={need}")
+
+    if cond.get("sibling_discount"):
+        siblings = await r.smembers(
+            f"user:{redeemer_user_id}:relationship_by_type:sibling"
+        )
+        if not siblings:
+            return False, "no siblings on record", passes
+        master_id = await r.get(_k_brand_master(at_brand_id))
+        # Check whether at least one sibling is an enrolled member of the
+        # brand or any brand in the same master.
+        if master_id:
+            master_brands = await _master_brands(r, master_id)
+        else:
+            master_brands = {at_brand_id}
+        found_enrolled = False
+        for sib in siblings:
+            for bid in master_brands:
+                if await r.sismember(f"brand:{bid}:users", sib):
+                    found_enrolled = True
+                    break
+            if found_enrolled:
+                break
+        if not found_enrolled:
+            return False, "no sibling is brand member", passes
+        passes.append("sibling_discount")
+
+    rel_type = cond.get("relationship_type_required")
+    if rel_type:
+        related = await r.smembers(
+            f"user:{redeemer_user_id}:relationship_by_type:{rel_type}"
+        )
+        if not related:
+            return False, f"missing relationship_type={rel_type}", passes
+        passes.append(f"relationship_type_required={rel_type}")
+
+    # ── Bundle / multi-item ────────────────────────────────────────────
+    bundle_required = cond.get("bundle_required") or []
+    if bundle_required:
+        user_vouchers = await r.zrange(
+            _k_user_vouchers(redeemer_user_id), 0, -1
+        )
+        # Also check vouchers held by the original holder if different
+        holder = voucher.get("holder_user_id", "")
+        if holder and holder != redeemer_user_id:
+            user_vouchers = list(user_vouchers or []) + list(
+                await r.zrange(_k_user_vouchers(holder), 0, -1) or []
+            )
+        held_templates: set[str] = set()
+        for vid in user_vouchers or []:
+            v = await r.hgetall(_k_voucher(vid))
+            if not v:
+                continue
+            if v.get("status") in ("issued", "claimed", "redeemed"):
+                tid = v.get("template_id") or ""
+                if tid:
+                    held_templates.add(tid)
+        for tid in bundle_required:
+            if tid not in held_templates:
+                return False, f"missing required bundle item: {tid}", passes
+        passes.append(f"bundle_required={len(bundle_required)}")
+
+    if cond.get("min_bundle_count") is not None:
+        need = int(cond["min_bundle_count"])
+        # Count vouchers across the bundle_required set, or all active
+        # vouchers if no bundle_required specified.
+        target_templates = set(bundle_required) if bundle_required else None
+        user_vouchers = await r.zrange(
+            _k_user_vouchers(redeemer_user_id), 0, -1
+        )
+        count = 0
+        for vid in user_vouchers or []:
+            v = await r.hgetall(_k_voucher(vid))
+            if not v:
+                continue
+            if v.get("status") not in ("issued", "claimed", "redeemed"):
+                continue
+            tid = v.get("template_id") or ""
+            if target_templates is None or tid in target_templates:
+                count += 1
+        if count < need:
+            return False, f"min_bundle_count {need}, has {count}", passes
+        passes.append(f"min_bundle_count>={need}")
+
+    # ── Group / cohort ─────────────────────────────────────────────────
+    if cond.get("same_master_member"):
+        issuer = voucher.get("issuer_brand_id", "")
+        issuer_master = await r.get(_k_brand_master(issuer)) if issuer else None
+        if not issuer_master:
+            return False, "issuer brand has no master", passes
+        # Redeemer must be enrolled in at least one brand of the issuer's
+        # master.
+        master_brands = await _master_brands(r, issuer_master)
+        is_member = False
+        for bid in master_brands:
+            if await r.sismember(f"brand:{bid}:users", redeemer_user_id):
+                is_member = True
+                break
+        if not is_member:
+            return False, "redeemer not in issuer master", passes
+        passes.append("same_master_member")
+
+    aud_required = cond.get("same_audience_required")
+    if aud_required:
+        in_aud = await r.sismember(
+            f"audience:{aud_required}:members", redeemer_user_id
+        )
+        if not in_aud:
+            return False, f"not in audience {aud_required}", passes
+        passes.append(f"same_audience_required={aud_required}")
+
+    # ── Time / sequence ────────────────────────────────────────────────
+    if cond.get("after_purchase_within_days") is not None:
+        days = int(cond["after_purchase_within_days"])
+        window_start = now - days * 86400
+        # Most recent purchase (highest score)
+        latest = await r.zrevrange(
+            f"user:{redeemer_user_id}:purchases", 0, 0, withscores=True
+        )
+        if not latest:
+            return False, "no purchase on record", passes
+        try:
+            last_ts = int(latest[0][1])
+        except (IndexError, TypeError, ValueError):
+            return False, "purchase timestamp unreadable", passes
+        if last_ts < window_start:
+            return False, (
+                f"last purchase older than {days}d"
+            ), passes
+        passes.append(f"after_purchase_within_days<={days}")
+
+    if cond.get("after_relationship_added_days") is not None:
+        days = int(cond["after_relationship_added_days"])
+        threshold = now - days * 86400
+        # The user's relationships must have been added at least `days` ago
+        # (anti-gaming: someone can't add a child today and claim the voucher).
+        rel_type_check = rel_type or "parent_of"
+        added_map = await r.hgetall(
+            f"user:{redeemer_user_id}:relationship_added_at:{rel_type_check}"
+        )
+        if not added_map:
+            return False, "no relationship add-timestamp recorded", passes
+        # Require at least one relationship that crossed the threshold.
+        eligible = False
+        for _related_uid, ts_str in (added_map or {}).items():
+            try:
+                if int(ts_str) <= threshold:
+                    eligible = True
+                    break
+            except (TypeError, ValueError):
+                continue
+        if not eligible:
+            return False, (
+                f"relationship added less than {days}d ago"
+            ), passes
+        passes.append(f"after_relationship_added_days>={days}")
+
+    # ── Cumulative ─────────────────────────────────────────────────────
+    if cond.get("cumulative_spend_min_cents") is not None:
+        need = int(cond["cumulative_spend_min_cents"])
+        master_id = await r.get(_k_brand_master(at_brand_id))
+        if master_id:
+            brand_ids = await _master_brands(r, master_id)
+        else:
+            brand_ids = {at_brand_id}
+        total = 0
+        for bid in brand_ids:
+            events = await r.zrange(f"brand:{bid}:attr_incoming", 0, -1)
+            for eid in events or []:
+                e = await r.hgetall(f"attr:{eid}")
+                if not e:
+                    continue
+                if e.get("user_id") != redeemer_user_id:
+                    continue
+                if e.get("stage") != "conversion":
+                    continue
+                try:
+                    total += int(e.get("value_cents", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+        if total < need:
+            return False, (
+                f"cumulative spend {total} < required {need}"
+            ), passes
+        passes.append(f"cumulative_spend_min_cents>={need}")
+
+    if cond.get("visit_count_min") is not None:
+        need = int(cond["visit_count_min"])
+        master_id = await r.get(_k_brand_master(at_brand_id))
+        if master_id:
+            brand_ids = await _master_brands(r, master_id)
+        else:
+            brand_ids = {at_brand_id}
+        visit_count = 0
+        for bid in brand_ids:
+            # Visits are recorded as members of a per-user-per-brand set or
+            # zset.  Try the zset form first (visit timestamps).
+            n = await r.zcard(f"brand:{bid}:visits:{redeemer_user_id}")
+            if not n:
+                # Fall back to attribution events count.
+                events = await r.zrange(
+                    f"brand:{bid}:attr_incoming", 0, -1
+                )
+                for eid in events or []:
+                    e = await r.hgetall(f"attr:{eid}")
+                    if e and e.get("user_id") == redeemer_user_id:
+                        visit_count += 1
+            else:
+                visit_count += int(n)
+        if visit_count < need:
+            return False, (
+                f"visits {visit_count} < required {need}"
+            ), passes
+        passes.append(f"visit_count_min>={need}")
+
+    return True, None, passes
+
+
 @cross_store_router.post(
     "/{voucher_id}/redeem",
     summary="Redeem a voucher (cross-brand aware)",
@@ -799,6 +1195,24 @@ async def redeem_voucher(
                     raise HTTPException(
                         status_code=422,
                         detail={"ok": False, "reason": cond_reason},
+                    )
+
+                # Relational conditions (household / bundle / cohort / etc.)
+                rel_ok, rel_reason, _rel_passes = await _evaluate_relational_conditions(
+                    r,
+                    voucher=voucher,
+                    redeemer_user_id=body.redeemer_user_id,
+                    at_brand_id=body.at_brand_id,
+                )
+                if not rel_ok:
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "ok": False,
+                            "reason": "relational_condition_failed",
+                            "blocker": rel_reason,
+                        },
                     )
 
                 # Compute applied value + residual (partial use for multi-use)
@@ -1034,6 +1448,9 @@ def _voucher_to_dict(state: dict[str, str]) -> dict[str, Any]:
     out: dict[str, Any] = dict(state)
     out["redeemable_at"] = _parse_redeemable_at(state.get("redeemable_at", ""))
     out["conditions"] = _safe_loads(state.get("conditions"), {})
+    out["relational_conditions"] = _safe_loads(
+        state.get("relational_conditions"), {}
+    )
     for int_field in ("value_cents", "residual_cents", "uses", "max_uses",
                       "issued_at", "expires_at"):
         if int_field in out and out[int_field] not in ("", None):
@@ -1268,6 +1685,146 @@ async def cleanup_expired(
         "ok": True, "dry_run": body.dry_run,
         "expired_count": len(expired), "expired_voucher_ids": expired[:200],
         "notified_count": len(notified),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Relational-condition: simulate + template attachment
+# ══════════════════════════════════════════════════════════════════════════
+
+class SimulateRedeemRequest(BaseModel):
+    at_brand_id: str = Field(..., min_length=1)
+    redeemer_user_id: str = Field(..., min_length=1)
+    order_amount_cents: int | None = Field(None, ge=0)
+
+
+@cross_store_router.post(
+    "/{voucher_id}/simulate-redeem",
+    summary="Dry-run a voucher redemption (eligibility preview)",
+)
+async def simulate_redeem(
+    voucher_id: str,
+    body: SimulateRedeemRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Evaluate every gate that ``redeem`` would evaluate, without mutating.
+
+    Returns which predicates pass and which block, so a merchant UI can show
+    the customer exactly why a voucher cannot yet be redeemed (e.g. needs one
+    more child enrolled, or another bundle item).
+    """
+    state = await _load_voucher(r, voucher_id)
+    blockers: list[str] = []
+    passes: list[str] = []
+
+    # Status
+    status_now = state.get("status", "")
+    if status_now not in ("issued", "claimed"):
+        blockers.append(f"invalid_status:{status_now}")
+    else:
+        passes.append(f"status={status_now}")
+
+    # Redeemable_at policy
+    allowed, why, net_meta = await _validate_redeemable_at(
+        r, voucher=state, at_brand_id=body.at_brand_id,
+    )
+    if allowed:
+        passes.append("redeemable_at")
+    else:
+        blockers.append(f"redeemable_at:{why}")
+
+    # Standard conditions (min purchase, expiry, max_uses)
+    cond_ok, cond_reason = _check_conditions(state, body.order_amount_cents)
+    if cond_ok:
+        passes.append("conditions")
+    else:
+        blockers.append(f"conditions:{cond_reason}")
+
+    # Relational conditions
+    rel_ok, rel_blocker, rel_passes = await _evaluate_relational_conditions(
+        r,
+        voucher=state,
+        redeemer_user_id=body.redeemer_user_id,
+        at_brand_id=body.at_brand_id,
+    )
+    passes.extend(rel_passes)
+    if not rel_ok and rel_blocker:
+        blockers.append(f"relational:{rel_blocker}")
+
+    return {
+        "voucher_id": voucher_id,
+        "would_succeed": not blockers,
+        "blockers": blockers,
+        "passes": passes,
+        "network": net_meta,
+    }
+
+
+class TemplateConditionsRequest(BaseModel):
+    brand_id: str = Field(..., min_length=1)
+    template_id: str = Field(..., min_length=1, max_length=64)
+    relational_conditions: dict[str, Any] = Field(default_factory=dict)
+
+
+@cross_store_router.post(
+    "/templates/with-conditions",
+    summary="Attach relational conditions to a voucher template",
+)
+async def attach_template_relational_conditions(
+    body: TemplateConditionsRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Persist ``relational_conditions`` onto a voucher template.
+
+    All future vouchers issued from this template inherit the conditions
+    (see ``_do_issue``).  Existing voucher instances are not retro-modified.
+    """
+    # Validate schema first.
+    try:
+        normalized = RelationalConditions(
+            **(body.relational_conditions or {})
+        ).model_dump(exclude_none=True)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"invalid relational_conditions: {exc}",
+        )
+
+    key = _k_voucher_template(body.brand_id, body.template_id)
+    raw = await r.get(key)
+    if raw:
+        try:
+            tpl = json.loads(raw)
+            if not isinstance(tpl, dict):
+                tpl = {}
+        except json.JSONDecodeError:
+            tpl = {}
+    else:
+        # Create a minimal template record if none exists yet.
+        tpl = {
+            "template_id": body.template_id,
+            "brand_id": body.brand_id,
+            "created_at": _now(),
+        }
+
+    tpl["relational_conditions"] = normalized
+    tpl["updated_at"] = _now()
+    await r.set(key, _dumps(tpl))
+    # Best-effort: register template in the brand's template set.
+    try:
+        await r.sadd(f"brand:{body.brand_id}:voucher_templates", body.template_id)
+    except Exception as exc:  # pragma: no cover
+        logger.debug("template set-register failed: %s", exc)
+
+    logger.info(
+        "Template %s/%s relational_conditions updated: keys=%s",
+        body.brand_id, body.template_id, sorted(normalized.keys()),
+    )
+    return {
+        "ok": True,
+        "brand_id": body.brand_id,
+        "template_id": body.template_id,
+        "relational_conditions": normalized,
     }
 
 

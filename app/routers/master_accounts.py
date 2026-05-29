@@ -1260,10 +1260,1027 @@ async def consolidated_report(
     }
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# FEATURE 1 — Cross-Brand Visit Reports
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Why this exists
+# ---------------
+# A 5-store gym chain (老周 fitness sim P0) needed a consolidated view of
+# user flow across its stores: who comes back, who tries 2+ stores, which
+# stores feed each other. The data lives across three brand-scoped indices:
+#
+#   brand:{bid}:attr_incoming      ZSET  score=ts  member=event_id
+#   brand:{bid}:redeemed_vouchers  ZSET  score=redeemed_at  member=vid
+#   brand:{bid}:reservations       ZSET  score=scheduled_at member=rid
+#                                  (we filter by status == "honored")
+#
+# We walk each brand under the master, collect (user_id, ts) visit tuples,
+# aggregate per user and per (brand_a → brand_b) ordered pair, and cache
+# the result for 30 minutes in `master:{mid}:cross_brand_cache:{key}`.
+#
+# Cache key shape: f"{endpoint}:{from_ts}:{to_ts}:{extra}". Invalidation is
+# TTL-only; cross-brand traffic is bursty but tolerant of 30-min staleness.
+# ─────────────────────────────────────────────────────────────────────────
+
+_CROSS_BRAND_CACHE_TTL = 30 * 60  # 30 minutes
+_TOP_CROSS_VISITORS_DEFAULT = 50
+
+
+def _k_cross_brand_cache(master_id: str, key: str) -> str:
+    return f"master:{master_id}:cross_brand_cache:{key}"
+
+
+async def _collect_brand_visits(
+    r: aioredis.Redis,
+    brand_id: str,
+    from_ts: float | None,
+    to_ts: float | None,
+    user_filter: str | None,
+) -> list[tuple[str, float]]:
+    """Return chronological (user_id, ts) visits for a single brand.
+
+    Three sources are unioned and de-duplicated by (user_id, source, id):
+      * attr_incoming     — every tracked impression/click/visit landing here
+      * redeemed_vouchers — voucher redemptions (definite physical visits)
+      * reservations w/ status=honored — booked + showed up
+
+    For attr_incoming and redeemed_vouchers the score IS the timestamp.
+    For reservations we resolve the hash and use honored_at.
+    """
+    lo = "-inf" if from_ts is None else from_ts
+    hi = "+inf" if to_ts is None else to_ts
+    visits: list[tuple[str, float]] = []
+
+    # 1) attribution events landing on this brand
+    try:
+        events = await r.zrangebyscore(
+            f"brand:{brand_id}:attr_incoming", lo, hi
+        )
+    except Exception:  # noqa: BLE001
+        events = []
+    for ev_id in events or []:
+        try:
+            ev = await r.hgetall(f"attr:{ev_id}")
+        except Exception:  # noqa: BLE001
+            ev = {}
+        if not ev:
+            continue
+        uid = ev.get("user_id") or ""
+        if not uid:
+            continue
+        if user_filter and uid != user_filter:
+            continue
+        try:
+            ts = float(ev.get("timestamp") or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        visits.append((uid, ts))
+
+    # 2) voucher redemptions
+    try:
+        vids = await r.zrangebyscore(
+            f"brand:{brand_id}:redeemed_vouchers", lo, hi, withscores=True
+        )
+    except Exception:  # noqa: BLE001
+        vids = []
+    for vid, ts in vids or []:
+        try:
+            v = await r.hgetall(f"voucher:{vid}")
+        except Exception:  # noqa: BLE001
+            v = {}
+        uid = (v or {}).get("holder_user_id") or (v or {}).get(
+            "original_holder_user_id", ""
+        )
+        if not uid:
+            continue
+        if user_filter and uid != user_filter:
+            continue
+        visits.append((uid, float(ts)))
+
+    # 3) honored reservations
+    try:
+        rids = await r.zrangebyscore(
+            f"brand:{brand_id}:reservations", lo, hi, withscores=True
+        )
+    except Exception:  # noqa: BLE001
+        rids = []
+    for rid, _sched_ts in rids or []:
+        try:
+            res = await r.hgetall(f"reservation:{rid}")
+        except Exception:  # noqa: BLE001
+            res = {}
+        if (res or {}).get("status") != "honored":
+            continue
+        uid = res.get("user_id", "")
+        if not uid:
+            continue
+        if user_filter and uid != user_filter:
+            continue
+        try:
+            ts = float(res.get("honored_at") or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        # Also accept reservations with no honored_at by using the score.
+        if ts <= 0:
+            ts = float(_sched_ts)
+        visits.append((uid, ts))
+
+    visits.sort(key=lambda t: t[1])
+    return visits
+
+
+async def _gather_master_visits(
+    r: aioredis.Redis,
+    master_id: str,
+    from_ts: float | None,
+    to_ts: float | None,
+    user_filter: str | None = None,
+) -> tuple[list[str], dict[str, list[tuple[str, float]]]]:
+    """Return (sorted_brand_ids, {brand_id: visits}).
+
+    `visits` is sorted by ts ascending per brand. Empty brands stay in the
+    output so downstream callers can render zeros — that's deliberate for
+    matrix tables.
+    """
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    out: dict[str, list[tuple[str, float]]] = {}
+    for bid in brand_ids:
+        out[bid] = await _collect_brand_visits(
+            r, bid, from_ts, to_ts, user_filter
+        )
+    return brand_ids, out
+
+
+async def _cache_get_json(r: aioredis.Redis, key: str) -> Any | None:
+    raw = await r.get(key)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+async def _cache_set_json(r: aioredis.Redis, key: str, payload: Any) -> None:
+    try:
+        await r.set(key, json.dumps(payload), ex=_CROSS_BRAND_CACHE_TTL)
+    except Exception:  # noqa: BLE001
+        logger.warning("cross_brand_cache write failed key=%s", key, exc_info=True)
+
+
+@router.get("/{master_id}/cross-brand-visits")
+async def cross_brand_visits(
+    master_id: str,
+    from_ts: float | None = None,
+    to_ts: float | None = None,
+    user_id: str | None = None,
+    top_n: int = _TOP_CROSS_VISITORS_DEFAULT,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Cross-store visit matrix for a master.
+
+    Returns the brand-to-brand transition counts (`brand_a_to_brand_b`),
+    where each user's chronological visit sequence is walked once and
+    every consecutive pair contributes +1 to the corresponding matrix
+    cell. Self-loops (`brand_a_to_brand_a`) count returning customers.
+
+    Result is cached 30 min in `master:{mid}:cross_brand_cache:{key}`.
+    """
+    await _require_master(r, master_id)
+
+    cache_key = f"cbv:{from_ts}:{to_ts}:{user_id}:{top_n}"
+    cached = await _cache_get_json(r, _k_cross_brand_cache(master_id, cache_key))
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids, per_brand = await _gather_master_visits(
+        r, master_id, from_ts, to_ts, user_id
+    )
+
+    # Per-user chronological sequence of brand visits.
+    user_visits: dict[str, list[tuple[str, float]]] = {}
+    total_visits = 0
+    for bid, visits in per_brand.items():
+        for uid, ts in visits:
+            user_visits.setdefault(uid, []).append((bid, ts))
+            total_visits += 1
+    for uid in user_visits:
+        user_visits[uid].sort(key=lambda t: t[1])
+
+    # Brand-to-brand transition matrix (ordered: a→b).
+    matrix: dict[str, int] = {}
+    for seq in user_visits.values():
+        for i in range(len(seq) - 1):
+            a = seq[i][0]
+            b = seq[i + 1][0]
+            matrix[f"{a}_to_{b}"] = matrix.get(f"{a}_to_{b}", 0) + 1
+
+    # Top cross-visitors (most visits across the network).
+    top_visitors: list[dict] = []
+    for uid, seq in user_visits.items():
+        brand_set = {b for b, _ in seq}
+        last_ts = seq[-1][1] if seq else 0.0
+        top_visitors.append(
+            {
+                "user_id": uid,
+                "visit_count": len(seq),
+                "brand_count": len(brand_set),
+                "last_visit_ts": last_ts,
+            }
+        )
+    # Sort by brand_count desc (cross-store engagement is the real signal),
+    # then by visit_count desc as tiebreaker.
+    top_visitors.sort(
+        key=lambda d: (-d["brand_count"], -d["visit_count"], -d["last_visit_ts"])
+    )
+    top_visitors = top_visitors[: max(0, int(top_n))]
+
+    result = {
+        "master_id": master_id,
+        "brands": brand_ids,
+        "total_visits": total_visits,
+        "unique_users": len(user_visits),
+        "matrix": matrix,
+        "top_cross_visitors": top_visitors,
+        "from_ts": from_ts,
+        "to_ts": to_ts,
+        "_cached": False,
+    }
+    await _cache_set_json(r, _k_cross_brand_cache(master_id, cache_key), result)
+    return result
+
+
+def _period_bucket(ts: float, period: str) -> str:
+    """Bucket a unix timestamp into a YYYY-MM-DD / week / month label."""
+    dt = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(
+        timezone.utc
+    )
+    if period == "weekly":
+        # ISO year-week so weeks crossing months still line up.
+        y, w, _ = dt.isocalendar()
+        return f"{y}-W{w:02d}"
+    if period == "monthly":
+        return dt.strftime("%Y-%m")
+    return dt.strftime("%Y-%m-%d")
+
+
+@router.get("/{master_id}/user-flow")
+async def master_user_flow(
+    master_id: str,
+    user_id: str | None = None,
+    period: Literal["daily", "weekly", "monthly"] = "daily",
+    from_ts: float | None = None,
+    to_ts: float | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Time-series of user flow across brands.
+
+    For each time bucket and each brand-set membership (which brands a
+    user touched in that bucket), count distinct users. The output series
+    surfaces, e.g., how many users were in (gym_jingan only) vs (徐汇
+    only) vs (both) per day — which is exactly how you read overlap.
+
+    Buckets are computed from the *first* visit in the bucket for each
+    (user, period). A user appearing in 3 brands in one day shows up once
+    in the `gym_a|gym_b|gym_c` overlap row, not three times.
+    """
+    await _require_master(r, master_id)
+
+    cache_key = f"uflow:{from_ts}:{to_ts}:{user_id}:{period}"
+    cached = await _cache_get_json(r, _k_cross_brand_cache(master_id, cache_key))
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids, per_brand = await _gather_master_visits(
+        r, master_id, from_ts, to_ts, user_id
+    )
+
+    # bucket → user → set(brand_ids)
+    bucket_user_brands: dict[str, dict[str, set[str]]] = {}
+    for bid, visits in per_brand.items():
+        for uid, ts in visits:
+            bucket = _period_bucket(ts, period)
+            bucket_user_brands.setdefault(bucket, {}).setdefault(uid, set()).add(bid)
+
+    # Render: for each bucket, count by sorted-brand-set signature.
+    series: list[dict] = []
+    for bucket in sorted(bucket_user_brands.keys()):
+        groups: dict[str, int] = {}
+        active_users = 0
+        for uid, brands in bucket_user_brands[bucket].items():
+            sig = "|".join(sorted(brands))
+            groups[sig] = groups.get(sig, 0) + 1
+            active_users += 1
+        series.append(
+            {
+                "bucket": bucket,
+                "active_users": active_users,
+                "groups": groups,
+            }
+        )
+
+    result = {
+        "master_id": master_id,
+        "period": period,
+        "brands": brand_ids,
+        "series": series,
+        "_cached": False,
+    }
+    await _cache_set_json(r, _k_cross_brand_cache(master_id, cache_key), result)
+    return result
+
+
+@router.get("/{master_id}/cross-store-cohort")
+async def cross_store_cohort(
+    master_id: str,
+    from_ts: float | None = None,
+    size: int = 30,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Cohort users by FIRST brand visited, track subsequent brands.
+
+    For each user in the window we identify their first brand
+    (chronologically); they enter that cohort. We then count which OTHER
+    brands they subsequently touch. Output is a cohort × subsequent-brand
+    matrix — useful for "does store A feed store B?" answers.
+
+    `size` caps the per-cohort sample size in the response (full counts
+    are still aggregated; size only limits the user-level sample echoed
+    back).
+    """
+    await _require_master(r, master_id)
+
+    cache_key = f"cohort:{from_ts}:{size}"
+    cached = await _cache_get_json(r, _k_cross_brand_cache(master_id, cache_key))
+    if cached is not None:
+        cached["_cached"] = True
+        return cached
+
+    brand_ids, per_brand = await _gather_master_visits(
+        r, master_id, from_ts, None, None
+    )
+
+    user_visits: dict[str, list[tuple[str, float]]] = {}
+    for bid, visits in per_brand.items():
+        for uid, ts in visits:
+            user_visits.setdefault(uid, []).append((bid, ts))
+    for uid in user_visits:
+        user_visits[uid].sort(key=lambda t: t[1])
+
+    # cohort_brand → {subsequent_brand → count}
+    cohorts: dict[str, dict] = {}
+    for uid, seq in user_visits.items():
+        if not seq:
+            continue
+        first_brand = seq[0][0]
+        cohort = cohorts.setdefault(
+            first_brand,
+            {"cohort_size": 0, "subsequent": {}, "sample_users": []},
+        )
+        cohort["cohort_size"] += 1
+        seen_subseq: set[str] = set()
+        for bid, _ts in seq[1:]:
+            if bid == first_brand:
+                # Returning visits are interesting — track as self-return.
+                key = "_returned_to_self"
+            else:
+                key = bid
+            if key in seen_subseq:
+                continue
+            seen_subseq.add(key)
+            cohort["subsequent"][key] = cohort["subsequent"].get(key, 0) + 1
+        if len(cohort["sample_users"]) < size:
+            cohort["sample_users"].append(uid)
+
+    result = {
+        "master_id": master_id,
+        "brands": brand_ids,
+        "from_ts": from_ts,
+        "size": size,
+        "cohorts": cohorts,
+        "_cached": False,
+    }
+    await _cache_set_json(r, _k_cross_brand_cache(master_id, cache_key), result)
+    return result
+
+
+@router.get("/{master_id}/consolidated-funnel")
+async def consolidated_funnel(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Master-level acquisition funnel summed across all brands.
+
+    Reads each brand's funnel counters (impressions / clicks / conversions
+    / gmv) and aggregates. Missing keys are treated as zero so a brand
+    with no traffic does not blow up the rollup.
+
+    Funnel counter keys are best-effort discovered from the attribution
+    module's conventions:
+      brand:{bid}:funnel:impressions
+      brand:{bid}:funnel:clicks
+      brand:{bid}:funnel:conversions
+      brand:{bid}:funnel:gmv_cents
+
+    Brands that haven't published any of those keys fall back to ZCARD of
+    their attr_incoming index for an impression-equivalent count, so the
+    endpoint still answers something sensible during early integration.
+    """
+    await _require_master(r, master_id)
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+
+    totals = {
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "gmv_cents": 0,
+    }
+    per_brand_breakdown: list[dict] = []
+
+    for bid in brand_ids:
+        pipe = r.pipeline()
+        pipe.get(f"brand:{bid}:funnel:impressions")
+        pipe.get(f"brand:{bid}:funnel:clicks")
+        pipe.get(f"brand:{bid}:funnel:conversions")
+        pipe.get(f"brand:{bid}:funnel:gmv_cents")
+        pipe.zcard(f"brand:{bid}:attr_incoming")
+        imps, clks, convs, gmv, attr_card = await pipe.execute()
+
+        imp_i = int(imps or 0)
+        clk_i = int(clks or 0)
+        cnv_i = int(convs or 0)
+        gmv_i = int(gmv or 0)
+        # Fallback: if dedicated funnel counters aren't published yet,
+        # use the attribution incoming-zset cardinality as the impression
+        # floor. Zero is a worse answer than approximate.
+        if imp_i == 0 and attr_card:
+            imp_i = int(attr_card)
+
+        totals["impressions"] += imp_i
+        totals["clicks"] += clk_i
+        totals["conversions"] += cnv_i
+        totals["gmv_cents"] += gmv_i
+
+        per_brand_breakdown.append(
+            {
+                "brand_id": bid,
+                "impressions": imp_i,
+                "clicks": clk_i,
+                "conversions": cnv_i,
+                "gmv_cents": gmv_i,
+            }
+        )
+
+    # Derived rates — safe-division.
+    ctr = (totals["clicks"] / totals["impressions"]) if totals["impressions"] else 0.0
+    cvr = (
+        totals["conversions"] / totals["clicks"]
+    ) if totals["clicks"] else 0.0
+
+    return {
+        "master_id": master_id,
+        "as_of": _now_iso(),
+        "impressions": totals["impressions"],
+        "clicks": totals["clicks"],
+        "conversions": totals["conversions"],
+        "gmv_cents": totals["gmv_cents"],
+        "ctr": ctr,
+        "cvr": cvr,
+        "per_brand_breakdown": per_brand_breakdown,
+        "brand_count": len(brand_ids),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# FEATURE 2 — Master-Scoped Tier (cross-brand portability)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Brand-scoped tiers (existing) record a user as Elite at brand A but as
+# Guest at brand B in the same chain. For a chain operator that's wrong:
+# loyalty should follow the master. We layer a master-level ladder on top.
+#
+# Storage
+#   master:{mid}:tier_config        LIST  JSON tier dicts {name, xp_min}
+#                                         sorted ascending by xp_min
+#   master:{mid}:tier_aggregation   STR   "sum" | "max" | "avg"
+#                                         (default "sum")
+#   master:{mid}:tier_promotion     HASH  {rule, weights_json}
+#                                         rule ∈ {"max_of_brand_tier",
+#                                                 "sum_xp_then_tier",
+#                                                 "weighted_brand_xp"}
+#
+# Per-brand XP comes from `user:{uid}:currency:{bid}:xp` (the same source
+# of truth used by primitives.py). We never overwrite brand tiers — this
+# is a strictly additive layer that callers consult FIRST.
+# ─────────────────────────────────────────────────────────────────────────
+
+VALID_TIER_AGGREGATIONS: set[str] = {"sum", "max", "avg"}
+VALID_PROMOTION_RULES: set[str] = {
+    "max_of_brand_tier",
+    "sum_xp_then_tier",
+    "weighted_brand_xp",
+}
+
+
+class MasterTierEntry(BaseModel):
+    name: str = Field(..., min_length=1, max_length=64)
+    xp_min: int = Field(..., ge=0)
+
+
+class ConfigureMasterTiersBody(BaseModel):
+    tiers: list[MasterTierEntry]
+    aggregation: Literal["sum", "max", "avg"] = "sum"
+
+    @field_validator("tiers")
+    @classmethod
+    def _non_empty(cls, v):
+        if not v:
+            raise ValueError("tiers must include at least one entry")
+        names = [t.name for t in v]
+        if len(set(names)) != len(names):
+            raise ValueError("tier names must be unique")
+        return v
+
+
+class MasterPromotionRuleBody(BaseModel):
+    rule: Literal[
+        "max_of_brand_tier", "sum_xp_then_tier", "weighted_brand_xp"
+    ]
+    weights: dict[str, float] | None = None
+
+    @field_validator("weights")
+    @classmethod
+    def _weights_shape(cls, v):
+        if v is None:
+            return v
+        for bid, w in v.items():
+            if w < 0:
+                raise ValueError(f"weight for {bid} must be >= 0")
+        return v
+
+
+def _k_master_tier_config(mid: str) -> str:
+    return f"master:{mid}:tier_config"
+
+
+def _k_master_tier_aggregation(mid: str) -> str:
+    return f"master:{mid}:tier_aggregation"
+
+
+def _k_master_tier_promotion(mid: str) -> str:
+    return f"master:{mid}:tier_promotion"
+
+
+async def _read_master_tier_config(
+    r: aioredis.Redis, master_id: str
+) -> list[dict]:
+    raw = await r.lrange(_k_master_tier_config(master_id), 0, -1)
+    out: list[dict] = []
+    for item in raw or []:
+        try:
+            d = json.loads(item)
+            out.append({"name": str(d["name"]), "xp_min": int(d["xp_min"])})
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            continue
+    out.sort(key=lambda d: d["xp_min"])
+    return out
+
+
+async def _read_master_aggregation(
+    r: aioredis.Redis, master_id: str
+) -> str:
+    val = await r.get(_k_master_tier_aggregation(master_id))
+    if val in VALID_TIER_AGGREGATIONS:
+        return val
+    return "sum"
+
+
+async def _read_master_promotion(
+    r: aioredis.Redis, master_id: str
+) -> tuple[str, dict[str, float]]:
+    raw = await r.hgetall(_k_master_tier_promotion(master_id))
+    rule = (raw or {}).get("rule", "sum_xp_then_tier")
+    if rule not in VALID_PROMOTION_RULES:
+        rule = "sum_xp_then_tier"
+    weights: dict[str, float] = {}
+    try:
+        weights = json.loads((raw or {}).get("weights_json") or "{}")
+        if not isinstance(weights, dict):
+            weights = {}
+    except (json.JSONDecodeError, TypeError):
+        weights = {}
+    return rule, {str(k): float(v) for k, v in weights.items()}
+
+
+def _aggregate_xp(values: list[int], how: str) -> int:
+    if not values:
+        return 0
+    if how == "max":
+        return max(values)
+    if how == "avg":
+        return int(round(sum(values) / len(values)))
+    return sum(values)
+
+
+def _resolve_tier_name(tiers: list[dict], xp: int) -> tuple[str | None, int | None]:
+    """Return (current_tier_name, next_tier_threshold_or_None)."""
+    if not tiers:
+        return None, None
+    current = None
+    nxt_threshold = None
+    for t in tiers:
+        if xp >= t["xp_min"]:
+            current = t["name"]
+        else:
+            nxt_threshold = t["xp_min"]
+            break
+    return current, nxt_threshold
+
+
+@router.post("/{master_id}/tier/configure")
+async def configure_master_tier(
+    master_id: str,
+    body: ConfigureMasterTiersBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Install (or replace) the master-wide tier ladder.
+
+    Tiers are stored as a Redis LIST of JSON blobs so order is explicit
+    (we sort at read time anyway, but writing pre-sorted is friendlier
+    for ad-hoc Redis inspection). Replacing is a DEL-then-RPUSH — there
+    is no incremental update path on purpose: tier ladders are policy,
+    and partial edits are an error class we don't want to enable here.
+    """
+    await _require_master(r, master_id)
+
+    sorted_tiers = sorted(body.tiers, key=lambda t: t.xp_min)
+    serialized = [json.dumps({"name": t.name, "xp_min": t.xp_min}) for t in sorted_tiers]
+
+    pipe = r.pipeline()
+    pipe.delete(_k_master_tier_config(master_id))
+    pipe.rpush(_k_master_tier_config(master_id), *serialized)
+    pipe.set(_k_master_tier_aggregation(master_id), body.aggregation)
+    await pipe.execute()
+
+    logger.info(
+        "master_tier_configured master_id=%s tiers=%d aggregation=%s",
+        master_id,
+        len(sorted_tiers),
+        body.aggregation,
+    )
+    return {
+        "master_id": master_id,
+        "tiers": [{"name": t.name, "xp_min": t.xp_min} for t in sorted_tiers],
+        "aggregation": body.aggregation,
+    }
+
+
+@router.post("/{master_id}/tier/promotion-rule")
+async def configure_master_promotion_rule(
+    master_id: str,
+    body: MasterPromotionRuleBody,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Configure how master tier is resolved from per-brand state.
+
+    * `sum_xp_then_tier`     — sum (or aggregate) brand XP, look up in ladder.
+    * `max_of_brand_tier`    — take the highest per-brand tier rank.
+    * `weighted_brand_xp`    — weighted sum of brand XPs, then ladder.
+    """
+    await _require_master(r, master_id)
+
+    if body.rule == "weighted_brand_xp" and not body.weights:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="weighted_brand_xp rule requires weights map",
+        )
+
+    payload: dict[str, str] = {"rule": body.rule}
+    if body.weights is not None:
+        payload["weights_json"] = json.dumps(body.weights)
+    else:
+        payload["weights_json"] = "{}"
+
+    pipe = r.pipeline()
+    pipe.delete(_k_master_tier_promotion(master_id))
+    pipe.hset(_k_master_tier_promotion(master_id), mapping=payload)
+    await pipe.execute()
+
+    logger.info(
+        "master_promotion_rule_set master_id=%s rule=%s",
+        master_id,
+        body.rule,
+    )
+    return {
+        "master_id": master_id,
+        "rule": body.rule,
+        "weights": body.weights or {},
+    }
+
+
+async def _gather_per_brand_xp(
+    r: aioredis.Redis, user_id: str, brand_ids: list[str]
+) -> dict[str, int]:
+    """Read per-brand XP for a user; missing keys → 0 (skipped)."""
+    out: dict[str, int] = {}
+    for bid in brand_ids:
+        try:
+            raw = await r.get(f"user:{user_id}:currency:{bid}:xp")
+            if raw is None:
+                continue
+            out[bid] = int(raw)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def _resolve_master_tier_internal(
+    r: aioredis.Redis, master_id: str, user_id: str
+) -> dict[str, Any]:
+    """Compute master-tier payload (used by both the endpoint and the
+    exported helper). Returns enough context for downstream consumers
+    to debug what happened."""
+    tiers = await _read_master_tier_config(r, master_id)
+    aggregation = await _read_master_aggregation(r, master_id)
+    rule, weights = await _read_master_promotion(r, master_id)
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    per_brand_xp = await _gather_per_brand_xp(r, user_id, brand_ids)
+
+    aggregated_xp = 0
+    if rule == "weighted_brand_xp":
+        # Normalize weights to fractions (accept either 0-1 or 0-100).
+        total_w = sum(weights.values()) if weights else 0.0
+        if total_w > 1.5:
+            norm = {k: v / 100.0 for k, v in weights.items()}
+        elif total_w > 0:
+            norm = dict(weights)
+        else:
+            norm = {}
+        aggregated_xp = int(
+            round(sum(per_brand_xp.get(bid, 0) * norm.get(bid, 0) for bid in brand_ids))
+        )
+    elif rule == "max_of_brand_tier":
+        # Use the highest-XP brand's value to look up master tier; tier
+        # names take precedence via _max_brand_tier below.
+        aggregated_xp = max(per_brand_xp.values()) if per_brand_xp else 0
+    else:
+        # sum_xp_then_tier — honour the configured aggregation knob.
+        aggregated_xp = _aggregate_xp(list(per_brand_xp.values()), aggregation)
+
+    current_tier, next_threshold = _resolve_tier_name(tiers, aggregated_xp)
+
+    # For max_of_brand_tier we additionally inspect per-brand tier name
+    # strings (if the brand has one stored at user:{uid}:tier:{bid}) and
+    # rank them against the master ladder.
+    if rule == "max_of_brand_tier":
+        best_idx = -1
+        best_name = current_tier
+        tier_rank = {t["name"]: idx for idx, t in enumerate(tiers)}
+        for bid in brand_ids:
+            try:
+                name = await r.get(f"user:{user_id}:tier:{bid}")
+            except Exception:  # noqa: BLE001
+                name = None
+            if name and name in tier_rank and tier_rank[name] > best_idx:
+                best_idx = tier_rank[name]
+                best_name = name
+        if best_name:
+            current_tier = best_name
+
+    return {
+        "master_id": master_id,
+        "user_id": user_id,
+        "aggregated_xp": aggregated_xp,
+        "current_master_tier": current_tier,
+        "per_brand_xp": per_brand_xp,
+        "next_master_tier_threshold": next_threshold,
+        "cross_brand_portability": bool(tiers),
+        "aggregation": aggregation,
+        "rule": rule,
+        "tiers": tiers,
+    }
+
+
+@router.get("/{master_id}/user/{user_id}/tier")
+async def get_master_user_tier(
+    master_id: str,
+    user_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Return a user's resolved master-level tier.
+
+    If no master tier ladder is configured the response still returns
+    aggregated_xp + per_brand_xp + `cross_brand_portability: false`, so
+    callers can detect "this master has no portability configured" and
+    fall back to brand-level tiers cleanly.
+    """
+    await _require_master(r, master_id)
+    out = await _resolve_master_tier_internal(r, master_id, user_id)
+    # Strip the internal debug-ish keys from the public payload.
+    payload = {
+        "master_id": out["master_id"],
+        "user_id": out["user_id"],
+        "aggregated_xp": out["aggregated_xp"],
+        "current_master_tier": out["current_master_tier"],
+        "per_brand_xp": out["per_brand_xp"],
+        "next_master_tier_threshold": out["next_master_tier_threshold"],
+        "cross_brand_portability": out["cross_brand_portability"],
+        "aggregation": out["aggregation"],
+        "rule": out["rule"],
+    }
+    return payload
+
+
+async def resolve_master_tier(
+    r: aioredis.Redis, user_id: str, brand_id: str
+) -> str | None:
+    """Exported helper: resolve a user's master-level tier from a brand_id.
+
+    Other modules (frequency_cap, vouchers, etc.) call this FIRST when
+    resolving a user's effective tier; on `None` they fall back to the
+    per-brand tier. That's how "Elite at gym A → Elite at gym B" works
+    in practice: brand B's resolver looks up the master, computes the
+    aggregated XP across all chain brands, and returns the master tier
+    name, which beats brand B's local (likely lower) tier.
+
+    Returns None when:
+      * the brand isn't attached to any master
+      * the master has no tier_config (chain hasn't opted in)
+      * the user has zero XP in all brands of the master
+    """
+    if not brand_id or not user_id:
+        return None
+    try:
+        master_id = await r.get(_k_brand_master(brand_id))
+    except Exception:  # noqa: BLE001
+        return None
+    if not master_id:
+        return None
+
+    try:
+        out = await _resolve_master_tier_internal(r, master_id, user_id)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "resolve_master_tier failed master=%s user=%s brand=%s",
+            master_id,
+            user_id,
+            brand_id,
+            exc_info=True,
+        )
+        return None
+
+    if not out.get("tiers"):
+        return None
+    return out.get("current_master_tier")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# FEATURE 3 — Master-level Health Dashboard
+# ─────────────────────────────────────────────────────────────────────────
+#
+# One-screen status for an HQ ops user: brand count, member count, GMV,
+# commission paid to KiX, top/worst brand, network density (% of members
+# active in 2+ brands), plus any health alerts surfaced from sibling
+# modules. Built on top of the cross-brand visit machinery + funnel
+# rollup so the numbers are consistent with the per-feature endpoints.
+# ─────────────────────────────────────────────────────────────────────────
+
+_THIRTY_DAYS_SECONDS = 30 * 24 * 3600
+
+
+@router.get("/{master_id}/dashboard")
+async def master_dashboard(
+    master_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Master-level health dashboard.
+
+    Combines:
+      * brand_count / member_count (from existing master indices)
+      * members_active_30d         — distinct users w/ ≥1 visit in 30d
+      * total_gmv_30d              — sum of funnel:gmv_cents counters
+      * total_commission_paid_to_kix — sum of brand:{bid}:kix_take_cents
+      * top/worst brand by 30-day gmv (best-effort tiebreak by visits)
+      * cross_brand_score          — % visits that are cross-brand (0-100)
+      * network_density            — fraction of users in 2+ brands
+      * health_alerts              — currently sourced from
+                                     `brand:{bid}:health_alerts` LIST,
+                                     each entry a JSON dict. Empty when
+                                     the alerts module isn't wired.
+    """
+    master = await _require_master(r, master_id)
+
+    brand_ids = sorted(await r.smembers(_k_master_brands(master_id)))
+    member_ids = await r.smembers(_k_master_members(master_id))
+
+    now = time.time()
+    from_ts = now - _THIRTY_DAYS_SECONDS
+
+    _, per_brand_visits = await _gather_master_visits(
+        r, master_id, from_ts, None, None
+    )
+
+    # Network density: users in 2+ brands / total active users.
+    user_brand_count: dict[str, set[str]] = {}
+    cross_brand_visits = 0
+    total_visits = 0
+    last_brand_per_user: dict[str, str] = {}
+    visits_chrono: list[tuple[float, str, str]] = []
+    for bid, visits in per_brand_visits.items():
+        for uid, ts in visits:
+            user_brand_count.setdefault(uid, set()).add(bid)
+            visits_chrono.append((ts, uid, bid))
+            total_visits += 1
+    visits_chrono.sort(key=lambda t: t[0])
+    for _ts, uid, bid in visits_chrono:
+        prev = last_brand_per_user.get(uid)
+        if prev is not None and prev != bid:
+            cross_brand_visits += 1
+        last_brand_per_user[uid] = bid
+
+    active_users = len(user_brand_count)
+    multi_brand_users = sum(1 for s in user_brand_count.values() if len(s) >= 2)
+    network_density = (multi_brand_users / active_users) if active_users else 0.0
+    cross_brand_score = int(
+        round((cross_brand_visits / total_visits) * 100)
+    ) if total_visits else 0
+
+    # GMV + commission per brand.
+    gmv_per_brand: dict[str, int] = {}
+    visits_count_per_brand: dict[str, int] = {
+        bid: len(per_brand_visits.get(bid, [])) for bid in brand_ids
+    }
+    total_gmv_30d = 0
+    total_commission = 0
+    for bid in brand_ids:
+        pipe = r.pipeline()
+        pipe.get(f"brand:{bid}:funnel:gmv_cents")
+        pipe.get(f"brand:{bid}:kix_take_cents")
+        gmv_raw, take_raw = await pipe.execute()
+        gmv_i = int(gmv_raw or 0)
+        take_i = int(take_raw or 0)
+        gmv_per_brand[bid] = gmv_i
+        total_gmv_30d += gmv_i
+        total_commission += take_i
+
+    top_brand = None
+    worst_brand = None
+    if brand_ids:
+        # Rank by (gmv, visits) — visits is a tiebreak for brands with
+        # zero published GMV so the dashboard still picks something
+        # meaningful in pre-revenue stores.
+        ranked = sorted(
+            brand_ids,
+            key=lambda b: (gmv_per_brand.get(b, 0), visits_count_per_brand.get(b, 0)),
+            reverse=True,
+        )
+        top_brand = ranked[0]
+        worst_brand = ranked[-1]
+
+    # Health alerts: each brand may publish a list of JSON-encoded alerts.
+    health_alerts: list[dict] = []
+    for bid in brand_ids:
+        try:
+            raw_alerts = await r.lrange(f"brand:{bid}:health_alerts", 0, -1)
+        except Exception:  # noqa: BLE001
+            raw_alerts = []
+        for raw in raw_alerts or []:
+            try:
+                data = json.loads(raw)
+                if not isinstance(data, dict):
+                    continue
+                data.setdefault("brand_id", bid)
+                health_alerts.append(data)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+    return {
+        "master_id": master_id,
+        "company_name": master.get("company_name", ""),
+        "brands_count": len(brand_ids),
+        "members_count": len(member_ids),
+        "members_active_30d": active_users,
+        "total_gmv_30d": total_gmv_30d,
+        "total_commission_paid_to_kix": total_commission,
+        "top_performing_brand": top_brand,
+        "worst_performing_brand": worst_brand,
+        "cross_brand_score": cross_brand_score,
+        "network_density": round(network_density, 4),
+        "health_alerts": health_alerts,
+        "as_of": _now_iso(),
+    }
+
+
 # ── Public re-exports ────────────────────────────────────────────────────
 __all__ = [
     "router",
     "check_permission",
+    "resolve_master_tier",
     "VALID_ROLES",
     "DEFAULT_RBAC_MATRIX",
 ]

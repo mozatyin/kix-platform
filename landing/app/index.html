@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="KiX — Play games, earn rewards, discover merchants.">
+  <title>KiX — Play and Earn</title>
+  <link rel="stylesheet" href="/landing/app/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>K</text></svg>">
+</head>
+<body>
+  <!-- TOP BAR -->
+  <header class="kix-header">
+    <div class="kix-logo">KiX</div>
+    <div class="kix-user">
+      <span class="kix-id" id="kid-display">未登录</span>
+      <span class="kix-rewards" id="rewards-summary">0 ⭐</span>
+    </div>
+  </header>
+
+  <!-- VIEW CONTAINER -->
+  <main class="kix-main" id="view-container">
+    <div class="kix-loading">
+      <div class="spinner"></div>
+      <p>正在启动 KiX…</p>
+    </div>
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="kix-nav">
+    <button data-view="home" class="active">
+      <span class="ico">🏠</span><span class="lbl">首页</span>
+    </button>
+    <button data-view="inbox">
+      <span class="ico">📬</span><span class="lbl">收件箱</span>
+      <span id="inbox-badge" class="badge hidden"></span>
+    </button>
+    <button data-view="play">
+      <span class="ico">🎮</span><span class="lbl">游戏</span>
+    </button>
+    <button data-view="rewards">
+      <span class="ico">🎁</span><span class="lbl">奖励</span>
+    </button>
+    <button data-view="profile">
+      <span class="ico">👤</span><span class="lbl">我的</span>
+    </button>
+  </nav>
+
+  <!-- Toast container -->
+  <div id="kix-toast" class="kix-toast hidden"></div>
+
+  <script src="/landing/app/app.js"></script>
+</body>
+</html>

@@ -39,8 +39,11 @@ Redis key scheme
 from __future__ import annotations
 
 import json
+import math
+import statistics
 import time
-from typing import Any
+import uuid
+from typing import Any, Literal
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException
@@ -782,31 +785,80 @@ class Tier(BaseModel):
     perks: list[str] = Field(default_factory=list)
 
 
+# Legacy tier API — kept for back-compat. Prefer /tier/configure +
+# /user/{uid}/tier?brand_id=... which read brand-scoped XP and return the
+# canonical {name, xp_min} contract.
+_LEGACY_TIER_DEPRECATION = (
+    "Use POST /api/v1/primitives/tier/configure and "
+    "GET /api/v1/primitives/user/{uid}/tier?brand_id=..."
+)
+
+
 @router.post("/brand/{brand_id}/tiers")
 async def create_tier(
     brand_id: str, tier: Tier, r: aioredis.Redis = Depends(get_redis)
 ):
+    """[DEPRECATED] Append one tier to the legacy ``brand:{bid}:tiers`` HASH.
+
+    Prefer ``POST /tier/configure`` which sets the entire ladder in a
+    single, brand-scoped XP-aware contract.
+    """
     await r.hset(f"brand:{brand_id}:tiers", tier.id, tier.model_dump_json())
-    return {"ok": True, "brand_id": brand_id, "tier_id": tier.id}
+    return {
+        "ok": True,
+        "brand_id": brand_id,
+        "tier_id": tier.id,
+        "deprecated": _LEGACY_TIER_DEPRECATION,
+    }
 
 
-@router.get("/brand/{brand_id}/tiers", response_model=list[Tier])
+@router.get("/brand/{brand_id}/tiers")
 async def list_tiers(brand_id: str, r: aioredis.Redis = Depends(get_redis)):
+    """[DEPRECATED] List configured tiers for a brand.
+
+    Reads from the legacy ``brand:{bid}:tiers`` HASH first, then falls
+    back to the canonical ``tier_config:{bid}`` HASH so callers see the
+    full ladder regardless of which API wrote it. The response includes
+    a ``deprecated`` field pointing at the modern endpoints.
+    """
+    out: list[dict[str, Any]] = []
     raw = await r.hgetall(f"brand:{brand_id}:tiers")
-    out: list[Tier] = []
     for v in raw.values():
         try:
-            out.append(Tier(**json.loads(v)))
+            t = Tier(**json.loads(v))
+            out.append(t.model_dump())
         except Exception:
             continue
-    out.sort(key=lambda t: t.threshold_xp)
-    return out
+    if not out:
+        # Reconcile: surface canonical tier_config so callers don't see
+        # a phantom-empty ladder just because they're querying the old key.
+        canonical = await _read_tier_config(r, brand_id)
+        for t in canonical:
+            out.append(
+                {
+                    "id": t["name"],
+                    "name": t["name"],
+                    "threshold_xp": int(t.get("xp_min", 0)),
+                    "perks": t.get("perks", []),
+                }
+            )
+    out.sort(key=lambda d: int(d.get("threshold_xp", 0)))
+    return {
+        "brand_id": brand_id,
+        "tiers": out,
+        "deprecated": _LEGACY_TIER_DEPRECATION,
+    }
 
 
 async def _compute_tier(
     r: aioredis.Redis, brand_id: str, xp: int
 ) -> tuple[Tier | None, Tier | None]:
-    """Return (current_tier, next_tier) for an XP value."""
+    """Return (current_tier, next_tier) for an XP value.
+
+    NOTE: callers should pass an XP value resolved via ``_read_user_xp``
+    (brand-scoped → global fallback). The function itself is XP-source-
+    agnostic; it only consumes the int.
+    """
     raw = await r.hgetall(f"brand:{brand_id}:tiers")
     tiers: list[Tier] = []
     for v in raw.values():
@@ -1272,6 +1324,980 @@ async def get_lifecycle_stage(
         "source": raw.get("source"),
         "confidence": confidence_val,
         "set_at": int(raw.get("set_at", 0) or 0),
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 5c. ATTRIBUTE TIME-SERIES LOG
+# ═════════════════════════════════════════════════════════════════════════
+#
+# Append-only history per (user, attribute) for "weight over time", "PR over
+# time", "mood/sleep streams". Coexists with the existing "current value"
+# HASH (5b). Each log entry is a JSON blob in a Redis LIST (newest first).
+#
+# Keys
+#   user:{uid}:attr_log:{key}                       LIST (global scope)
+#   user:{uid}:attr_log:{brand_id}:{key}            LIST (brand scope)
+#   user:{uid}:attr_log:{key}:stats                 HASH cache (TTL 1h)
+#   user:{uid}:attr_log:{brand_id}:{key}:stats      HASH cache (TTL 1h)
+
+_ATTR_LOG_MAX_ENTRIES = 5000
+_ATTR_LOG_STATS_TTL = 3600
+
+
+def _attr_log_key(user_id: str, brand_id: str | None, key: str) -> str:
+    if brand_id:
+        return f"user:{user_id}:attr_log:{brand_id}:{key}"
+    return f"user:{user_id}:attr_log:{key}"
+
+
+def _attr_log_stats_key(user_id: str, brand_id: str | None, key: str) -> str:
+    return _attr_log_key(user_id, brand_id, key) + ":stats"
+
+
+def _try_float(v: Any) -> float | None:
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+class AttrLogEntry(BaseModel):
+    value: Any
+    brand_id: str | None = None
+    ts: int | None = None
+    source: Literal["self_declared", "measured", "inferred"] = "self_declared"
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    meta: dict[str, Any] | None = None
+
+
+@router.post("/user/{user_id}/attributes/{key}/log")
+async def log_user_attribute(
+    user_id: str,
+    key: str,
+    body: AttrLogEntry,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Append a value to the time-series log for `key`.
+
+    Also updates the "current value" HASH (5b) for backwards compat: the
+    most recent log entry IS the current value.
+    """
+    user_id = await resolve_canonical(r, user_id)
+    ts = int(body.ts) if body.ts is not None else int(time.time())
+    entry_id = uuid.uuid4().hex[:16]
+    serialized_value = _serialize_attr_value(body.value)
+
+    entry = {
+        "entry_id": entry_id,
+        "ts": ts,
+        "value": serialized_value,
+        "source": body.source,
+    }
+    if body.confidence is not None:
+        entry["confidence"] = round(float(body.confidence), 4)
+    if body.meta:
+        entry["meta"] = body.meta
+
+    log_key = _attr_log_key(user_id, body.brand_id, key)
+    hash_key = _attr_hash_key(user_id, body.brand_id)
+    stats_key = _attr_log_stats_key(user_id, body.brand_id, key)
+
+    pipe = r.pipeline()
+    pipe.lpush(log_key, json.dumps(entry))
+    pipe.ltrim(log_key, 0, _ATTR_LOG_MAX_ENTRIES - 1)
+    pipe.hset(hash_key, key, serialized_value)
+    pipe.delete(stats_key)  # invalidate cached stats
+    await pipe.execute()
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "brand_id": body.brand_id,
+        "key": key,
+        "entry_id": entry_id,
+        "ts": ts,
+        "value": serialized_value,
+    }
+
+
+def _decode_log_entries(raw: list[str]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for item in raw:
+        try:
+            out.append(json.loads(item))
+        except Exception:
+            continue
+    return out
+
+
+def _numeric_stats(values: list[float]) -> dict[str, float]:
+    if not values:
+        return {}
+    s = {
+        "min": min(values),
+        "max": max(values),
+        "avg": sum(values) / len(values),
+        "median": statistics.median(values),
+    }
+    if len(values) >= 2:
+        s["std"] = statistics.pstdev(values)
+    else:
+        s["std"] = 0.0
+    return {k: round(v, 6) for k, v in s.items()}
+
+
+@router.get("/user/{user_id}/attributes/{key}/history")
+async def get_user_attribute_history(
+    user_id: str,
+    key: str,
+    brand_id: str | None = None,
+    from_ts: int | None = None,
+    to_ts: int | None = None,
+    limit: int = 100,
+    order: Literal["asc", "desc"] = "desc",
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Return chronological history + summary stats for `key`."""
+    user_id = await resolve_canonical(r, user_id)
+    if limit < 1:
+        limit = 1
+    if limit > _ATTR_LOG_MAX_ENTRIES:
+        limit = _ATTR_LOG_MAX_ENTRIES
+
+    log_key = _attr_log_key(user_id, brand_id, key)
+    raw = await r.lrange(log_key, 0, _ATTR_LOG_MAX_ENTRIES - 1) or []
+    entries = _decode_log_entries(raw)  # newest first
+
+    # Filter by timestamp range.
+    if from_ts is not None:
+        entries = [e for e in entries if int(e.get("ts", 0)) >= from_ts]
+    if to_ts is not None:
+        entries = [e for e in entries if int(e.get("ts", 0)) <= to_ts]
+
+    count = len(entries)
+    latest = entries[0] if entries else None
+    earliest = entries[-1] if entries else None
+
+    # Numeric stats (if every value is parseable as float).
+    numeric_values: list[float] = []
+    all_numeric = bool(entries)
+    for e in entries:
+        v = _try_float(e.get("value"))
+        if v is None:
+            all_numeric = False
+            break
+        numeric_values.append(v)
+
+    stats: dict[str, float] = {}
+    delta: dict[str, float | None] = {}
+    if all_numeric and numeric_values:
+        stats = _numeric_stats(numeric_values)
+        first_val = numeric_values[-1]  # earliest
+        last_val = numeric_values[0]    # latest
+        delta["from_first"] = round(last_val - first_val, 6)
+        delta["from_last"] = 0.0
+        now = int(time.time())
+        cutoff_30d = now - 30 * 86400
+        prior = [
+            _try_float(e.get("value"))
+            for e in entries
+            if int(e.get("ts", 0)) <= cutoff_30d
+        ]
+        prior_vals = [p for p in prior if p is not None]
+        if prior_vals:
+            delta["vs_30d_ago"] = round(last_val - prior_vals[0], 6)
+        else:
+            delta["vs_30d_ago"] = None
+
+    # Order + limit for output.
+    out_entries = entries if order == "desc" else list(reversed(entries))
+    out_entries = out_entries[:limit]
+
+    return {
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "key": key,
+        "count": count,
+        "latest": (
+            {"value": latest.get("value"), "ts": int(latest.get("ts", 0))}
+            if latest
+            else None
+        ),
+        "earliest": (
+            {"value": earliest.get("value"), "ts": int(earliest.get("ts", 0))}
+            if earliest
+            else None
+        ),
+        "numeric": all_numeric and bool(numeric_values),
+        "stats": stats,
+        "delta": delta,
+        "entries": out_entries,
+    }
+
+
+@router.get("/user/{user_id}/attributes/{key}/trend")
+async def get_user_attribute_trend(
+    user_id: str,
+    key: str,
+    window_days: int = 30,
+    brand_id: str | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Linear-regression slope over the last `window_days`.
+
+    Returns direction (improving / declining / stable), slope per day, and
+    milestones crossed (round-number boundaries between earliest and latest
+    value inside the window).
+    """
+    user_id = await resolve_canonical(r, user_id)
+    if window_days < 1:
+        window_days = 1
+    log_key = _attr_log_key(user_id, brand_id, key)
+    raw = await r.lrange(log_key, 0, _ATTR_LOG_MAX_ENTRIES - 1) or []
+    entries = _decode_log_entries(raw)
+    now = int(time.time())
+    cutoff = now - window_days * 86400
+    window = [e for e in entries if int(e.get("ts", 0)) >= cutoff]
+
+    # Need at least 2 numeric points for a slope.
+    points: list[tuple[float, float]] = []
+    for e in window:
+        v = _try_float(e.get("value"))
+        if v is None:
+            continue
+        points.append((float(int(e.get("ts", 0))), v))
+
+    if len(points) < 2:
+        return {
+            "user_id": user_id,
+            "brand_id": brand_id,
+            "key": key,
+            "window_days": window_days,
+            "direction": "stable",
+            "slope": 0.0,
+            "slope_per_day": 0.0,
+            "point_count": len(points),
+            "milestones_crossed": [],
+        }
+
+    # Ordinary least squares.
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    n = len(points)
+    mean_x = sum(xs) / n
+    mean_y = sum(ys) / n
+    num = sum((xs[i] - mean_x) * (ys[i] - mean_y) for i in range(n))
+    den = sum((xs[i] - mean_x) ** 2 for i in range(n))
+    slope_per_sec = num / den if den else 0.0
+    slope_per_day = slope_per_sec * 86400
+
+    # Direction relative to noise (std/window).
+    spread = max(ys) - min(ys)
+    if spread == 0 or abs(slope_per_day) < (spread / max(window_days, 1)) * 0.05:
+        direction = "stable"
+    elif slope_per_day > 0:
+        direction = "improving"
+    else:
+        direction = "declining"
+
+    # Milestones: integer boundaries crossed between earliest and latest.
+    # points sorted by ts ascending so we walk chronologically.
+    points_sorted = sorted(points, key=lambda p: p[0])
+    milestones: list[dict[str, Any]] = []
+    if len(points_sorted) >= 2:
+        for i in range(1, len(points_sorted)):
+            prev_v = points_sorted[i - 1][1]
+            cur_v = points_sorted[i][1]
+            lo, hi = (prev_v, cur_v) if prev_v < cur_v else (cur_v, prev_v)
+            # Choose milestone granularity from value magnitude.
+            mag = max(abs(prev_v), abs(cur_v), 1.0)
+            step = 10 ** max(0, int(math.log10(mag)) - 1) if mag >= 10 else 1
+            start = math.ceil(lo / step) * step
+            m = start
+            while m <= hi:
+                if lo < m <= hi:
+                    milestones.append(
+                        {"value": m, "ts": int(points_sorted[i][0])}
+                    )
+                m += step
+                if len(milestones) > 50:
+                    break
+            if len(milestones) > 50:
+                break
+
+    return {
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "key": key,
+        "window_days": window_days,
+        "direction": direction,
+        "slope": round(slope_per_sec, 9),
+        "slope_per_day": round(slope_per_day, 6),
+        "point_count": n,
+        "milestones_crossed": milestones,
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 5d. USER RELATIONSHIPS  (parent_of / spouse / employee / buddy / …)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# First-class graph edges between users — replaces the K12 pattern of
+# stuffing parent/child links into attribute JSON blobs.
+#
+# Keys
+#   user:{uid}:relationships                          HASH related_uid → JSON
+#   user:{uid}:relationship_by_type:{type}            SET of related_uids
+
+_RELATIONSHIP_REVERSE_MAP: dict[str, str] = {
+    "parent_of": "child_of",
+    "child_of": "parent_of",
+    "spouse": "spouse",
+    "sibling": "sibling",
+    "household_member": "household_member",
+    "guardian": "ward",
+    "ward": "guardian",
+    "employee": "manager",
+    "manager": "employee",
+    "buddy": "buddy",
+    "emergency_contact": "primary_user",
+    "primary_user": "emergency_contact",
+}
+
+_VALID_RELATIONSHIPS = set(_RELATIONSHIP_REVERSE_MAP.keys())
+
+
+def _rel_hash_key(user_id: str) -> str:
+    return f"user:{user_id}:relationships"
+
+
+def _rel_index_key(user_id: str, rel_type: str) -> str:
+    return f"user:{user_id}:relationship_by_type:{rel_type}"
+
+
+class RelationshipCreate(BaseModel):
+    related_user_id: str
+    relationship: str
+    bidirectional: bool = True
+    meta: dict[str, Any] | None = None
+
+
+class RelationshipLookup(BaseModel):
+    relationship: str
+
+
+async def _write_relationship_edge(
+    r: aioredis.Redis,
+    src: str,
+    dst: str,
+    rel_type: str,
+    meta: dict[str, Any] | None,
+) -> str:
+    rel_id = uuid.uuid4().hex[:16]
+    payload = {
+        "relationship_id": rel_id,
+        "relationship": rel_type,
+        "meta": meta or {},
+        "created_at": int(time.time()),
+    }
+    pipe = r.pipeline()
+    pipe.hset(_rel_hash_key(src), dst, json.dumps(payload))
+    pipe.sadd(_rel_index_key(src, rel_type), dst)
+    await pipe.execute()
+    return rel_id
+
+
+@router.post("/users/{user_id}/relationships")
+async def create_user_relationship(
+    user_id: str,
+    body: RelationshipCreate,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Create a relationship edge user_id --rel--> related_user_id.
+
+    If bidirectional, the reverse edge (per REVERSE_MAP) is also created.
+    """
+    if body.relationship not in _VALID_RELATIONSHIPS:
+        raise HTTPException(
+            422,
+            detail=(
+                f"relationship must be one of "
+                f"{sorted(_VALID_RELATIONSHIPS)}"
+            ),
+        )
+    user_id = await resolve_canonical(r, user_id)
+    related_id = await resolve_canonical(r, body.related_user_id)
+    if user_id == related_id:
+        raise HTTPException(422, detail="cannot relate user to itself")
+
+    rel_id = await _write_relationship_edge(
+        r, user_id, related_id, body.relationship, body.meta
+    )
+    reverse_rel_id: str | None = None
+    if body.bidirectional:
+        rev_type = _RELATIONSHIP_REVERSE_MAP[body.relationship]
+        reverse_rel_id = await _write_relationship_edge(
+            r, related_id, user_id, rev_type, body.meta
+        )
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "related_user_id": related_id,
+        "relationship_id": rel_id,
+        "relationship": body.relationship,
+        "bidirectional": body.bidirectional,
+        "reverse_relationship_id": reverse_rel_id,
+    }
+
+
+@router.get("/users/{user_id}/relationships")
+async def list_user_relationships(
+    user_id: str,
+    relationship: str | None = None,
+    depth: int = 1,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """List all (or a specific type of) relationships for `user_id`.
+
+    `depth` is currently 1 (direct edges only); reserved for future
+    transitive expansion.
+    """
+    user_id = await resolve_canonical(r, user_id)
+    raw = await r.hgetall(_rel_hash_key(user_id)) or {}
+    out: list[dict[str, Any]] = []
+    for related_uid, payload_json in raw.items():
+        try:
+            payload = json.loads(payload_json)
+        except Exception:
+            continue
+        if relationship and payload.get("relationship") != relationship:
+            continue
+        out.append(
+            {
+                "related_user_id": related_uid,
+                "relationship": payload.get("relationship"),
+                "meta": payload.get("meta") or {},
+                "created_at": int(payload.get("created_at", 0) or 0),
+                "relationship_id": payload.get("relationship_id"),
+            }
+        )
+
+    return {
+        "user_id": user_id,
+        "depth": depth,
+        "filter": relationship,
+        "count": len(out),
+        "relationships": out,
+    }
+
+
+@router.delete("/users/{user_id}/relationships/{related_user_id}")
+async def delete_user_relationship(
+    user_id: str,
+    related_user_id: str,
+    bidirectional: bool = True,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Delete an edge. If bidirectional, both directions are removed."""
+    user_id = await resolve_canonical(r, user_id)
+    related_user_id = await resolve_canonical(r, related_user_id)
+
+    fwd_raw = await r.hget(_rel_hash_key(user_id), related_user_id)
+    rev_raw = await r.hget(_rel_hash_key(related_user_id), user_id)
+
+    removed_forward = False
+    removed_reverse = False
+
+    if fwd_raw:
+        try:
+            fwd_payload = json.loads(fwd_raw)
+            fwd_type = fwd_payload.get("relationship")
+        except Exception:
+            fwd_type = None
+        pipe = r.pipeline()
+        pipe.hdel(_rel_hash_key(user_id), related_user_id)
+        if fwd_type:
+            pipe.srem(_rel_index_key(user_id, fwd_type), related_user_id)
+        res = await pipe.execute()
+        removed_forward = bool(res[0])
+
+    if bidirectional and rev_raw:
+        try:
+            rev_payload = json.loads(rev_raw)
+            rev_type = rev_payload.get("relationship")
+        except Exception:
+            rev_type = None
+        pipe = r.pipeline()
+        pipe.hdel(_rel_hash_key(related_user_id), user_id)
+        if rev_type:
+            pipe.srem(_rel_index_key(related_user_id, rev_type), user_id)
+        res = await pipe.execute()
+        removed_reverse = bool(res[0])
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "related_user_id": related_user_id,
+        "removed_forward": removed_forward,
+        "removed_reverse": removed_reverse,
+        "bidirectional": bidirectional,
+    }
+
+
+@router.post("/users/{user_id}/relationships/lookup")
+async def lookup_user_relationships(
+    user_id: str,
+    body: RelationshipLookup,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Fast set-lookup of one specific relationship type."""
+    if body.relationship not in _VALID_RELATIONSHIPS:
+        raise HTTPException(
+            422,
+            detail=(
+                f"relationship must be one of "
+                f"{sorted(_VALID_RELATIONSHIPS)}"
+            ),
+        )
+    user_id = await resolve_canonical(r, user_id)
+    members = await r.smembers(_rel_index_key(user_id, body.relationship))
+    return {
+        "user_id": user_id,
+        "relationship": body.relationship,
+        "related_user_ids": sorted(members or []),
+        "count": len(members or []),
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 5e. IDENTITY MERGE  (secondary → primary, optional alias)
+# ═════════════════════════════════════════════════════════════════════════
+#
+# Merges all per-user state from secondary into primary, then optionally
+# creates an alias mapping (`user:alias:{secondary}` = primary) so future
+# writes addressed to the secondary route to the primary.
+#
+# Other modules should call `resolve_canonical(r, user_id)` before touching
+# user-scoped keys.
+
+
+# Keys that are HASH-style: keep primary on conflict, copy from secondary
+# when primary missing.
+_MERGE_HASH_PATTERNS: tuple[str, ...] = (
+    "user:{uid}:profile",
+    "user:{uid}:attributes",
+    "user:{uid}:lifecycle_stage",
+    "user:{uid}:relationships",
+)
+
+# Keys that are LIST/SET-style: union into primary.
+_MERGE_SET_PATTERNS: tuple[str, ...] = (
+    "user:{uid}:audiences",
+    "user:{uid}:friends",
+    "user:{uid}:followers",
+    "user:{uid}:following",
+    "user:{uid}:brand_follows",
+    "user:{uid}:badges",
+    "user:{uid}:segments",
+    "user:{uid}:groups",
+    "user:{uid}:quests",
+)
+
+# Numeric counters: sum.
+_MERGE_COUNTER_PATTERNS: tuple[str, ...] = (
+    "user:{uid}:xp",
+    "user:{uid}:points",
+    "user:{uid}:stars",
+    "user:{uid}:lifetime_spend_cents",
+    "user:{uid}:purchases_count",
+    "user:{uid}:games_played",
+)
+
+# ZSETs (timeline-style): merge by score, dedupe by member.
+_MERGE_ZSET_PATTERNS: tuple[str, ...] = (
+    "user:{uid}:visits",
+    "user:{uid}:journey_events",
+    "user:{uid}:attribution_events",
+    "user:{uid}:pixel_events",
+)
+
+
+async def resolve_canonical(r: aioredis.Redis, user_id: str) -> str:
+    """Resolve a user_id through the alias table.
+
+    Exported helper for attribution / pixel / triggers / etc. so that
+    writes addressed to a merged-away secondary land on the primary.
+    Falls back to the input user_id when no alias is recorded.
+    """
+    try:
+        target = await r.get(f"user:alias:{user_id}")
+    except Exception:
+        return user_id
+    if target:
+        # Single-hop chase (alias table should not chain, but be safe).
+        try:
+            next_hop = await r.get(f"user:alias:{target}")
+        except Exception:
+            next_hop = None
+        return next_hop or target
+    return user_id
+
+
+class MergeRequest(BaseModel):
+    primary_user_id: str
+    secondary_user_id: str
+    strategy: Literal[
+        "merge_all", "merge_attributes_only", "merge_journeys_only"
+    ] = "merge_all"
+    keep_secondary_as_alias: bool = True
+    admin_token: str | None = None
+
+
+async def _user_exists(r: aioredis.Redis, uid: str) -> bool:
+    # Cheap probe: any key starting with user:{uid}: ?
+    async for _ in r.scan_iter(match=f"user:{uid}:*", count=10):
+        return True
+    return False
+
+
+async def _merge_hash(
+    r: aioredis.Redis,
+    pattern: str,
+    primary: str,
+    secondary: str,
+) -> dict[str, Any]:
+    p_key = pattern.format(uid=primary)
+    s_key = pattern.format(uid=secondary)
+    s_raw = await r.hgetall(s_key) or {}
+    if not s_raw:
+        return {"copied": 0, "conflicts": []}
+    p_raw = await r.hgetall(p_key) or {}
+    copied = 0
+    conflicts: list[dict[str, Any]] = []
+    to_set: dict[str, str] = {}
+    for field, sval in s_raw.items():
+        pval = p_raw.get(field)
+        if pval is None:
+            to_set[field] = sval
+            copied += 1
+        elif pval != sval:
+            conflicts.append(
+                {
+                    "field": field,
+                    "primary_value": pval,
+                    "secondary_value": sval,
+                }
+            )
+    if to_set:
+        await r.hset(p_key, mapping=to_set)
+    return {"copied": copied, "conflicts": conflicts}
+
+
+async def _merge_set_or_list(
+    r: aioredis.Redis,
+    pattern: str,
+    primary: str,
+    secondary: str,
+) -> int:
+    p_key = pattern.format(uid=primary)
+    s_key = pattern.format(uid=secondary)
+    try:
+        ktype = await r.type(s_key)
+    except Exception:
+        return 0
+    if ktype == "set":
+        members = await r.smembers(s_key)
+        if not members:
+            return 0
+        await r.sadd(p_key, *members)
+        return len(members)
+    if ktype == "list":
+        items = await r.lrange(s_key, 0, -1) or []
+        if not items:
+            return 0
+        # Append at tail to preserve relative order.
+        await r.rpush(p_key, *items)
+        return len(items)
+    return 0
+
+
+async def _merge_counter(
+    r: aioredis.Redis, pattern: str, primary: str, secondary: str
+) -> tuple[int, int, int]:
+    p_key = pattern.format(uid=primary)
+    s_key = pattern.format(uid=secondary)
+    p_before_raw = await r.get(p_key)
+    s_raw = await r.get(s_key)
+    try:
+        p_before = int(p_before_raw or 0)
+    except (TypeError, ValueError):
+        p_before = 0
+    try:
+        s_val = int(s_raw or 0)
+    except (TypeError, ValueError):
+        s_val = 0
+    if s_val:
+        await r.incrby(p_key, s_val)
+    return p_before, p_before + s_val, s_val
+
+
+async def _merge_zset(
+    r: aioredis.Redis, pattern: str, primary: str, secondary: str
+) -> int:
+    p_key = pattern.format(uid=primary)
+    s_key = pattern.format(uid=secondary)
+    try:
+        ktype = await r.type(s_key)
+    except Exception:
+        return 0
+    if ktype != "zset":
+        return 0
+    pairs = await r.zrange(s_key, 0, -1, withscores=True) or []
+    if not pairs:
+        return 0
+    mapping = {member: score for member, score in pairs}
+    if mapping:
+        await r.zadd(p_key, mapping)
+    return len(mapping)
+
+
+async def _delete_user_keys(r: aioredis.Redis, uid: str) -> int:
+    deleted = 0
+    batch: list[str] = []
+    async for k in r.scan_iter(match=f"user:{uid}:*", count=200):
+        batch.append(k)
+        if len(batch) >= 200:
+            deleted += await r.delete(*batch)
+            batch = []
+    if batch:
+        deleted += await r.delete(*batch)
+    return deleted
+
+
+@router.post("/users/merge")
+async def merge_users(
+    body: MergeRequest, r: aioredis.Redis = Depends(get_redis)
+):
+    """Merge secondary user into primary.
+
+    Strategy:
+      merge_all              — attributes + journeys + counters + sets + zsets
+      merge_attributes_only  — HASH-style only (profile/attributes/...)
+      merge_journeys_only    — ZSET-style only (visits/journey/...)
+    """
+    if body.primary_user_id == body.secondary_user_id:
+        raise HTTPException(422, detail="primary and secondary must differ")
+
+    # Resolve any pre-existing aliases first (idempotent re-merge protection).
+    primary = await resolve_canonical(r, body.primary_user_id)
+    secondary = await resolve_canonical(r, body.secondary_user_id)
+    if primary == secondary:
+        return {
+            "ok": True,
+            "primary_user_id": primary,
+            "secondary_user_id": body.secondary_user_id,
+            "noop": True,
+            "reason": "already aliased to primary",
+        }
+
+    primary_exists = await _user_exists(r, primary)
+    secondary_exists = await _user_exists(r, secondary)
+    if not primary_exists and not secondary_exists:
+        raise HTTPException(404, detail="neither user has any state")
+
+    report: dict[str, Any] = {
+        "attributes": {"count_secondary": 0, "count_conflicts": 0, "conflicts": []},
+        "journey_events": {"count_secondary": 0, "total_after_merge": 0},
+        "vouchers": {"count_transferred": 0},
+        "tier_xp": {
+            "primary_xp_before": 0,
+            "primary_xp_after": 0,
+            "secondary_xp": 0,
+        },
+        "relationships": {"count_transferred": 0},
+        "audiences": {"count_transferred": 0},
+        "pixel_events": {"count": 0},
+    }
+
+    do_hash = body.strategy in ("merge_all", "merge_attributes_only")
+    do_journey = body.strategy in ("merge_all", "merge_journeys_only")
+    do_full = body.strategy == "merge_all"
+
+    # ── HASH merges (attributes, profile, lifecycle, relationships hash) ──
+    if do_hash:
+        attr_conflicts: list[dict[str, Any]] = []
+        attr_count = 0
+        for pat in _MERGE_HASH_PATTERNS:
+            res = await _merge_hash(r, pat, primary, secondary)
+            attr_count += int(res.get("copied", 0))
+            conflicts = res.get("conflicts", [])
+            for c in conflicts:
+                attr_conflicts.append({"key_pattern": pat, **c})
+
+        # Brand-scoped attribute hashes (user:{uid}:attributes:{brand_id})
+        async for s_key in r.scan_iter(
+            match=f"user:{secondary}:attributes:*", count=100
+        ):
+            suffix = s_key[len(f"user:{secondary}:") :]
+            pat = "user:{uid}:" + suffix
+            res = await _merge_hash(r, pat, primary, secondary)
+            attr_count += int(res.get("copied", 0))
+            for c in res.get("conflicts", []):
+                attr_conflicts.append({"key_pattern": pat, **c})
+
+        report["attributes"]["count_secondary"] = attr_count
+        report["attributes"]["count_conflicts"] = len(attr_conflicts)
+        report["attributes"]["conflicts"] = attr_conflicts[:100]
+
+        # Relationship reverse-index SETs need an explicit union too.
+        if do_full:
+            async for s_idx in r.scan_iter(
+                match=f"user:{secondary}:relationship_by_type:*", count=100
+            ):
+                suffix = s_idx[len(f"user:{secondary}:") :]
+                p_idx = f"user:{primary}:{suffix}"
+                members = await r.smembers(s_idx)
+                if members:
+                    await r.sadd(p_idx, *members)
+                    report["relationships"]["count_transferred"] += len(members)
+
+    # ── ZSET merges (visits / journey / attribution / pixel) ──
+    if do_journey:
+        journey_total = 0
+        for pat in _MERGE_ZSET_PATTERNS:
+            n = await _merge_zset(r, pat, primary, secondary)
+            journey_total += n
+            if "pixel" in pat:
+                report["pixel_events"]["count"] += n
+        # Total entries in journey after merge.
+        try:
+            after = await r.zcard(f"user:{primary}:journey_events")
+        except Exception:
+            after = 0
+        report["journey_events"]["count_secondary"] = journey_total
+        report["journey_events"]["total_after_merge"] = int(after or 0)
+
+    # ── Full merge: counters + sets + vouchers + audiences ──
+    if do_full:
+        # Counters
+        xp_p_before, xp_p_after, xp_s = await _merge_counter(
+            r, "user:{uid}:xp", primary, secondary
+        )
+        report["tier_xp"]["primary_xp_before"] = xp_p_before
+        report["tier_xp"]["primary_xp_after"] = xp_p_after
+        report["tier_xp"]["secondary_xp"] = xp_s
+        for pat in _MERGE_COUNTER_PATTERNS:
+            if pat == "user:{uid}:xp":
+                continue
+            await _merge_counter(r, pat, primary, secondary)
+
+        # SET / LIST unions
+        audience_transferred = 0
+        for pat in _MERGE_SET_PATTERNS:
+            n = await _merge_set_or_list(r, pat, primary, secondary)
+            if pat == "user:{uid}:audiences":
+                audience_transferred = n
+        report["audiences"]["count_transferred"] = audience_transferred
+
+        # Vouchers: re-assign holder_user_id from secondary → primary.
+        # Source-of-truth list: user:{uid}:vouchers (SET or LIST of voucher_ids).
+        voucher_count = 0
+        s_voucher_key = f"user:{secondary}:vouchers"
+        try:
+            vtype = await r.type(s_voucher_key)
+        except Exception:
+            vtype = "none"
+        voucher_ids: list[str] = []
+        if vtype == "set":
+            voucher_ids = list(await r.smembers(s_voucher_key) or [])
+        elif vtype == "list":
+            voucher_ids = list(await r.lrange(s_voucher_key, 0, -1) or [])
+        for vid in voucher_ids:
+            # Update voucher record's holder if it lives in a HASH keyed by id.
+            vkey = f"voucher:{vid}"
+            try:
+                exists = await r.exists(vkey)
+            except Exception:
+                exists = 0
+            if exists:
+                try:
+                    await r.hset(vkey, "holder_user_id", primary)
+                except Exception:
+                    pass
+            voucher_count += 1
+        if voucher_ids:
+            # Mirror into primary's voucher set/list.
+            primary_voucher_key = f"user:{primary}:vouchers"
+            if vtype == "set":
+                await r.sadd(primary_voucher_key, *voucher_ids)
+            elif vtype == "list":
+                await r.rpush(primary_voucher_key, *voucher_ids)
+        report["vouchers"]["count_transferred"] = voucher_count
+
+        # Pixel events: rewrite user_id field on individual event hashes.
+        # Convention: pixel:event:{event_id} HASH with user_id field, and
+        # user:{uid}:pixel_event_ids SET enumerating them.
+        s_pixel_ids_key = f"user:{secondary}:pixel_event_ids"
+        try:
+            ptype = await r.type(s_pixel_ids_key)
+        except Exception:
+            ptype = "none"
+        pixel_ids: list[str] = []
+        if ptype == "set":
+            pixel_ids = list(await r.smembers(s_pixel_ids_key) or [])
+        elif ptype == "list":
+            pixel_ids = list(await r.lrange(s_pixel_ids_key, 0, -1) or [])
+        for eid in pixel_ids:
+            try:
+                await r.hset(f"pixel:event:{eid}", "user_id", primary)
+            except Exception:
+                pass
+        if pixel_ids:
+            primary_pixel_key = f"user:{primary}:pixel_event_ids"
+            if ptype == "set":
+                await r.sadd(primary_pixel_key, *pixel_ids)
+            elif ptype == "list":
+                await r.rpush(primary_pixel_key, *pixel_ids)
+            report["pixel_events"]["count"] += len(pixel_ids)
+
+    # ── Alias or delete secondary ──
+    alias_created = False
+    if body.keep_secondary_as_alias:
+        await r.set(f"user:alias:{secondary}", primary)
+        alias_created = True
+    else:
+        await _delete_user_keys(r, secondary)
+
+    return {
+        "ok": True,
+        "primary_user_id": primary,
+        "secondary_user_id": secondary,
+        "strategy": body.strategy,
+        "merged": report,
+        "alias_created": alias_created,
+    }
+
+
+@router.get("/users/{user_id}/canonical")
+async def get_canonical_user(
+    user_id: str, r: aioredis.Redis = Depends(get_redis)
+):
+    """Resolve a user_id through the alias table."""
+    canonical = await resolve_canonical(r, user_id)
+    return {
+        "user_id": user_id,
+        "canonical_user_id": canonical,
+        "was_alias": canonical != user_id,
     }
 
 

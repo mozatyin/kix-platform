@@ -75,6 +75,33 @@ ACTION_ROUTES: dict[str, str] = {
 RULE_LOG_MAX = 200
 
 
+# Attribute-watch / new-style rule trigger kinds (FEATURE 1).
+# Existing event-fired rules go through ``emit_event`` unchanged; the new
+# ``attribute_changed`` family is dispatched by ``on_attribute_changed``.
+WHEN_TYPES_NEW = {
+    "attribute_changed",
+    "event_fired",
+    "metric_threshold",
+}
+
+ATTR_CONDITION_TYPES = {
+    "crosses_threshold",
+    "increases_by_pct",
+    "equals_value",
+    "matches_pattern",
+}
+
+# Higher-level action types (FEATURE 3 + recipient indirection FEATURE 2).
+ACTION_TYPES_HIGH_LEVEL = {
+    "issue_voucher",
+    "award_xp",
+    "send_push",
+    "fire_achievement",
+    "trigger_webhook",
+    "create_audience_membership",
+}
+
+
 # ── Pydantic models ────────────────────────────────────────────────────────
 
 
@@ -885,4 +912,607 @@ async def get_user_metrics(
         "brand_id": brand_id,
         "user_id": user_id,
         "metrics": out,
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Extended rules — attribute-watch, recipient indirection, fire_achievement,
+# bulk dry-run / test-resolution. Layered on top of the legacy Rule store
+# so existing event-driven rules keep working untouched.
+#
+# Redis schema additions:
+#   rule:{rule_id}                       HASH  rule fields (flat)
+#   brand:{bid}:attr_rules:{key}         SET   rule_ids watching this key
+#   brand:{bid}:rules_v2                 SET   all v2 rule_ids for this brand
+#   user:{uid}:relationship_by_type:{r}  SET   related user_ids
+# ═════════════════════════════════════════════════════════════════════════
+
+
+import re  # noqa: E402 — kept local to the extension to ease future split
+
+
+# ── Models for the v2 rule shape ──────────────────────────────────────────
+
+
+class AttrWhen(BaseModel):
+    """``when:`` clause for v2 rules.
+
+    For ``attribute_changed`` rules ``attribute_key`` + ``condition`` are
+    required. For the other ``type`` values the engine accepts free-form
+    config and delegates routing to the caller (kept open for forward
+    compatibility — only ``attribute_changed`` is wired here).
+    """
+
+    type: str
+    attribute_key: str | None = None
+    event_name: str | None = None
+    metric: str | None = None
+    condition: dict[str, Any] | None = None
+    lookback_window_seconds: int | None = None
+
+    @field_validator("type")
+    @classmethod
+    def _known_when_type(cls, v: str) -> str:
+        # Be permissive: accept any string, but flag the well-known set.
+        return v
+
+
+class AttrThen(BaseModel):
+    """``then:`` clause — high-level action with optional recipient
+    indirection. ``recipient_user_id_attr`` names a relationship-type
+    (e.g. ``"parent_of"``); the action is then expanded to every
+    related user."""
+
+    action_type: str
+    action_config: dict[str, Any] = Field(default_factory=dict)
+    recipient_user_id_attr: str | None = None
+
+
+class RuleV2Create(BaseModel):
+    brand_id: str
+    name: str
+    when: AttrWhen
+    then: AttrThen
+    id: str | None = None  # generated if absent
+    active: bool = True
+    max_triggers_per_user: int | None = None
+    description: str | None = None
+
+
+class TestResolutionBody(BaseModel):
+    actor_user_id: str
+
+
+class V2DryRunBody(BaseModel):
+    actor_user_id: str
+    simulated_event: dict[str, Any] = Field(default_factory=dict)
+
+
+# ── Redis-key helpers for the v2 layer ────────────────────────────────────
+
+
+def _k_rule_v2(rule_id: str) -> str:
+    return f"rule:{rule_id}"
+
+
+def _k_attr_rules(brand_id: str, attribute_key: str) -> str:
+    return f"brand:{brand_id}:attr_rules:{attribute_key}"
+
+
+def _k_brand_rules_v2(brand_id: str) -> str:
+    return f"brand:{brand_id}:rules_v2"
+
+
+def _k_relationship(user_id: str, rel_type: str) -> str:
+    return f"user:{user_id}:relationship_by_type:{rel_type}"
+
+
+# ── Condition evaluation for attribute_changed ────────────────────────────
+
+
+def _to_float(x: Any) -> float | None:
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def _evaluate_attr_condition(
+    cond: dict[str, Any] | None,
+    old_value: Any,
+    new_value: Any,
+) -> bool:
+    """Pure, side-effect-free evaluator for ``attribute_changed`` rules.
+
+    Recognised ``cond.type`` values:
+
+      * ``crosses_threshold`` — old < threshold <= new (uni-directional rise)
+      * ``increases_by_pct``  — (new-old)/old * 100 >= increase_pct
+      * ``equals_value``      — new == equals
+      * ``matches_pattern``   — re.search(pattern, str(new))
+
+    Unknown/missing ``cond`` → False (never fire on misconfigured rule).
+    """
+    if not cond or not isinstance(cond, dict):
+        return False
+
+    ctype = cond.get("type")
+
+    if ctype == "crosses_threshold":
+        thr = _to_float(cond.get("threshold"))
+        nv = _to_float(new_value)
+        ov = _to_float(old_value)
+        if thr is None or nv is None:
+            return False
+        if ov is None:
+            # First-ever write: counts as a cross iff new value meets it.
+            return nv >= thr
+        return ov < thr <= nv
+
+    if ctype == "increases_by_pct":
+        pct = _to_float(cond.get("increase_pct"))
+        nv = _to_float(new_value)
+        ov = _to_float(old_value)
+        if pct is None or nv is None or ov is None or ov == 0:
+            return False
+        return ((nv - ov) / abs(ov)) * 100.0 >= pct
+
+    if ctype == "equals_value":
+        target = cond.get("equals")
+        return str(new_value) == str(target)
+
+    if ctype == "matches_pattern":
+        pattern = cond.get("pattern")
+        if not pattern:
+            return False
+        try:
+            return re.search(pattern, str(new_value)) is not None
+        except re.error:
+            return False
+
+    return False
+
+
+# ── Recipient resolution ──────────────────────────────────────────────────
+
+
+async def _resolve_recipients(
+    r: aioredis.Redis,
+    actor_user_id: str,
+    recipient_user_id_attr: str | None,
+) -> list[str]:
+    """Map the actor → list of recipients.
+
+    No indirection → just ``[actor]``. Otherwise read the membership SET
+    at ``user:{actor}:relationship_by_type:{attr}`` and return its
+    members (sorted for determinism). Returns ``[]`` if the relationship
+    set is empty — callers should treat this as a no-op fire.
+    """
+    if not recipient_user_id_attr:
+        return [actor_user_id]
+    members = await r.smembers(_k_relationship(actor_user_id, recipient_user_id_attr))
+    return sorted(members or [])
+
+
+# ── v2 rule store ─────────────────────────────────────────────────────────
+
+
+def _rule_v2_to_hash(rule_id: str, body: RuleV2Create) -> dict[str, str]:
+    return {
+        "id": rule_id,
+        "brand_id": body.brand_id,
+        "name": body.name,
+        "active": "1" if body.active else "0",
+        "when_type": body.when.type,
+        "attribute_key": body.when.attribute_key or "",
+        "event_name": body.when.event_name or "",
+        "metric": body.when.metric or "",
+        "when_condition": json.dumps(body.when.condition or {}),
+        "lookback_window_seconds": (
+            str(body.when.lookback_window_seconds)
+            if body.when.lookback_window_seconds is not None
+            else ""
+        ),
+        "action_type": body.then.action_type,
+        "action_config": json.dumps(body.then.action_config or {}),
+        "recipient_user_id_attr": body.then.recipient_user_id_attr or "",
+        "max_triggers_per_user": (
+            str(body.max_triggers_per_user)
+            if body.max_triggers_per_user is not None
+            else ""
+        ),
+        "description": body.description or "",
+        "created_at": str(time.time()),
+    }
+
+
+def _hash_to_rule_v2_view(h: dict[str, Any]) -> dict[str, Any]:
+    """Project the flat hash form back into the documented nested shape."""
+    return {
+        "id": h.get("id"),
+        "brand_id": h.get("brand_id"),
+        "name": h.get("name"),
+        "active": h.get("active") == "1",
+        "when": {
+            "type": h.get("when_type"),
+            "attribute_key": h.get("attribute_key") or None,
+            "event_name": h.get("event_name") or None,
+            "metric": h.get("metric") or None,
+            "condition": json.loads(h.get("when_condition") or "{}"),
+            "lookback_window_seconds": (
+                int(h["lookback_window_seconds"])
+                if h.get("lookback_window_seconds")
+                else None
+            ),
+        },
+        "then": {
+            "action_type": h.get("action_type"),
+            "action_config": json.loads(h.get("action_config") or "{}"),
+            "recipient_user_id_attr": h.get("recipient_user_id_attr") or None,
+        },
+        "max_triggers_per_user": (
+            int(h["max_triggers_per_user"])
+            if h.get("max_triggers_per_user")
+            else None
+        ),
+        "description": h.get("description") or None,
+    }
+
+
+# ── Action executor (v2: enqueues high-level actions) ─────────────────────
+
+
+# Map high-level action types → internal POST routes (consumed by the
+# same pending-actions worker as ACTION_ROUTES — we just record the
+# resolved URL so the worker doesn't have to know about both shapes).
+ACTION_TYPE_ROUTES: dict[str, str] = {
+    "issue_voucher": "/api/v1/brands/vouchers/grant",
+    "award_xp": "/api/v1/progression/award/xp",
+    "send_push": "/api/v1/notify/push",
+    "fire_achievement": "/api/v1/primitives/achievement/{achievement_id}/progress",
+    "trigger_webhook": "/api/v1/integrations/webhook/dispatch",
+    "create_audience_membership": "/api/v1/audiences/membership/add",
+}
+
+
+def _build_action_record(
+    rule: dict[str, Any],
+    recipient_user_id: str,
+    brand_id: str,
+    actor_user_id: str,
+) -> dict[str, Any]:
+    """Compose the queued action payload for one (rule, recipient) pair."""
+    action_type = rule.get("action_type") or ""
+    config = json.loads(rule.get("action_config") or "{}")
+
+    # ``fire_achievement`` resolves the {achievement_id} placeholder.
+    route = ACTION_TYPE_ROUTES.get(action_type)
+    if route and "{achievement_id}" in route:
+        route = route.replace(
+            "{achievement_id}", str(config.get("achievement_id", ""))
+        )
+
+    return {
+        "action_id": uuid4().hex[:12],
+        "rule_id": rule.get("id"),
+        "action_type": action_type,
+        "route": route,
+        "config": config,
+        "user_id": recipient_user_id,        # ← the *target* of the action
+        "actor_user_id": actor_user_id,      # ← who triggered it
+        "brand_id": brand_id,
+        "enqueued_at": time.time(),
+        "status": "pending",
+    }
+
+
+async def _execute_v2_action(
+    r: aioredis.Redis,
+    rule: dict[str, Any],
+    actor_user_id: str,
+) -> list[dict[str, Any]]:
+    """Enqueue one action record per resolved recipient.
+
+    The recipient list is computed via ``_resolve_recipients``; for
+    rules without ``recipient_user_id_attr`` this collapses to a single
+    record targeting the actor (the historic behaviour)."""
+    brand_id = rule.get("brand_id") or ""
+    recipients = await _resolve_recipients(
+        r, actor_user_id, rule.get("recipient_user_id_attr") or None
+    )
+
+    records: list[dict[str, Any]] = []
+    for recipient in recipients:
+        record = _build_action_record(rule, recipient, brand_id, actor_user_id)
+        await r.rpush(
+            _k_pending_actions(brand_id, recipient), json.dumps(record)
+        )
+        records.append(record)
+    return records
+
+
+# ── Public hook: called by primitives.attribute_log on every write ───────
+
+
+async def on_attribute_changed(
+    r: aioredis.Redis,
+    *,
+    user_id: str,
+    brand_id: str,
+    key: str,
+    old_value: Any,
+    new_value: Any,
+    meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Dispatch attribute-watch rules.
+
+    Walks ``brand:{bid}:attr_rules:{key}`` → for each rule, decodes its
+    flat hash, evaluates ``when.condition`` against ``(old, new)``, and
+    on match expands recipients + enqueues the action.
+
+    Returns a summary suitable for logging from the caller. Safe to
+    call from any write path — failures are swallowed per-rule so a
+    single bad rule cannot break the underlying attribute write.
+    """
+    meta = meta or {}
+    rule_ids = await r.smembers(_k_attr_rules(brand_id, key))
+    fired: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+
+    for rid in sorted(rule_ids or []):
+        rule = await r.hgetall(_k_rule_v2(rid))
+        if not rule:
+            skipped.append({"rule_id": rid, "reason": "missing"})
+            continue
+        if rule.get("active") != "1":
+            skipped.append({"rule_id": rid, "reason": "inactive"})
+            continue
+        if rule.get("when_type") != "attribute_changed":
+            skipped.append({"rule_id": rid, "reason": "wrong_when_type"})
+            continue
+
+        # max-triggers-per-user gate
+        max_per_user = rule.get("max_triggers_per_user") or ""
+        if max_per_user:
+            try:
+                limit = int(max_per_user)
+            except (TypeError, ValueError):
+                limit = None
+            if limit is not None:
+                fired_so_far = await _firings_for_user(
+                    brand_id, rid, user_id, r
+                )
+                if fired_so_far >= limit:
+                    skipped.append({"rule_id": rid, "reason": "max_triggers"})
+                    continue
+
+        cond = json.loads(rule.get("when_condition") or "{}")
+        if not _evaluate_attr_condition(cond, old_value, new_value):
+            skipped.append({"rule_id": rid, "reason": "condition_false"})
+            continue
+
+        try:
+            records = await _execute_v2_action(r, rule, actor_user_id=user_id)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("attr_rule_action_failed rule=%s err=%s", rid, e)
+            skipped.append({"rule_id": rid, "reason": f"action_error: {e}"})
+            continue
+
+        await r.incr(_k_firings(brand_id, rid, user_id))
+        fired.append(
+            {
+                "rule_id": rid,
+                "recipients": [rec["user_id"] for rec in records],
+                "action_type": rule.get("action_type"),
+            }
+        )
+
+    return {
+        "user_id": user_id,
+        "brand_id": brand_id,
+        "key": key,
+        "old_value": old_value,
+        "new_value": new_value,
+        "fired": fired,
+        "skipped": skipped,
+    }
+
+
+# ── API: v2 rule CRUD ─────────────────────────────────────────────────────
+
+
+@router.post("/rules/create")
+async def create_rule_v2(
+    body: RuleV2Create, r: aioredis.Redis = Depends(get_redis)
+) -> dict[str, Any]:
+    """Create a v2 rule (attribute-watch / recipient-indirection-capable).
+
+    For ``when.type == "attribute_changed"``: the rule_id is added to
+    the per-brand, per-attribute index so writes through
+    ``primitives.attribute_log`` fan out to it.
+    """
+    rule_id = body.id or f"rule_{uuid4().hex[:12]}"
+    when = body.when
+    then = body.then
+
+    if when.type == "attribute_changed" and not when.attribute_key:
+        raise HTTPException(
+            422, detail="attribute_changed rules require when.attribute_key"
+        )
+    if then.action_type not in ACTION_TYPES_HIGH_LEVEL:
+        raise HTTPException(
+            422,
+            detail=(
+                f"unknown action_type {then.action_type!r}; "
+                f"expected one of {sorted(ACTION_TYPES_HIGH_LEVEL)}"
+            ),
+        )
+    if then.action_type == "fire_achievement" and not then.action_config.get(
+        "achievement_id"
+    ):
+        raise HTTPException(
+            422, detail="fire_achievement requires action_config.achievement_id"
+        )
+
+    mapping = _rule_v2_to_hash(rule_id, body)
+    await r.hset(_k_rule_v2(rule_id), mapping=mapping)
+    await r.sadd(_k_brand_rules_v2(body.brand_id), rule_id)
+    if when.type == "attribute_changed" and when.attribute_key:
+        await r.sadd(_k_attr_rules(body.brand_id, when.attribute_key), rule_id)
+
+    logger.info(
+        "rule_v2_created brand=%s rule=%s when=%s key=%s action=%s recipient_attr=%s",
+        body.brand_id,
+        rule_id,
+        when.type,
+        when.attribute_key,
+        then.action_type,
+        then.recipient_user_id_attr,
+    )
+    return {"status": "ok", "rule_id": rule_id, "rule": _hash_to_rule_v2_view(mapping)}
+
+
+@router.get("/rules/{rule_id}")
+async def get_rule_v2(
+    rule_id: str, r: aioredis.Redis = Depends(get_redis)
+) -> dict[str, Any]:
+    h = await r.hgetall(_k_rule_v2(rule_id))
+    if not h:
+        raise HTTPException(404, detail="rule not found")
+    return _hash_to_rule_v2_view(h)
+
+
+@router.delete("/rules/{rule_id}")
+async def delete_rule_v2(
+    rule_id: str, r: aioredis.Redis = Depends(get_redis)
+) -> dict[str, Any]:
+    h = await r.hgetall(_k_rule_v2(rule_id))
+    if not h:
+        raise HTTPException(404, detail="rule not found")
+    brand_id = h.get("brand_id") or ""
+    attr_key = h.get("attribute_key") or ""
+    pipe = r.pipeline()
+    pipe.delete(_k_rule_v2(rule_id))
+    if brand_id:
+        pipe.srem(_k_brand_rules_v2(brand_id), rule_id)
+    if brand_id and attr_key:
+        pipe.srem(_k_attr_rules(brand_id, attr_key), rule_id)
+    await pipe.execute()
+    return {"status": "ok", "rule_id": rule_id, "deleted": True}
+
+
+@router.post("/rules/{rule_id}/test-resolution")
+async def test_rule_resolution(
+    rule_id: str,
+    body: TestResolutionBody,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Inspect recipient resolution without firing anything.
+
+    Useful for verifying that a child→parents indirection is wired up
+    correctly *before* an exam-score attribute write actually happens.
+    """
+    h = await r.hgetall(_k_rule_v2(rule_id))
+    if not h:
+        raise HTTPException(404, detail="rule not found")
+    recipient_attr = h.get("recipient_user_id_attr") or None
+    resolved = await _resolve_recipients(r, body.actor_user_id, recipient_attr)
+    return {
+        "rule_id": rule_id,
+        "actor": body.actor_user_id,
+        "recipient_attr": recipient_attr,
+        "resolved_recipients": resolved,
+        "resolved_count": len(resolved),
+    }
+
+
+@router.post("/rules/{rule_id}/dry-run")
+async def dry_run_rule_v2(
+    rule_id: str,
+    body: V2DryRunBody,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Evaluate a v2 rule without writing anything.
+
+    For ``attribute_changed`` rules, the caller supplies the simulated
+    ``old_value`` + ``new_value`` (and optionally a ``key`` override) in
+    ``simulated_event``; we run the same condition-evaluator + recipient
+    resolver the live path uses and report what would happen.
+
+    Returns the canonical envelope::
+
+        { would_fire, recipient_user_ids, action_preview,
+          reasons_if_blocked }
+    """
+    h = await r.hgetall(_k_rule_v2(rule_id))
+    if not h:
+        raise HTTPException(404, detail="rule not found")
+
+    reasons: list[str] = []
+    if h.get("active") != "1":
+        reasons.append("rule_inactive")
+
+    when_type = h.get("when_type")
+    sim = body.simulated_event or {}
+    condition_passed = False
+
+    if when_type == "attribute_changed":
+        # Allow caller to override the watched key for what-if testing.
+        sim_key = sim.get("key") or h.get("attribute_key") or ""
+        expected_key = h.get("attribute_key") or ""
+        if expected_key and sim_key != expected_key:
+            reasons.append(
+                f"attribute_key_mismatch: rule={expected_key} sim={sim_key}"
+            )
+        cond = json.loads(h.get("when_condition") or "{}")
+        condition_passed = _evaluate_attr_condition(
+            cond, sim.get("old_value"), sim.get("new_value")
+        )
+        if not condition_passed:
+            reasons.append("condition_false")
+    else:
+        # Non-attribute-changed v2 rules aren't actively dispatched yet;
+        # we still resolve recipients but flag that nothing would fire.
+        reasons.append(f"when_type_not_dispatched: {when_type}")
+
+    max_per_user = h.get("max_triggers_per_user") or ""
+    if max_per_user:
+        try:
+            limit = int(max_per_user)
+        except (TypeError, ValueError):
+            limit = None
+        if limit is not None:
+            fired_so_far = await _firings_for_user(
+                h.get("brand_id") or "", rule_id, body.actor_user_id, r
+            )
+            if fired_so_far >= limit:
+                reasons.append("max_triggers_per_user_reached")
+
+    recipient_attr = h.get("recipient_user_id_attr") or None
+    recipients = await _resolve_recipients(
+        r, body.actor_user_id, recipient_attr
+    )
+    if not recipients:
+        reasons.append("no_recipients_resolved")
+
+    would_fire = condition_passed and not reasons
+
+    action_preview = {
+        "action_type": h.get("action_type"),
+        "config": json.loads(h.get("action_config") or "{}"),
+        "route": ACTION_TYPE_ROUTES.get(h.get("action_type") or ""),
+        "recipient_attr": recipient_attr,
+        "per_recipient_records": [
+            _build_action_record(h, rec, h.get("brand_id") or "", body.actor_user_id)
+            for rec in recipients
+        ],
+    }
+
+    return {
+        "rule_id": rule_id,
+        "would_fire": would_fire,
+        "recipient_user_ids": recipients,
+        "action_preview": action_preview,
+        "reasons_if_blocked": reasons,
+        "condition_passed": condition_passed,
     }

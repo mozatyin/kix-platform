@@ -4,12 +4,38 @@ A *campaign* bundles:
 
   * **objective** — what the merchant pays for (acquire, sales, awareness,
     geo_visit).
-  * **bid_strategy** — pricing model (cpa / cps / cpm / cpv).
+  * **bid_strategy** — pricing model (cpa / cps / cpm / cpv / cpe /
+    max_delivery / cost_cap / target_cpa / target_roas / manual).
+  * **target_audience** — new_users_only / retargeting_only / all
+    (TikTok-style pool selector; default acquisition).
   * **targeting** — geo + demographics + interests + lookalike + excludes.
   * **creative** — what gets shown to the user (recipe / game / voucher).
   * **schedule** — calendar window + per-day hour window + DOW mask.
   * **quality_score** — CTR/CVR-adjusted multiplier (0..1) used by auction
     rank.
+
+Industry Alignment
+------------------
+This module mirrors TikTok Ads Manager / Google Ads structure:
+
+  - Campaign  (objective + budget)
+  - AdGroup   (targeting + bid)
+  - Ad        (creative)
+
+New campaigns DEFAULT to ``target_audience=new_users_only`` (industry
+standard — most ad dollars chase acquisition). Existing-customer
+exclusion is enforced by ``auction.py`` reading this field. Merchants
+opt INTO retargeting; the default is acquisition.
+
+Bid strategies follow TikTok Ads Manager semantics:
+
+  - ``max_delivery``  — no target CPA; spend the budget on as many
+    conversions as possible, capped by ``max_bid_cents``.
+  - ``cost_cap``      — control average CPA via ``cost_cap_cents``.
+  - ``target_cpa``    — bid to hit ``target_cpa_cents`` per conversion.
+  - ``target_roas``   — bid to hit ``target_roas`` (revenue / spend).
+  - ``cpa/cps/cpm/cpv/cpc/cpe`` — legacy fixed-bid pricing models.
+  - ``manual``        — merchant sets max_bid_cents, no auto-optimisation.
 
 The router exposes CRUD + stats + audience-preview. Campaign **status** is
 re-derived on every read (cheap; no cron required):
@@ -74,7 +100,19 @@ VALID_OBJECTIVES = {
     # (rather than declaring `acquire` for engagement spend).
     "engagement", "retention", "activation", "win_back",
 }
-VALID_BID_STRATEGIES = {"cpa", "cps", "cpm", "cpv", "cpc", "cpe"}
+VALID_BID_STRATEGIES = {
+    "cpa", "cps", "cpm", "cpv", "cpc", "cpe",
+    # TikTok-style auto-optimised strategies.
+    "max_delivery", "cost_cap", "target_cpa", "target_roas", "manual",
+}
+
+# TikTok-style audience pool selector. Default = acquisition.
+VALID_TARGET_AUDIENCES = {"new_users_only", "retargeting_only", "all"}
+DEFAULT_TARGET_AUDIENCE = "new_users_only"
+
+# Target ROAS bounds (revenue multiple). 0.5× (clearance) .. 50× (luxury).
+TARGET_ROAS_MIN = 0.5
+TARGET_ROAS_MAX = 50.0
 
 # Attribution window bounds (campaign-configurable). System default = 7 days
 # (604800 s) when not set on the campaign.
@@ -168,19 +206,32 @@ class CampaignCreate(BaseModel):
         "acquire", "sales", "awareness", "geo_visit",
         "engagement", "retention", "activation", "win_back",
     ]
-    bid_strategy: Literal["cpa", "cps", "cpm", "cpv", "cpc", "cpe"]
+    bid_strategy: Literal[
+        "cpa", "cps", "cpm", "cpv", "cpc", "cpe",
+        "max_delivery", "cost_cap", "target_cpa", "target_roas", "manual",
+    ]
     max_bid_cents: int = Field(gt=0)
     # CPS percent-of-order bid (basis points). When set with bid_strategy=cps,
     # commission = conversion_value × bid_percent_bps / 10000 — i.e. true
     # GMV revenue share. When unset, CPS falls back to fixed max_bid_cents
     # (legacy semantics). Range 1..5000 = 0.01%..50%.
     bid_percent_bps: int | None = Field(default=None, ge=1, le=5000)
+    # Auto-optimised bid strategy parameters.
+    cost_cap_cents: int | None = Field(default=None, gt=0)
+    target_cpa_cents: int | None = Field(default=None, gt=0)
+    target_roas: float | None = Field(
+        default=None, ge=TARGET_ROAS_MIN, le=TARGET_ROAS_MAX
+    )
     daily_budget_cents: int = Field(gt=0)
     total_budget_cents: int = Field(gt=0)
     # Attribution window in days. None = use system default (7 days).
     # Auction stores this on the impression token so report_conversion
     # uses the campaign-specific window, not the global default.
     attribution_window_days: int | None = Field(default=None, ge=1, le=90)
+    # TikTok-style audience pool selector. Default = acquisition.
+    target_audience: Literal[
+        "new_users_only", "retargeting_only", "all"
+    ] = "new_users_only"
     targeting: Targeting = Field(default_factory=Targeting)
     creative: Creative = Field(default_factory=Creative)
     schedule: Schedule = Field(default_factory=Schedule)
@@ -191,9 +242,17 @@ class CampaignUpdate(BaseModel):
     name: str | None = None
     max_bid_cents: int | None = Field(default=None, gt=0)
     bid_percent_bps: int | None = Field(default=None, ge=1, le=5000)
+    cost_cap_cents: int | None = Field(default=None, gt=0)
+    target_cpa_cents: int | None = Field(default=None, gt=0)
+    target_roas: float | None = Field(
+        default=None, ge=TARGET_ROAS_MIN, le=TARGET_ROAS_MAX
+    )
     daily_budget_cents: int | None = Field(default=None, gt=0)
     total_budget_cents: int | None = Field(default=None, gt=0)
     attribution_window_days: int | None = Field(default=None, ge=1, le=90)
+    target_audience: Literal[
+        "new_users_only", "retargeting_only", "all"
+    ] | None = None
     targeting: Targeting | None = None
     creative: Creative | None = None
     schedule: Schedule | None = None
@@ -279,10 +338,16 @@ def _serialise_campaign(c: CampaignCreate, campaign_id: str) -> dict[str, str]:
         # CPS percent-bid: 0 = unset (fall back to fixed max_bid_cents).
         # Storing 0 keeps the Redis HASH shape stable across all campaigns.
         "bid_percent_bps": str(c.bid_percent_bps or 0),
+        # Auto-optimised bid params. 0 / "" sentinel = unset.
+        "cost_cap_cents": str(c.cost_cap_cents or 0),
+        "target_cpa_cents": str(c.target_cpa_cents or 0),
+        "target_roas": str(c.target_roas or 0.0),
         "daily_budget_cents": str(c.daily_budget_cents),
         "total_budget_cents": str(c.total_budget_cents),
         # 0 = use system default attribution window (7d) in auction.
         "attribution_window_days": str(c.attribution_window_days or 0),
+        # TikTok-style audience pool selector — auction reads this.
+        "target_audience": c.target_audience,
         "targeting": c.targeting.model_dump_json(),
         "creative": c.creative.model_dump_json(),
         "schedule": c.schedule.model_dump_json(),
@@ -447,9 +512,13 @@ def _to_response(raw: dict[str, str], stats: dict[str, Any]) -> dict[str, Any]:
         "bid_strategy": raw.get("bid_strategy"),
         "max_bid_cents": int(raw.get("max_bid_cents", 0)),
         "bid_percent_bps": int(raw.get("bid_percent_bps", 0)),
+        "cost_cap_cents": int(raw.get("cost_cap_cents", 0) or 0),
+        "target_cpa_cents": int(raw.get("target_cpa_cents", 0) or 0),
+        "target_roas": float(raw.get("target_roas", 0.0) or 0.0),
         "daily_budget_cents": int(raw.get("daily_budget_cents", 0)),
         "total_budget_cents": int(raw.get("total_budget_cents", 0)),
         "attribution_window_days": int(raw.get("attribution_window_days", 0)),
+        "target_audience": raw.get("target_audience", DEFAULT_TARGET_AUDIENCE),
         "targeting": _safe_json_loads(raw.get("targeting"), {}),
         "creative": _safe_json_loads(raw.get("creative"), {}),
         "schedule": _safe_json_loads(raw.get("schedule"), {}),
@@ -484,6 +553,43 @@ async def create_campaign(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"bid_strategy must be one of {sorted(VALID_BID_STRATEGIES)}",
+        )
+
+    # Per-strategy required-field validation. Each auto-optimised strategy
+    # needs its own target/cap field so the auction can bid intelligently.
+    if body.bid_strategy == "max_delivery" and not body.max_bid_cents:
+        # max_bid_cents is already gt=0 by schema; guard defensively.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="max_delivery requires max_bid_cents (spend ceiling)",
+        )
+    if body.bid_strategy == "cost_cap" and not body.cost_cap_cents:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="cost_cap requires cost_cap_cents",
+        )
+    if body.bid_strategy == "target_cpa" and not body.target_cpa_cents:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="target_cpa requires target_cpa_cents",
+        )
+    if body.bid_strategy == "target_roas":
+        if body.target_roas is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"target_roas requires target_roas field "
+                    f"({TARGET_ROAS_MIN}..{TARGET_ROAS_MAX})"
+                ),
+            )
+
+    if body.target_audience not in VALID_TARGET_AUDIENCES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"target_audience must be one of "
+                f"{sorted(VALID_TARGET_AUDIENCES)}"
+            ),
         )
 
     campaign_id = f"camp_{uuid4().hex[:16]}"
@@ -597,6 +703,22 @@ async def update_campaign(
         patch["max_bid_cents"] = str(body.max_bid_cents)
     if body.bid_percent_bps is not None:
         patch["bid_percent_bps"] = str(body.bid_percent_bps)
+    if body.cost_cap_cents is not None:
+        patch["cost_cap_cents"] = str(body.cost_cap_cents)
+    if body.target_cpa_cents is not None:
+        patch["target_cpa_cents"] = str(body.target_cpa_cents)
+    if body.target_roas is not None:
+        patch["target_roas"] = str(body.target_roas)
+    if body.target_audience is not None:
+        if body.target_audience not in VALID_TARGET_AUDIENCES:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"target_audience must be one of "
+                    f"{sorted(VALID_TARGET_AUDIENCES)}"
+                ),
+            )
+        patch["target_audience"] = body.target_audience
     if body.daily_budget_cents is not None:
         patch["daily_budget_cents"] = str(body.daily_budget_cents)
     if body.total_budget_cents is not None:
@@ -724,6 +846,8 @@ async def audience_preview(
     """
     raw = await _load_and_refresh(r, campaign_id)
     targeting = _safe_json_loads(raw.get("targeting"), {})
+    brand_id = raw.get("brand_id", "")
+    target_audience = raw.get("target_audience", DEFAULT_TARGET_AUDIENCE)
 
     # Cheap sample scan: pull up to limit user keys.
     sampled: list[str] = []
@@ -739,27 +863,65 @@ async def audience_preview(
         if cursor == 0:
             break
 
-    # Score each user against targeting.
+    # Brand's existing-customer set — used to partition the reach estimate.
+    brand_users_key = f"brand:{brand_id}:users" if brand_id else ""
+
+    # Score each user against targeting AND classify new vs returning.
     matches: list[dict[str, Any]] = []
+    existing_match_count = 0
+    new_match_count = 0
     for uid in sampled[: limit * 3]:
         prof_raw = await r.hgetall(f"user:{uid}")
         if not prof_raw:
             continue
-        if _user_matches_targeting(prof_raw, targeting):
+        if not _user_matches_targeting(prof_raw, targeting):
+            continue
+        is_existing = False
+        if brand_users_key:
+            try:
+                is_existing = bool(
+                    await r.sismember(brand_users_key, uid)
+                )
+            except Exception:  # pragma: no cover — never break preview
+                is_existing = False
+        if is_existing:
+            existing_match_count += 1
+        else:
+            new_match_count += 1
+        if len(matches) < limit:
             matches.append({
                 "user_id": uid,
                 "country": prof_raw.get("country"),
                 "city": prof_raw.get("city"),
                 "age": prof_raw.get("age"),
                 "gender": prof_raw.get("gender"),
+                "is_existing_customer": is_existing,
             })
-            if len(matches) >= limit:
-                break
 
-    # Estimate reachable via density extrapolation.
+    total_matches = existing_match_count + new_match_count
     sampled_n = max(1, len(sampled))
-    match_rate = len(matches) / sampled_n
-    estimated_reach = int(match_rate * sampled_n * 10)  # crude scale-up
+    match_rate = total_matches / sampled_n
+    # Scale-up estimate stays compatible with legacy `estimated_reach`.
+    estimated_reachable_users = int(match_rate * sampled_n * 10)
+
+    # Partition the estimated reach by new vs existing pool.
+    if total_matches > 0:
+        existing_share = existing_match_count / total_matches
+        new_share = new_match_count / total_matches
+    else:
+        existing_share = 0.0
+        new_share = 0.0
+    existing_customers = int(estimated_reachable_users * existing_share)
+    new_prospects = estimated_reachable_users - existing_customers
+
+    # Apply the target_audience filter to compute *actual* reach after the
+    # auction-side filter strips out the wrong pool.
+    if target_audience == "new_users_only":
+        actual_reach_after_filter = new_prospects
+    elif target_audience == "retargeting_only":
+        actual_reach_after_filter = existing_customers
+    else:  # "all"
+        actual_reach_after_filter = estimated_reachable_users
 
     return {
         "campaign_id": campaign_id,
@@ -767,7 +929,14 @@ async def audience_preview(
         "sample_size": len(matches),
         "scanned_users": len(sampled),
         "match_rate": round(match_rate, 4),
-        "estimated_reach": estimated_reach,
+        # Legacy field — kept for backward compat with existing callers.
+        "estimated_reach": estimated_reachable_users,
+        # TikTok-style breakdown by target_audience.
+        "estimated_reachable_users": estimated_reachable_users,
+        "existing_customers": existing_customers,
+        "new_prospects": new_prospects,
+        "target_audience": target_audience,
+        "actual_reach_after_filter": actual_reach_after_filter,
     }
 
 
@@ -1354,11 +1523,23 @@ async def submit_for_review(
             bid_percent_bps=(
                 int(raw.get("bid_percent_bps", "0") or "0") or None
             ),
+            cost_cap_cents=(
+                int(raw.get("cost_cap_cents", "0") or "0") or None
+            ),
+            target_cpa_cents=(
+                int(raw.get("target_cpa_cents", "0") or "0") or None
+            ),
+            target_roas=(
+                float(raw.get("target_roas", "0") or "0") or None
+            ),
             daily_budget_cents=int(raw.get("daily_budget_cents", "1") or "1"),
             total_budget_cents=int(raw.get("total_budget_cents", "1") or "1"),
             attribution_window_days=(
                 int(raw.get("attribution_window_days", "0") or "0") or None
             ),
+            target_audience=raw.get(  # type: ignore[arg-type]
+                "target_audience", DEFAULT_TARGET_AUDIENCE
+            ) or DEFAULT_TARGET_AUDIENCE,
             targeting=Targeting(**_safe_json_loads(raw.get("targeting"), {})),
             creative=Creative(**_safe_json_loads(raw.get("creative"), {})),
             schedule=Schedule(**_safe_json_loads(raw.get("schedule"), {})),
@@ -1542,6 +1723,17 @@ async def _score_creative(
     return round(min(2.0, variety + freshness), 2), n, round(days_since, 1)
 
 
+def _score_audience_targeting(target_audience: str) -> float:
+    """0..2 score: educate merchants that picking a specific pool helps.
+
+    new_users_only or retargeting_only → +1 (specific intent).
+    all → 0 (too broad; you're paying to reach everyone).
+    """
+    if target_audience in ("new_users_only", "retargeting_only"):
+        return 1.0
+    return 0.0
+
+
 def _score_targeting(targeting: dict[str, Any]) -> tuple[float, int]:
     """Score how specific the targeting is. Returns (score 0..2, specificity_count)."""
     spec = 0
@@ -1633,11 +1825,21 @@ async def campaign_quality(
     )
     targeting = _safe_json_loads(raw.get("targeting"), {}) or {}
     targeting_score, targeting_specificity = _score_targeting(targeting)
+    target_audience = raw.get("target_audience", DEFAULT_TARGET_AUDIENCE)
+    audience_targeting_score = _score_audience_targeting(target_audience)
 
-    # Cap at 10. Each sub-score already lives in its declared range
-    # (ctr+cvr up to 3+3=6, creative up to 2, targeting up to 2 → 10).
+    # Cap at 10. Each sub-score lives in its declared range:
+    # ctr+cvr up to 3+3=6, creative up to 2, targeting up to 2,
+    # audience_targeting up to 1 → 11 raw, clamped to 10.
     overall = round(
-        min(10.0, ctr_score + cvr_score + creative_score + targeting_score),
+        min(
+            10.0,
+            ctr_score
+            + cvr_score
+            + creative_score
+            + targeting_score
+            + audience_targeting_score,
+        ),
         2,
     )
 
@@ -1654,6 +1856,12 @@ async def campaign_quality(
         campaign_ctr=campaign_ctr,
         campaign_cvr=campaign_cvr,
     )
+    if audience_targeting_score == 0.0:
+        hints.append(
+            "target_audience=\"all\" is broad — switch to "
+            "new_users_only (acquisition) or retargeting_only "
+            "(engagement) to focus spend."
+        )
 
     return {
         "campaign_id": campaign_id,
@@ -1663,6 +1871,7 @@ async def campaign_quality(
             "cvr_score": cvr_score,
             "creative_score": creative_score,
             "targeting_score": targeting_score,
+            "audience_targeting_score": audience_targeting_score,
         },
         "benchmark": {
             "campaign_ctr": campaign_ctr,
@@ -1678,6 +1887,7 @@ async def campaign_quality(
         },
         "targeting_meta": {
             "specificity_facets": targeting_specificity,
+            "target_audience": target_audience,
         },
         "improvement_hints": hints,
         # Also surface the legacy 0..1 quality_score so existing callers
