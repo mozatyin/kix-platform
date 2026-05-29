@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>时间拍卖</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow-x:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.screen{position:absolute;top:0;left:0;width:100%;min-height:100dvh;padding-bottom:72px;overflow-y:auto}
+.screen.hidden{display:none!important}
+#game-board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(10,1fr);aspect-ratio:9/10;max-width:360px;width:100%;margin:0 auto;border:2px solid #5d4037;background:#f0d9b5}
+#game-board .cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;font-size:clamp(14px,4vw,22px);font-weight:bold;cursor:pointer;border:0.5px solid #b8956a}
+#game-board .cell.red-piece{color:#c62828;text-shadow:0 1px 0 #fff}
+#game-board .cell.black-piece{color:#1a1a1a;text-shadow:0 1px 0 #fff}
+#game-board .cell.selected{background:#ffeb3b;box-shadow:inset 0 0 0 3px #f9a825}
+#game-board .cell.valid-move{background:rgba(76,175,80,.45);border-radius:50%;box-shadow:inset 0 0 0 2px #388e3c}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#1a1a2e;padding:10px 12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;box-shadow:0 -2px 12px rgba(0,0,0,.35)}
+.bottom-bar button{min-width:48px;padding:10px 16px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.bottom-bar button:active{transform:scale(.95);opacity:.85}
+.btn-primary{background:#e53935;color:#fff}
+.btn-secondary{background:#37474f;color:#fff}
+.btn-accent{background:#ff9800;color:#fff}
+.btn-success{background:#43a047;color:#fff}
+.btn-outline{background:transparent;color:#e0e0e0;border:2px solid #555}
+.bottom-bar button.hidden-btn{display:none}
+.auction-card{background:linear-gradient(135deg,#1e1e30,#2a2a40);border:2px solid #ff9800;border-radius:16px;padding:20px;margin:12px auto;max-width:360px;text-align:center;color:#fff}
+.player-info-bar{display:flex;justify-content:space-between;padding:8px 12px;margin:4px 8px;border-radius:10px;font-weight:600;font-size:14px}
+.player-red{background:#ffcdd2;color:#b71c1c}
+.player-black{background:#cfd8dc;color:#263238}
+.timer-display{font-variant-numeric:tabular-nums;font-size:18px;font-weight:700}
+</style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS —  */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #00704A, #003825) !important;
+  --tw-gradient-from: #00704A !important;
+  --tw-gradient-to: #003825 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #00704A !important;
+  background: #00704A !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #003825 !important;
+  background: #003825 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #00704A !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+
+<!-- SCREENS -->
+<div id="home-screen" class="screen flex flex-col items-center justify-start pt-12 px-4">
+  <div style="font-size:48px;margin-bottom:8px">⭐</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px"></h1>
+  <p class="text-gray-400 text-sm mb-8">用时间下注，赢取棋局先机</p>
+  <div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-red-600 flex items-center justify-center text-4xl mb-8 shadow-lg">⏰</div>
+  <div class="flex flex-col gap-3 w-full max-w-xs" id="home-menu-buttons">
+  </div>
+</div>
+
+<div id="settings-screen" class="screen hidden px-4 pt-8">
+  <h2 class="text-2xl font-bold text-center mb-6">⚙️ 设置</h2>
+  <div id="settings-content" class="max-w-sm mx-auto space-y-4"></div>
+</div>
+
+<div id="rules-screen" class="screen hidden px-4 pt-8">
+  <h2 class="text-2xl font-bold text-center mb-6">📜 规则</h2>
+  <div id="rules-content" class="max-w-sm mx-auto text-sm text-gray-300 space-y-3 leading-relaxed"></div>
+</div>
+
+<div id="tutorial-screen" class="screen hidden px-4 pt-8">
+  <h2 class="text-2xl font-bold text-center mb-6">🎓 教程</h2>
+  <div id="tutorial-content" class="max-w-sm mx-auto text-sm text-gray-300 space-y-3"></div>
+</div>
+
+<div id="leaderboard-screen" class="screen hidden px-4 pt-8">
+  <h2 class="text-2xl font-bold text-center mb-6">🏆 排行榜</h2>
+  <div id="leaderboard-content" class="max-w-sm mx-auto"></div>
+</div>
+
+<div id="auction_phase-screen" class="screen hidden px-2 pt-2">
+  <div id="auction-player-info" class="max-w-sm mx-auto"></div>
+  <div id="auction-item-display" class="max-w-sm mx-auto"></div>
+  <div id="auction-bid-history" class="max-w-sm mx-auto mt-3 px-3 text-xs text-gray-400 max-h-24 overflow-y-auto"></div>
+</div>
+
+<div id="action_phase-screen" class="screen hidden px-2 pt-2">
+  <div id="action-player-info" class="max-w-sm mx-auto"></div>
+  <div id="game-board" class="mt-2"></div>
+  <div id="action-status" class="max-w-sm mx-auto mt-2 text-center text-sm text-gray-300"></div>
+</div>
+
+<div id="game_result-screen" class="screen hidden flex flex-col items-center justify-start pt-16 px-4">
+  <div id="result-icon" class="text-7xl mb-4"></div>
+  <h2 id="result-title" class="text-3xl font-extrabold mb-2"></h2>
+  <div id="result-details" class="max-w-sm mx-auto text-center text-gray-300 text-sm space-y-2 mt-4"></div>
+</div>
+
+<!-- BOTTOM ACTION BAR -->
+<div class="bottom-bar" id="bottom-bar">
+  <!-- Home buttons -->
+  <button id="btn-play" class="btn-primary">▶ 开始游戏</button>
+  <button id="btn-settings" class="btn-secondary">⚙️</button>
+  <button id="btn-rules" class="btn-secondary">📜</button>
+  <button id="btn-tutorial" class="btn-secondary">🎓</button>
+  <button id="btn-leaderboard" class="btn-secondary">🏆</button>
+  <!-- Back button -->
+  <button id="btn-back" class="btn-outline hidden-btn">← 返回</button>
+  <!-- Auction buttons -->
+  <button id="btn-bid-small" class="btn-accent hidden-btn">+10秒</button>
+  <button id="btn-bid-medium" class="btn-accent hidden-btn">+20秒</button>
+  <button id="btn-bid-large" class="btn-accent hidden-btn">+50秒</button>
+  <button id="btn-pass" class="btn-outline hidden-btn">跳过</button>
+  <!-- Action buttons -->
+  <button id="btn-end-turn" class="btn-success hidden-btn">结束回合</button>
+  <button id="btn-undo" class="btn-outline hidden-btn">↩ 撤销</button>
+  <!-- Result buttons -->
+  <button id="btn-play-again" class="btn-primary hidden-btn">🔄 再来一局</button>
+  <button id="btn-go-home" class="btn-secondary hidden-btn">🏠 主页</button>
+</div>
+
+<script>
+/* ========== ALL FUNCTION DECLARATIONS ========== */
+
+/** @returns {object} initial game state */
+function initState() { let board = [];
+for (let row = 0; row < 10; row++) {
+  board[row] = [];
+  for (let col = 0; col < 9; col++) {
+    board[row][col] = null;
+  }
+}
+let types = ['rook','knight','elephant','advisor','general','advisor','elephant','knight','rook'];
+for (let i = 0; i < 9; i++) {
+  board[0][i] = { color: 'black', type: types[i] };
+  board[9][i] = { color: 'red', type: types[i] };
+}
+board[2][1] = { color: 'black', type: 'cannon' };
+board[2][7] = { color: 'black', type: 'cannon' };
+board[7][1] = { color: 'red', type: 'cannon' };
+board[7][7] = { color: 'red', type: 'cannon' };
+for (let i = 0; i < 9; i += 2) {
+  board[3][i] = { color: 'black', type: 'pawn' };
+  board[6][i] = { color: 'red', type: 'pawn' };
+}
+return {
+  screen: 'home',
+  players: [
+    { name: '你', color: 'red', timeLeft: 300, isAI: false, capturedPieces: [] },
+    { name: '电脑', color: 'black', timeLeft: 300, isAI: true, capturedPieces: [] }
+  ],
+  board: board,
+  currentPlayerIndex: null,
+  phase: 'home',
+  auction: null,
+  turn: 0,
+  history: [],
+  selectedCell: null,
+  validMoves: [],
+  gameResult: null
+}; }
+
+/** @param {object} state @param {object} action @returns {object} new state */
+function handleAction(state, action) { let newState = cloneState(state);
+
+// Route actions
+switch (action.type) {
+  case 'play': {
+    // Start a new game and go straight to auction
+    newState = initState();
+    newState.screen = 'auction_phase';
+    break;
+  }
+  case 'settings': {
+    newState.screen = 'settings';
+    break;
+  }
+  case 'rules': {
+    newState.screen = 'rules';
+    break;
+  }
+  case 'tutorial': {
+    newState.screen = 'tutorial';
+    break;
+  }
+  case 'leaderboard': {
+    newState.screen = 'leaderboard';
+    break;
+  }
+  case 'back': {
+    newState.screen = 'home';
+    break;
+  }
+  case 'bid':
+  case 'pass': {
+    // Only allow during active bidding
+    if (newState.screen === 'auction_phase' && newState.auctionPhase === 'bidding' && !newState.gameOver) {
+      let amount = action.type === 'pass' ? 0 : (action.amount || 0);
+      let currentBidder = newState.auctionPlayerIndex;
+      // Register bid if not yet placed
+      if (newState.auctionBids[currentBidder] === null) {
+        newState.auctionBids[currentBidder] = amount;
+        // Check if both players have bid
+        let bothBid = newState.auctionBids[0] !== null && newState.auctionBids[1] !== null;
+        if (bothBid) {
+          newState = resolveAuction(newState);
+        } else {
+          newState.auctionPlayerIndex = 1 - currentBidder;
+        }
+      }
+    }
+    break;
+  }
+  case 'board_click': {
+    // Only during action phase
+    if (newState.screen === 'action_phase' && !newState.gameOver) {
+      newState = handleBoardClick(newState, action.row, action.col);
+    }
+    break;
+  }
+  case 'end_turn': {
+    // Switch players and start a new auction round
+    if (newState.screen === 'action_phase' && !newState.gameOver) {
+      newState.currentPlayerIndex = 1 - newState.currentPlayerIndex;
+      newState.selectedCell = null;
+      newState.validMoves = [];
+      // Auction setup
+      newState.auctionPhase = 'bidding';
+      newState.auctionBids = [null, null];
+      newState.auctionPlayerIndex = 0;
+      // Cycle through predefined auction items deterministically
+      let items = ['extra_time', 'extra_move', 'steal_time', 'shield'];
+      let idx = (newState.auctionItemIndex || 0) + 1;
+      newState.auctionItemIndex = idx;
+      newState.auctionItem = items[idx % items.length];
+      newState.screen = 'auction_phase';
+    }
+    break;
+  }
+  case 'undo': {
+    // Restore previous snapshot if available
+    if (newState.screen === 'action_phase' && !newState.gameOver && newState.history && newState.history.length > 0) {
+      let history = [...newState.history];
+      let prevState = history.pop();
+      newState = cloneState(prevState);
+      newState.history = history;
+    }
+    break;
+  }
+  case 'play_again': {
+    newState = initState();
+    newState.screen = 'auction_phase';
+    break;
+  }
+  case 'go_home': {
+    newState.screen = 'home';
+    break;
+  }
+  // default: no change – return the already cloned state
+}
+
+return newState; }
+
+/** @param {object} state — updates DOM from state */
+function render(state) { showScreen(state.screen);
+updateBottomBar(state);
+if (state.screen === 'home') {
+  renderHome(state);
+} else if (state.screen === 'settings') {
+  renderSettings(state);
+} else if (state.screen === 'rules') {
+  renderRules(state);
+} else if (state.screen === 'tutorial') {
+  renderTutorial(state);
+} else if (state.screen === 'leaderboard') {
+  renderLeaderboard(state);
+} else if (state.screen === 'auction_phase') {
+  renderAuctionPhase(state);
+} else if (state.screen === 'action_phase') {
+  renderActionPhase(state);
+} else if (state.screen === 'game_result') {
+  renderGameResult(state);
+} }
+
+/** @param {string} screenId — base screen name, appends '-screen' internally */
+function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+for (let s of screens) {
+  s.classList.add('hidden');
+}
+let target = document.getElementById(screenId + '-screen');
+if (target) {
+  target.classList.remove('hidden');
+} }
+
+/** Initializes game state, wires all button listeners, shows initial screen */
+function startGame() { let gameState = initState();
+render(gameState);
+
+function bind(btnId, action) {
+  let btn = document.getElementById(btnId);
+  if (btn) {
+    btn.addEventListener('click', () => {
+      gameState = handleAction(gameState, action);
+      render(gameState);
+    });
+  }
+}
+
+bind('btn-play', {type: 'navigate'});
+bind('btn-settings', {type: 'navigate'});
+bind('btn-rules', {type: 'show_rules'});
+bind('btn-tutorial', {type: 'show_tutorial'});
+bind('btn-leaderboard', {type: 'show_leaderboard'});
+bind('btn-back', {type: 'back'});
+bind('btn-bid-small', {type: 'bid', amount: 10});
+bind('btn-bid-medium', {type: 'bid', amount: 20});
+bind('btn-bid-large', {type: 'bid', amount: 50});
+bind('btn-pass', {type: 'pass'});
+bind('btn-end-turn', {type: 'end_turn'});
+bind('btn-undo', {type: 'undo'});
+bind('btn-play-again', {type: 'play_again'});
+bind('btn-go-home', {type: 'go_home'});
+
+let board = document.getElementById('game-board');
+if (board) {
+  board.addEventListener('click', (e) => {
+    let cell = e.target.closest('.cell');
+    if (!cell) return {};
+    let row = cell.dataset.row;
+    let col = cell.dataset.col;
+    if (row === undefined || col === undefined) return {};
+    gameState = handleBoardClick(gameState, parseInt(row, 10), parseInt(col, 10));
+    render(gameState);
+  });
+} }
+
+/* --- Game-specific helpers --- */
+
+/** @param {object} state @param {number} playerIndex @param {number} bidAmount @returns {object} new state */
+function placeBid(state, playerIndex, bidAmount) { let newState = cloneState(state);
+if (newState.auction && newState.auction.currentBidder === playerIndex && !newState.auction.bidStatus[playerIndex]) {
+  newState.auction.bids[playerIndex] = bidAmount;
+  newState.auction.bidStatus[playerIndex] = true;
+  newState.auction.currentBidder = 1 - playerIndex;
+}
+return newState; }
+
+/** @param {object} state @returns {object} new state after resolving current auction */
+function resolveAuction(state) { let newState = cloneState(state);
+let red = newState.players[0];
+let black = newState.players[1];
+let redBid = red.passed ? red.bid : 0;
+let blackBid = black.passed ? black.bid : 0;
+let winnerIdx = redBid >= blackBid ? 0 : 1;
+let winner = newState.players[winnerIdx];
+let winnerBid = winnerIdx === 0 ? redBid : blackBid;
+winner.time = Math.max(0, winner.time - winnerBid);
+newState.currentPlayerIndex = winnerIdx;
+newState.screen = 'action_phase';
+newState.phase = 'action';
+newState.auctionResult = { winner: winner.color, bid: winnerBid };
+red.bid = 0;
+black.bid = 0;
+red.passed = false;
+black.passed = false;
+return newState; }
+
+/** @param {object} state @param {number} playerIndex @returns {Array<object>} available actions */
+function getAvailableActions(state, playerIndex) { let validActions = [];
+let playerColor = playerIndex === 0 ? 'red' : 'black';
+let board = state.board;
+for (let row = 0; row < 10; row++) {
+  for (let col = 0; col < 9; col++) {
+    let piece = board[row][col];
+    if (piece && piece.color === playerColor) {
+      let moves;
+      switch (piece.type) {
+        case 'general': moves = getGeneralMoves(state, row, col, piece.color); break;
+        case 'horse': moves = getHorseMoves(state, row, col, piece.color); break;
+        case 'rook': moves = getRookMoves(state, row, col, piece.color); break;
+        case 'cannon': moves = getCannonMoves(state, row, col, piece.color); break;
+        case 'elephant': moves = getElephantMoves(state, row, col, piece.color); break;
+        case 'advisor': moves = getAdvisorMoves(state, row, col, piece.color); break;
+        case 'pawn': moves = getPawnMoves(state, row, col, piece.color); break;
+        default: moves = [];
+      }
+      for (let m = 0; m < moves.length; m++) {
+        let [toRow, toCol] = moves[m];
+        let clone = cloneState(state);
+        applyMove(clone, row, col, toRow, toCol);
+        if (!isInCheck(clone, playerColor)) {
+          validActions.push({
+            type: 'move',
+            fromRow: row,
+            fromCol: col,
+            toRow: toRow,
+            toCol: toCol
+          });
+        }
+      }
+    }
+  }
+}
+return validActions; }
+
+/** @param {object} state @param {object} action @returns {object} new state */
+function performAction(state, action) { let newState = applyMove(state, action.fromRow, action.fromCol, action.toRow, action.toCol);
+newState.turn = newState.turn === 'red' ? 'black' : 'red';
+newState.selectedCell = null;
+newState = checkGameEnd(newState);
+return newState; }
+
+/** @param {object} state @returns {object} AI move action */
+function getAIMove(state) { let aiPlayerIndex = state.aiPlayerIndex;
+if (aiPlayerIndex === undefined) {
+  for (let i = 0; i < state.players.length; i++) {
+    if (state.players[i].isAI) {
+      aiPlayerIndex = i;
+      break;
+    }
+  }
+  if (aiPlayerIndex === undefined) {
+    aiPlayerIndex = state.currentPlayerIndex;
+  }
+}
+let actions = getAvailableActions(state, aiPlayerIndex);
+if (!actions || actions.length === 0) {
+  return { type: 'end_turn' };
+}
+function evaluate(s, pIdx) {
+  let pieceValues = { general: 10000, chariot: 1000, horse: 500, cannon: 500, elephant: 200, advisor: 200, pawn: 100 };
+  let playerColor = s.players[pIdx].side;
+  let board = s.board;
+  let score = 0;
+  for (let r = 0; r < board.length; r++) {
+    for (let c = 0; c < board[r].length; c++) {
+      let piece = board[r][c];
+      if (piece) {
+        let val = pieceValues[piece.type] || 0;
+        if (piece.color === playerColor) score += val;
+        else score -= val;
+      }
+    }
+  }
+  let opponentColor = playerColor === 'red' ? 'black' : 'red';
+  if (isInCheck(s, opponentColor)) score += 50;
+  if (isInCheck(s, playerColor)) score -= 50;
+  return score;
+}
+let bestScore = -Infinity;
+let equalActions = [];
+for (let i = 0; i < actions.length; i++) {
+  let action = actions[i];
+  let cloned = cloneState(state);
+  let newState = performAction(cloned, action);
+  let score = evaluate(newState, aiPlayerIndex);
+  if (score > bestScore) {
+    bestScore = score;
+    equalActions = [action];
+  } else if (score === bestScore) {
+    equalActions.push(action);
+  }
+}
+let chosen = equalActions[Math.floor(Math.random() * equalActions.length)];
+return chosen; }
+
+/** @param {object} state — renders the game board into #game-board */
+function renderBoard(state) { let board = document.getElementById('game-board');
+board.innerHTML = '';
+for (let r = 0; r < 10; r++) {
+    for (let c = 0; c < 9; c++) {
+        let cell = document.createElement('div');
+        cell.className = 'cell';
+        let piece = state.board[r][c];
+        if (piece) {
+            cell.textContent = piece.char;
+            if (piece.color === 'red') {
+                cell.classList.add('red-piece');
+            } else if (piece.color === 'black') {
+                cell.classList.add('black-piece');
+            }
+        }
+        if (state.selectedCell && state.selectedCell.row === r && state.selectedCell.col === c) {
+            cell.classList.add('selected');
+        }
+        if (state.validMoves) {
+            for (let move of state.validMoves) {
+                if (move[0] === r && move[1] === c) {
+                    cell.classList.add('valid-move');
+                    break;
+                }
+            }
+        }
+        cell.onclick = (function(row, col) {
+            return function() {
+                handleBoardClick(gameState, row, col);
+            };
+        })(r, c);
+        board.appendChild(cell);
+    }
+} }
+
+/** @param {object} state @param {number} row @param {number} col — handles board cell click */
+function handleBoardClick(state, row, col) { if (state.phase !== 'action_phase') return state;
+let playerColor = state.currentPlayer;
+let playerIndex = playerColor === 'red' ? 0 : 1;
+if (state.players[playerIndex].isAI) return state;
+let actions = getAvailableActions(state, playerIndex);
+if (actions.length === 0) return state;
+let board = state.board;
+let piece = (board[row] && board[row][col]) ? board[row][col] : null;
+if (!state.selected) {
+  if (piece && piece.color === playerColor) {
+    let validMoves = [];
+    for (let i = 0; i < actions.length; i++) {
+      let a = actions[i];
+      if (a.fromRow === row && a.fromCol === col) {
+        validMoves.push({ row: a.toRow, col: a.toCol });
+      }
+    }
+    return { ...state, selected: { row, col }, validMoves };
+  }
+  return state;
+} else {
+  let sel = state.selected;
+  let isMove = false;
+  for (let i = 0; i < state.validMoves.length; i++) {
+    let m = state.validMoves[i];
+    if (m.row === row && m.col === col) {
+      isMove = true;
+      break;
+    }
+  }
+  if (isMove) {
+    let action = null;
+    for (let i = 0; i < actions.length; i++) {
+      let a = actions[i];
+      if (a.fromRow === sel.row && a.fromCol === sel.col && a.toRow === row && a.toCol === col) {
+        action = a;
+        break;
+      }
+    }
+    if (action) {
+      let newState = performAction(state, action);
+      newState = { ...newState, selected: null, validMoves: [] };
+      if (checkGameEnd(newState)) {
+        newState = { ...newState, phase: 'game_result', scores: calculateScores(newState) };
+      }
+      return newState;
+    }
+    return { ...state, selected: null, validMoves: [] };
+  } else if (piece && piece.color === playerColor) {
+    let newValidMoves = [];
+    for (let i = 0; i < actions.length; i++) {
+      let a = actions[i];
+      if (a.fromRow === row && a.fromCol === col) {
+        newValidMoves.push({ row: a.toRow, col: a.toCol });
+      }
+    }
+    return { ...state, selected: { row, col }, validMoves: newValidMoves };
+  } else {
+    return { ...state, selected: null, validMoves: [] };
+  }
+} }
+
+/** @param {object} state @param {number} fromRow @param {number} fromCol @param {number} toRow @param {number} toCol @returns {object} new state */
+function applyMove(state, fromRow, fromCol, toRow, toCol) { let newState = cloneState(state);
+let piece = newState.board[fromRow] && newState.board[fromRow][fromCol];
+if (!piece) return state;
+
+let captured = newState.board[toRow] && newState.board[toRow][toCol];
+let moveRecord = {
+    fromRow: fromRow,
+    fromCol: fromCol,
+    toRow: toRow,
+    toCol: toCol,
+    pieceColor: piece.color,
+    pieceType: piece.type,
+    captured: captured ? { color: captured.color, type: captured.type } : null,
+    prevTurn: newState.currentTurn,
+    prevSelectedCell: newState.selectedCell ? { row: newState.selectedCell.row, col: newState.selectedCell.col } : null,
+    prevValidMoves: newState.validMoves ? newState.validMoves.map(function(m) { return [m[0], m[1]]; }) : []
+};
+
+newState.board[toRow][toCol] = piece;
+newState.board[fromRow][fromCol] = null;
+
+if (!newState.moveHistory) {
+    newState.moveHistory = [];
+}
+newState.moveHistory.push(moveRecord);
+
+newState.selectedCell = null;
+newState.validMoves = [];
+
+newState.currentTurn = newState.currentTurn === 'red' ? 'black' : 'red';
+
+let opponentColor = newState.currentTurn;
+if (isCheckmate(newState, opponentColor)) {
+    newState.gameOver = true;
+    newState.winner = opponentColor === 'red' ? 'black' : 'red';
+} else if (isInCheck(newState, opponentColor)) {
+    newState.inCheck = opponentColor;
+} else {
+    newState.inCheck = null;
+}
+
+return newState; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} valid moves */
+function getGeneralMoves(state, row, col, color) { let moves = [];
+let isRed = color === 'red';
+let minRow = isRed ? 7 : 0;
+let maxRow = isRed ? 9 : 2;
+let minCol = 3;
+let maxCol = 5;
+let dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+let board = state.board;
+
+let oppRow = -1;
+let oppCol = -1;
+for (let r = 0; r < 10; r++) {
+    for (let c = 0; c < 9; c++) {
+        let piece = board[r][c];
+        if (piece && piece.type === 'general' && piece.color !== color) {
+            oppRow = r;
+            oppCol = c;
+            break;
+        }
+    }
+    if (oppCol >= 0) break;
+}
+
+for (let d of dirs) {
+    let nr = row + d[0];
+    let nc = col + d[1];
+    if (nr < minRow || nr > maxRow || nc < minCol || nc > maxCol) continue;
+    let target = board[nr][nc];
+    if (target && target.color === color) continue;
+
+    if (oppCol >= 0 && nc === oppCol) {
+        let minR = Math.min(nr, oppRow);
+        let maxR = Math.max(nr, oppRow);
+        let blocked = false;
+        for (let r = minR + 1; r < maxR; r++) {
+            if (r === row && nc === col) continue;
+            if (board[r][nc]) {
+                blocked = true;
+                break;
+            }
+        }
+        if (!blocked) continue;
+    }
+    moves.push([nr, nc]);
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getHorseMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+let potentialMoves = [
+  {dr: -2, dc: -1, legR: -1, legC: 0},
+  {dr: -2, dc: 1, legR: -1, legC: 0},
+  {dr: 2, dc: -1, legR: 1, legC: 0},
+  {dr: 2, dc: 1, legR: 1, legC: 0},
+  {dr: -1, dc: -2, legR: 0, legC: -1},
+  {dr: -1, dc: 2, legR: 0, legC: 1},
+  {dr: 1, dc: -2, legR: 0, legC: -1},
+  {dr: 1, dc: 2, legR: 0, legC: 1}
+];
+for (let m of potentialMoves) {
+  let nr = row + m.dr;
+  let nc = col + m.dc;
+  if (nr < 0 || nr > 9 || nc < 0 || nc > 8) continue;
+  let legR = row + m.legR;
+  let legC = col + m.legC;
+  if (board[legR][legC] !== null) continue;
+  let dest = board[nr][nc];
+  if (!dest || dest.color !== color) {
+    moves.push([nr, nc]);
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getRookMoves(state, row, col, color) { let moves = [];
+let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+for (let d of directions) {
+    let dr = d[0], dc = d[1];
+    let nr = row + dr;
+    let nc = col + dc;
+    while (nr >= 0 && nr < 10 && nc >= 0 && nc < 9) {
+        let target = state.board[nr][nc];
+        if (target) {
+            if (target.color !== color) {
+                moves.push([nr, nc]);
+            }
+            break;
+        }
+        moves.push([nr, nc]);
+        nr += dr;
+        nc += dc;
+    }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getCannonMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+if (!board || !board[row] || !board[row][col]) return moves;
+let piece = board[row][col];
+let pieceColor = piece.color;
+let directions = [[-1,0],[1,0],[0,-1],[0,1]];
+for (let [dr, dc] of directions) {
+  let r = row + dr;
+  let c = col + dc;
+  let foundScreen = false;
+  while (r >= 0 && r < 10 && c >= 0 && c < 9) {
+    let target = board[r][c];
+    if (target && target.color) {
+      if (!foundScreen) {
+        foundScreen = true;
+      } else {
+        if (target.color !== pieceColor) {
+          moves.push([r, c]);
+        }
+        break;
+      }
+    } else {
+      if (!foundScreen) {
+        moves.push([r, c]);
+      }
+    }
+    r += dr;
+    c += dc;
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getElephantMoves(state, row, col, color) { let moves = [];
+let directions = [[-2, -2], [-2, 2], [2, -2], [2, 2]];
+let rowLimit = color === 'red' ? 5 : 0;
+let rowMax = color === 'red' ? 9 : 4;
+for (let [dr, dc] of directions) {
+  let nr = row + dr;
+  let nc = col + dc;
+  if (nr >= 0 && nr <= 9 && nc >= 0 && nc <= 8 && nr >= rowLimit && nr <= rowMax) {
+    let midRow = row + dr / 2;
+    let midCol = col + dc / 2;
+    if (state.board[midRow][midCol] === null) {
+      let target = state.board[nr][nc];
+      if (target === null || target.color !== color) {
+        moves.push([nr, nc]);
+      }
+    }
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getAdvisorMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+let minRow, maxRow;
+if (color === 'red') {
+  minRow = 7;
+  maxRow = 9;
+} else {
+  minRow = 0;
+  maxRow = 2;
+}
+let minCol = 3, maxCol = 5;
+let dirs = [[-1,-1], [-1,1], [1,-1], [1,1]];
+for (let d of dirs) {
+  let nr = row + d[0];
+  let nc = col + d[1];
+  if (nr >= minRow && nr <= maxRow && nc >= minCol && nc <= maxCol) {
+    let target = board[nr][nc];
+    if (!target || target.color !== color) {
+      moves.push([nr, nc]);
+    }
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getPawnMoves(state, row, col, color) { let moves = [];
+let forward = color === 'red' ? -1 : 1;
+let newRow = row + forward;
+if (newRow >= 0 && newRow <= 9) {
+  let pieceAtNew = state.board[newRow][col];
+  if (!pieceAtNew || pieceAtNew.color !== color) {
+    moves.push([newRow, col]);
+  }
+}
+let crossed = (color === 'red' && row <= 4) || (color === 'black' && row >= 5);
+if (crossed) {
+  let dcList = [-1, 1];
+  for (let i = 0; i < dcList.length; i++) {
+    let dc = dcList[i];
+    let newCol = col + dc;
+    if (newCol >= 0 && newCol <= 8) {
+      let pieceAtSide = state.board[row][newCol];
+      if (!pieceAtSide || pieceAtSide.color !== color) {
+        moves.push([row, newCol]);
+      }
+    }
+  }
+}
+return moves; }
+
+/** @param {object} state @param {string} color @returns {boolean} */
+function isInCheck(state, color) { let generalPos = null;
+for (let r = 0; r < state.board.length; r++) {
+  for (let c = 0; c < state.board[r].length; c++) {
+    let piece = state.board[r][c];
+    if (piece && piece.color === color && piece.type === 'general') {
+      generalPos = [r, c];
+      break;
+    }
+  }
+  if (generalPos) break;
+}
+if (!generalPos) return false;
+
+let opponentColor = color === 'red' ? 'black' : 'red';
+for (let r = 0; r < state.board.length; r++) {
+  for (let c = 0; c < state.board[r].length; c++) {
+    let piece = state.board[r][c];
+    if (piece && piece.color === opponentColor) {
+      let moves;
+      switch (piece.type) {
+        case 'general': moves = getGeneralMoves(state, r, c, opponentColor); break;
+        case 'advisor': moves = getAdvisorMoves(state, r, c, opponentColor); break;
+        case 'elephant': moves = getElephantMoves(state, r, c, opponentColor); break;
+        case 'horse': moves = getHorseMoves(state, r, c, opponentColor); break;
+        case 'rook': moves = getRookMoves(state, r, c, opponentColor); break;
+        case 'cannon': moves = getCannonMoves(state, r, c, opponentColor); break;
+        case 'pawn': moves = getPawnMoves(state, r, c, opponentColor); break;
+        default: moves = [];
+      }
+      if (moves.some(([mr, mc]) => mr === generalPos[0] && mc === generalPos[1])) {
+        return true;
+      }
+    }
+  }
+}
+return false; }
+
+/** @param {object} state @param {string} color @returns {boolean} */
+function isCheckmate(state, color) { if (!isInCheck(state, color)) return false;
+for (let row = 0; row < 10; row++) {
+  for (let col = 0; col < 9; col++) {
+    let piece = state.board[row][col];
+    if (piece && piece.color === color) {
+      let moves = [];
+      if (piece.type === 'general') moves = getGeneralMoves(state, row, col, color);
+      else if (piece.type === 'horse') moves = getHorseMoves(state, row, col, color);
+      else if (piece.type === 'rook') moves = getRookMoves(state, row, col, color);
+      else if (piece.type === 'cannon') moves = getCannonMoves(state, row, col, color);
+      else if (piece.type === 'elephant') moves = getElephantMoves(state, row, col, color);
+      else if (piece.type === 'advisor') moves = getAdvisorMoves(state, row, col, color);
+      else if (piece.type === 'pawn') moves = getPawnMoves(state, row, col, color);
+      for (let [toRow, toCol] of moves) {
+        let newState = applyMove(state, row, col, toRow, toCol);
+        if (!isInCheck(newState, color)) return false;
+      }
+    }
+  }
+}
+return true; }
+
+/** @param {object} state @returns {boolean} */
+function checkGameEnd(state) { if (state.gameOver) return true;
+let players = state.players;
+for (let i = 0; i < players.length; i++) {
+    if (players[i].timeRemaining <= 0) return true;
+}
+let actions = getAvailableActions(state, state.currentPlayer);
+if (actions.length === 0) return true;
+return false; }
+
+/** @param {object} state @returns {object} */
+function calculateScores(state) { var { winner } = state;
+let redScore, blackScore;
+if (winner === 'red') {
+  redScore = 1;
+  blackScore = 0;
+} else if (winner === 'black') {
+  redScore = 0;
+  blackScore = 1;
+} else {
+  redScore = 0.5;
+  blackScore = 0.5;
+}
+return { winner, redScore, blackScore }; }
+
+/** @param {object} state @returns {object} deep cloned state using plain objects/arrays */
+function cloneState(state) { return JSON.parse(JSON.stringify(state)); }
+
+/* --- Rendering sub-helpers --- */
+
+/** @param {object} state — renders home screen content */
+function renderHome(state) { let menuContainer = document.getElementById('home-menu-buttons');
+menuContainer.innerHTML = '';
+
+let quickPlayBtn = document.createElement('button');
+quickPlayBtn.className = 'w-full py-4 px-6 rounded-xl text-lg font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg hover:opacity-90 active:scale-95 transition-all';
+quickPlayBtn.textContent = '⚡ 快速开始';
+quickPlayBtn.addEventListener('click', function() {
+  handleAction(gameState, {type: 'START_GAME'});
+  render(gameState);
+});
+menuContainer.appendChild(quickPlayBtn);
+
+let vsAiBtn = document.createElement('button');
+vsAiBtn.className = 'w-full py-3 px-6 rounded-xl text-base font-semibold bg-gray-700 text-gray-200 border border-gray-600 hover:bg-gray-600 active:scale-95 transition-all mt-3';
+vsAiBtn.textContent = '🤖 对战 AI';
+vsAiBtn.addEventListener('click', function() {
+  handleAction(gameState, {type: 'SET_MODE', mode: 'ai'});
+  render(gameState);
+});
+menuContainer.appendChild(vsAiBtn);
+
+let settingsSummary = document.createElement('div');
+settingsSummary.className = 'mt-6 text-center text-xs text-gray-500 space-y-1';
+let timePerPlayer = (state.settings && state.settings.timePerPlayer) ? state.settings.timePerPlayer : 180;
+let playerName = (state.settings && state.settings.playerName) ? state.settings.playerName : '玩家';
+settingsSummary.innerHTML = '<p>⏱ 每位棋手初始时间: <span class=\"text-gray-300\">' + timePerPlayer + '秒</span></p>' +
+  '<p>👤 玩家: <span class=\"text-gray-300\">' + playerName + '</span></p>' +
+  '<p class=\"mt-2 text-gray-600\">点击下方按钮查看规则或调整设置</p>';
+menuContainer.appendChild(settingsSummary); }
+
+/** @param {object} state — renders auction phase UI */
+function renderAuctionPhase(state) { let playerInfoEl = document.getElementById('auction-player-info');
+let itemDisplayEl = document.getElementById('auction-item-display');
+let bidHistoryEl = document.getElementById('auction-bid-history');
+let players = state.players;
+let infoHtml = '';
+for (let i = 0; i < players.length; i++) {
+  let p = players[i];
+  let colorEmoji = p.color === 'red' ? '🔴' : '⚫';
+  infoHtml += `<div class="player-info-bar player-${p.color}">
+    <span>${colorEmoji} ${p.name}</span>
+    <span>⏱️ ${p.time}秒</span>
+  </div>`;
+}
+playerInfoEl.innerHTML = infoHtml;
+
+let auction = state.currentAuction || {};
+let item = auction.item || '先手权';
+let currentBid = auction.currentBid || 0;
+let highestBidder = auction.highestBidder;
+let leaderName = '暂无';
+if (highestBidder !== undefined && highestBidder !== null && highestBidder >= 0 && players[highestBidder]) {
+  leaderName = players[highestBidder].name;
+}
+itemDisplayEl.innerHTML = `
+  <div class="auction-card">
+    <div class="text-lg font-bold mb-2">🏷️ 当前拍卖: ${item}</div>
+    <div class="text-2xl font-extrabold text-orange-300">
+      当前出价: ${currentBid} 秒
+    </div>
+    <div class="text-sm text-gray-400 mt-1">
+      领先者: ${leaderName}
+    </div>
+  </div>
+`;
+
+let historyHtml = '<div class="font-bold mb-1">📋 出价记录:</div>';
+let history = state.auctionHistory || [];
+if (history.length > 0) {
+  for (let h of history) {
+    let name = h.playerName;
+    if (!name && h.playerIndex !== undefined && players[h.playerIndex]) {
+      name = players[h.playerIndex].name;
+    }
+    name = name || '?';
+    historyHtml += `<div>${name} 出价: ${h.bidAmount}秒</div>`;
+  }
+} else {
+  historyHtml += '<div>暂无出价</div>';
+}
+bidHistoryEl.innerHTML = historyHtml; }
+
+/** @param {object} state — renders action phase UI */
+function renderActionPhase(state) { let playerInfoDiv = document.getElementById('action-player-info');
+let statusDiv = document.getElementById('action-status');
+let currentColor = state.turn;
+let redPlayer = state.players.find(p => p.color === 'red');
+let blackPlayer = state.players.find(p => p.color === 'black');
+let redTime = redPlayer ? redPlayer.timeRemaining : 0;
+let blackTime = blackPlayer ? blackPlayer.timeRemaining : 0;
+let formatTime = (seconds) => {
+    let mins = Math.floor(seconds / 60);
+    let secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2,'0')}`;
+};
+playerInfoDiv.innerHTML = `
+    <div class="player-red player-info-bar" style="${currentColor === 'red' ? 'box-shadow: 0 0 0 3px gold;' : ''}">
+      <span>🔴 红方</span>
+      <span class="timer-display">${formatTime(redTime)}</span>
+    </div>
+    <div class="player-black player-info-bar" style="${currentColor === 'black' ? 'box-shadow: 0 0 0 3px gold;' : ''}">
+      <span>⚫ 黑方</span>
+      <span class="timer-display">${formatTime(blackTime)}</span>
+    </div>
+  `;
+statusDiv.innerHTML = currentColor === 'red' ? '🔴 红方回合' : '⚫ 黑方回合';
+renderBoard(state);
+updateBottomBar(state); }
+
+/** @param {object} state — renders game result screen */
+function renderGameResult(state) { let resultIcon = document.getElementById('result-icon');
+let resultTitle = document.getElementById('result-title');
+let resultDetails = document.getElementById('result-details');
+let btnPlayAgain = document.getElementById('btn-play-again');
+let btnGoHome = document.getElementById('btn-go-home');
+
+btnPlayAgain.classList.remove('hidden-btn');
+btnGoHome.classList.remove('hidden-btn');
+
+var { winner, players, scores, reason } = state;
+let redPlayer = players.find(p => p.color === 'red');
+let blackPlayer = players.find(p => p.color === 'black');
+
+if (winner === 'red') {
+  resultIcon.textContent = '🏆';
+  resultTitle.textContent = '红方获胜！';
+  resultTitle.className = 'text-3xl font-extrabold mb-2 text-red-400';
+} else if (winner === 'black') {
+  resultIcon.textContent = '🏆';
+  resultTitle.textContent = '黑方获胜！';
+  resultTitle.className = 'text-3xl font-extrabold mb-2 text-gray-300';
+} else {
+  resultIcon.textContent = '🤝';
+  resultTitle.textContent = '平局！';
+  resultTitle.className = 'text-3xl font-extrabold mb-2 text-yellow-400';
+}
+
+let detailsHTML = '';
+if (scores) {
+  detailsHTML += '<p>红方得分: <span class="text-red-400 font-bold">' + scores.red + '</span> / 黑方得分: <span class="text-gray-300 font-bold">' + scores.black + '</span></p>';
+  if (scores.details) {
+    for (let key in scores.details) {
+      detailsHTML += '<p class="text-xs">' + key + ': ' + scores.details[key] + '</p>';
+    }
+  }
+}
+detailsHTML += '<div class="mt-3 border-t border-gray-600 pt-2">';
+detailsHTML += '<p>红方剩余时间: <span class="text-red-300">' + (redPlayer ? redPlayer.timeLeft + '秒' : '0 秒') + '</span></p>';
+detailsHTML += '<p>黑方剩余时间: <span class="text-gray-400">' + (blackPlayer ? blackPlayer.timeLeft + '秒' : '0 秒') + '</span></p>';
+if (redPlayer && redPlayer.captured && redPlayer.captured.length > 0) {
+  detailsHTML += '<p>红方吃子: ' + redPlayer.captured.join(' ') + '</p>';
+} else {
+  detailsHTML += '<p>红方无吃子</p>';
+}
+if (blackPlayer && blackPlayer.captured && blackPlayer.captured.length > 0) {
+  detailsHTML += '<p>黑方吃子: ' + blackPlayer.captured.join(' ') + '</p>';
+} else {
+  detailsHTML += '<p>黑方无吃子</p>';
+}
+detailsHTML += '</div>';
+if (reason) {
+  detailsHTML += '<p class="mt-2 text-gray-400 italic">结局原因: ' + reason + '</p>';
+}
+resultDetails.innerHTML = detailsHTML; }
+
+/** @param {object} state — renders settings screen */
+function renderSettings(state) { let container = document.getElementById('settings-content');
+let settings = state.settings || {};
+let modeText = settings.mode === 'pvp' ? '双人对战' : '人机对战';
+let difficultyMap = { easy: '简单', medium: '中等', hard: '困难' };
+let difficultyText = difficultyMap[settings.aiDifficulty] || '中等';
+container.innerHTML = `
+  <div class="bg-gray-800 rounded-xl p-4 space-y-3">
+    <div class="flex justify-between items-center">
+      <span>游戏模式</span>
+      <button class="btn-secondary text-sm px-3 py-1 rounded" data-action="toggle-mode">${modeText}</button>
+    </div>
+    <div class="flex justify-between items-center">
+      <span>初始时间 (秒)</span>
+      <div class="flex gap-2 items-center">
+        <button class="btn-secondary text-sm px-2 py-1" data-action="dec-time">-</button>
+        <span class="w-10 text-center">${settings.initialTime || 600}</span>
+        <button class="btn-secondary text-sm px-2 py-1" data-action="inc-time">+</button>
+      </div>
+    </div>
+    <div class="flex justify-between items-center">
+      <span>AI 难度</span>
+      <button class="btn-secondary text-sm px-3 py-1 rounded" data-action="cycle-difficulty">${difficultyText}</button>
+    </div>
+    <div class="flex justify-between items-center">
+      <span>音效</span>
+      <button class="btn-secondary text-sm px-3 py-1 rounded" data-action="toggle-sound">${settings.soundEnabled ? '开启' : '关闭'}</button>
+    </div>
+  </div>
+`; }
+
+/** @param {object} state — renders rules screen */
+function renderRules(state) { let rulesContent = document.getElementById('rules-content');
+rulesContent.innerHTML = `
+  <p class="font-bold text-orange-400 mb-2">🕐 核心机制</p>
+  <p>“时间拍卖”将中国象棋与竞拍玩法结合。两位棋手各自拥有一个时间池，通过出价竞拍来争夺每回合的行动权。</p>
+
+  <p class="font-bold text-orange-400 mt-4 mb-2">🔄 回合流程</p>
+  <p>每个回合分为两个阶段：<strong>拍卖阶段</strong>和<strong>行动阶段</strong>。</p>
+
+  <p class="font-bold text-orange-400 mt-4 mb-2">💰 拍卖阶段</p>
+  <p>• 回合开始时进入拍卖。红方先出价（或跳过），然后黑方出价（或跳过），如此循环。</p>
+  <p>• 每次出价可以从 +10秒、+20秒、+50秒 中选择一种。出价必须在当前最高出价的基础上增加（首个出价可以自由选择）。</p>
+  <p>• 当连续两位玩家都选择“跳过”时，拍卖结束。出价最高的玩家获得本轮行动权，并立即从自己的时间池中扣除相应的出价秒数。若无人出价，则当前时间池较多的玩家获得行动权。</p>
+
+  <p class="font-bold text-orange-400 mt-4 mb-2">♟️ 行动阶段</p>
+  <p>• 获得行动权的玩家可以按照中国象棋规则移动一枚自己的棋子。移动规则与标准象棋一致：帅/将、士、相、马、车、炮、兵/卒各有固定走法。</p>
+  <p>• 玩家点击要移动的棋子（高亮显示），再点击目标格子完成移动。移动后回合结束，进入下一轮拍卖。</p>
+  <p>• 部分行动可能触发将军、将死或困毙，从而影响对局结果。</p>
+
+  <p class="font-bold text-orange-400 mt-4 mb-2">⏳ 时间管理</p>
+  <p>• 每位玩家初始拥有相同的时间额度（如600秒=10分钟）。拍卖消耗的时间会永久从池中扣除。</p>
+  <p>• 若某位玩家时间池降至0或以下，则对方立即获胜。</p>
+
+  <p class="font-bold text-orange-400 mt-4 mb-2">🏁 胜负判定</p>
+  <p>• 将死对方将/帅者获胜。</p>
+  <p>• 对方时间耗尽时获胜。</p>
+  <p>• 若发生困毙（无子可动且未被将军）或双方同意和棋，则判定平局。</p>
+
+  <p class="font-bold text-orange-400 mt-4 mb-2">💡 小提示</p>
+  <p>• 谨慎出价：时间就是生命，过度竞价可能导致后续被动。</p>
+  <p>• 善用“跳过”：等待对手消耗时间后再掌控行动权也是一种策略。</p>
+  <p>• 熟悉象棋走法：请查看教程页面了解各棋子的移动规则。</p>
+`; }
+
+/** @param {object} state — renders tutorial screen */
+function renderTutorial(state) { let tutorialContent = document.getElementById('tutorial-content');
+if (!tutorialContent) return {};
+
+let html = `
+  <div class="space-y-4">
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h3 class="text-orange-400 font-bold text-base mb-2">🎯 游戏目标</h3>
+      <p class="leading-relaxed">通过<strong>时间拍卖</strong>获得行动优势，在象棋对局中击败对手！你的总时间就是你的生命值——时间耗尽即告失败。</p>
+    </div>
+    
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h3 class="text-orange-400 font-bold text-base mb-2">⏰ 拍卖阶段</h3>
+      <p class="leading-relaxed">每回合开始前，双方用时间竞拍<strong>行动权</strong>：</p>
+      <ul class="list-disc list-inside mt-2 space-y-1 text-xs leading-relaxed">
+        <li>可以出价 <span class="text-yellow-400 font-bold">+10秒</span>、<span class="text-yellow-400 font-bold">+20秒</span> 或 <span class="text-yellow-400 font-bold">+50秒</span></li>
+        <li>出价<strong>最高者</strong>获胜，支付对应时间，获得本回合行动权</li>
+        <li>平局时<span class="text-red-400">红方优先</span></li>
+        <li>选择<span class="text-gray-500 font-bold">"跳过"</span>即放弃竞拍，对手自动获胜</li>
+        <li>双方都跳过则重新拍卖</li>
+      </ul>
+    </div>
+    
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h3 class="text-orange-400 font-bold text-base mb-2">♟️ 棋子走法</h3>
+      <p class="text-xs mb-2">棋盘为<strong>9列×10行</strong>，标准中国象棋规则：</p>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="text-red-400 font-bold">帅 / 将</span>
+          <p class="text-gray-400">九宫格内上下左右移动一格，不可出宫</p>
+        </div>
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="font-bold">車</span>
+          <p class="text-gray-400">直线移动任意格（无棋子阻挡）</p>
+        </div>
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="font-bold">馬</span>
+          <p class="text-gray-400">走"日"字形（注意蹩脚规则）</p>
+        </div>
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="font-bold">炮</span>
+          <p class="text-gray-400">直线移动；吃子时必须翻过一个炮架</p>
+        </div>
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="font-bold">象 / 相</span>
+          <p class="text-gray-400">走"田"字形，不能过河（注意塞眼）</p>
+        </div>
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="font-bold">士 / 仕</span>
+          <p class="text-gray-400">九宫格内斜走一格</p>
+        </div>
+        <div class="bg-gray-700 p-2 rounded">
+          <span class="font-bold">兵 / 卒</span>
+          <p class="text-gray-400">未过河只能前进；过河后可前/左/右</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h3 class="text-orange-400 font-bold text-base mb-2">⚡ 行动阶段操作</h3>
+      <ul class="list-disc list-inside space-y-1 text-xs leading-relaxed">
+        <li>点击己方棋子<strong>选中</strong>（黄色高亮显示）</li>
+        <li>绿色圆点标记<strong>合法移动位置</strong></li>
+        <li>点击目标位置<strong>完成移动</strong></li>
+        <li>可使用<span class="text-green-400 font-bold">"↩ 撤销"</span>回退上一步操作</li>
+        <li>点击<span class="text-green-400 font-bold">"结束回合"</span>提交行动，进入下一轮拍卖</li>
+      </ul>
+    </div>
+    
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h3 class="text-orange-400 font-bold text-base mb-2">🏆 胜负条件</h3>
+      <ul class="list-disc list-inside space-y-1 text-xs leading-relaxed">
+        <li><span class="text-red-400 font-bold">将杀获胜</span>：对方的主帅无法逃脱被吃</li>
+        <li><span class="text-yellow-400 font-bold">时间耗尽</span>：一方时间归零即判负</li>
+        <li>游戏结束时综合剩余时间和棋盘局势计算<strong>最终得分</strong></li>
+      </ul>
+    </div>
+    
+    <div class="bg-gradient-to-r from-orange-900 to-red-900 rounded-lg p-4 border border-orange-600">
+      <h3 class="text-orange-300 font-bold text-base mb-2">💡 策略提示</h3>
+      <ul class="list-disc list-inside space-y-1 text-xs leading-relaxed text-gray-200">
+        <li>合理分配时间——出价太高会让自己陷入时间危机</li>
+        <li>观察对手的时间余额，在关键时刻果断出价</li>
+        <li>保护好自己的帅/将，同时积极威胁对方</li>
+        <li>車和炮是强力的进攻棋子，善加利用</li>
+        <li>马和象注意蹩脚/塞眼，避免走入死路</li>
+      </ul>
+    </div>
+  </div>
+`;
+
+tutorialContent.innerHTML = html; }
+
+/** @param {object} state — renders leaderboard screen */
+function renderLeaderboard(state) { let container = document.getElementById('leaderboard-content');
+let leaderboard = state.leaderboard || [];
+let html = '';
+if (leaderboard.length === 0) {
+  html = '<p class="text-center text-gray-400 mt-8">暂无排行榜数据</p>';
+} else {
+  let sorted = leaderboard.slice().sort((a, b) => b.score - a.score);
+  html = '<ul class="space-y-3 mt-4">';
+  for (let i = 0; i < sorted.length; i++) {
+    let entry = sorted[i];
+    let rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+    html += `<li class="flex items-center justify-between bg-gray-800 bg-opacity-70 rounded-xl px-4 py-3">
+      <span class="text-lg font-bold">${rankIcon} ${entry.name || '匿名玩家'}</span>
+      <span class="text-base text-orange-400 font-semibold">${entry.score} 分</span>
+    </li>`;
+  }
+  html += '</ul>';
+}
+container.innerHTML = html; }
+
+/** @param {object} state — updates bottom bar button visibility */
+function updateBottomBar(state) { let screen = state.screen;
+let homeButtons = ['btn-play', 'btn-settings', 'btn-rules', 'btn-tutorial', 'btn-leaderboard'];
+let backButton = ['btn-back'];
+let auctionButtons = ['btn-bid-small', 'btn-bid-medium', 'btn-bid-large', 'btn-pass'];
+let actionButtons = ['btn-end-turn', 'btn-undo'];
+let resultButtons = ['btn-play-again', 'btn-go-home'];
+function toggleButton(id, show) {
+  let btn = document.getElementById(id);
+  if (btn) {
+    if (show) {
+      btn.classList.remove('hidden-btn');
+    } else {
+      btn.classList.add('hidden-btn');
+    }
+  }
+}
+if (screen === 'home') {
+  homeButtons.forEach(id => toggleButton(id, true));
+  backButton.forEach(id => toggleButton(id, false));
+  auctionButtons.forEach(id => toggleButton(id, false));
+  actionButtons.forEach(id => toggleButton(id, false));
+  resultButtons.forEach(id => toggleButton(id, false));
+} else if (screen === 'settings' || screen === 'rules' || screen === 'tutorial' || screen === 'leaderboard') {
+  homeButtons.forEach(id => toggleButton(id, false));
+  backButton.forEach(id => toggleButton(id, true));
+  auctionButtons.forEach(id => toggleButton(id, false));
+  actionButtons.forEach(id => toggleButton(id, false));
+  resultButtons.forEach(id => toggleButton(id, false));
+} else if (screen === 'auction_phase') {
+  homeButtons.forEach(id => toggleButton(id, false));
+  backButton.forEach(id => toggleButton(id, true));
+  auctionButtons.forEach(id => toggleButton(id, true));
+  actionButtons.forEach(id => toggleButton(id, false));
+  resultButtons.forEach(id => toggleButton(id, false));
+} else if (screen === 'action_phase') {
+  homeButtons.forEach(id => toggleButton(id, false));
+  backButton.forEach(id => toggleButton(id, true));
+  auctionButtons.forEach(id => toggleButton(id, false));
+  actionButtons.forEach(id => toggleButton(id, true));
+  resultButtons.forEach(id => toggleButton(id, false));
+} else if (screen === 'game_result') {
+  homeButtons.forEach(id => toggleButton(id, false));
+  backButton.forEach(id => toggleButton(id, false));
+  auctionButtons.forEach(id => toggleButton(id, false));
+  actionButtons.forEach(id => toggleButton(id, false));
+  resultButtons.forEach(id => toggleButton(id, true));
+} else {
+  homeButtons.forEach(id => toggleButton(id, false));
+  backButton.forEach(id => toggleButton(id, false));
+  auctionButtons.forEach(id => toggleButton(id, false));
+  actionButtons.forEach(id => toggleButton(id, false));
+  resultButtons.forEach(id => toggleButton(id, false));
+} }
+
+/* ========== DOMContentLoaded ========== */
+document.addEventListener('DOMContentLoaded', startGame);
+
+        function getPieceEmoji(pieceType) { const emojis = ['⭐','💎','🔮','🌟','✨','💫']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

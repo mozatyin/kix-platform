@@ -476,6 +476,7 @@ async def ensure_kid(
             ph = _hash_identifier(phone)
             if not await r.get(f"kid:phone:{ph}"):
                 updates.append((f"kid:phone:{ph}", existing))
+                updates.append((f"identity:phone:{ph}", existing))
                 await r.hset(f"kid:{existing}", "phone_hash", ph)
                 await _identity_audit(
                     r, existing, "link_phone", {"phone_hash": ph[:12]}
@@ -484,6 +485,7 @@ async def ensure_kid(
             eh = _hash_identifier(email)
             if not await r.get(f"kid:email:{eh}"):
                 updates.append((f"kid:email:{eh}", existing))
+                updates.append((f"identity:email:{eh}", existing))
                 await r.hset(f"kid:{existing}", "email_hash", eh)
                 await _identity_audit(
                     r, existing, "link_email", {"email_hash": eh[:12]}
@@ -519,10 +521,13 @@ async def ensure_kid(
         ph = _hash_identifier(phone)
         profile["phone_hash"] = ph
         await r.set(f"kid:phone:{ph}", kid)
+        # Enhanced Conversions reverse-index alias (pixel/CAPI lookup).
+        await r.set(f"identity:phone:{ph}", kid)
     if email:
         eh = _hash_identifier(email)
         profile["email_hash"] = eh
         await r.set(f"kid:email:{eh}", kid)
+        await r.set(f"identity:email:{eh}", kid)
     if device_fp:
         await r.set(f"kid:device:{device_fp}", kid)
         await r.sadd(f"kid:{kid}:devices", device_fp)
@@ -813,6 +818,7 @@ async def identity_link(
                 detail="phone already linked to another kid",
             )
         await r.set(f"kid:phone:{ph}", kid)
+        await r.set(f"identity:phone:{ph}", kid)
         await r.hset(f"kid:{kid}", "phone_hash", ph)
         await _identity_audit(
             r, kid, "link_phone", {"phone_hash": ph[:12]}
@@ -838,6 +844,7 @@ async def identity_link(
                 detail="email already linked to another kid",
             )
         await r.set(f"kid:email:{eh}", kid)
+        await r.set(f"identity:email:{eh}", kid)
         await r.hset(f"kid:{kid}", "email_hash", eh)
         await _identity_audit(
             r, kid, "link_email", {"email_hash": eh[:12]}
@@ -872,8 +879,10 @@ async def delete_kid(
     eh = profile.get("email_hash")
     if ph:
         await r.delete(f"kid:phone:{ph}")
+        await r.delete(f"identity:phone:{ph}")
     if eh:
         await r.delete(f"kid:email:{eh}")
+        await r.delete(f"identity:email:{eh}")
     devices = await r.smembers(f"kid:{kid}:devices")
     for d in devices:
         await r.delete(f"kid:device:{d}")

@@ -35,7 +35,11 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db
+from app.models.subscription import BrandSubscription, SubscriptionHistory
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -275,6 +279,149 @@ async def _load_sub_record(
     return out
 
 
+# ── PostgreSQL helpers (durable source of truth) ──────────────────────────
+
+
+async def _pg_get_sub(
+    db: AsyncSession | None, brand_id: str
+) -> BrandSubscription | None:
+    """Fetch the PG row for ``brand_id``; tolerant of a missing session.
+
+    During the dual-write migration window the ``brand_subscriptions``
+    table may not yet exist (e.g. test envs that haven't run migration
+    0002 yet). We swallow that specific error and return ``None`` so
+    callers fall back to Redis.
+    """
+    if db is None:
+        return None
+    try:
+        return await db.get(BrandSubscription, brand_id)
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc).lower()
+        if "does not exist" in msg or "undefinedtable" in msg:
+            try:
+                await db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            return None
+        raise
+
+
+async def _pg_upsert_sub(
+    db: AsyncSession | None,
+    brand_id: str,
+    fields: dict[str, Any],
+) -> None:
+    """Insert-or-update a brand's subscription row.
+
+    ``fields`` uses native Python types (ints / bools / strings), not
+    the Redis-encoded strings — convert before calling.
+
+    Silently no-ops if the PG table does not yet exist (dual-write
+    migration safety).
+    """
+    if db is None:
+        return
+    try:
+        row = await db.get(BrandSubscription, brand_id)
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc).lower()
+        if "does not exist" in msg or "undefinedtable" in msg:
+            try:
+                await db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            return
+        raise
+    if row is None:
+        # When creating from a partial update we still need NOT NULL
+        # columns to be present — fall back to sensible defaults.
+        now_ts = int(fields.get("started_at") or time.time())
+        defaults: dict[str, Any] = {
+            "brand_id": brand_id,
+            "tier": "free",
+            "billing": "monthly",
+            "started_at": now_ts,
+            "expires_at": now_ts,
+            "next_charge_at": now_ts,
+            "auto_renew": False,
+            "first_year_free": False,
+            "cancel_pending": False,
+            "dunning_state": "none",
+            "dunning_attempts": 0,
+            "metadata_json": {},
+        }
+        defaults.update(fields)
+        row = BrandSubscription(**defaults)
+        db.add(row)
+        return
+    for k, v in fields.items():
+        if hasattr(row, k):
+            setattr(row, k, v)
+
+
+async def _pg_append_history(
+    db: AsyncSession | None,
+    brand_id: str,
+    event: str,
+    *,
+    from_tier: str | None = None,
+    to_tier: str | None = None,
+    charge_amount_cents: int | None = None,
+    metadata: dict[str, Any] | None = None,
+    ts: float | None = None,
+) -> None:
+    if db is None:
+        return
+    # Best-effort: only add to session if the subscriptions row already
+    # exists (FK to brand_subscriptions). If the brand has no PG row yet
+    # the upsert helper already swallowed an UndefinedTable error so
+    # skip the history too.
+    existing = await _pg_get_sub(db, brand_id)
+    if existing is None:
+        return
+    db.add(
+        SubscriptionHistory(
+            brand_id=brand_id,
+            event=event,
+            from_tier=from_tier,
+            to_tier=to_tier,
+            charge_amount_cents=charge_amount_cents,
+            metadata_json=metadata or {},
+            ts=int(ts if ts is not None else time.time()),
+        )
+    )
+
+
+async def _resolve_sub_record(
+    r: aioredis.Redis,
+    brand_id: str,
+    db: AsyncSession | None = None,
+) -> dict[str, Any]:
+    """PG-first read with Redis fallback during the migration window.
+
+    Returns the same dict shape ``_load_sub_record`` produced from Redis
+    so all downstream code is unchanged.
+    """
+    if db is not None:
+        row = await _pg_get_sub(db, brand_id)
+        if row is not None:
+            return row.to_dict()
+    return await _load_sub_record(r, brand_id)
+
+
+async def _resolve_brand_tier(
+    r: aioredis.Redis,
+    brand_id: str,
+    db: AsyncSession | None = None,
+) -> str:
+    if db is not None:
+        row = await _pg_get_sub(db, brand_id)
+        if row is not None:
+            return row.tier if row.tier in VALID_TIERS else "free"
+    return await _get_brand_tier(r, brand_id)
+
+
 def _tier_price_cents(tier: str, billing: str) -> int:
     if billing == "annual":
         return TIERS[tier]["annual_cents"]
@@ -320,17 +467,24 @@ async def _usage_snapshot(
 
 
 async def check_quota(
-    brand_id: str, resource_name: str, r: aioredis.Redis
+    brand_id: str,
+    resource_name: str,
+    r: aioredis.Redis,
+    db: AsyncSession | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     """Check whether ``brand_id`` may create one more ``resource_name``.
 
     ``resource_name`` ∈ ``{"games", "campaigns_active", "audiences",
     "recipes"}``. Returns ``(allowed, info)``. Callers in other routers
     should raise ``HTTPException(402, ...)`` when ``allowed is False``.
+
+    ``db`` is optional for backwards compatibility — when supplied the
+    tier is sourced from PostgreSQL (source of truth) with Redis as
+    fallback for legacy brands not yet migrated.
     """
     if resource_name not in VALID_RESOURCES:
         raise ValueError(f"unknown_resource:{resource_name}")
-    tier = await _get_brand_tier(r, brand_id)
+    tier = await _resolve_brand_tier(r, brand_id, db)
     config = TIERS[tier]
     limit = config[f"max_{resource_name}"]
     if limit == -1:
@@ -366,9 +520,10 @@ async def list_tiers() -> dict[str, Any]:
 async def get_current(
     brand_id: str,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Return the brand's current tier, billing state, and usage snapshot."""
-    record = await _load_sub_record(r, brand_id)
+    record = await _resolve_sub_record(r, brand_id, db)
     tier = record["tier"] if record["tier"] in VALID_TIERS else "free"
     usage = await _usage_snapshot(r, brand_id, tier)
     return {
@@ -383,6 +538,7 @@ async def upgrade(
     brand_id: str,
     body: UpgradeRequest,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Upgrade the brand to a paid tier.
 
@@ -394,7 +550,7 @@ async def upgrade(
     Apple Music strategy: 3 months free → merchant sees real value (data
     accumulates) → switching cost > continuing cost. See MERCHANT_FLOW_TRUTH.md.
     """
-    current_tier = await _get_brand_tier(r, brand_id)
+    current_tier = await _resolve_brand_tier(r, brand_id, db)
     new_tier = body.to_tier
     if TIER_ORDER.index(new_tier) <= TIER_ORDER.index(current_tier):
         raise HTTPException(
@@ -447,6 +603,41 @@ async def upgrade(
             "next_charge_at": next_charge_at,
         },
     )
+
+    # Dual-write to PostgreSQL (source of truth)
+    event_name = "FREE_TRIAL_3MO" if first_year_free_flag else "UPGRADE"
+    await _pg_upsert_sub(
+        db,
+        brand_id,
+        {
+            "tier": new_tier,
+            "billing": body.billing,
+            "started_at": int(now),
+            "expires_at": int(expires_at),
+            "next_charge_at": int(next_charge_at),
+            "auto_renew": True,
+            "payment_method_id": body.payment_method_id or None,
+            "first_year_free": first_year_free_flag,
+            "cancel_pending": False,
+            "dunning_state": "none",
+            "dunning_attempts": 0,
+            "dunning_reason": None,
+        },
+    )
+    await _pg_append_history(
+        db,
+        brand_id,
+        event_name,
+        from_tier=current_tier,
+        to_tier=new_tier,
+        charge_amount_cents=charge_now,
+        metadata={
+            "billing": body.billing,
+            "next_charge_at": next_charge_at,
+        },
+        ts=now,
+    )
+
     return {
         "tier": new_tier,
         "effective_at": now,
@@ -462,6 +653,7 @@ async def downgrade(
     brand_id: str,
     body: DowngradeRequest,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Move the brand to a lower tier.
 
@@ -469,7 +661,7 @@ async def downgrade(
     structured ``over_limit`` payload — the portal must walk the user
     through disabling extras before retrying.
     """
-    current_tier = await _get_brand_tier(r, brand_id)
+    current_tier = await _resolve_brand_tier(r, brand_id, db)
     new_tier = body.to_tier
     if TIER_ORDER.index(new_tier) >= TIER_ORDER.index(current_tier):
         raise HTTPException(
@@ -493,7 +685,7 @@ async def downgrade(
             },
         )
 
-    record = await _load_sub_record(r, brand_id)
+    record = await _resolve_sub_record(r, brand_id, db)
     now = time.time()
     if body.effective == "immediate":
         effective_at = now
@@ -505,6 +697,15 @@ async def downgrade(
                 "cancel_pending": "false",
             },
         )
+        await _pg_upsert_sub(
+            db,
+            brand_id,
+            {
+                "tier": new_tier,
+                "started_at": int(now),
+                "cancel_pending": False,
+            },
+        )
     else:
         # Schedule at end of period — keep current tier active until then.
         effective_at = record.get("expires_at") or now
@@ -513,6 +714,14 @@ async def downgrade(
             mapping={
                 "pending_tier": new_tier,
                 "pending_effective_at": str(effective_at),
+            },
+        )
+        await _pg_upsert_sub(
+            db,
+            brand_id,
+            {
+                "pending_tier": new_tier,
+                "pending_effective_at": int(effective_at),
             },
         )
 
@@ -527,6 +736,18 @@ async def downgrade(
             "effective_at": effective_at,
         },
     )
+    await _pg_append_history(
+        db,
+        brand_id,
+        "DOWNGRADE",
+        from_tier=current_tier,
+        to_tier=new_tier,
+        metadata={
+            "effective": body.effective,
+            "effective_at": effective_at,
+        },
+        ts=now,
+    )
     return {"tier": new_tier, "effective_at": effective_at, "effective": body.effective}
 
 
@@ -535,12 +756,13 @@ async def cancel(
     brand_id: str,
     body: CancelRequest,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Cancel the brand's paid subscription — drops to FREE.
 
     Data is retained — only quotas are enforced again at the FREE level.
     """
-    current_tier = await _get_brand_tier(r, brand_id)
+    current_tier = await _resolve_brand_tier(r, brand_id, db)
     if current_tier == "free":
         return {
             "tier": "free",
@@ -548,7 +770,7 @@ async def cancel(
             "note": "already_free",
         }
 
-    record = await _load_sub_record(r, brand_id)
+    record = await _resolve_sub_record(r, brand_id, db)
     now = time.time()
     if body.effective == "immediate":
         effective_at = now
@@ -565,6 +787,20 @@ async def cancel(
                 "first_year_free": "false",
             },
         )
+        await _pg_upsert_sub(
+            db,
+            brand_id,
+            {
+                "tier": "free",
+                "billing": "monthly",
+                "auto_renew": False,
+                "cancel_pending": False,
+                "started_at": int(now),
+                "expires_at": int(now),
+                "next_charge_at": int(now),
+                "first_year_free": False,
+            },
+        )
     else:
         effective_at = record.get("expires_at") or now
         await r.hset(
@@ -574,6 +810,16 @@ async def cancel(
                 "auto_renew": "false",
                 "pending_tier": "free",
                 "pending_effective_at": str(effective_at),
+            },
+        )
+        await _pg_upsert_sub(
+            db,
+            brand_id,
+            {
+                "cancel_pending": True,
+                "auto_renew": False,
+                "pending_tier": "free",
+                "pending_effective_at": int(effective_at),
             },
         )
 
@@ -589,6 +835,19 @@ async def cancel(
             "effective_at": effective_at,
         },
     )
+    await _pg_append_history(
+        db,
+        brand_id,
+        "CANCEL",
+        from_tier=current_tier,
+        to_tier="free",
+        metadata={
+            "reason": body.reason,
+            "effective": body.effective,
+            "effective_at": effective_at,
+        },
+        ts=now,
+    )
     return {
         "tier": "free" if body.effective == "immediate" else current_tier,
         "pending_tier": "free" if body.effective == "end_of_period" else None,
@@ -601,9 +860,10 @@ async def cancel(
 async def get_usage(
     brand_id: str,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Return per-resource usage / limits / over-limit deltas."""
-    tier = await _get_brand_tier(r, brand_id)
+    tier = await _resolve_brand_tier(r, brand_id, db)
     return await _usage_snapshot(r, brand_id, tier)
 
 
@@ -611,9 +871,10 @@ async def get_usage(
 async def quota_check(
     body: QuotaCheckRequest,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Public quota-check endpoint — mirrors the in-process ``check_quota``."""
-    allowed, info = await check_quota(body.brand_id, body.resource, r)
+    allowed, info = await check_quota(body.brand_id, body.resource, r, db)
     return {"allowed": allowed, **info}
 
 
@@ -640,9 +901,10 @@ async def auto_renew_config(
     brand_id: str,
     body: AutoRenewConfig,
     r: aioredis.Redis = Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Toggle auto-renewal + (optionally) bind a renewal target tier."""
-    current_tier = await _get_brand_tier(r, brand_id)
+    current_tier = await _resolve_brand_tier(r, brand_id, db)
     if current_tier == "free" and body.enabled:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -671,6 +933,24 @@ async def auto_renew_config(
         brand_id,
         {
             "event": "AUTO_RENEW_CONFIG",
+            "enabled": body.enabled,
+            "renew_to_tier": renew_to,
+        },
+    )
+    await _pg_upsert_sub(
+        db,
+        brand_id,
+        {
+            "auto_renew": bool(body.enabled),
+            "payment_method_id": body.payment_method_id or None,
+            "renew_to_tier": renew_to,
+        },
+    )
+    await _pg_append_history(
+        db,
+        brand_id,
+        "AUTO_RENEW_CONFIG",
+        metadata={
             "enabled": body.enabled,
             "renew_to_tier": renew_to,
         },

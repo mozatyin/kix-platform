@@ -1,0 +1,1291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>时间拍卖 Time Auction</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--cell-size:min(10vw,10vh,40px);--board-w:calc(var(--cell-size)*9);--board-h:calc(var(--cell-size)*10)}
+  .screen{position:fixed;inset:0;top:0;bottom:56px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .screen.hidden{display:none!important}
+  #game-board{display:grid;grid-template-columns:repeat(9,var(--cell-size));grid-template-rows:repeat(10,var(--cell-size));width:var(--board-w);height:var(--board-h);margin:0 auto;background:#f5deb3;border:2px solid #8b4513}
+  #game-board .cell{width:var(--cell-size);height:var(--cell-size);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;border:1px solid #d2b48c}
+  #game-board .piece{width:calc(var(--cell-size)*.85);height:calc(var(--cell-size)*.85);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:calc(var(--cell-size)*.45);border:2px solid #5d3a1a;color:#1a1a1a;text-shadow:0 1px 0 rgba(255,255,255,.5);user-select:none;transition:transform .1s}
+  #game-board .piece.red{background:radial-gradient(circle at 35% 35%,#fff5e6,#e8c084);border-color:#8b4513}
+  #game-board .piece.black{background:radial-gradient(circle at 35% 35%,#e8e8e8,#8b8b8b);border-color:#1a1a1a}
+  #game-board .cell.highlight{background:rgba(255,255,0,.45)}
+  #game-board .cell.selected{background:rgba(100,200,255,.5)}
+  #game-board .cell.valid-move{background:rgba(0,200,0,.35);border-radius:50%;box-shadow:inset 0 0 0 3px rgba(0,160,0,.5)}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;background:#1f2937;padding:6px 12px}
+  .bottom-bar button{min-width:48px;height:38px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s;white-space:nowrap;padding:0 14px}
+  .bottom-bar button:active{transform:scale(.94)}
+  .btn-red{background:#dc2626;color:#fff}
+  .btn-blue{background:#2563eb;color:#fff}
+  .btn-green{background:#16a34a;color:#fff}
+  .btn-gray{background:#6b7280;color:#fff}
+  .btn-amber{background:#d97706;color:#fff}
+  .auction-item-card{border:2px solid #e5e7eb;border-radius:12px;padding:12px;margin:8px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  .bid-indicator{display:inline-block;padding:4px 10px;border-radius:20px;font-weight:700;font-size:13px}
+  .time-display{font-variant-numeric:tabular-nums;font-family:monospace;font-size:18px;font-weight:700}
+  .player-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-weight:600;font-size:14px}
+  .player-badge.red{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
+  .player-badge.black{background:#1f2937;color:#f9fafb;border:1px solid #4b5563}
+</style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS —  */
+:root {
+  --kix-brand: #00704A;
+  --kix-accent: #FFFFFF;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #00704A, #003825) !important;
+  --tw-gradient-from: #00704A !important;
+  --tw-gradient-to: #003825 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #00704A !important;
+  background: #00704A !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #003825 !important;
+  background: #003825 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #00704A !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-900 text-white font-sans overflow-hidden h-dvh">
+
+<!-- ==================== SCREENS ==================== -->
+<div id="home-screen" class="screen hidden flex flex-col items-center justify-center p-4">
+  <div style="font-size:48px;margin-bottom:8px">⭐</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px"></h1>
+  <p class="text-gray-400 text-sm mb-6" id="home-subtitle">Time Auction</p>
+  <div id="home-menu" class="flex flex-col gap-3 w-full max-w-xs"></div>
+</div>
+
+<div id="settings-screen" class="screen hidden p-4">
+  <h2 class="text-xl font-bold mb-4">⚙️ 设置</h2>
+  <div id="settings-content" class="space-y-3"></div>
+</div>
+
+<div id="rules-screen" class="screen hidden p-4">
+  <h2 class="text-xl font-bold mb-4">📜 规则</h2>
+  <div id="rules-content" class="text-sm text-gray-300 space-y-2"></div>
+</div>
+
+<div id="tutorial-screen" class="screen hidden p-4">
+  <h2 class="text-xl font-bold mb-4">🎓 教程</h2>
+  <div id="tutorial-content" class="text-sm text-gray-300"></div>
+</div>
+
+<div id="leaderboard-screen" class="screen hidden p-4">
+  <h2 class="text-xl font-bold mb-4">🏆 排行榜</h2>
+  <div id="leaderboard-list" class="space-y-2"></div>
+</div>
+
+<div id="auction_phase-screen" class="screen hidden flex flex-col items-center p-3">
+  <div class="w-full flex justify-between items-center mb-2" id="auction-header"></div>
+  <div id="auction-item-display" class="w-full max-w-sm"></div>
+  <div id="game-board" class="my-2"></div>
+  <div id="auction-info" class="w-full max-w-sm text-center text-sm"></div>
+</div>
+
+<div id="action_phase-screen" class="screen hidden flex flex-col items-center p-3">
+  <div class="w-full flex justify-between items-center mb-2" id="action-header"></div>
+  <div id="action-board-container" class="my-2"></div>
+  <div id="action-info" class="w-full max-w-sm text-center text-sm"></div>
+</div>
+
+<div id="game_result-screen" class="screen hidden flex flex-col items-center justify-center p-4">
+  <div id="result-display" class="text-center"></div>
+  <div id="result-stats" class="mt-4 text-sm text-gray-400"></div>
+</div>
+
+<!-- ==================== BOTTOM ACTION BAR ==================== -->
+<nav class="bottom-bar" id="action-bar">
+  <button id="btn-home" class="btn-gray">🏠</button>
+  <button id="btn-bid-10" class="btn-amber hidden">+10s</button>
+  <button id="btn-bid-30" class="btn-amber hidden">+30s</button>
+  <button id="btn-pass" class="btn-gray hidden">跳过</button>
+  <button id="btn-confirm-move" class="btn-green hidden">确认</button>
+  <button id="btn-cancel" class="btn-gray hidden">取消</button>
+  <button id="btn-start-auction" class="btn-blue hidden">开始拍卖</button>
+  <button id="btn-use-item" class="btn-green hidden">使用道具</button>
+  <button id="btn-end-turn" class="btn-red hidden">结束回合</button>
+  <button id="btn-play-again" class="btn-blue hidden">再来一局</button>
+  <button id="btn-settings" class="btn-gray">⚙️</button>
+</nav>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+/* ========== STATE ========== */
+/** @returns {object} initial game state */
+function initState() { let state = {
+  screen: 'home',
+  board: [
+    [{type:'rook', color:'black'},{type:'horse', color:'black'},{type:'elephant', color:'black'},{type:'advisor', color:'black'},{type:'king', color:'black'},{type:'advisor', color:'black'},{type:'elephant', color:'black'},{type:'horse', color:'black'},{type:'rook', color:'black'}],
+    [null,null,null,null,null,null,null,null,null],
+    [null,{type:'cannon', color:'black'},null,null,null,null,null,{type:'cannon', color:'black'},null],
+    [{type:'pawn', color:'black'},null,{type:'pawn', color:'black'},null,{type:'pawn', color:'black'},null,{type:'pawn', color:'black'},null,{type:'pawn', color:'black'}],
+    [null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null],
+    [{type:'pawn', color:'red'},null,{type:'pawn', color:'red'},null,{type:'pawn', color:'red'},null,{type:'pawn', color:'red'},null,{type:'pawn', color:'red'}],
+    [null,{type:'cannon', color:'red'},null,null,null,null,null,{type:'cannon', color:'red'},null],
+    [null,null,null,null,null,null,null,null,null],
+    [{type:'rook', color:'red'},{type:'horse', color:'red'},{type:'elephant', color:'red'},{type:'advisor', color:'red'},{type:'king', color:'red'},{type:'advisor', color:'red'},{type:'elephant', color:'red'},{type:'horse', color:'red'},{type:'rook', color:'red'}]
+  ],
+  players: [
+    { name: '红方', color: 'red', time: 300, items: [], score: 0 },
+    { name: '黑方', color: 'black', time: 300, items: [], score: 0 }
+  ],
+  currentPlayerIndex: 0,
+  selectedPiece: null,
+  validMoves: [],
+  auction: {
+    items: [],
+    currentRound: 0,
+    currentItem: null,
+    highBid: 0,
+    highBidderIndex: null,
+    currentBidderIndex: null,
+    passed: [],
+    status: 'idle'
+  },
+  moveHistory: [],
+  gameOver: false
+};
+return state; }
+
+/* ========== CORE ========== */
+/** @param {object} state @param {object} action @returns {object} new state */
+function handleAction(state, action) { var { type, row, col } = action;
+switch (type) {
+  case 'PLAY_AGAIN':
+    return initState();
+  case 'GO_HOME':
+    return { ...state, screen: 'home' };
+  case 'GO_SETTINGS':
+    return { ...state, screen: 'settings' };
+  case 'GO_RULES':
+    return { ...state, screen: 'rules' };
+  case 'GO_TUTORIAL':
+    return { ...state, screen: 'tutorial' };
+  case 'GO_LEADERBOARD':
+    return { ...state, screen: 'leaderboard' };
+  case 'START_AUCTION': {
+    let next = startAuctionRound(state);
+    return { ...next, screen: 'auction_phase' };
+  }
+  case 'BID_10':
+  case 'BID_30': {
+    let amount = (type === 'BID_10') ? 10 : 30;
+    let p = state.currentPlayer; // player who bids
+    let afterBid = placeBid(state, p, amount);
+    let opponent = 1 - p;
+    // Determine next player to act
+    if (afterBid.auction.passed[opponent]) {
+      // opponent already passed, bidder keeps turn
+      return afterBid;
+    } else {
+      // switch turn to opponent so they can respond
+      return { ...afterBid, currentPlayer: opponent };
+    }
+  }
+  case 'PASS': {
+    let p = state.currentPlayer;
+    // mark current player as passed
+    let newPassed = [...state.auction.passed];
+    newPassed[p] = true;
+    let passState = {
+      ...state,
+      auction: { ...state.auction, passed: newPassed }
+    };
+    // if both passed, resolve auction
+    if (newPassed[0] && newPassed[1]) {
+      let resolved = resolveAuction(passState);
+      // check if game is already over (e.g., time out)
+      let winner = determineGameWinner(resolved);
+      if (winner !== null) {
+        return { ...resolved, screen: 'game_result', winner };
+      }
+      // otherwise go to action phase for the winner
+      return { ...resolved, screen: 'action_phase' };
+    } else {
+      // switch turn to the player who hasn't passed (if any)
+      let opponent = 1 - p;
+      if (!newPassed[opponent]) {
+        return { ...passState, currentPlayer: opponent };
+      }
+      // If the opponent already passed, we would have resolved above,
+      // but as safety fallback keep current player.
+      return passState;
+    }
+  }
+  case 'CONFIRM_MOVE': {
+    if (!state.selectedPiece || !state.selectedMove) return state;
+    let { row: fr, col: fc } = state.selectedPiece;
+    var { row: tr, col: tc } = state.selectedMove;
+    let moved = applyMove(state, fr, fc, tr, tc);
+    let cleared = {
+      ...moved,
+      selectedPiece: null,
+      selectedMove: null,
+      validMoves: null
+    };
+    let winner = determineGameWinner(cleared);
+    if (winner !== null) {
+      return { ...cleared, screen: 'game_result', winner };
+    }
+    let nextAuction = startAuctionRound(cleared);
+    return { ...nextAuction, screen: 'auction_phase' };
+  }
+  case 'CANCEL': {
+    return {
+      ...state,
+      selectedPiece: null,
+      selectedMove: null,
+      validMoves: null
+    };
+  }
+  case 'END_TURN': {
+    let cleared = {
+      ...state,
+      selectedPiece: null,
+      selectedMove: null,
+      validMoves: null
+    };
+    let winner = determineGameWinner(cleared);
+    if (winner !== null) {
+      return { ...cleared, screen: 'game_result', winner };
+    }
+    let nextAuction = startAuctionRound(cleared);
+    return { ...nextAuction, screen: 'auction_phase' };
+  }
+  case 'USE_ITEM': {
+    // item logic not fully specified, keep state unchanged
+    return state;
+  }
+  case 'BOARD_CLICK': {
+    return handleBoardClick(state, row, col);
+  }
+  default:
+    return state;
+} }
+
+/** @param {object} state updates DOM from state */
+function render(state) { let screen = state.screen;
+showScreen(screen);
+let allPhaseBtns = ['btn-bid-10','btn-bid-30','btn-pass','btn-confirm-move','btn-cancel','btn-start-auction','btn-use-item','btn-end-turn','btn-play-again'];
+for (let i = 0; i < allPhaseBtns.length; i++) {
+  let el = document.getElementById(allPhaseBtns[i]);
+  if (el) el.classList.add('hidden');
+}
+document.getElementById('btn-home').classList.remove('hidden');
+document.getElementById('btn-settings').classList.remove('hidden');
+
+if (screen === 'auction_phase') {
+  document.getElementById('btn-bid-10').classList.remove('hidden');
+  document.getElementById('btn-bid-30').classList.remove('hidden');
+  document.getElementById('btn-pass').classList.remove('hidden');
+  document.getElementById('btn-cancel').classList.remove('hidden');
+  renderAuctionPhase(state);
+} else if (screen === 'action_phase') {
+  document.getElementById('btn-confirm-move').classList.remove('hidden');
+  document.getElementById('btn-cancel').classList.remove('hidden');
+  document.getElementById('btn-end-turn').classList.remove('hidden');
+  document.getElementById('btn-use-item').classList.remove('hidden');
+  renderActionPhase(state);
+} else if (screen === 'game_result') {
+  document.getElementById('btn-play-again').classList.remove('hidden');
+  renderGameResult(state);
+} else if (screen === 'home') {
+  renderHomeScreen(state);
+} }
+
+/** @param {string} screenId base screen name (no '-screen' suffix) */
+function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+for (let el of screens) {
+  el.classList.add('hidden');
+}
+let target = document.getElementById(screenId + '-screen');
+if (target) {
+  target.classList.remove('hidden');
+} }
+
+/** initializes game state, wires all button listeners, calls render */
+function startGame() { let state = initState();
+  function makeHandler(type) {
+    return function() {
+      state = handleAction(state, { type: type });
+      render(state);
+    };
+  }
+  document.getElementById('btn-home').addEventListener('click', makeHandler('GO_HOME'));
+  document.getElementById('btn-settings').addEventListener('click', makeHandler('GO_SETTINGS'));
+  document.getElementById('btn-bid-10').addEventListener('click', makeHandler('BID_10'));
+  document.getElementById('btn-bid-30').addEventListener('click', makeHandler('BID_30'));
+  document.getElementById('btn-pass').addEventListener('click', makeHandler('PASS'));
+  document.getElementById('btn-confirm-move').addEventListener('click', makeHandler('CONFIRM_MOVE'));
+  document.getElementById('btn-cancel').addEventListener('click', makeHandler('CANCEL'));
+  document.getElementById('btn-start-auction').addEventListener('click', makeHandler('START_AUCTION'));
+  document.getElementById('btn-use-item').addEventListener('click', makeHandler('USE_ITEM'));
+  document.getElementById('btn-end-turn').addEventListener('click', makeHandler('END_TURN'));
+  document.getElementById('btn-play-again').addEventListener('click', makeHandler('PLAY_AGAIN'));
+  render(state); }
+
+/* ========== SCREEN RENDERERS ========== */
+/** @param {object} state renders home screen */
+function renderHomeScreen(state) { let menu = document.getElementById('home-menu');
+menu.innerHTML = '';
+let items = [
+  { label: '新游戏', type: 'start_game' },
+  { label: '设置', screen: 'settings' },
+  { label: '规则', screen: 'rules' },
+  { label: '教程', screen: 'tutorial' },
+  { label: '排行榜', screen: 'leaderboard' }
+];
+for (let i = 0; i < items.length; i++) {
+  let item = items[i];
+  let btn = document.createElement('button');
+  btn.textContent = item.label;
+  btn.className = 'w-full py-3 px-4 text-lg font-semibold rounded-xl shadow active:scale-95 transition';
+  if (item.type === 'start_game') {
+    btn.classList.add('bg-blue-600', 'text-white');
+  } else {
+    btn.classList.add('bg-gray-700', 'text-gray-200');
+  }
+  btn.addEventListener('click', function() {
+    let newState;
+    if (item.type === 'start_game') {
+      newState = handleAction(state, { type: 'start_game' });
+    render(newState);
+    } else {
+      newState = { ...state, screen: item.screen };
+    }
+    render(newState);
+  });
+  menu.appendChild(btn);
+} }
+
+/** @param {object} state renders auction phase screen */
+function renderAuctionPhase(state) { let auction = state.auction;
+let item = auction.item;
+let currentBidder = auction.currentBidder;
+let highestBid = auction.highestBid;
+let bids = auction.bids || [];
+let players = state.players;
+let board = state.board;
+let round = auction.round;
+let totalRounds = auction.totalRounds;
+
+// --- bottom bar buttons ---
+let btnBid10 = document.getElementById('btn-bid-10');
+let btnBid30 = document.getElementById('btn-bid-30');
+let btnPass = document.getElementById('btn-pass');
+let btnStartAuction = document.getElementById('btn-start-auction');
+let btnHome = document.getElementById('btn-home');
+let btnSettings = document.getElementById('btn-settings');
+let btnConfirmMove = document.getElementById('btn-confirm-move');
+let btnCancel = document.getElementById('btn-cancel');
+let btnUseItem = document.getElementById('btn-use-item');
+let btnEndTurn = document.getElementById('btn-end-turn');
+let btnPlayAgain = document.getElementById('btn-play-again');
+
+btnBid10.classList.remove('hidden');
+btnBid30.classList.remove('hidden');
+btnPass.classList.remove('hidden');
+btnHome.classList.remove('hidden');
+btnSettings.classList.remove('hidden');
+btnStartAuction.classList.add('hidden');
+btnConfirmMove.classList.add('hidden');
+btnCancel.classList.add('hidden');
+btnUseItem.classList.add('hidden');
+btnEndTurn.classList.add('hidden');
+btnPlayAgain.classList.add('hidden');
+
+// --- auction header ---
+let header = document.getElementById('auction-header');
+let currentPlayer = players[currentBidder];
+let playerColor = currentPlayer.color === 'red' ? '红方' : '黑方';
+let playerName = currentPlayer.name || playerColor;
+let timeLeft = currentPlayer.timeBank;
+
+header.innerHTML = `
+  <div class="player-badge ${currentPlayer.color}">
+    <span>${currentPlayer.color === 'red' ? '🔴' : '⚫'}</span>
+    <span>${playerName}</span>
+    <span class="time-display">${timeLeft}s</span>
+  </div>
+  <div class="text-sm text-gray-300">
+    第 ${round}/${totalRounds} 轮
+  </div>
+`;
+
+// --- auction item display ---
+let itemDisplay = document.getElementById('auction-item-display');
+if (item) {
+  let itemName = item.name || item.type || '未知道具';
+  let itemDesc = item.description || '';
+  let itemRarity = item.rarity || 'common';
+  let rarityColors = { common: '#9ca3af', uncommon: '#22c55e', rare: '#3b82f6', epic: '#a855f7', legendary: '#eab308' };
+  let rarityColor = rarityColors[itemRarity] || '#9ca3af';
+  let itemIcon = item.icon || '🎁';
+  let startingPrice = item.startingPrice || 10;
+  
+  itemDisplay.innerHTML = `
+    <div class="auction-item-card" style="border-color: ${rarityColor}">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-3xl">${itemIcon}</span>
+        <div>
+          <h3 class="font-bold text-lg" style="color: ${rarityColor}">${itemName}</h3>
+          <span class="text-xs uppercase tracking-wider" style="color: ${rarityColor}">${itemRarity}</span>
+        </div>
+      </div>
+      <p class="text-sm text-gray-600 mb-2">${itemDesc}</p>
+      <div class="flex justify-between items-center text-sm">
+        <span class="text-gray-500">起拍价: <b>${startingPrice}s</b></span>
+        <span class="text-gray-500">当前最高: <b class="text-amber-500">${highestBid}s</b></span>
+      </div>
+    </div>
+  `;
+}
+
+// --- game board ---
+renderBoard(state);
+
+// --- auction info ---
+let info = document.getElementById('auction-info');
+let bidderName = currentPlayer.name || (currentPlayer.color === 'red' ? '红方' : '黑方');
+let opponentIndex = 1 - currentBidder;
+let opponent = players[opponentIndex];
+let opponentBid = bids[opponentIndex] || 0;
+let opponentName = opponent.name || (opponent.color === 'red' ? '红方' : '黑方');
+let opponentTime = opponent.timeBank;
+
+info.innerHTML = `
+  <div class="flex justify-center gap-4 flex-wrap">
+    <div class="bid-indicator bg-amber-100 text-amber-800">
+      ${bidderName} 正在出价
+    </div>
+    ${opponentBid > 0 ? `
+      <div class="bid-indicator bg-gray-200 text-gray-700">
+        ${opponentName}: ${opponentBid}s
+      </div>
+    ` : `
+      <div class="bid-indicator bg-gray-200 text-gray-500">
+        ${opponentName}: 未出价
+      </div>
+    `}
+  </div>
+  <div class="mt-2 text-xs text-gray-400">
+    剩余时间: <span class="time-display">${opponentTime}s</span> | 
+    当前出价: <span class="time-display text-amber-400">${highestBid}s</span>
+  </div>
+`;
+
+// --- disable bid buttons if player can't afford ---
+let minBid = highestBid + 10;
+btnBid10.disabled = currentPlayer.timeBank < minBid;
+btnBid30.disabled = currentPlayer.timeBank < minBid;
+btnPass.disabled = false;
+
+// --- highlight current bidder's pieces on board ---
+let cells = document.querySelectorAll('#game-board .cell');
+cells.forEach(cell => {
+  cell.classList.remove('highlight');
+});
+let boardEl = document.getElementById('game-board');
+if (boardEl) {
+  let allCells = boardEl.querySelectorAll('.cell');
+  allCells.forEach(cell => {
+    let pieceEl = cell.querySelector('.piece');
+    if (pieceEl && pieceEl.classList.contains(currentPlayer.color)) {
+      cell.classList.add('highlight');
+    }
+  });
+} }
+
+/** @param {object} state renders action phase screen */
+function renderActionPhase(state) { const actionHeader = document.getElementById('action-header');
+const container = document.getElementById('action-board-container');
+const actionInfo = document.getElementById('action-info');
+const gameBoard = document.getElementById('game-board');
+
+// Move game board into the action phase container if it isn't already there
+if (gameBoard && container && gameBoard.parentElement !== container) {
+  container.appendChild(gameBoard);
+}
+
+// Render board pieces and highlights
+renderBoard(state);
+
+// Update header: current turn and time
+let currentPlayer = state.players.find(p => p.color === state.turn);
+let timeStr = '--';
+if (currentPlayer && typeof currentPlayer.timeLeft === 'number') {
+  let totalSec = Math.max(0, Math.floor(currentPlayer.timeLeft));
+  let mins = Math.floor(totalSec / 60);
+  let secs = totalSec % 60;
+  timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+let badgeClass = state.turn === 'red' ? 'red' : 'black';
+let badgeText = state.turn === 'red' ? '红方' : '黑方';
+actionHeader.innerHTML = `
+  <div class="player-badge ${badgeClass}">
+    ${badgeText}
+  </div>
+  <div class="time-display">⏱️ ${timeStr}</div>
+`;
+
+// Update action info: items the current player holds
+let itemsHtml = '暂无道具';
+if (currentPlayer && Array.isArray(currentPlayer.items) && currentPlayer.items.length > 0) {
+  itemsHtml = '道具：' + currentPlayer.items.join('，');
+}
+actionInfo.innerHTML = itemsHtml;
+
+// Button visibility logic
+let hasSelection = !!(state.selectedPiece);
+let showUseItem = !!(currentPlayer && Array.isArray(currentPlayer.items) && currentPlayer.items.length > 0);
+
+document.getElementById('btn-home').classList.remove('hidden');
+document.getElementById('btn-settings').classList.remove('hidden');
+
+document.getElementById('btn-bid-10').classList.add('hidden');
+document.getElementById('btn-bid-30').classList.add('hidden');
+document.getElementById('btn-pass').classList.add('hidden');
+document.getElementById('btn-start-auction').classList.add('hidden');
+document.getElementById('btn-play-again').classList.add('hidden');
+
+document.getElementById('btn-confirm-move').classList.toggle('hidden', !hasSelection);
+document.getElementById('btn-cancel').classList.toggle('hidden', !hasSelection);
+document.getElementById('btn-use-item').classList.toggle('hidden', !showUseItem);
+document.getElementById('btn-end-turn').classList.remove('hidden'); }
+
+/** @param {object} state renders game result screen */
+function renderGameResult(state) { let resultDisplay = document.getElementById('result-display');
+let resultStats = document.getElementById('result-stats');
+let players = state.players;
+let winnerIdx = determineGameWinner(state);
+let scores = calculatePlayerScores(state);
+
+if (winnerIdx !== null) {
+    let winner = players[winnerIdx];
+    let colorName = winner.color === 'red' ? '红方' : '黑方';
+    resultDisplay.innerHTML = '<h2 class="text-2xl font-bold mb-2">' + winner.name + ' (' + colorName + ') 获胜！</h2>';
+} else {
+    resultDisplay.innerHTML = '<h2 class="text-2xl font-bold mb-2">平局！</h2>';
+}
+
+let statsHtml = '';
+for (let i = 0; i < players.length; i++) {
+    let p = players[i];
+    let colorName = p.color === 'red' ? '红方' : '黑方';
+    let playerScore = 0;
+    if (scores) {
+        if (Array.isArray(scores)) {
+            playerScore = scores[i] || 0;
+        } else {
+            playerScore = scores[p.color] || 0;
+        }
+    }
+    statsHtml += '<div class="flex items-center justify-between p-2 my-1 bg-gray-800 rounded">';
+    statsHtml += '<span class="player-badge ' + p.color + '">' + p.name + ' (' + colorName + ')</span>';
+    statsHtml += '<span class="text-sm">剩余时间: ' + p.timeLeft + 's</span>';
+    statsHtml += '<span class="text-sm font-bold">得分: ' + playerScore + '</span>';
+    statsHtml += '</div>';
+}
+resultStats.innerHTML = statsHtml; }
+
+/* ========== AUCTION LOGIC ========== */
+/** @param {object} state @param {number} playerIndex @param {number} amount @returns {object} new state */
+function placeBid(state, playerIndex, amount) { if (state.screen !== 'auction_phase' || !state.auction || state.auction.phase !== 'bidding') {
+  return state;
+}
+let auction = state.auction;
+if (playerIndex !== auction.nextBidderIndex) {
+  return state;
+}
+if (amount <= 0) {
+  // pass: end bidding, current highest bidder wins (if any)
+  return {
+    ...state,
+    auction: {
+      ...auction,
+      phase: 'resolved',
+      lastBidder: playerIndex
+    }
+  };
+}
+let currentBid = auction.currentBid || 0;
+let newBid = currentBid + amount;
+if (newBid > state.players[playerIndex].timeLeft) {
+  return state;
+}
+let newAuction = {
+  ...auction,
+  currentBid: newBid,
+  currentBidderIndex: playerIndex,
+  nextBidderIndex: 1 - playerIndex,
+  bids: auction.bids ? auction.bids.map((bid, idx) => idx === playerIndex ? newBid : bid) : [null, null]
+};
+return {
+  ...state,
+  auction: newAuction
+}; }
+
+/** @param {object} state @returns {object} new state after auction resolution */
+function resolveAuction(state) { var { players, auction } = state;
+let maxBid = -1, winnerIndex = -1;
+let bids = auction.bids || [];
+for (let bid of bids) {
+    if (bid.amount > maxBid) {
+        maxBid = bid.amount;
+        winnerIndex = bid.playerIndex;
+    }
+}
+let newPlayers = [...players];
+if (winnerIndex >= 0 && maxBid > 0) {
+    let winner = { ...newPlayers[winnerIndex] };
+    winner.time = Math.max(0, winner.time - maxBid);
+    winner.items = [...winner.items, auction.currentItem];
+    newPlayers[winnerIndex] = winner;
+}
+let newState = {
+    ...state,
+    players: newPlayers,
+    auction: {
+        ...auction,
+        currentItem: null,
+        bids: [],
+        currentItemIndex: auction.currentItemIndex + 1,
+        passCount: 0
+    }
+};
+return newState; }
+
+/** @param {object} state @returns {object} new state with fresh auction round */
+function startAuctionRound(state) { let newState = { ...state, auction: { ...state.auction } };
+let auction = newState.auction;
+let itemPool = [...(auction.itemPool || [])];
+let currentItem = null;
+if (itemPool.length > 0) {
+  currentItem = itemPool.shift();
+}
+auction.itemPool = itemPool;
+auction.currentItem = currentItem;
+auction.currentBid = 0;
+auction.highestBidder = -1;
+auction.passedPlayers = [];
+auction.status = 'bidding';
+return newState; }
+
+/** @param {object} state @returns {object|null} current auction item */
+function getCurrentAuctionItem(state) { let items = state.auctionItems;
+let idx = state.auctionIndex;
+if (items && idx >= 0 && idx < items.length) {
+  return items[idx];
+}
+return {}; }
+
+/** @param {object} state @returns {object} player scores */
+function calculatePlayerScores(state) { let pieceValues = { general: 100, rook: 9, cannon: 4.5, horse: 4, elephant: 2, advisor: 2, pawn: 1 };
+let scores = {};
+if (!state.players) return scores;
+for (let player of state.players) {
+  let score = 0;
+  for (let cap of (player.captured || [])) {
+    score += pieceValues[cap.type] || 0;
+  }
+  score += Math.floor((player.timeLeft || 0) / 10);
+  scores[player.color] = score;
+}
+return scores; }
+
+/** @param {object} state @returns {number|null} winner index or null */
+function determineGameWinner(state) { if (isCheckmate(state, 'red')) return 1;
+if (isCheckmate(state, 'black')) return 0;
+return {}; }
+
+/* ========== BOARD RENDERING ========== */
+/** @param {object} state renders the game board into #game-board */
+function renderBoard(state) { let boardEl = document.getElementById('game-board');
+if (!boardEl) return {};
+boardEl.innerHTML = '';
+
+let pieceChars = {
+  red: { general: '帥', advisor: '仕', elephant: '相', horse: '馬', rook: '車', cannon: '炮', pawn: '兵' },
+  black: { general: '將', advisor: '士', elephant: '象', horse: '馬', rook: '車', cannon: '砲', pawn: '卒' }
+};
+
+let selectedRow = -1;
+let selectedCol = -1;
+if (state.selectedPiece) {
+  selectedRow = state.selectedPiece.row;
+  selectedCol = state.selectedPiece.col;
+}
+let validMoves = state.validMoves || [];
+let board = state.board || [];
+
+for (let row = 0; row < 10; row++) {
+  for (let col = 0; col < 9; col++) {
+    let cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.row = row;
+    cell.dataset.col = col;
+
+    if (row === selectedRow && col === selectedCol) {
+      cell.classList.add('selected');
+    }
+
+    for (let i = 0; i < validMoves.length; i++) {
+      if (validMoves[i][0] === row && validMoves[i][1] === col) {
+        cell.classList.add('valid-move');
+        break;
+      }
+    }
+
+    let rowData = board[row];
+    let pieceData = rowData ? rowData[col] : null;
+    if (pieceData) {
+      let pieceDiv = document.createElement('div');
+      pieceDiv.className = 'piece ' + pieceData.color;
+      let colorMap = pieceChars[pieceData.color];
+      pieceDiv.textContent = colorMap && colorMap[pieceData.type] ? colorMap[pieceData.type] : '?';
+      cell.appendChild(pieceDiv);
+    }
+
+    boardEl.appendChild(cell);
+  }
+} }
+
+/** @param {object} state @param {number} row @param {number} col handles board cell click */
+function handleBoardClick(state, row, col) { var { board, currentTurn, selectedPiece, validMoves, phase } = state;
+if (phase !== 'action_phase') { return state; }
+if (!selectedPiece) {
+  let piece = board[row] && board[row][col];
+  if (piece && piece.color === currentTurn) {
+    let moves = [];
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, row, col, currentTurn); break;
+      case 'advisor': moves = getAdvisorMoves(state, row, col, currentTurn); break;
+      case 'elephant': moves = getElephantMoves(state, row, col, currentTurn); break;
+      case 'horse': moves = getHorseMoves(state, row, col, currentTurn); break;
+      case 'rook': moves = getRookMoves(state, row, col, currentTurn); break;
+      case 'cannon': moves = getCannonMoves(state, row, col, currentTurn); break;
+      case 'pawn': moves = getPawnMoves(state, row, col, currentTurn); break;
+      default: moves = [];
+    }
+    let legalMoves = [];
+    for (let i = 0; i < moves.length; i++) {
+      var [tr, tc] = moves[i];
+      let newState = applyMove(state, row, col, tr, tc);
+      if (!isInCheck(newState, currentTurn)) {
+        legalMoves.push(moves[i]);
+      }
+    }
+    return {
+      ...state,
+      selectedPiece: { row, col },
+      validMoves: legalMoves
+    };
+  }
+  return state;
+} else {
+  let { row: selRow, col: selCol } = selectedPiece;
+  if (row === selRow && col === selCol) {
+    return {
+      ...state,
+      selectedPiece: null,
+      validMoves: []
+    };
+  }
+  let piece = board[row] && board[row][col];
+  if (piece && piece.color === currentTurn) {
+    let moves = [];
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, row, col, currentTurn); break;
+      case 'advisor': moves = getAdvisorMoves(state, row, col, currentTurn); break;
+      case 'elephant': moves = getElephantMoves(state, row, col, currentTurn); break;
+      case 'horse': moves = getHorseMoves(state, row, col, currentTurn); break;
+      case 'rook': moves = getRookMoves(state, row, col, currentTurn); break;
+      case 'cannon': moves = getCannonMoves(state, row, col, currentTurn); break;
+      case 'pawn': moves = getPawnMoves(state, row, col, currentTurn); break;
+      default: moves = [];
+    }
+    let legalMoves = [];
+    for (let i = 0; i < moves.length; i++) {
+      var [tr, tc] = moves[i];
+      let newState = applyMove(state, row, col, tr, tc);
+      if (!isInCheck(newState, currentTurn)) {
+        legalMoves.push(moves[i]);
+      }
+    }
+    return {
+      ...state,
+      selectedPiece: { row, col },
+      validMoves: legalMoves
+    };
+  }
+  let isMove = validMoves.some(function(m) { return m[0] === row && m[1] === col; });
+  if (isMove) {
+    let newState = applyMove(state, selRow, selCol, row, col);
+    return {
+      ...newState,
+      selectedPiece: null,
+      validMoves: []
+    };
+  }
+  return {
+    ...state,
+    selectedPiece: null,
+    validMoves: []
+  };
+} }
+
+/* ========== PIECE MOVE VALIDATORS ========== */
+/** @param {object} state @param {number} row @param {number} col @param {string} color 'red'|'black' @returns {Array<[number,number]>} */
+function getGeneralMoves(state, row, col, color) { let moves = [];
+let palaceRowMin, palaceRowMax, palaceColMin = 3, palaceColMax = 5;
+if (color === 'black') {
+  palaceRowMin = 0;
+  palaceRowMax = 2;
+} else {
+  palaceRowMin = 7;
+  palaceRowMax = 9;
+}
+let directions = [[-1,0],[1,0],[0,-1],[0,1]];
+for (let d of directions) {
+  let newR = row + d[0];
+  let newC = col + d[1];
+  if (newR >= palaceRowMin && newR <= palaceRowMax && newC >= palaceColMin && newC <= palaceColMax) {
+    let target = state.board[newR][newC];
+    if (!target || target.color !== color) {
+      moves.push([newR, newC]);
+    }
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getAdvisorMoves(state, row, col, color) { let moves = [];
+let directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+let minRow, maxRow;
+if (color === 'red') {
+  minRow = 7;
+  maxRow = 9;
+} else {
+  minRow = 0;
+  maxRow = 2;
+}
+for (let [dr, dc] of directions) {
+  let nr = row + dr;
+  let nc = col + dc;
+  if (nr >= minRow && nr <= maxRow && nc >= 3 && nc <= 5) {
+    let piece = state.board[nr][nc];
+    if (!piece || piece.color !== color) {
+      moves.push([nr, nc]);
+    }
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getElephantMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+let destinations = [
+  { dr: -2, dc: -2, er: -1, ec: -1 },
+  { dr: -2, dc: 2, er: -1, ec: 1 },
+  { dr: 2, dc: -2, er: 1, ec: -1 },
+  { dr: 2, dc: 2, er: 1, ec: 1 }
+];
+for (let i = 0; i < destinations.length; i++) {
+  let d = destinations[i];
+  let nr = row + d.dr;
+  let nc = col + d.dc;
+  let er = row + d.er;
+  let ec = col + d.ec;
+  if (nr < 0 || nr >= 10 || nc < 0 || nc >= 9) continue;
+  if (color === 'red' && nr < 5) continue;
+  if (color === 'black' && nr > 4) continue;
+  if (board[er][ec] !== null) continue;
+  let target = board[nr][nc];
+  if (target !== null && target.color === color) continue;
+  moves.push([nr, nc]);
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getHorseMoves(state, row, col, color) { let moves = [];
+let horseMoves = [
+  [-1, 0, -2, -1],
+  [-1, 0, -2, 1],
+  [1, 0, 2, -1],
+  [1, 0, 2, 1],
+  [0, -1, -1, -2],
+  [0, -1, 1, -2],
+  [0, 1, -1, 2],
+  [0, 1, 1, 2]
+];
+for (let i = 0; i < horseMoves.length; i++) {
+  let drInt = horseMoves[i][0];
+  let dcInt = horseMoves[i][1];
+  let drDest = horseMoves[i][2];
+  let dcDest = horseMoves[i][3];
+  let intRow = row + drInt;
+  let intCol = col + dcInt;
+  let destRow = row + drDest;
+  let destCol = col + dcDest;
+  if (destRow < 0 || destRow > 9 || destCol < 0 || destCol > 8) continue;
+  if (intRow < 0 || intRow > 9 || intCol < 0 || intCol > 8) continue;
+  if (state.board[intRow][intCol] !== null) continue;
+  let destPiece = state.board[destRow][destCol];
+  if (destPiece !== null && destPiece.color === color) continue;
+  moves.push([destRow, destCol]);
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getRookMoves(state, row, col, color) { let moves = [];
+// up: decrease row
+for (let r = row - 1; r >= 0; r--) {
+  let piece = state.board[r][col];
+  if (!piece) {
+    moves.push([r, col]);
+    continue;
+  }
+  if (piece.color !== color) {
+    moves.push([r, col]); // capture
+  }
+  break; // blocked by any piece
+}
+// down: increase row
+for (let r = row + 1; r <= 9; r++) {
+  let piece = state.board[r][col];
+  if (!piece) {
+    moves.push([r, col]);
+    continue;
+  }
+  if (piece.color !== color) {
+    moves.push([r, col]);
+  }
+  break;
+}
+// left: decrease col
+for (let c = col - 1; c >= 0; c--) {
+  let piece = state.board[row][c];
+  if (!piece) {
+    moves.push([row, c]);
+    continue;
+  }
+  if (piece.color !== color) {
+    moves.push([row, c]);
+  }
+  break;
+}
+// right: increase col
+for (let c = col + 1; c <= 8; c++) {
+  let piece = state.board[row][c];
+  if (!piece) {
+    moves.push([row, c]);
+    continue;
+  }
+  if (piece.color !== color) {
+    moves.push([row, c]);
+  }
+  break;
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getCannonMoves(state, row, col, color) { let moves = [];
+let directions = [[-1,0],[1,0],[0,-1],[0,1]];
+for (let [dr, dc] of directions) {
+  let r = row + dr, c = col + dc;
+  let screenSeen = false;
+  while (r >= 0 && r < 10 && c >= 0 && c < 9) {
+    let piece = state.board[r][c];
+    if (!screenSeen) {
+      if (piece === null) {
+        moves.push([r, c]);
+      } else {
+        screenSeen = true;
+      }
+    } else {
+      if (piece !== null) {
+        if (piece.color !== color) {
+          moves.push([r, c]);
+        }
+        break;
+      }
+    }
+    r += dr;
+    c += dc;
+  }
+}
+return moves; }
+
+/** @param {object} state @param {number} row @param {number} col @param {string} color @returns {Array<[number,number]>} */
+function getPawnMoves(state, row, col, color) { let moves = [];
+let forward = (color === 'red') ? -1 : 1;
+let targetRow = row + forward;
+if (targetRow >= 0 && targetRow <= 9) {
+  let targetCell = state.board[targetRow][col];
+  if (!targetCell || targetCell.color !== color) {
+    moves.push([targetRow, col]);
+  }
+}
+let crossed = (color === 'red' && row <= 4) || (color === 'black' && row >= 5);
+if (crossed) {
+  for (let dc of [-1, 1]) {
+    let nc = col + dc;
+    if (nc >= 0 && nc <= 8) {
+      let targetCell = state.board[row][nc];
+      if (!targetCell || targetCell.color !== color) {
+        moves.push([row, nc]);
+      }
+    }
+  }
+}
+return moves; }
+
+/* ========== CHECK / CHECKMATE ========== */
+/** @param {object} state @param {string} color @returns {boolean} */
+function isInCheck(state, color) { let board = state.board;
+let kingPos = null;
+for (let r = 0; r < 10 && !kingPos; r++) {
+  for (let c = 0; c < 9; c++) {
+    let piece = board[r][c];
+    if (piece && piece.type === 'general' && piece.color === color) {
+      kingPos = { row: r, col: c };
+      break;
+    }
+  }
+}
+if (!kingPos) return false;
+
+for (let r = 0; r < 10; r++) {
+  for (let c = 0; c < 9; c++) {
+    let piece = board[r][c];
+    if (!piece || piece.color === color) continue;
+    let moves = [];
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, r, c, piece.color); break;
+      case 'advisor': moves = getAdvisorMoves(state, r, c, piece.color); break;
+      case 'elephant': moves = getElephantMoves(state, r, c, piece.color); break;
+      case 'horse': moves = getHorseMoves(state, r, c, piece.color); break;
+      case 'rook': moves = getRookMoves(state, r, c, piece.color); break;
+      case 'cannon': moves = getCannonMoves(state, r, c, piece.color); break;
+      case 'pawn': moves = getPawnMoves(state, r, c, piece.color); break;
+    }
+    for (let i = 0; i < moves.length; i++) {
+      if (moves[i][0] === kingPos.row && moves[i][1] === kingPos.col) return true;
+    }
+  }
+}
+
+let opponentColor = color === 'red' ? 'black' : 'red';
+let oppKingPos = null;
+for (let r = 0; r < 10 && !oppKingPos; r++) {
+  for (let c = 0; c < 9; c++) {
+    let piece = board[r][c];
+    if (piece && piece.type === 'general' && piece.color === opponentColor) {
+      oppKingPos = { row: r, col: c };
+      break;
+    }
+  }
+}
+if (oppKingPos && kingPos.col === oppKingPos.col) {
+  let minRow = Math.min(kingPos.row, oppKingPos.row);
+  let maxRow = Math.max(kingPos.row, oppKingPos.row);
+  let blocked = false;
+  for (let r = minRow + 1; r < maxRow; r++) {
+    if (board[r][kingPos.col] !== null) {
+      blocked = true;
+      break;
+    }
+  }
+  if (!blocked) return true;
+}
+
+return false; }
+
+/** @param {object} state @param {string} color @returns {boolean} */
+function isCheckmate(state, color) { let moves;
+for (let row = 0; row < 10; row++) {
+  for (let col = 0; col < 9; col++) {
+    let piece = state.board[row][col];
+    if (!piece || piece.color !== color) continue;
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, row, col, color); break;
+      case 'advisor': moves = getAdvisorMoves(state, row, col, color); break;
+      case 'elephant': moves = getElephantMoves(state, row, col, color); break;
+      case 'horse': moves = getHorseMoves(state, row, col, color); break;
+      case 'rook': moves = getRookMoves(state, row, col, color); break;
+      case 'cannon': moves = getCannonMoves(state, row, col, color); break;
+      case 'pawn': moves = getPawnMoves(state, row, col, color); break;
+      default: continue;
+    }
+    for (let [tr, tc] of moves) {
+      let newState = applyMove(state, row, col, tr, tc);
+      if (!isInCheck(newState, color)) return false;
+    }
+  }
+}
+return true; }
+
+/* ========== AI ========== */
+/** @param {object} state @returns {object} action for AI move */
+function getAIMove(state) { let aiColor = state.currentPlayer;
+let allMoves = [];
+
+// piece values for evaluation
+let PIECE_VALUES = {
+  general: 10000,
+  rook: 600,
+  cannon: 300,
+  horse: 270,
+  elephant: 120,
+  advisor: 120,
+  pawn: 30
+};
+
+// Helper: evaluate material advantage for AI color in a given state
+let evaluateState = (st, color) => {
+  let score = 0;
+  for (let r = 0; r < 10; r++) {
+    for (let c = 0; c < 9; c++) {
+      let piece = st.board[r][c];
+      if (!piece) continue;
+      let val = PIECE_VALUES[piece.type] || 0;
+      // Pawn bonus for crossing river
+      if (piece.type === 'pawn') {
+        if ((piece.color === 'red' && r >= 5) || (piece.color === 'black' && r <= 4)) {
+          val = 60;
+        }
+      }
+      if (piece.color === color) score += val;
+      else score -= val;
+    }
+  }
+  return score;
+};
+
+// Collect all valid moves for AI color
+for (let r = 0; r < 10; r++) {
+  for (let c = 0; c < 9; c++) {
+    let piece = state.board[r][c];
+    if (!piece || piece.color !== aiColor) continue;
+    let moves = [];
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, r, c, aiColor); break;
+      case 'advisor': moves = getAdvisorMoves(state, r, c, aiColor); break;
+      case 'elephant': moves = getElephantMoves(state, r, c, aiColor); break;
+      case 'horse': moves = getHorseMoves(state, r, c, aiColor); break;
+      case 'rook': moves = getRookMoves(state, r, c, aiColor); break;
+      case 'cannon': moves = getCannonMoves(state, r, c, aiColor); break;
+      case 'pawn': moves = getPawnMoves(state, r, c, aiColor); break;
+    }
+    for (let [tr, tc] of moves) {
+      // Simulate to ensure move does not leave own king in check
+      let newState = JSON.parse(JSON.stringify(state));
+      newState = applyMove(newState, r, c, tr, tc);
+      if (!isInCheck(newState, aiColor)) {
+        let score = evaluateState(newState, aiColor);
+        allMoves.push({ fromRow: r, fromCol: c, toRow: tr, toCol: tc, score });
+      }
+    }
+  }
+}
+
+// If no legal moves, return end turn action (maybe checkmate, handle by caller)
+if (allMoves.length === 0) {
+  return { type: 'end_turn' };
+}
+
+// Sort by score descending
+allMoves.sort((a, b) => b.score - a.score);
+
+// Choose among the best moves (top score)
+let bestScore = allMoves[0].score;
+let bestMoves = allMoves.filter(m => m.score === bestScore);
+let chosen = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+
+return {
+  type: 'ai_move',
+  fromRow: chosen.fromRow,
+  fromCol: chosen.fromCol,
+  toRow: chosen.toRow,
+  toCol: chosen.toCol
+}; }
+
+/* ========== MOVE APPLICATION ========== */
+/** @param {object} state @param {number} fromRow @param {number} fromCol @param {number} toRow @param {number} toCol @returns {object} new state */
+function applyMove(state, fromRow, fromCol, toRow, toCol) { let newState = JSON.parse(JSON.stringify(state));
+let piece = newState.board[fromRow][fromCol];
+if (!piece) return newState;
+newState.board[toRow][toCol] = piece;
+newState.board[fromRow][fromCol] = null;
+newState.selectedCell = null;
+newState.currentPlayer = newState.currentPlayer === 'red' ? 'black' : 'red';
+return newState; }
+
+/* ========== BOOT ========== */
+document.addEventListener('DOMContentLoaded', startGame);
+
+        function getPieceEmoji(pieceType) { const emojis = ['⭐','💎','🔮','🌟','✨','💫']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+
+</body>
+</html>

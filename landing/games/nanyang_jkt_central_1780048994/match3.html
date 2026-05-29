@@ -1,0 +1,1280 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>消消乐 - Match-3</title>
+<script src="https://cdn.tailwindcss.com">
+</script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  .screen{position:fixed;inset:0;overflow-y:auto;padding-bottom:80px}
+  #game-board{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;width:min(90vw,360px);aspect-ratio:1;margin:0 auto}
+  .board-cell{border-radius:8px;aspect-ratio:1;cursor:pointer;transition:transform .15s;position:relative}
+  .board-cell:active{transform:scale(.9)}
+  .gem{width:100%;height:100%;border-radius:50%;box-shadow:inset -3px -3px 6px rgba(0,0,0,.3),inset 3px 3px 6px rgba(255,255,255,.4)}
+  .gem-0{background:radial-gradient(circle at 35% 35%,#ff6b6b,#c0392b)}
+  .gem-1{background:radial-gradient(circle at 35% 35%,#5dade2,#1f618d)}
+  .gem-2{background:radial-gradient(circle at 35% 35%,#58d68d,#1e8449)}
+  .gem-3{background:radial-gradient(circle at 35% 35%,#f4d03f,#b7950b)}
+  .gem-4{background:radial-gradient(circle at 35% 35%,#af7ac5,#6c3483)}
+  .gem-5{background:radial-gradient(circle at 35% 35%,#f0b27a,#ca6f1e)}
+  .cell-selected{outline:3px solid #fff;outline-offset:-2px;animation:pulse .8s infinite}
+  .cell-matched{animation:pop .3s forwards}
+  @keyframes pulse{0%,100%{box-shadow:0 0 8px 4px rgba(255,255,255,.6)}50%{box-shadow:0 0 16px 8px rgba(255,255,255,.9)}}
+  @keyframes pop{0%{transform:scale(1);opacity:1}100%{transform:scale(0);opacity:0}}
+  #powerup-bar{background:rgba(0,0,0,.85);backdrop-filter:blur(8px)}
+  .btn-power{min-width:56px;height:44px;border-radius:12px;font-size:13px;font-weight:600;border:2px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;gap:4px}
+  .btn-power:active{transform:scale(.93)}
+</style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS — 南洋茶饮 */
+:root {
+  --kix-brand: #5B3A29;
+  --kix-accent: #D4A76A;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #5B3A29, #2d1d14) !important;
+  --tw-gradient-from: #5B3A29 !important;
+  --tw-gradient-to: #2d1d14 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #5B3A29 !important;
+  background: #5B3A29 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #2d1d14 !important;
+  background: #2d1d14 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #5B3A29 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-gray-900 text-white">
+
+<!-- SCREENS -->
+<div id="home-screen" class="screen active flex flex-col items-center justify-center gap-6 p-6">
+  <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">南洋茶饮</h1>
+  <p class="text-gray-400 text-lg mb-2">Match-3 Puzzle</p>
+  <button id="btn-play" class="w-48 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-xl font-bold shadow-lg active:scale-95 transition-transform">开始游戏</button>
+  <button id="btn-highscores-home" class="w-48 py-3 bg-gray-700 rounded-xl text-base font-medium active:scale-95">🏆 排行榜</button>
+  <div class="flex gap-4 mt-2">
+    <button id="btn-settings-home" class="w-24 py-3 bg-gray-700 rounded-xl text-sm active:scale-95">⚙️ 设置</button>
+    <button id="btn-shop-home" class="w-24 py-3 bg-amber-700 rounded-xl text-sm active:scale-95">🛒 商店</button>
+  </div>
+</div>
+
+<div id="level_select-screen" class="screen flex flex-col p-4">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-back-levelselect" class="px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95">← 返回</button>
+    <h2 class="text-xl font-bold">选择关卡</h2>
+  </div>
+  <div id="level-grid" class="grid grid-cols-4 gap-3 max-w-sm mx-auto w-full"></div>
+</div>
+
+<div id="gameplay-screen" class="screen flex flex-col items-center p-2">
+  <div class="w-full max-w-sm flex items-center justify-between px-2 py-2 mb-1">
+    <button id="btn-pause" class="px-3 py-2 bg-gray-700 rounded-lg text-sm active:scale-95">⏸</button>
+    <div class="text-center"><span class="text-xs text-gray-400">关卡</span><div id="level-display" class="font-bold text-lg">1</div></div>
+    <div class="text-center"><span class="text-xs text-gray-400">分数</span><div id="score-display" class="font-bold text-lg text-yellow-400">0</div></div>
+    <div class="text-center"><span class="text-xs text-gray-400">步数</span><div id="moves-display" class="font-bold text-lg">30</div></div>
+    <div class="text-center"><span class="text-xs text-gray-400">目标</span><div id="target-display" class="font-bold text-lg text-green-400">1000</div></div>
+  </div>
+  <div id="combo-display" class="text-sm text-orange-400 h-5 mb-1"></div>
+  <div id="game-board" class="bg-gray-800 p-1 rounded-xl shadow-2xl"></div>
+</div>
+
+<!-- OVERLAYS (not .screen elements) -->
+<div id="pause_menu-overlay" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 p-6 bg-black/70">
+  <div class="bg-gray-800 rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+    <h2 class="text-2xl font-bold mb-2">暂停</h2>
+    <button id="btn-resume" class="w-44 py-4 bg-green-600 rounded-2xl text-lg font-bold active:scale-95">继续游戏</button>
+    <button id="btn-restart" class="w-44 py-3 bg-yellow-600 rounded-xl text-base active:scale-95">重新开始</button>
+    <button id="btn-quit" class="w-44 py-3 bg-red-700 rounded-xl text-base active:scale-95">退出菜单</button>
+  </div>
+</div>
+
+<div id="game_result-overlay" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-black/60">
+  <div class="bg-gray-800 rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl text-center">
+    <div id="result-icon" class="text-6xl mb-2">🎉</div>
+    <h2 id="result-title" class="text-2xl font-bold"></h2>
+    <div id="result-stars" class="text-4xl"></div>
+    <p class="text-gray-300">得分: <span id="result-score" class="font-bold text-yellow-400"></span></p>
+    <button id="btn-next-level" class="w-44 py-4 bg-green-600 rounded-2xl text-lg font-bold active:scale-95 hidden">下一关</button>
+    <button id="btn-retry" class="w-44 py-3 bg-yellow-600 rounded-xl text-base active:scale-95">重新尝试</button>
+    <button id="btn-menu-result" class="w-44 py-3 bg-gray-600 rounded-xl text-base active:scale-95">返回菜单</button>
+  </div>
+</div>
+
+<div id="settings-screen" class="screen flex flex-col p-4">
+  <div class="flex items-center gap-3 mb-6">
+    <button id="btn-back-settings" class="px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95">← 返回</button>
+    <h2 class="text-xl font-bold">设置</h2>
+  </div>
+  <div class="max-w-sm mx-auto w-full flex flex-col gap-4">
+    <div class="flex items-center justify-between bg-gray-800 rounded-xl p-4">
+      <span class="text-lg">🔊 音效</span>
+      <button id="btn-toggle-sound" class="w-14 h-8 bg-green-500 rounded-full relative transition-colors"><span class="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow"></span></button>
+    </div>
+    <div class="flex items-center justify-between bg-gray-800 rounded-xl p-4">
+      <span class="text-lg">🎵 音乐</span>
+      <button id="btn-toggle-music" class="w-14 h-8 bg-green-500 rounded-full relative transition-colors"><span class="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow"></span></button>
+    </div>
+  </div>
+</div>
+
+<div id="shop-screen" class="screen flex flex-col p-4">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-back-shop" class="px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95">← 返回</button>
+    <h2 class="text-xl font-bold">商店</h2>
+    <span class="ml-auto text-yellow-400 font-bold">🪙 <span id="coins-display">100</span></span>
+  </div>
+  <div id="shop-items" class="max-w-sm mx-auto w-full flex flex-col gap-3"></div>
+</div>
+
+<div id="high_scores-screen" class="screen flex flex-col p-4">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-back-highscores" class="px-4 py-2 bg-gray-700 rounded-lg text-sm active:scale-95">← 返回</button>
+    <h2 class="text-xl font-bold">🏆 排行榜</h2>
+  </div>
+  <div id="high-scores-list" class="max-w-sm mx-auto w-full flex flex-col gap-2"></div>
+</div>
+
+<!-- FIXED BOTTOM POWER-UP BAR -->
+<div id="powerup-bar" class="fixed bottom-0 left-0 right-0 z-40 hidden flex items-center justify-center gap-3 px-3 py-2">
+  <button id="btn-powerup-hammer" class="btn-power bg-red-700 flex-col text-xs leading-tight"><span>🔨</span><span id="hammer-count">0</span></button>
+  <button id="btn-powerup-shuffle" class="btn-power bg-blue-700 flex-col text-xs leading-tight"><span>🔀</span><span id="shuffle-count">0</span></button>
+  <button id="btn-powerup-bomb" class="btn-power bg-purple-700 flex-col text-xs leading-tight"><span>💣</span><span id="bomb-count">0</span></button>
+</div>
+
+<script>
+/* ========== STATE ========== */
+
+/** @returns {object} initial game state */
+function initState() {
+  let levelsConfig = [];
+  for (let i = 1; i <= 10; i++) {
+    levelsConfig.push({
+      level: i,
+      moves: Math.max(15, 32 - i * 2),
+      target: i * 1000,
+      unlocked: i <= 1,
+      stars: 0
+    });
+  }
+  return {
+    screen: 'home',
+    board: null,
+    rows: 8,
+    cols: 8,
+    gemTypes: 6,
+    level: 1,
+    maxUnlockedLevel: 1,
+    levels: levelsConfig,
+    score: 0,
+    movesLeft: levelsConfig[0].moves,
+    targetScore: levelsConfig[0].target,
+    selected: null,
+    powerUps: {
+      hammer: 0,
+      shuffle: 0,
+      bomb: 0
+    },
+    pendingPowerUp: null,
+    coins: 100,
+    soundEnabled: true,
+    musicEnabled: true,
+    highScores: [],
+    result: null,
+    combo: 0
+  };
+}
+
+/* ========== SCREEN NAVIGATION ========== */
+
+/**
+ * Shows the screen with the given base ID
+ * @param {string} screenId - base screen name (e.g. 'home', 'gameplay')
+ */
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(function(screen) {
+    screen.classList.remove('active');
+  });
+  let targetScreen = document.getElementById(screenId + '-screen');
+  if (targetScreen) {
+    targetScreen.classList.add('active');
+  }
+  let powerupBar = document.getElementById('powerup-bar');
+  if (screenId === 'gameplay') {
+    powerupBar.classList.remove('hidden');
+  } else {
+    powerupBar.classList.add('hidden');
+  }
+}
+
+/* ========== BOARD LOGIC ========== */
+
+/**
+ * Generates a new board without initial matches
+ * @param {object} state
+ * @returns {Array<Array<number>>} 2D board array
+ */
+function generateBoard(state) {
+  let rows = state.rows || 8;
+  let cols = state.cols || 8;
+  let numTypes = state.gemTypes || 6;
+  let board = [];
+  for (let r = 0; r < rows; r++) {
+    board[r] = [];
+    for (let c = 0; c < cols; c++) {
+      let gem;
+      do {
+        gem = Math.floor(Math.random() * numTypes);
+      } while (
+        (c >= 2 && board[r][c - 1] === gem && board[r][c - 2] === gem) ||
+        (r >= 2 && board[r - 1][c] === gem && board[r - 2][c] === gem)
+      );
+      board[r][c] = gem;
+    }
+  }
+  return board;
+}
+
+/**
+ * Finds all matches (3+ in a row/column) on the board
+ * @param {object} state
+ * @returns {Array<{row:number,col:number}>} array of matched positions
+ */
+function findMatches(state) {
+  let matchesSet = {};
+  let board = state.board;
+  let rows = board.length;
+  let cols = board[0].length;
+
+  // Check rows
+  for (let r = 0; r < rows; r++) {
+    let runStart = 0;
+    let runValue = -1;
+    for (let c = 0; c <= cols; c++) {
+      let val = (c < cols) ? board[r][c] : -2;
+      if (c < cols && val === -1) {
+        if (runValue !== -1 && c - runStart >= 3) {
+          for (let k = runStart; k < c; k++) {
+            matchesSet[r + ',' + k] = true;
+          }
+        }
+        runStart = c + 1;
+        runValue = -1;
+        continue;
+      }
+      if (c < cols && val === runValue) {
+        continue;
+      } else {
+        if (runValue !== -1 && c - runStart >= 3) {
+          for (let k = runStart; k < c; k++) {
+            matchesSet[r + ',' + k] = true;
+          }
+        }
+        if (c < cols) {
+          runStart = c;
+          runValue = val;
+        }
+      }
+      if (c >= cols) {
+        if (runValue !== -1 && c - runStart >= 3) {
+          for (let k = runStart; k < c; k++) {
+            matchesSet[r + ',' + k] = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Check columns
+  for (let c = 0; c < cols; c++) {
+    let runStart = 0;
+    let runValue = -1;
+    for (let r = 0; r <= rows; r++) {
+      let val = (r < rows) ? board[r][c] : -2;
+      if (r < rows && val === -1) {
+        if (runValue !== -1 && r - runStart >= 3) {
+          for (let k = runStart; k < r; k++) {
+            matchesSet[k + ',' + c] = true;
+          }
+        }
+        runStart = r + 1;
+        runValue = -1;
+        continue;
+      }
+      if (r < rows && val === runValue) {
+        continue;
+      } else {
+        if (runValue !== -1 && r - runStart >= 3) {
+          for (let k = runStart; k < r; k++) {
+            matchesSet[k + ',' + c] = true;
+          }
+        }
+        if (r < rows) {
+          runStart = r;
+          runValue = val;
+        }
+      }
+      if (r >= rows) {
+        if (runValue !== -1 && r - runStart >= 3) {
+          for (let k = runStart; k < r; k++) {
+            matchesSet[k + ',' + c] = true;
+          }
+        }
+      }
+    }
+  }
+
+  let matches = [];
+  let keys = Object.keys(matchesSet);
+  for (let i = 0; i < keys.length; i++) {
+    let parts = keys[i].split(',');
+    matches.push({row: parseInt(parts[0], 10), col: parseInt(parts[1], 10)});
+  }
+  return matches;
+}
+
+/**
+ * Removes matched pieces from the board (sets to -1)
+ * @param {object} state
+ * @param {Array<{row:number,col:number}>} matches
+ * @returns {object} new state
+ */
+function removeMatches(state, matches) {
+  for (let i = 0; i < matches.length; i++) {
+    let row = matches[i].row;
+    let col = matches[i].col;
+    state.board[row][col] = -1;
+  }
+  return state;
+}
+
+/**
+ * Applies gravity - pieces fall down to fill empty cells
+ * @param {object} state
+ * @returns {object} new state
+ */
+function applyGravity(state) {
+  let board = state.board.map(function(row) { return [...row]; });
+  let rows = board.length;
+  let cols = board[0].length;
+  for (let c = 0; c < cols; c++) {
+    let values = [];
+    for (let r = 0; r < rows; r++) {
+      if (board[r][c] !== -1) {
+        values.push(board[r][c]);
+      }
+    }
+    for (let r = rows - 1; r >= 0; r--) {
+      if (values.length > 0) {
+        board[r][c] = values.pop();
+      } else {
+        board[r][c] = -1;
+      }
+    }
+  }
+  return { ...state, board: board };
+}
+
+/**
+ * Fills empty cells with new random pieces
+ * @param {object} state
+ * @returns {object} new state
+ */
+function fillBoard(state) {
+  let board = state.board;
+  let gemTypes = state.gemTypes || 6;
+  let rows = state.rows || 8;
+  let cols = state.cols || 8;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c] === -1) {
+        board[r][c] = Math.floor(Math.random() * gemTypes);
+      }
+    }
+  }
+  return state;
+}
+
+/**
+ * Checks if a swap between two adjacent cells is valid
+ * @param {object} state
+ * @param {number} r1
+ * @param {number} c1
+ * @param {number} r2
+ * @param {number} c2
+ * @returns {boolean}
+ */
+function isValidSwap(state, r1, c1, r2, c2) {
+  let board = state.board;
+  let rows = board.length;
+  let cols = board[0].length;
+  if (r1 < 0 || r1 >= rows || c1 < 0 || c1 >= cols || r2 < 0 || r2 >= rows || c2 < 0 || c2 >= cols) {
+    return false;
+  }
+  let dr = Math.abs(r1 - r2);
+  let dc = Math.abs(c1 - c2);
+  if (!((dr === 1 && dc === 0) || (dr === 0 && dc === 1))) {
+    return false;
+  }
+  let newBoard = board.map(function(row) { return [...row]; });
+  let temp = newBoard[r1][c1];
+  newBoard[r1][c1] = newBoard[r2][c2];
+  newBoard[r2][c2] = temp;
+  let tempState = { ...state, board: newBoard };
+  let matches = findMatches(tempState);
+  return matches.length > 0;
+}
+
+/**
+ * Gets adjacent cell positions (up/down/left/right)
+ * @param {number} row
+ * @param {number} col
+ * @param {number} maxRows
+ * @param {number} maxCols
+ * @returns {Array<Array<number>>}
+ */
+function getAdjacentCells(row, col, maxRows, maxCols) {
+  let adjacent = [];
+  if (row > 0) adjacent.push([row - 1, col]);
+  if (row < maxRows - 1) adjacent.push([row + 1, col]);
+  if (col > 0) adjacent.push([row, col - 1]);
+  if (col < maxCols - 1) adjacent.push([row, col + 1]);
+  return adjacent;
+}
+
+/**
+ * Handles a board cell click - selects or swaps pieces
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @returns {object} new state
+ */
+function handleBoardClick(state, row, col) {
+  let rows = state.rows || 8;
+  let cols = state.cols || 8;
+  if (row < 0 || row >= rows || col < 0 || col >= cols) return state;
+  let cellValue = state.board[row][col];
+  if (cellValue === -1 || cellValue == null) return state;
+
+  if (state.selected === null) {
+    return { ...state, selected: { row: row, col: col } };
+  }
+
+  let sRow = state.selected.row;
+  let sCol = state.selected.col;
+
+  if (sRow === row && sCol === col) {
+    return { ...state, selected: null };
+  }
+
+  let adjacentCells = getAdjacentCells(sRow, sCol, rows, cols);
+  let isAdjacent = false;
+  for (let i = 0; i < adjacentCells.length; i++) {
+    if (adjacentCells[i][0] === row && adjacentCells[i][1] === col) {
+      isAdjacent = true;
+      break;
+    }
+  }
+
+  if (!isAdjacent) {
+    return { ...state, selected: { row: row, col: col } };
+  }
+
+  if (!isValidSwap(state, sRow, sCol, row, col)) {
+    return { ...state, selected: { row: row, col: col } };
+  }
+
+  let newState = { ...state, board: state.board.map(function(r) { return [...r]; }) };
+  let tmp = newState.board[sRow][sCol];
+  newState.board[sRow][sCol] = newState.board[row][col];
+  newState.board[row][col] = tmp;
+
+  newState.movesLeft = state.movesLeft - 1;
+  newState.selected = null;
+
+  let comboCount = 0;
+  let processing = true;
+  while (processing) {
+    let matches = findMatches(newState);
+    if (!matches || matches.length === 0) {
+      processing = false;
+      break;
+    }
+    comboCount++;
+    let points = matches.length * 10 * comboCount;
+    newState.score += points;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+
+    newState = removeMatches(newState, matches);
+    newState = applyGravity(newState);
+    newState = fillBoard(newState);
+  }
+
+  newState.combo = comboCount;
+  return newState;
+}
+
+/**
+ * Checks if the current level is complete (win or lose)
+ * @param {object} state
+ * @returns {object} new state with result set
+ */
+function checkLevelComplete(state) {
+  if (state.movesLeft <= 0 || state.score >= state.targetScore) {
+    let won = state.score >= state.targetScore;
+    let stars = 0;
+    if (won) {
+      stars = 1;
+      if (state.score >= state.targetScore * 2) {
+        stars = 3;
+      } else if (state.score >= state.targetScore * 1.5) {
+        stars = 2;
+      }
+    }
+    return {
+      ...state,
+      screen: 'game_result',
+      result: {
+        outcome: won ? 'win' : 'lose',
+        score: state.score,
+        stars: stars
+      }
+    };
+  }
+  return state;
+}
+
+/* ========== POWER-UPS ========== */
+
+/**
+ * Uses a power-up on the board
+ * @param {object} state
+ * @param {string} powerUpType - 'hammer' | 'shuffle' | 'bomb'
+ * @param {number} [row]
+ * @param {number} [col]
+ * @returns {object} new state
+ */
+function usePowerUp(state, powerUpType, row, col) {
+  let powerUpKey = powerUpType;
+  if (!state.powerUps || state.powerUps[powerUpKey] === undefined || state.powerUps[powerUpKey] <= 0) {
+    return state;
+  }
+
+  let rows = state.rows || 8;
+  let cols = state.cols || 8;
+
+  let newPowerUps = { ...state.powerUps };
+  newPowerUps[powerUpKey] = newPowerUps[powerUpKey] - 1;
+  let newState = { ...state, powerUps: newPowerUps };
+
+  if (powerUpKey === 'hammer') {
+    if (row !== undefined && col !== undefined && row >= 0 && row < rows && col >= 0 && col < cols) {
+      let newBoard = state.board.map(function(r) { return [...r]; });
+      newBoard[row][col] = -1;
+      newState = { ...newState, board: newBoard };
+      newState = applyGravity(newState);
+      newState = fillBoard(newState);
+      let matches = findMatches(newState);
+      while (matches.length > 0) {
+        newState = removeMatches(newState, matches);
+        newState = applyGravity(newState);
+        newState = fillBoard(newState);
+        matches = findMatches(newState);
+      }
+    }
+  } else if (powerUpKey === 'bomb') {
+    if (row !== undefined && col !== undefined) {
+      let newBoard = state.board.map(function(r) { return [...r]; });
+      for (let r = row - 1; r <= row + 1; r++) {
+        for (let c = col - 1; c <= col + 1; c++) {
+          if (r >= 0 && r < rows && c >= 0 && c < cols) {
+            newBoard[r][c] = -1;
+          }
+        }
+      }
+      newState = { ...newState, board: newBoard };
+      newState = applyGravity(newState);
+      newState = fillBoard(newState);
+      let matches = findMatches(newState);
+      while (matches.length > 0) {
+        newState = removeMatches(newState, matches);
+        newState = applyGravity(newState);
+        newState = fillBoard(newState);
+        matches = findMatches(newState);
+      }
+    }
+  } else if (powerUpKey === 'shuffle') {
+    let newBoard = state.board.map(function(r) { return [...r]; });
+    let allValues = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        allValues.push(newBoard[r][c]);
+      }
+    }
+    for (let i = allValues.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
+      let temp = allValues[i];
+      allValues[i] = allValues[j];
+      allValues[j] = temp;
+    }
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        newBoard[r][c] = allValues[idx];
+        idx++;
+      }
+    }
+    newState = { ...newState, board: newBoard };
+    let matches = findMatches(newState);
+    while (matches.length > 0) {
+      newState = removeMatches(newState, matches);
+      newState = applyGravity(newState);
+      newState = fillBoard(newState);
+      matches = findMatches(newState);
+    }
+  }
+
+  return newState;
+}
+
+/* ========== RENDER ========== */
+
+/**
+ * Renders the game board grid into #game-board
+ * @param {object} state
+ */
+function renderBoard(state) {
+  let boardEl = document.getElementById('game-board');
+  boardEl.innerHTML = '';
+  let board = state.board;
+  let rows = board.length;
+  let cols = board[0].length;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let cell = document.createElement('div');
+      cell.className = 'board-cell';
+      cell.setAttribute('data-row', r);
+      cell.setAttribute('data-col', c);
+      let gemType = board[r][c];
+      if (gemType >= 0) {
+        let gem = document.createElement('div');
+        gem.className = 'gem gem-' + gemType;
+        cell.appendChild(gem);
+      }
+      if (state.selected && state.selected.row === r && state.selected.col === c) {
+        cell.classList.add('cell-selected');
+      }
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+/**
+ * Renders the level select grid
+ * @param {object} state
+ */
+function renderLevelSelect(state) {
+  let grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  let levels = state.levels;
+  for (let i = 0; i < levels.length; i++) {
+    let lv = levels[i];
+    let btn = document.createElement('button');
+    btn.className = 'bg-gray-700 rounded-xl p-3 flex flex-col items-center justify-center gap-1';
+    if (!lv.unlocked) {
+      btn.classList.add('opacity-50');
+      btn.style.pointerEvents = 'none';
+    }
+    btn.setAttribute('data-level', lv.level);
+    let starsHtml = '';
+    for (let s = 0; s < 3; s++) {
+      starsHtml += s < lv.stars ? '★' : '☆';
+    }
+    btn.innerHTML = '<span class="text-lg font-bold">' + lv.level + '</span><span class="text-yellow-400 text-xs">' + starsHtml + '</span>';
+    btn.addEventListener('click', function() {
+      let lvl = parseInt(this.getAttribute('data-level'), 10);
+      if (!isNaN(lvl)) {
+        gameState = handleAction(gameState, { type: 'start_level', level: lvl });
+        render(gameState);
+      }
+    });
+    grid.appendChild(btn);
+  }
+}
+
+/**
+ * Renders the shop items
+ * @param {object} state
+ */
+function renderShop(state) {
+  let coinsEl = document.getElementById('coins-display');
+  if (coinsEl) {
+    coinsEl.textContent = state.coins;
+  }
+  let shopList = document.getElementById('shop-items');
+  if (!shopList) return;
+  shopList.innerHTML = '';
+  let items = [
+    { id: 'hammer', name: '🔨 锤子', price: 100, desc: '消除单个方块' },
+    { id: 'shuffle', name: '🔀 洗牌', price: 80, desc: '随机重排棋盘' },
+    { id: 'bomb', name: '💣 炸弹', price: 120, desc: '消除3x3区域' }
+  ];
+  for (let i = 0; i < items.length; i++) {
+    let item = items[i];
+    let owned = state.powerUps ? (state.powerUps[item.id] || 0) : 0;
+    let div = document.createElement('div');
+    div.className = 'bg-gray-800 rounded-xl p-4 flex items-center justify-between';
+    div.innerHTML = '<div><div class="font-bold text-lg">' + item.name + '</div><div class="text-sm text-gray-400">' + item.desc + '</div><div class="text-yellow-400 text-sm">💰 ' + item.price + '</div><div class="text-xs text-gray-500">拥有: ' + owned + '</div></div><button class="buy-btn px-4 py-2 bg-green-600 rounded-lg font-bold active:scale-95">购买</button>';
+    let btn = div.querySelector('.buy-btn');
+    (function(itemId) {
+      btn.addEventListener('click', function() {
+        gameState = handleAction(gameState, { type: 'buy_powerup', powerup: itemId });
+        render(gameState);
+      });
+    })(item.id);
+    shopList.appendChild(div);
+  }
+}
+
+/**
+ * Renders high scores list
+ * @param {object} state
+ */
+function renderHighScores(state) {
+  let list = document.getElementById('high-scores-list');
+  if (!list) return;
+  list.innerHTML = '';
+  let scores = state.highScores || [];
+  if (scores.length === 0) {
+    list.innerHTML = '<div class="text-gray-400 text-center py-8">暂无记录</div>';
+    return;
+  }
+  let sorted = [...scores].sort(function(a, b) { return b.score - a.score; });
+  for (let i = 0; i < sorted.length; i++) {
+    let entry = sorted[i];
+    let idx = i;
+    let item = document.createElement('div');
+    item.className = 'bg-gray-800 rounded-xl p-3 flex justify-between items-center';
+    let rank = document.createElement('span');
+    let rankColor = idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-400';
+    rank.className = 'text-lg font-bold ' + rankColor;
+    rank.textContent = '#' + (idx + 1);
+    let name = document.createElement('span');
+    name.className = 'flex-1 ml-3 text-white';
+    name.textContent = entry.name || '匿名';
+    let scoreSpan = document.createElement('span');
+    scoreSpan.className = 'font-bold text-yellow-400';
+    scoreSpan.textContent = entry.score;
+    item.appendChild(rank);
+    item.appendChild(name);
+    item.appendChild(scoreSpan);
+    list.appendChild(item);
+  }
+}
+
+/**
+ * Renders the game result overlay
+ * @param {object} state
+ */
+function renderGameResult(state) {
+  let resultIcon = document.getElementById('result-icon');
+  let resultTitle = document.getElementById('result-title');
+  let resultStars = document.getElementById('result-stars');
+  let resultScore = document.getElementById('result-score');
+  let btnNext = document.getElementById('btn-next-level');
+
+  let outcome = state.result ? state.result.outcome : 'lose';
+  let score = state.result ? state.result.score : 0;
+  let stars = state.result ? state.result.stars : 0;
+
+  if (outcome === 'win') {
+    resultIcon.textContent = '🎉';
+    resultTitle.textContent = '恭喜过关！';
+    resultStars.textContent = '';
+    for (let s = 0; s < stars; s++) {
+      resultStars.textContent += '⭐';
+    }
+    btnNext.classList.remove('hidden');
+  } else {
+    resultIcon.textContent = '😞';
+    resultTitle.textContent = '挑战失败';
+    resultStars.textContent = '';
+    btnNext.classList.add('hidden');
+  }
+  resultScore.textContent = score;
+}
+
+/**
+ * Main render function - updates entire DOM from state
+ * @param {object} state
+ */
+function render(state) {
+  // Show/hide screen overlays
+  let pauseOverlay = document.getElementById('pause_menu-overlay');
+  let resultOverlay = document.getElementById('game_result-overlay');
+
+  if (state.screen === 'pause_menu') {
+    showScreen('gameplay');
+    if (pauseOverlay) pauseOverlay.classList.remove('hidden');
+    if (resultOverlay) resultOverlay.classList.add('hidden');
+    document.getElementById('powerup-bar').classList.add('hidden');
+    // Update gameplay stats while paused
+    document.getElementById('level-display').textContent = state.level;
+    document.getElementById('score-display').textContent = state.score;
+    document.getElementById('moves-display').textContent = state.movesLeft;
+    document.getElementById('target-display').textContent = state.targetScore;
+    document.getElementById('combo-display').textContent = '';
+    return;
+  }
+
+  if (state.screen === 'game_result') {
+    showScreen('gameplay');
+    if (pauseOverlay) pauseOverlay.classList.add('hidden');
+    if (resultOverlay) resultOverlay.classList.remove('hidden');
+    document.getElementById('powerup-bar').classList.add('hidden');
+    document.getElementById('level-display').textContent = state.level;
+    document.getElementById('score-display').textContent = state.score;
+    document.getElementById('moves-display').textContent = state.movesLeft;
+    document.getElementById('target-display').textContent = state.targetScore;
+    document.getElementById('combo-display').textContent = '';
+    renderGameResult(state);
+    renderBoard(state);
+    return;
+  }
+
+  // Hide overlays for regular screens
+  if (pauseOverlay) pauseOverlay.classList.add('hidden');
+  if (resultOverlay) resultOverlay.classList.add('hidden');
+
+  showScreen(state.screen);
+  let powerupBar = document.getElementById('powerup-bar');
+
+  if (state.screen === 'gameplay') {
+    powerupBar.classList.remove('hidden');
+    document.getElementById('level-display').textContent = state.level;
+    document.getElementById('score-display').textContent = state.score;
+    document.getElementById('moves-display').textContent = state.movesLeft;
+    document.getElementById('target-display').textContent = state.targetScore;
+    let comboEl = document.getElementById('combo-display');
+    if (state.combo && state.combo > 1) {
+      comboEl.textContent = '连击 x' + state.combo + '!';
+    } else {
+      comboEl.textContent = '';
+    }
+    let powerUps = state.powerUps || {};
+    document.getElementById('hammer-count').textContent = powerUps.hammer || 0;
+    document.getElementById('shuffle-count').textContent = powerUps.shuffle || 0;
+    document.getElementById('bomb-count').textContent = powerUps.bomb || 0;
+    renderBoard(state);
+  } else {
+    powerupBar.classList.add('hidden');
+    if (state.screen === 'level_select') {
+      renderLevelSelect(state);
+    } else if (state.screen === 'shop') {
+      document.getElementById('coins-display').textContent = state.coins;
+      renderShop(state);
+    } else if (state.screen === 'high_scores') {
+      renderHighScores(state);
+    } else if (state.screen === 'settings') {
+      let soundBtn = document.getElementById('btn-toggle-sound');
+      let musicBtn = document.getElementById('btn-toggle-music');
+      if (state.soundEnabled) {
+        soundBtn.style.backgroundColor = '#22c55e';
+        let sp = soundBtn.querySelector('span');
+        if (sp) { sp.style.right = '1px'; sp.style.left = 'auto'; }
+      } else {
+        soundBtn.style.backgroundColor = '#6b7280';
+        let sp = soundBtn.querySelector('span');
+        if (sp) { sp.style.left = '1px'; sp.style.right = 'auto'; }
+      }
+      if (state.musicEnabled) {
+        musicBtn.style.backgroundColor = '#22c55e';
+        let sp = musicBtn.querySelector('span');
+        if (sp) { sp.style.right = '1px'; sp.style.left = 'auto'; }
+      } else {
+        musicBtn.style.backgroundColor = '#6b7280';
+        let sp = musicBtn.querySelector('span');
+        if (sp) { sp.style.left = '1px'; sp.style.right = 'auto'; }
+      }
+    }
+  }
+}
+
+/* ========== ACTION HANDLER ========== */
+
+/**
+ * Pure synchronous action handler - returns new state
+ * @param {object} state - current game state (deep clone)
+ * @param {object} action - flat action object with type property
+ * @returns {object} new game state
+ */
+function handleAction(state, action) {
+  switch (action.type) {
+    case 'play':
+      state.screen = 'level_select';
+      break;
+
+    case 'navigate_highscores':
+      state.screen = 'high_scores';
+      break;
+
+    case 'navigate_settings':
+      state.screen = 'settings';
+      break;
+
+    case 'navigate_shop':
+      state.screen = 'shop';
+      break;
+
+    case 'navigate_home':
+      state.screen = 'home';
+      state.pendingPowerUp = null;
+      state.result = null;
+      state.selected = null;
+      break;
+
+    case 'start_level': {
+      let lvl = action.level;
+      if (lvl > state.maxUnlockedLevel) break;
+      let levelConfig = state.levels[lvl - 1];
+      if (!levelConfig) break;
+      state.level = lvl;
+      state.screen = 'gameplay';
+      state.board = generateBoard(state);
+      state.movesLeft = levelConfig.moves;
+      state.score = 0;
+      state.targetScore = levelConfig.target;
+      state.selected = null;
+      state.pendingPowerUp = null;
+      state.result = null;
+      state.combo = 0;
+      break;
+    }
+
+    case 'pause':
+      state.screen = 'pause_menu';
+      break;
+
+    case 'resume':
+      state.screen = 'gameplay';
+      break;
+
+    case 'restart':
+    case 'retry': {
+      let lvl = state.level;
+      let levelConfig = state.levels[lvl - 1];
+      state.screen = 'gameplay';
+      state.board = generateBoard(state);
+      state.movesLeft = levelConfig ? levelConfig.moves : 30;
+      state.score = 0;
+      state.targetScore = levelConfig ? levelConfig.target : lvl * 1000;
+      state.selected = null;
+      state.pendingPowerUp = null;
+      state.result = null;
+      state.combo = 0;
+      break;
+    }
+
+    case 'quit_to_home':
+      state.screen = 'home';
+      state.pendingPowerUp = null;
+      state.result = null;
+      state.selected = null;
+      break;
+
+    case 'toggle_sound':
+      state.soundEnabled = !state.soundEnabled;
+      break;
+
+    case 'toggle_music':
+      state.musicEnabled = !state.musicEnabled;
+      break;
+
+    case 'select_powerup': {
+      if (state.screen !== 'gameplay' || state.result !== null) break;
+      let pType = action.powerUpType;
+      if (!state.powerUps || !state.powerUps[pType] || state.powerUps[pType] <= 0) break;
+      if (pType === 'shuffle') {
+        state = usePowerUp(state, 'shuffle');
+        state.pendingPowerUp = null;
+        state = checkLevelComplete(state);
+        if (state.result && state.result.outcome === 'win') {
+          if (state.level >= state.maxUnlockedLevel) {
+            state.maxUnlockedLevel = state.level + 1;
+          }
+          // update level stars
+          if (state.levels[state.level - 1]) {
+            state.levels[state.level - 1].stars = Math.max(state.levels[state.level - 1].stars, state.result.stars);
+            if (state.level < state.levels.length) {
+              state.levels[state.level].unlocked = true;
+            }
+          }
+          // add to high scores
+          let entry = { score: state.score, level: state.level, name: '匿名' };
+          if (!state.highScores) state.highScores = [];
+          state.highScores.push(entry);
+          state.highScores.sort(function(a, b) { return b.score - a.score; });
+          state.highScores = state.highScores.slice(0, 10);
+        }
+      } else {
+        state.pendingPowerUp = (state.pendingPowerUp === pType) ? null : pType;
+      }
+      break;
+    }
+
+    case 'click_cell': {
+      if (state.screen !== 'gameplay' || state.result !== null) break;
+      if (state.pendingPowerUp) {
+        let pType = state.pendingPowerUp;
+        state = usePowerUp(state, pType, action.row, action.col);
+        state.pendingPowerUp = null;
+      } else {
+        state = handleBoardClick(state, action.row, action.col);
+      }
+      state = checkLevelComplete(state);
+      if (state.result && state.result.outcome === 'win') {
+        if (state.level >= state.maxUnlockedLevel) {
+          state.maxUnlockedLevel = state.level + 1;
+        }
+        if (state.levels[state.level - 1]) {
+          state.levels[state.level - 1].stars = Math.max(state.levels[state.level - 1].stars, state.result.stars);
+          if (state.level < state.levels.length) {
+            state.levels[state.level].unlocked = true;
+          }
+        }
+        let entry = { score: state.score, level: state.level, name: '匿名' };
+        if (!state.highScores) state.highScores = [];
+        state.highScores.push(entry);
+        state.highScores.sort(function(a, b) { return b.score - a.score; });
+        state.highScores = state.highScores.slice(0, 10);
+      }
+      break;
+    }
+
+    case 'buy_powerup': {
+      let itemId = action.powerup;
+      let prices = { hammer: 100, shuffle: 80, bomb: 120 };
+      let price = prices[itemId];
+      if (price === undefined) break;
+      if (state.coins < price) break;
+      state.coins -= price;
+      if (!state.powerUps) state.powerUps = {};
+      state.powerUps[itemId] = (state.powerUps[itemId] || 0) + 1;
+      break;
+    }
+
+    case 'next_level': {
+      state.level = state.level + 1;
+      if (state.level > state.maxUnlockedLevel) {
+        state.level = state.level - 1;
+        break;
+      }
+      let levelConfig = state.levels[state.level - 1];
+      state.screen = 'gameplay';
+      state.board = generateBoard(state);
+      state.movesLeft = levelConfig ? levelConfig.moves : 30;
+      state.score = 0;
+      state.targetScore = levelConfig ? levelConfig.target : state.level * 1000;
+      state.selected = null;
+      state.pendingPowerUp = null;
+      state.result = null;
+      state.combo = 0;
+      break;
+    }
+
+    default:
+      // unknown action — ignore
+      break;
+  }
+  return state;
+}
+
+/* ========== INITIALIZATION ========== */
+
+/** Global game state reference */
+let gameState = null;
+
+/**
+ * Initializes game state, wires all button event listeners, and shows initial screen.
+ * Called once on DOMContentLoaded.
+ */
+function startGame() {
+  gameState = initState();
+render(gameState);
+
+  // Home screen
+  document.getElementById('btn-play').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'play' });
+    render(gameState);
+  });
+  document.getElementById('btn-highscores-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_highscores' });
+    render(gameState);
+  });
+  document.getElementById('btn-settings-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_settings' });
+    render(gameState);
+  });
+  document.getElementById('btn-shop-home').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_shop' });
+    render(gameState);
+  });
+
+  // Level select screen
+  document.getElementById('btn-back-levelselect').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_home' });
+    render(gameState);
+  });
+
+  // Gameplay screen
+  document.getElementById('btn-pause').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'pause' });
+    render(gameState);
+  });
+
+  // Pause menu overlay buttons
+  document.getElementById('btn-resume').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'resume' });
+    render(gameState);
+  });
+  document.getElementById('btn-restart').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'restart' });
+    render(gameState);
+  });
+  document.getElementById('btn-quit').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'quit_to_home' });
+    render(gameState);
+  });
+
+  // Settings screen
+  document.getElementById('btn-back-settings').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_home' });
+    render(gameState);
+  });
+  document.getElementById('btn-toggle-sound').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'toggle_sound' });
+    render(gameState);
+  });
+  document.getElementById('btn-toggle-music').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'toggle_music' });
+    render(gameState);
+  });
+
+  // Shop screen
+  document.getElementById('btn-back-shop').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_home' });
+    render(gameState);
+  });
+
+  // Game result overlay buttons
+  document.getElementById('btn-next-level').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'next_level' });
+    render(gameState);
+  });
+  document.getElementById('btn-retry').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'retry' });
+    render(gameState);
+  });
+  document.getElementById('btn-menu-result').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_home' });
+    render(gameState);
+  });
+
+  // High scores screen
+  document.getElementById('btn-back-highscores').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'navigate_home' });
+    render(gameState);
+  });
+
+  // Power-up bar
+  document.getElementById('btn-powerup-hammer').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'select_powerup', powerUpType: 'hammer' });
+    render(gameState);
+  });
+  document.getElementById('btn-powerup-shuffle').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'select_powerup', powerUpType: 'shuffle' });
+    render(gameState);
+  });
+  document.getElementById('btn-powerup-bomb').addEventListener('click', function() {
+    gameState = handleAction(gameState, { type: 'select_powerup', powerUpType: 'bomb' });
+    render(gameState);
+  });
+
+  // Board click delegation
+  document.getElementById('game-board').addEventListener('click', function(e) {
+    let cell = e.target.closest('.board-cell');
+    if (!cell) return;
+    let row = parseInt(cell.getAttribute('data-row'), 10);
+    let col = parseInt(cell.getAttribute('data-col'), 10);
+    if (!isNaN(row) && !isNaN(col)) {
+      gameState = handleAction(gameState, { type: 'click_cell', row: row, col: col });
+      render(gameState);
+    }
+  });
+
+  // Initial render
+  render(gameState);
+}
+
+/* ========== BOOT ========== */
+document.addEventListener('DOMContentLoaded', startGame);
+
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

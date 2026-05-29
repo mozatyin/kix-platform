@@ -86,6 +86,7 @@ MAX_ALLOWED_ORIGINS = 50                   # safety cap on allowlist length
 MAX_BATCH_EVENTS = 100                     # cap per /events/batch call
 DEFAULT_REFUND_WINDOW_DAYS = 30            # refund-eligible window
 SUPPORTED_EVENTS = {
+    # ── Core (legacy) ──────────────────────────────────────────────────
     "pageview",
     "add_to_cart",
     "purchase",
@@ -94,8 +95,78 @@ SUPPORTED_EVENTS = {
     "refund",
     "return",
     "order_cancelled",
+
+    # ── Engagement ─────────────────────────────────────────────────────
+    "view_content",
+    "search",
+    "scroll",
+    "view_video",
+    "click_button",
+    "click_link",
+    "video_complete",
+
+    # ── Commerce funnel ────────────────────────────────────────────────
+    "view_item",
+    "view_listing",
+    "add_to_wishlist",
+    "remove_from_cart",
+    "initiate_checkout",
+    "add_payment_info",
+    "complete_registration",
+    "apply_coupon",
+    "purchase_success",
+    "purchase_fail",
+
+    # ── Subscription / SaaS ────────────────────────────────────────────
+    "start_trial",
+    "subscribe",
+    "upgrade",
+    "downgrade",
+    "cancel_subscription",
+    "trial_end",
+    "renewal_success",
+    "renewal_fail",
+
+    # ── Lead gen ───────────────────────────────────────────────────────
+    "lead_form_view",
+    "lead_form_submit",
+    "schedule_demo",
+    "contact",
+
+    # ── Social / engagement ────────────────────────────────────────────
+    "share",
+    "comment",
+    "like",
+    "follow",
+    "achievement_unlocked",
+    "level_up",
+    "tutorial_start",
+    "tutorial_complete",
+
+    # ── Game-specific ──────────────────────────────────────────────────
+    "game_start",
+    "game_end",
+    "game_win",
+    "game_lose",
+    "voucher_claim",
+    "voucher_redeem",
+
+    # ── Misc ───────────────────────────────────────────────────────────
+    "donate",
+    "schedule_appointment",
+    "checkin",
+    "rate",
+    "install",
+    "uninstall",
 }
 REFUND_LIKE_EVENTS = {"refund", "return", "order_cancelled"}
+# Events that should flow into the attribution pipeline as conversions
+# (purchase-like value-bearing terminal events). The standard `purchase`
+# event is the canonical one; success/subscribe duplicates are mapped onto
+# the same attribution path.
+PURCHASE_LIKE_EVENTS = {"purchase", "purchase_success", "subscribe", "renewal_success"}
+# Events that should be treated as new-user acquisitions (signup-like).
+SIGNUP_LIKE_EVENTS = {"signup", "complete_registration"}
 DEFAULT_SDK_URL = "https://api.kix.gg/sdk/kix-pixel.js"
 DEFAULT_EVENT_URL = "https://api.kix.gg/api/v1/pixel/event"
 
@@ -172,52 +243,62 @@ class PixelRegisterResponse(BaseModel):
     created_at: float
 
 
+class EnhancedData(BaseModel):
+    """Hashed PII for Enhanced Conversions matching.
+
+    Pixel events lose cookies under ITP/3P-cookie deprecation. Enhanced
+    Conversions let merchants send SHA-256-hashed PII (collected at
+    checkout / login) so the server can attribute the event to a kid even
+    without a cookie. All fields are lowercase + trimmed before hashing
+    on the client side — never accept raw PII here.
+    """
+    email_sha256: str | None = Field(None, min_length=64, max_length=64)
+    phone_sha256: str | None = Field(None, min_length=64, max_length=64)
+    first_name_sha256: str | None = Field(None, min_length=64, max_length=64)
+    last_name_sha256: str | None = Field(None, min_length=64, max_length=64)
+    address_hash: str | None = Field(None, min_length=32, max_length=128)
+    external_id: str | None = Field(None, max_length=128)
+
+
 class PixelEventRequest(BaseModel):
     pixel_id: str
-    event_type: Literal[
-        "pageview",
-        "add_to_cart",
-        "purchase",
-        "signup",
-        "custom",
-        "refund",
-        "return",
-        "order_cancelled",
-    ]
+    event_type: str = Field(..., min_length=1, max_length=64)
     user_id: str | None = None
     device_fingerprint: str
     order_id: str | None = None
+    event_id: str | None = Field(
+        None,
+        max_length=128,
+        description=(
+            "Optional client-provided dedup key, paired with a matching CAPI "
+            "event for de-duplication between pixel + server events."
+        ),
+    )
     amount_cents: int | None = Field(default=None, ge=0)
     currency: str | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
     referrer: str | None = None
     origin: str
     url: str | None = None
+    enhanced_data: EnhancedData | None = None
 
 
 class PixelBatchEventRequest(BaseModel):
     """Single event inside a batch — same shape as PixelEventRequest minus
     pixel_id (which is enforced at the envelope level so the batch can't span
     multiple pixels)."""
-    event_type: Literal[
-        "pageview",
-        "add_to_cart",
-        "purchase",
-        "signup",
-        "custom",
-        "refund",
-        "return",
-        "order_cancelled",
-    ]
+    event_type: str = Field(..., min_length=1, max_length=64)
     user_id: str | None = None
     device_fingerprint: str
     order_id: str | None = None
+    event_id: str | None = Field(None, max_length=128)
     amount_cents: int | None = Field(default=None, ge=0)
     currency: str | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
     referrer: str | None = None
     origin: str | None = None  # falls back to envelope origin
     url: str | None = None
+    enhanced_data: EnhancedData | None = None
 
 
 class PixelBatchRequest(BaseModel):
@@ -241,6 +322,9 @@ class PixelBatchEventResult(BaseModel):
     event_type: str
     status: str  # "accepted" | "rejected"
     attributed: bool | None = None
+    matched: bool = False
+    kid: str | None = None
+    deduplicated: bool = False
     error: str | None = None
 
 
@@ -258,6 +342,9 @@ class PixelEventResponse(BaseModel):
     attributed: bool | None = None
     source_brand: str | None = None
     attributed_event_id: str | None = None
+    matched: bool = False
+    kid: str | None = None
+    deduplicated: bool = False
 
 
 class PixelStatsResponse(BaseModel):
@@ -554,6 +641,74 @@ async def _open_refund_dispute(
         return None
 
 
+async def _match_enhanced_data(
+    enhanced: dict[str, Any] | None,
+    r: aioredis.Redis,
+) -> str | None:
+    """Look up a KiX ID (kid) by hashed PII supplied with the event.
+
+    Lookups against ``kid:email:<hash>`` / ``kid:phone:<hash>`` first
+    (canonical kid_id router indexes), with the older
+    ``identity:email:<hash>`` / ``identity:phone:<hash>`` aliases used as a
+    fallback for environments still on the legacy index naming. Returns
+    ``None`` if nothing matched. Cheap (≤2 GETs in the common case) — safe
+    to call on every event.
+    """
+    if not enhanced:
+        return None
+
+    email_h = enhanced.get("email_sha256")
+    if email_h:
+        kid = await r.get(f"kid:email:{email_h}")
+        if kid:
+            return kid
+        kid = await r.get(f"identity:email:{email_h}")
+        if kid:
+            return kid
+
+    phone_h = enhanced.get("phone_sha256")
+    if phone_h:
+        kid = await r.get(f"kid:phone:{phone_h}")
+        if kid:
+            return kid
+        kid = await r.get(f"identity:phone:{phone_h}")
+        if kid:
+            return kid
+
+    ext_id = enhanced.get("external_id")
+    if ext_id:
+        kid = await r.get(f"identity:external:{ext_id}")
+        if kid:
+            return kid
+
+    addr_h = enhanced.get("address_hash")
+    if addr_h:
+        kid = await r.get(f"identity:address:{addr_h}")
+        if kid:
+            return kid
+
+    return None
+
+
+async def _dedup_event_id(
+    event_id: str | None,
+    r: aioredis.Redis,
+    *,
+    window_seconds: int = 3600,
+) -> bool:
+    """Returns True if ``event_id`` has been seen within the dedup window.
+
+    Used to deduplicate browser pixel events against the corresponding
+    server-side CAPI conversion. Uses ``SET NX EX`` so concurrent callers
+    can race safely: exactly one wins, all others are flagged as duplicate.
+    """
+    if not event_id:
+        return False
+    key = f"capi:dedup:{event_id}"
+    set_ok = await r.set(key, "1", nx=True, ex=window_seconds)
+    return not set_ok
+
+
 async def _bump_stats(
     r: aioredis.Redis,
     pixel_id: str,
@@ -564,17 +719,21 @@ async def _bump_stats(
 ) -> None:
     key = f"pixel:{pixel_id}:stats"
     pipe = r.pipeline(transaction=False)
+    # Always keep a per-type counter so the new 30+ event types are visible
+    # in stats (`type:view_content`, `type:start_trial`, …) without bloating
+    # the legacy top-level fields that dashboards already read.
+    pipe.hincrby(key, f"type:{event_type}", 1)
     if event_type == "pageview":
         pipe.hincrby(key, "pageviews", 1)
     elif event_type == "add_to_cart":
         pipe.hincrby(key, "add_to_carts", 1)
-    elif event_type == "purchase":
+    elif event_type in PURCHASE_LIKE_EVENTS:
         pipe.hincrby(key, "purchases", 1)
         if amount_cents:
             pipe.hincrby(key, "total_amount_cents", int(amount_cents))
         if attributed:
             pipe.hincrby(key, "attributed_purchases", 1)
-    elif event_type == "signup":
+    elif event_type in SIGNUP_LIKE_EVENTS:
         pipe.hincrby(key, "signups", 1)
         if attributed:
             pipe.hincrby(key, "attributed_signups", 1)
@@ -661,10 +820,13 @@ async def _process_event(
     referrer: str | None,
     origin: str,
     url: str | None,
-) -> tuple[str, bool | None, str | None, str | None]:
+    enhanced_data: dict[str, Any] | None = None,
+    client_event_id: str | None = None,
+) -> tuple[str, bool | None, str | None, str | None, bool, str | None, bool]:
     """Shared ingestion path — audit + stats + side-effects.
 
-    Returns (event_id, attributed, source_brand, attributed_event_id).
+    Returns (event_id, attributed, source_brand, attributed_event_id,
+    matched, matched_kid, deduplicated).
     Raises HTTPException for client-input validation errors so the caller can
     decide whether to surface (single endpoint) or capture per-row (batch).
     """
@@ -674,76 +836,102 @@ async def _process_event(
     source_brand: str | None = None
     attributed_event_id: str | None = None
 
+    # ── Dedup against CAPI / pixel sibling event ─────────────────────────
+    # Browser + server-side CAPI commonly fire the same conversion twice;
+    # the merchant supplies a stable `event_id` on both sides so we can
+    # collapse them. Duplicates are still audited (with a flag) but skip
+    # attribution + stats so commission isn't double-counted.
+    deduplicated = await _dedup_event_id(client_event_id, r) if client_event_id else False
+
+    # ── Enhanced Conversions: resolve kid from hashed PII when user_id missing
+    matched_kid: str | None = None
+    if enhanced_data:
+        matched_kid = await _match_enhanced_data(enhanced_data, r)
+        if matched_kid and not user_id:
+            # Promote the matched kid into the user_id slot so attribution +
+            # downstream brand:users sets see a real identity, not just a
+            # device fingerprint. Client-supplied user_id (if any) wins to
+            # avoid surprising the merchant.
+            user_id = matched_kid
+    matched = matched_kid is not None
+
     # ── Attribution side-effects ──────────────────────────────────────────
     # NOTE: user_id from client is a hint only — we never look it up for
     # auth. attribution.track_* functions also treat it as a key only.
-    try:
-        if event_type == "purchase":
-            if not order_id:
-                raise HTTPException(status_code=422, detail="order_id_required")
-            if amount_cents is None:
-                raise HTTPException(status_code=422, detail="amount_cents_required")
-            effective_uid = user_id or f"anon:{device_fingerprint}"
-            conv_req = attr_mod.ConversionCheckRequest(
-                user_id=effective_uid,
-                target_brand=brand_id,
-                order_id=order_id,
-                amount_cents=int(amount_cents),
-                context={
-                    "pixel_id": pixel_id,
-                    "origin": origin,
-                    "referrer": referrer,
-                    "currency": currency,
-                    "device_fingerprint": device_fingerprint,
-                    "meta": meta,
-                },
-            )
-            conv_resp = await attr_mod.track_conversion(conv_req, r)
-            attributed = bool(conv_resp.attributed)
-            source_brand = conv_resp.source_brand
-            attributed_event_id = conv_resp.attributed_event_id
-
-        elif event_type == "signup":
-            if not user_id:
-                raise HTTPException(status_code=422, detail="user_id_required")
-            event_id_inner, ts = await attr_mod._persist_event(
-                r,
-                stage=attr_mod.STAGE_VISIT,
-                user_id=user_id,
-                device_fingerprint=device_fingerprint,
-                target_brand=brand_id,
-                meta={
-                    "pixel_id": pixel_id,
-                    "origin": origin,
-                    "referrer": referrer,
-                    "source": "pixel_signup",
-                    "meta": meta,
-                },
-            )
-            is_new = await r.sadd(f"brand:{brand_id}:users", user_id)
-            if is_new:
-                await r.hset(
-                    f"brand:{brand_id}:user_first_seen",
-                    user_id,
-                    f"{ts:.6f}",
+    # When deduplicated, we skip attribution entirely — the sibling event
+    # (pixel or CAPI) already booked the commission.
+    if deduplicated:
+        pass
+    else:
+        try:
+            if event_type in PURCHASE_LIKE_EVENTS:
+                if not order_id:
+                    raise HTTPException(status_code=422, detail="order_id_required")
+                if amount_cents is None:
+                    raise HTTPException(status_code=422, detail="amount_cents_required")
+                effective_uid = user_id or f"anon:{device_fingerprint}"
+                conv_req = attr_mod.ConversionCheckRequest(
+                    user_id=effective_uid,
+                    target_brand=brand_id,
+                    order_id=order_id,
+                    amount_cents=int(amount_cents),
+                    context={
+                        "pixel_id": pixel_id,
+                        "origin": origin,
+                        "referrer": referrer,
+                        "currency": currency,
+                        "device_fingerprint": device_fingerprint,
+                        "meta": meta,
+                        "underlying_event_type": event_type,
+                    },
                 )
-            attr_event = await attr_mod.find_attribution(
-                r, user_id, brand_id, attr_mod.ATTRIBUTION_WINDOW_SECONDS
+                conv_resp = await attr_mod.track_conversion(conv_req, r)
+                attributed = bool(conv_resp.attributed)
+                source_brand = conv_resp.source_brand
+                attributed_event_id = conv_resp.attributed_event_id
+
+            elif event_type in SIGNUP_LIKE_EVENTS:
+                if not user_id:
+                    raise HTTPException(status_code=422, detail="user_id_required")
+                event_id_inner, ts = await attr_mod._persist_event(
+                    r,
+                    stage=attr_mod.STAGE_VISIT,
+                    user_id=user_id,
+                    device_fingerprint=device_fingerprint,
+                    target_brand=brand_id,
+                    meta={
+                        "pixel_id": pixel_id,
+                        "origin": origin,
+                        "referrer": referrer,
+                        "source": "pixel_signup",
+                        "meta": meta,
+                        "underlying_event_type": event_type,
+                    },
+                )
+                is_new = await r.sadd(f"brand:{brand_id}:users", user_id)
+                if is_new:
+                    await r.hset(
+                        f"brand:{brand_id}:user_first_seen",
+                        user_id,
+                        f"{ts:.6f}",
+                    )
+                attr_event = await attr_mod.find_attribution(
+                    r, user_id, brand_id, attr_mod.ATTRIBUTION_WINDOW_SECONDS
+                )
+                if attr_event:
+                    attributed = True
+                    source_brand = attr_event.get("source_brand")
+                    attributed_event_id = attr_event.get("event_id")
+                else:
+                    attributed = False
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.exception(
+                "pixel event attribution failure: pixel_id=%s type=%s err=%s",
+                pixel_id, event_type, exc,
             )
-            if attr_event:
-                attributed = True
-                source_brand = attr_event.get("source_brand")
-                attributed_event_id = attr_event.get("event_id")
-            else:
-                attributed = False
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.exception(
-            "pixel event attribution failure: pixel_id=%s type=%s err=%s",
-            pixel_id, event_type, exc,
-        )
-        # Don't fail the merchant page — audit still recorded below.
+            # Don't fail the merchant page — audit still recorded below.
 
     # ── Audit ─────────────────────────────────────────────────────────────
     event_id = await _record_audit_event(
@@ -823,15 +1011,40 @@ async def _process_event(
         attributed = refund_dispute_opened
 
     # ── Stats ─────────────────────────────────────────────────────────────
-    await _bump_stats(
-        r,
-        pixel_id,
-        event_type=event_type,
-        amount_cents=amount_cents,
-        attributed=bool(attributed),
-    )
+    # Dedup'd events do NOT bump stats — the sibling event already did.
+    if not deduplicated:
+        await _bump_stats(
+            r,
+            pixel_id,
+            event_type=event_type,
+            amount_cents=amount_cents,
+            attributed=bool(attributed),
+        )
 
-    return event_id, attributed, source_brand, attributed_event_id
+    # Annotate the audit row with enhanced-match + dedup flags for ops + ML.
+    if matched or deduplicated or client_event_id:
+        try:
+            extra = {
+                "matched": "1" if matched else "0",
+                "deduplicated": "1" if deduplicated else "0",
+            }
+            if matched_kid:
+                extra["matched_kid"] = matched_kid
+            if client_event_id:
+                extra["client_event_id"] = client_event_id
+            await r.hset(f"pixel_event:{event_id}", mapping=extra)
+        except Exception:  # pragma: no cover — best-effort annotation
+            pass
+
+    return (
+        event_id,
+        attributed,
+        source_brand,
+        attributed_event_id,
+        matched,
+        matched_kid,
+        deduplicated,
+    )
 
 
 @router.post("/event", response_model=PixelEventResponse)
@@ -854,7 +1067,15 @@ async def record_event(
     if req.event_type not in SUPPORTED_EVENTS:
         raise HTTPException(status_code=422, detail="unsupported_event_type")
 
-    event_id, attributed, source_brand, attributed_event_id = await _process_event(
+    (
+        event_id,
+        attributed,
+        source_brand,
+        attributed_event_id,
+        matched,
+        matched_kid,
+        deduplicated,
+    ) = await _process_event(
         r,
         pixel=pixel,
         event_type=req.event_type,
@@ -867,6 +1088,9 @@ async def record_event(
         referrer=req.referrer,
         origin=origin,
         url=req.url,
+        enhanced_data=(req.enhanced_data.model_dump(exclude_none=True)
+                       if req.enhanced_data else None),
+        client_event_id=req.event_id,
     )
 
     return PixelEventResponse(
@@ -876,6 +1100,9 @@ async def record_event(
         attributed=attributed,
         source_brand=source_brand,
         attributed_event_id=attributed_event_id,
+        matched=matched,
+        kid=matched_kid,
+        deduplicated=deduplicated,
     )
 
 
@@ -926,7 +1153,15 @@ async def record_events_batch(
                 error="origin_mismatch_within_batch",
             )
         try:
-            event_id, attributed, _src, _attr_id = await _process_event(
+            (
+                event_id,
+                attributed,
+                _src,
+                _attr_id,
+                matched,
+                matched_kid,
+                deduplicated,
+            ) = await _process_event(
                 r,
                 pixel=pixel,
                 event_type=ev.event_type,
@@ -939,6 +1174,9 @@ async def record_events_batch(
                 referrer=ev.referrer,
                 origin=origin,
                 url=ev.url,
+                enhanced_data=(ev.enhanced_data.model_dump(exclude_none=True)
+                               if ev.enhanced_data else None),
+                client_event_id=ev.event_id,
             )
             return PixelBatchEventResult(
                 index=idx,
@@ -946,6 +1184,9 @@ async def record_events_batch(
                 event_type=ev.event_type,
                 status="accepted",
                 attributed=attributed,
+                matched=matched,
+                kid=matched_kid,
+                deduplicated=deduplicated,
             )
         except HTTPException as http_exc:
             detail = http_exc.detail if isinstance(http_exc.detail, str) else "validation_error"

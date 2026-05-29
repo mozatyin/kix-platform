@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <title>消消乐 - Match-3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .screen { position: absolute; inset: 0; overflow-y: auto; padding-bottom: 64px; }
+        .screen.hidden { display: none !important; }
+        #game-board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 8px; max-width: 360px; margin: 0 auto; }
+        #game-board .cell { aspect-ratio: 1; border-radius: 10px; cursor: pointer; transition: transform 0.12s; }
+        #game-board .cell:active { transform: scale(0.9); }
+        #game-board .cell.selected { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #fbbf24; transform: scale(0.95); }
+        #game-board .cell.matched { animation: pop 0.3s ease-out forwards; }
+        @keyframes pop { 0%{transform:scale(1);opacity:1} 50%{transform:scale(1.15);opacity:0.7} 100%{transform:scale(0);opacity:0} }
+         
+         
+         
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS — 南洋茶饮 */
+:root {
+  --kix-brand: #5B3A29;
+  --kix-accent: #D4A373;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #5B3A29, #2d1d14) !important;
+  --tw-gradient-from: #5B3A29 !important;
+  --tw-gradient-to: #2d1d14 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #5B3A29 !important;
+  background: #5B3A29 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #2d1d14 !important;
+  background: #2d1d14 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #5B3A29 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen font-sans overscroll-none select-none">
+    <div id="app-root" class="relative w-full min-h-screen max-w-md mx-auto overflow-hidden bg-slate-800 shadow-2xl">
+
+        <!-- SCREENS -->
+        <div id="home-screen" class="screen hidden flex flex-col items-center justify-center gap-4 p-6">
+            <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">南洋茶饮</h1>
+            <p class="text-slate-400 text-sm">Match-3 Puzzle</p>
+            <div id="home-buttons" class="flex flex-col gap-3 w-48 mt-6"></div>
+        </div>
+
+        <div id="level_select-screen" class="screen hidden p-4">
+            <h2 class="text-xl font-bold text-center mb-4">选择关卡</h2>
+            <div id="level-grid" class="grid grid-cols-4 gap-3 max-w-xs mx-auto"></div>
+            <div id="level_select-back" class="mt-6 text-center"></div>
+        </div>
+
+        <div id="gameplay-screen" class="screen hidden flex flex-col items-center p-2">
+            <div class="flex justify-between w-full max-w-sm px-3 py-2 text-sm">
+                <span>🏆 <span id="score-display">0</span></span>
+                <span>📋 关卡 <span id="level-display">1</span></span>
+                <span>🔄 <span id="moves-display">0</span></span>
+            </div>
+            <div id="game-board" class="bg-slate-700/50 rounded-xl p-1"></div>
+        </div>
+
+        <div id="pause_menu-screen" class="screen hidden flex flex-col items-center justify-center gap-5 p-6">
+            <h2 class="text-3xl font-bold text-amber-400">暂停</h2>
+            <div id="pause-buttons" class="flex flex-col gap-3 w-48"></div>
+        </div>
+
+        <div id="settings-screen" class="screen hidden p-6">
+            <h2 class="text-xl font-bold text-center mb-6">设置</h2>
+            <div id="settings-content" class="max-w-xs mx-auto flex flex-col gap-4"></div>
+            <div id="settings-back" class="mt-8 text-center"></div>
+        </div>
+
+        <div id="shop-screen" class="screen hidden p-4">
+            <h2 class="text-xl font-bold text-center mb-2">商店</h2>
+            <p class="text-center text-amber-400 mb-4">🪙 <span id="coins-display">0</span></p>
+            <div id="shop-items" class="grid grid-cols-2 gap-3 max-w-xs mx-auto"></div>
+            <div id="shop-back" class="mt-6 text-center"></div>
+        </div>
+
+        <div id="game_result-screen" class="screen hidden flex flex-col items-center justify-center gap-4 p-6">
+            <div id="result-icon" class="text-6xl"></div>
+            <h2 id="result-title" class="text-2xl font-bold"></h2>
+            <p id="result-score" class="text-lg text-slate-300"></p>
+            <div id="result-buttons" class="flex flex-col gap-3 w-48 mt-4"></div>
+        </div>
+
+        <div id="high_scores-screen" class="screen hidden p-4">
+            <h2 class="text-xl font-bold text-center mb-4">🏅 排行榜</h2>
+            <div id="high-scores-list" class="max-w-xs mx-auto"></div>
+            <div id="high_scores-back" class="mt-6 text-center"></div>
+        </div>
+
+        <!-- BOTTOM ACTION BAR -->
+        <div id="bottom-bar" class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-700 flex items-center justify-around h-14 px-4 max-w-md mx-auto"></div>
+    </div>
+
+    <script>
+        /* ====================== MANDATORY FUNCTIONS ====================== */
+
+        /** @returns {object} initial game state */
+        function initState() { let board = [];
+for (let r = 0; r < 8; r++) {
+  let row = [];
+  for (let c = 0; c < 8; c++) {
+    row.push(Math.floor(Math.random() * 6));
+  }
+  board.push(row);
+}
+let levels = [
+  { moves: 15, targetScore: 1000 },
+  { moves: 18, targetScore: 2000 },
+  { moves: 20, targetScore: 3000 },
+  { moves: 22, targetScore: 4000 },
+  { moves: 25, targetScore: 5000 },
+  { moves: 25, targetScore: 6000 },
+  { moves: 25, targetScore: 7000 },
+  { moves: 25, targetScore: 8000 },
+  { moves: 28, targetScore: 9000 },
+  { moves: 28, targetScore: 10000 },
+  { moves: 30, targetScore: 11000 },
+  { moves: 30, targetScore: 12000 },
+  { moves: 32, targetScore: 13000 },
+  { moves: 32, targetScore: 14000 },
+  { moves: 34, targetScore: 15000 },
+  { moves: 34, targetScore: 16000 },
+  { moves: 36, targetScore: 17000 },
+  { moves: 36, targetScore: 18000 },
+  { moves: 38, targetScore: 19000 },
+  { moves: 40, targetScore: 20000 }
+];
+return {
+  screen: 'home',
+  board: board,
+  score: 0,
+  movesLeft: levels[0].moves,
+  targetScore: levels[0].targetScore,
+  currentLevel: 0,
+  levels: levels,
+  unlockedLevel: 1,
+  selected: null,
+  settings: {
+    soundEnabled: true,
+    musicEnabled: true
+  },
+  coins: 500,
+  inventory: {
+    hint: 3,
+    shuffle: 1,
+    extraMoves: 0
+  },
+  highScores: [2500, 1800, 1200, 900, 500],
+  lastResult: null
+}; }
+
+        /**
+         * Pure sync reducer — returns new state from state + flat action.
+         * @param {object} state
+         * @param {object} action - flat object, e.g. {type:"NAVIGATE", screen:"level_select"}
+         * @returns {object} new state (plain objects/arrays only, no Set/Map/Date)
+         */
+        function handleAction(state, action) { let newState = { ...state };
+switch (action.type) {
+  case 'NAVIGATE':
+    newState.screen = action.screen;
+    break;
+  case 'PAUSE':
+    newState.previousScreen = state.screen;
+    newState.screen = 'pause_menu';
+    break;
+  case 'RESUME':
+    newState.screen = state.previousScreen || 'home';
+    newState.previousScreen = null;
+    break;
+  case 'START_LEVEL': {
+    let level = action.level;
+    let config = (state.levels && state.levels[level]) ? state.levels[level] : { moves: 20, targetScore: 1000 };
+    let board = Array.from({ length: 8 }, () => Array(8).fill(null));
+    let tempState = { ...state, board };
+    tempState = fillBoard(tempState);
+    newState = {
+      ...tempState,
+      currentLevel: level,
+      score: 0,
+      moves: config.moves,
+      targetScore: config.targetScore,
+      selected: null,
+      screen: 'gameplay',
+      gameStatus: 'playing'
+    };
+    break;
+  }
+  case 'SELECT_PIECE': {
+    if (state.screen !== 'gameplay') return state;
+    var { row, col } = action;
+    if (state.selected && state.selected.row === row && state.selected.col === col) {
+      newState.selected = null;
+    } else {
+      newState.selected = { row, col };
+    }
+    break;
+  }
+  case 'SWAP': {
+    if (state.screen !== 'gameplay' || !state.selected) return state;
+    let row1 = action.row1, col1 = action.col1, row2 = action.row2, col2 = action.col2;
+    if (row1 === undefined || col1 === undefined) {
+      row1 = state.selected.row;
+      col1 = state.selected.col;
+      row2 = action.row;
+      col2 = action.col;
+    }
+    if (!isValidAdjacent(row1, col1, row2, col2)) {
+      newState.selected = null;
+      break;
+    }
+    let swappedState = applyMove(state, row1, col1, row2, col2);
+    swappedState = { ...swappedState, selected: null };
+    let matches = findMatches(swappedState);
+    if (matches.length === 0) {
+      swappedState = applyMove(swappedState, row1, col1, row2, col2);
+      newState = swappedState;
+    } else {
+      let cascadeState = swappedState;
+      let iterations = 50;
+      while (iterations-- > 0) {
+        let cascMatches = findMatches(cascadeState);
+        if (cascMatches.length === 0) break;
+        let scoreAdd = 0;
+        for (let group of cascMatches) {
+          scoreAdd += calculateScore(cascadeState, group.length);
+        }
+        cascadeState = removeMatches(cascadeState, cascMatches);
+        cascadeState = { ...cascadeState, score: cascadeState.score + scoreAdd };
+        cascadeState = applyGravity(cascadeState);
+        cascadeState = fillBoard(cascadeState);
+      }
+      cascadeState = { ...cascadeState, moves: cascadeState.moves - 1 };
+      newState = cascadeState;
+      let result = checkGameOver(newState);
+      if (result === 'won' || result === 'lost') {
+        newState.screen = 'game_result';
+        newState.gameStatus = result;
+        let scores = [...(state.highScores || [])];
+        scores.push({ score: newState.score, level: newState.currentLevel });
+        scores.sort((a, b) => b.score - a.score);
+        if (scores.length > 10) scores = scores.slice(0, 10);
+        newState.highScores = scores;
+        if (result === 'won') {
+          newState.coins = (state.coins || 0) + 50;
+        }
+      }
+    }
+    break;
+  }
+  case 'RESTART': {
+    let currentLevel = state.currentLevel;
+    if (currentLevel !== undefined && state.levels) {
+      let config = state.levels[currentLevel];
+      let freshBoard = Array.from({ length: 8 }, () => Array(8).fill(null));
+      let temp = { ...state, board: freshBoard };
+      temp = fillBoard(temp);
+      newState = { ...temp, score: 0, moves: config.moves, targetScore: config.targetScore, selected: null, screen: 'gameplay', gameStatus: 'playing' };
+    }
+    break;
+  }
+  case 'QUIT':
+    newState.screen = 'home';
+    newState.selected = null;
+    break;
+  case 'TOGGLE_SOUND':
+    newState.sound = !state.sound;
+    break;
+  case 'TOGGLE_MUSIC':
+    newState.music = !state.music;
+    break;
+  case 'BUY_ITEM': {
+    let itemId = action.item;
+    let shopItems = state.shopItems || [];
+    let item = shopItems.find(i => i.id === itemId);
+    if (!item || state.coins < item.cost) break;
+    newState.coins = state.coins - item.cost;
+    let inventory = { ...state.items };
+    inventory[itemId] = (inventory[itemId] || 0) + 1;
+    newState.items = inventory;
+    break;
+  }
+  case 'USE_POWERUP': {
+    let powerUp = action.powerup;
+    if (state.items && state.items[powerUp] > 0) {
+      let inventory = { ...state.items };
+      inventory[powerUp] -= 1;
+      newState.items = inventory;
+      if (powerUp === 'extra_moves') {
+        newState.moves = state.moves + 5;
+      } else if (powerUp === 'shuffle') {
+        newState.board = state.board.map(row => row.map(cell => Math.floor(Math.random() * 6)));
+      }
+    }
+    break;
+  }
+  default:
+    return state;
+}
+return newState; }
+
+        /**
+         * Updates the entire DOM to reflect current state.
+         * Calls showScreen(state.screen), then delegates to sub-renderers.
+         * @param {object} state
+         */
+        function render(state) { showScreen(state.screen);
+    if (state.screen === 'home') {
+        renderHome(state);
+    } else if (state.screen === 'level_select') {
+        renderLevelSelect(state);
+    } else if (state.screen === 'gameplay') {
+        let scoreDisplay = document.getElementById('score-display');
+        if (scoreDisplay) scoreDisplay.textContent = state.score;
+        let levelDisplay = document.getElementById('level-display');
+        if (levelDisplay) levelDisplay.textContent = state.level;
+        let movesDisplay = document.getElementById('moves-display');
+        if (movesDisplay) movesDisplay.textContent = state.moves;
+        renderBoard(state);
+    } else if (state.screen === 'pause_menu') {
+        renderPauseMenu(state);
+    } else if (state.screen === 'settings') {
+        renderSettings(state);
+    } else if (state.screen === 'shop') {
+        renderShop(state);
+    } else if (state.screen === 'game_result') {
+        renderGameResult(state);
+    } else if (state.screen === 'high_scores') {
+        renderHighScores(state);
+    }
+    renderBottomBar(state); }
+
+        /**
+         * Receives BASE screen name, appends '-screen' internally to find the DOM element.
+         * Hides all .screen elements, then shows the target.
+         * @param {string} screenId - base name (e.g. 'home', 'gameplay', 'high_scores')
+         */
+        function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+for (let s of screens) {
+    s.classList.add('hidden');
+}
+let target = document.getElementById(screenId + '-screen');
+if (target) {
+    target.classList.remove('hidden');
+} }
+
+        /**
+         * Called once on DOMContentLoaded. Creates initial state via initState(),
+         * wires ALL button event listeners (including event delegation on screens,
+         * bottom bar, and game board), then calls render(gameState).
+         */
+        function startGame() { let gameState = initState();
+
+function dispatchButtonClick(e) {
+    let btn = e.target.closest('[data-action]');
+    if (!btn) return {};
+    let action = { type: btn.dataset.action };
+    for (let [key, val] of Object.entries(btn.dataset)) {
+        if (key !== 'action') {
+            let num = Number(val);
+            action[key] = isNaN(num) ? val : num;
+        }
+    }
+    gameState = handleAction(gameState, action);
+    render(gameState);
+}
+
+document.getElementById('home-screen').addEventListener('click', dispatchButtonClick);
+document.getElementById('level_select-screen').addEventListener('click', dispatchButtonClick);
+document.getElementById('pause_menu-screen').addEventListener('click', dispatchButtonClick);
+document.getElementById('settings-screen').addEventListener('click', dispatchButtonClick);
+document.getElementById('shop-screen').addEventListener('click', dispatchButtonClick);
+document.getElementById('game_result-screen').addEventListener('click', dispatchButtonClick);
+document.getElementById('high_scores-screen').addEventListener('click', dispatchButtonClick);
+
+document.getElementById('settings-screen').addEventListener('change', function(e) {
+    let input = e.target.closest('input[type="checkbox"]');
+    if (!input || !input.dataset.action) return {};
+    let action = { type: input.dataset.action, checked: input.checked };
+    gameState = handleAction(gameState, action);
+    render(gameState);
+});
+
+document.getElementById('bottom-bar').addEventListener('click', dispatchButtonClick);
+
+document.getElementById('game-board').addEventListener('click', function(e) {
+    let cell = e.target.closest('.cell');
+    if (!cell) return {};
+    let row = parseInt(cell.dataset.row, 10);
+    let col = parseInt(cell.dataset.col, 10);
+    if (isNaN(row) || isNaN(col)) return {};
+    let action = handleBoardClick(gameState, row, col);
+    if (action) {
+        gameState = handleAction(gameState, action);
+        render(gameState);
+    }
+});
+
+render(gameState); }
+
+        /* ====================== MATCH-3 HELPER FUNCTIONS ====================== */
+
+        /**
+         * Builds the 8x8 game board grid inside #game-board.
+         * Each cell gets class 'cell piece-N' and data-row/data-col attributes.
+         * @param {object} state
+         */
+        function renderBoard(state) { let boardEl = document.getElementById('game-board');
+if (!boardEl) return {};
+boardEl.innerHTML = '';
+let board = state.board;
+let selected = state.selected || null;
+for (let r = 0; r < board.length; r++) {
+  for (let c = 0; c < board[r].length; c++) {
+    let cell = document.createElement('div');
+    cell.className = 'cell';
+    let piece = board[r][c];
+    if (piece !== null && piece !== undefined) {
+      cell.classList.add('piece-' + piece);
+    }
+    cell.dataset.row = r;
+    cell.dataset.col = c;
+    if (selected && selected.row === r && selected.col === c) {
+      cell.classList.add('selected');
+    }
+    boardEl.appendChild(cell);
+  }
+} }
+
+        /**
+         * Handles a tap on a board cell. Dispatches SELECT_PIECE or SWAP actions
+         * based on current selection state. Called from event delegation.
+         * @param {object} state
+         * @param {number} row
+         * @param {number} col
+         * @returns {object} action to dispatch
+         */
+        function handleBoardClick(state, row, col) { let selected = state.selected;
+if (state.screen !== 'gameplay' || state.gameStatus !== 'playing') {
+  return { type: 'NOOP' };
+}
+if (!state.board || state.board[row][col] === null) {
+  return { type: 'NOOP' };
+}
+if (!selected) {
+  return { type: 'SELECT_PIECE', row: row, col: col };
+}
+let [selRow, selCol] = selected;
+if (selRow === row && selCol === col) {
+  return { type: 'DESELECT' };
+}
+if (isValidAdjacent(selRow, selCol, row, col)) {
+  return { type: 'SWAP', row1: selRow, col1: selCol, row2: row, col2: col };
+} else {
+  return { type: 'SELECT_PIECE', row: row, col: col };
+} }
+
+        /**
+         * Scans the entire board and returns an array of match groups found.
+         * Each match group is an array of [row,col] positions (length >= 3).
+         * @param {object} state
+         * @returns {Array<Array<[number,number]>>}
+         */
+        function findMatches(state) { let matches = [];
+let board = state.board;
+for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+        let type = board[row][col];
+        if (type === null || type === undefined) continue;
+        // horizontal
+        if (col === 0 || board[row][col - 1] !== type) {
+            let end = col;
+            while (end < 7 && board[row][end + 1] === type) {
+                end++;
+            }
+            let count = end - col + 1;
+            if (count >= 3) {
+                let group = [];
+                for (let c = col; c <= end; c++) {
+                    group.push([row, c]);
+                }
+                matches.push(group);
+            }
+        }
+        // vertical
+        if (row === 0 || board[row - 1][col] !== type) {
+            let end = row;
+            while (end < 7 && board[end + 1][col] === type) {
+                end++;
+            }
+            let count = end - row + 1;
+            if (count >= 3) {
+                let group = [];
+                for (let r = row; r <= end; r++) {
+                    group.push([r, col]);
+                }
+                matches.push(group);
+            }
+        }
+    }
+}
+return matches; }
+
+        /**
+         * Removes all pieces at the given matched positions (sets board cell to null).
+         * @param {object} state
+         * @param {Array<Array<[number,number]>>} matches
+         * @returns {object} new state
+         */
+        function removeMatches(state, matches) { let newState = { ...state };
+let newBoard = state.board.map(row => row.slice());
+for (let group of matches) {
+  for (let [r, c] of group) {
+    newBoard[r][c] = null;
+  }
+}
+newState.board = newBoard;
+return newState; }
+
+        /**
+         * Drops pieces downward to fill null gaps on the board. Returns new state.
+         * @param {object} state
+         * @returns {object} new state
+         */
+        function applyGravity(state) { let board = state.board.map(row => [...row]);
+let ROWS = 8;
+let COLS = 8;
+for (let c = 0; c < COLS; c++) {
+    let columnPieces = [];
+    for (let r = 0; r < ROWS; r++) {
+        if (board[r][c] !== null) {
+            columnPieces.push(board[r][c]);
+        }
+    }
+    // clear the column
+    for (let r = 0; r < ROWS; r++) {
+        board[r][c] = null;
+    }
+    // fill from bottom with collected pieces
+    let pieceIndex = columnPieces.length - 1;
+    for (let r = ROWS - 1; r >= 0 && pieceIndex >= 0; r--) {
+        board[r][c] = columnPieces[pieceIndex];
+        pieceIndex--;
+    }
+}
+return { ...state, board }; }
+
+        /**
+         * Fills remaining null cells with random new piece types (0-5).
+         * @param {object} state
+         * @returns {object} new state
+         */
+        function fillBoard(state) { let newBoard = state.board.map(row => row.slice());
+for (let r = 0; r < newBoard.length; r++) {
+    for (let c = 0; c < newBoard[r].length; c++) {
+        if (newBoard[r][c] === null) {
+            newBoard[r][c] = Math.floor(Math.random() * 6);
+        }
+    }
+}
+return { ...state, board: newBoard }; }
+
+        /**
+         * Checks whether two grid positions are orthogonally adjacent.
+         * @param {number} r1 @param {number} c1 @param {number} r2 @param {number} c2
+         * @returns {boolean}
+         */
+        function isValidAdjacent(r1, c1, r2, c2) { return (Math.abs(r1 - r2) === 1 && c1 === c2) || (r1 === r2 && Math.abs(c1 - c2) === 1); }
+
+        /**
+         * Swaps two pieces on the board, returns new state. Assumes adjacency already validated.
+         * @param {object} state
+         * @param {number} r1 @param {number} c1 @param {number} r2 @param {number} c2
+         * @returns {object} new state
+         */
+        function applyMove(state, r1, c1, r2, c2) { let newBoard = state.board.map(row => [...row]);
+[newBoard[r1][c1], newBoard[r2][c2]] = [newBoard[r2][c2], newBoard[r1][c1]];
+return { ...state, board: newBoard }; }
+
+        /**
+         * Checks win/lose conditions (e.g. moves exhausted, target score reached).
+         * @param {object} state
+         * @returns {string} 'playing' | 'won' | 'lost'
+         */
+        function checkGameOver(state) { if (state.score >= state.targetScore) {
+  return 'won';
+} else if (state.moves <= 0) {
+  return 'lost';
+}
+return 'playing'; }
+
+        /**
+         * Calculates score earned from a match of given length.
+         * @param {object} state
+         * @param {number} matchLength
+         * @returns {number} points to add
+         */
+        function calculateScore(state, matchLength) { let points = matchLength * 10 * (state.level || 1);
+return points; }
+
+        /** Renders the home screen content dynamically. @param {object} state */
+        function renderHome(state) { let btnContainer = document.getElementById('home-buttons');
+btnContainer.innerHTML = '';
+let buttonDefs = [
+  { text: '开始游戏', action: 'NAVIGATE', screen: 'gameplay' },
+  { text: '选择关卡', action: 'NAVIGATE', screen: 'level_select' },
+  { text: '商店', action: 'NAVIGATE', screen: 'shop' },
+  { text: '设置', action: 'NAVIGATE', screen: 'settings' },
+  { text: '排行榜', action: 'NAVIGATE', screen: 'high_scores' }
+];
+for (let def of buttonDefs) {
+  let btn = document.createElement('button');
+  btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-xl w-full';
+  btn.textContent = def.text;
+  btn.dataset.action = def.action;
+  btn.dataset.screen = def.screen;
+  btnContainer.appendChild(btn);
+} }
+
+        /** Renders the level select grid. @param {object} state */
+        function renderLevelSelect(state) { let grid = document.getElementById('level-grid');
+let backContainer = document.getElementById('level_select-back');
+grid.innerHTML = '';
+backContainer.innerHTML = '';
+
+let backBtn = document.createElement('button');
+backBtn.className = 'px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition';
+backBtn.textContent = '← 返回';
+backBtn.addEventListener('click', function() {
+    gameState = handleAction(gameState, {type: 'NAVIGATE', screen: 'home'});
+    render(gameState);
+});
+backContainer.appendChild(backBtn);
+
+let levels = state.levels || [];
+if (levels.length === 0) {
+    let total = state.totalLevels || 20;
+    let unlocked = state.unlockedLevel || 1;
+    let starsMap = state.levelStars || {};
+    for (let n = 1; n <= total; n++) {
+        levels.push({id: n, unlocked: n <= unlocked, stars: starsMap[n] || 0});
+    }
+}
+
+for (let i = 0; i < levels.length; i++) {
+    let level = levels[i];
+    let cell = document.createElement('button');
+    let levelId = level.id;
+    let unlocked = level.unlocked;
+    let stars = level.stars || 0;
+
+    if (unlocked) {
+        cell.className = 'aspect-square rounded-xl flex flex-col items-center justify-center bg-slate-700 hover:bg-slate-600 transition text-white font-bold text-lg cursor-pointer';
+        let starsStr = '';
+        for (let s = 0; s < 3; s++) {
+            starsStr += s < stars ? '★' : '☆';
+        }
+        cell.innerHTML = '<span>' + levelId + '</span><span class="text-xs text-yellow-400">' + starsStr + '</span>';
+        cell.addEventListener('click', function() {
+            gameState = handleAction(gameState, {type: 'START_LEVEL', level: levelId});
+            render(gameState);
+        });
+    } else {
+        cell.className = 'aspect-square rounded-xl flex flex-col items-center justify-center bg-slate-800/50 text-slate-600 font-bold text-lg cursor-not-allowed';
+        cell.innerHTML = '<span>' + levelId + '</span><span class="text-xs">🔒</span>';
+        cell.disabled = true;
+    }
+
+    grid.appendChild(cell);
+} }
+
+        /** Renders the pause menu buttons. @param {object} state */
+        function renderPauseMenu(state) { let container = document.getElementById('pause-buttons');
+container.innerHTML = `
+    <button class="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-xl font-bold w-full" data-action="RESUME">继续游戏</button>
+    <button class="bg-amber-600 hover:bg-amber-700 text-white py-3 px-6 rounded-xl font-bold w-full" data-action="RESTART_LEVEL">重新开始</button>
+    <button class="bg-slate-500 hover:bg-slate-400 text-white py-3 px-6 rounded-xl font-bold w-full" data-action="NAVIGATE" data-screen="settings">设置</button>
+    <button class="bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-xl font-bold w-full" data-action="NAVIGATE" data-screen="home">返回主页</button>
+`; }
+
+        /** Renders settings toggles. @param {object} state */
+        function renderSettings(state) { let settingsContent = document.getElementById('settings-content');
+let sound = (state.settings && state.settings.sound !== undefined) ? state.settings.sound : true;
+let vibration = (state.settings && state.settings.vibration !== undefined) ? state.settings.vibration : true;
+
+settingsContent.innerHTML = `
+  <div class="flex items-center justify-between bg-slate-700/50 rounded-xl p-3">
+    <span class="text-sm">🔊 音效</span>
+    <button data-action="TOGGLE_SOUND" class="px-4 py-1 rounded-full text-sm font-semibold transition ${sound ? 'bg-green-500 text-white' : 'bg-slate-500 text-slate-300'}">${sound ? '开启' : '关闭'}</button>
+  </div>
+  <div class="flex items-center justify-between bg-slate-700/50 rounded-xl p-3">
+    <span class="text-sm">📳 震动</span>
+    <button data-action="TOGGLE_VIBRATION" class="px-4 py-1 rounded-full text-sm font-semibold transition ${vibration ? 'bg-green-500 text-white' : 'bg-slate-500 text-slate-300'}">${vibration ? '开启' : '关闭'}</button>
+  </div>
+`;
+
+let backDiv = document.getElementById('settings-back');
+backDiv.innerHTML = `<button data-action="NAVIGATE" data-screen="home" class="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-xl text-sm font-semibold transition">🔙 返回</button>`; }
+
+        /** Renders shop items. @param {object} state */
+        function renderShop(state) { document.getElementById('coins-display').textContent = state.coins;
+
+let shopItems = state.shopItems || [
+  { id: 'extra_moves', name: '+5 步数', cost: 100 },
+  { id: 'shuffle', name: '洗牌', cost: 150 },
+  { id: 'bomb', name: '炸弹', cost: 200 },
+  { id: 'score_boost', name: '双倍分数', cost: 250 }
+];
+
+let shopContainer = document.getElementById('shop-items');
+let html = '';
+for (let item of shopItems) {
+  let disabled = state.coins < item.cost ? 'disabled' : '';
+  let opacityClass = state.coins < item.cost ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-600';
+  html += `<button data-action="purchase" data-item-id="${item.id}" ${disabled}
+            class="bg-slate-700 rounded-xl p-3 text-center flex flex-col items-center gap-1 transition ${opacityClass}">
+            <span class="text-sm font-semibold">${item.name}</span>
+            <span class="text-xs text-amber-400">🪙 ${item.cost}</span>
+          </button>`;
+}
+shopContainer.innerHTML = html;
+
+document.getElementById('shop-back').innerHTML = `<button data-action="navigate" data-screen="home"
+  class="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-full text-sm">← 返回</button>`; }
+
+        /** Renders the game result (win/lose) screen. @param {object} state */
+        function renderGameResult(state) { let icon = document.getElementById('result-icon');
+let title = document.getElementById('result-title');
+let scoreEl = document.getElementById('result-score');
+let buttons = document.getElementById('result-buttons');
+
+if (state.gameStatus === 'won') {
+    icon.textContent = '🎉';
+    title.textContent = '恭喜过关！';
+    scoreEl.textContent = `得分：${state.score}`;
+    let nextLevel = state.currentLevel + 1;
+    let hasNextLevel = nextLevel < state.levels.length;
+    let html = '';
+    if (hasNextLevel) {
+        html += '<button class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-full w-full" data-action="NEXT_LEVEL">下一关</button>';
+    }
+    html += '<button class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-full w-full" data-action="REPLAY">再玩一次</button>';
+    html += '<button class="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-full w-full" data-action="NAVIGATE" data-screen="home">返回主页</button>';
+    html += '<button class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-full w-full" data-action="NAVIGATE" data-screen="high_scores">排行榜</button>';
+    buttons.innerHTML = html;
+} else if (state.gameStatus === 'lost') {
+    icon.textContent = '😞';
+    title.textContent = '游戏结束';
+    scoreEl.textContent = `得分：${state.score}`;
+    buttons.innerHTML = '<button class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-full w-full" data-action="REPLAY">再试一次</button><button class="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-full w-full" data-action="NAVIGATE" data-screen="home">返回主页</button>';
+} }
+
+        /** Renders the high scores list. @param {object} state */
+        function renderHighScores(state) { let listEl = document.getElementById('high-scores-list');
+listEl.innerHTML = '';
+if (!state.highScores || state.highScores.length === 0) {
+    listEl.innerHTML = '<p class="text-slate-400 text-center">暂无记录</p>';
+    return {};
+}
+state.highScores.forEach((entry, idx) => {
+    let scoreVal = typeof entry === 'object' ? entry.score : entry;
+    let levelVal = typeof entry === 'object' ? entry.level : null;
+    let rank = idx + 1;
+    let item = document.createElement('div');
+    item.className = 'flex justify-between items-center bg-slate-700 rounded-lg px-4 py-2 mb-2';
+    item.innerHTML = '<span class="text-amber-400 font-bold">#' + rank + '</span>' +
+        (levelVal !== null ? '<span>关卡 ' + levelVal + '</span>' : '') +
+        '<span class="text-yellow-300">' + scoreVal + ' 分</span>';
+    listEl.appendChild(item);
+}); }
+
+        /** Updates the bottom action bar based on current screen. @param {object} state */
+        function renderBottomBar(state) { let bar = document.getElementById('bottom-bar');
+if (!bar) return {};
+let screen = state.screen;
+let buttons = [];
+
+if (screen === 'home') {
+    buttons.push({ text: '关卡', action: 'NAVIGATE', screen: 'level_select' });
+    buttons.push({ text: '商店', action: 'NAVIGATE', screen: 'shop' });
+    buttons.push({ text: '设置', action: 'NAVIGATE', screen: 'settings' });
+    buttons.push({ text: '排行', action: 'NAVIGATE', screen: 'high_scores' });
+} else if (screen === 'level_select') {
+    buttons.push({ text: '主页', action: 'NAVIGATE', screen: 'home' });
+    buttons.push({ text: '设置', action: 'NAVIGATE', screen: 'settings' });
+} else if (screen === 'gameplay') {
+    buttons.push({ text: '暂停', action: 'PAUSE' });
+} else if (screen === 'pause_menu') {
+    buttons.push({ text: '继续', action: 'RESUME' });
+    buttons.push({ text: '主页', action: 'NAVIGATE', screen: 'home' });
+    buttons.push({ text: '设置', action: 'NAVIGATE', screen: 'settings' });
+} else if (screen === 'settings') {
+    buttons.push({ text: '主页', action: 'NAVIGATE', screen: 'home' });
+    buttons.push({ text: '商店', action: 'NAVIGATE', screen: 'shop' });
+    buttons.push({ text: '排行', action: 'NAVIGATE', screen: 'high_scores' });
+} else if (screen === 'shop') {
+    buttons.push({ text: '主页', action: 'NAVIGATE', screen: 'home' });
+    buttons.push({ text: '设置', action: 'NAVIGATE', screen: 'settings' });
+} else if (screen === 'game_result') {
+    buttons.push({ text: '主页', action: 'NAVIGATE', screen: 'home' });
+    buttons.push({ text: '再玩一次', action: 'RESTART_LEVEL' });
+    if (state.gameOver === 'won') {
+        buttons.push({ text: '下一关', action: 'NEXT_LEVEL' });
+    }
+} else if (screen === 'high_scores') {
+    buttons.push({ text: '主页', action: 'NAVIGATE', screen: 'home' });
+    buttons.push({ text: '设置', action: 'NAVIGATE', screen: 'settings' });
+}
+
+let html = '';
+for (let i = 0; i < buttons.length; i++) {
+    let btn = buttons[i];
+    let extra = '';
+    if (btn.screen) extra += ` data-screen="${btn.screen}"`;
+    html += `<button class="py-2 px-3 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition active:scale-95" data-action="${btn.action}"${extra}>${btn.text}</button>`;
+}
+bar.innerHTML = html; }
+
+        /* ====================== ENTRY POINT ====================== */
+        document.addEventListener('DOMContentLoaded', startGame);
+    
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

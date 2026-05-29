@@ -1,5 +1,11 @@
 """Billing cron worker — scans subscriptions hourly and charges due ones.
 
+Migrated from a full ``SCAN brand:*:subscription`` over Redis (O(N) over
+every key in the database, the Trinity-F bottleneck) to an indexed
+PostgreSQL range query on ``brand_subscriptions.next_charge_at``. At
+1M brands the cron now touches only the due rows instead of walking
+the full key-space.
+
 Implements the day-91 auto-charge flow (Apple Music style: 90-day trial,
 then auto-charge on the stored default payment method) plus a dunning
 sequence for failed charges:
@@ -9,8 +15,12 @@ sequence for failed charges:
                   ├─ retry on next cron tick (still within grace)
                   └─ grace expires ─► downgrade_to_free + email
 
-Cancel-at-period-end is honoured here too: if ``cancel_pending=true`` and
-``next_charge_at`` has passed, the subscription transitions to FREE.
+Cancel-at-period-end is honoured here too: if ``cancel_pending=True``
+and ``next_charge_at`` has passed, the subscription transitions to FREE.
+
+Redis still receives a mirrored write of every state change so the
+existing portal/SDK code (which still reads from Redis during the
+migration window) sees the same data.
 
 Usage:
     .venv/bin/python -m app.workers.billing_cron --once   # single sweep
@@ -25,114 +35,85 @@ import logging
 import time
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import async_session_factory
+from app.models.subscription import BrandSubscription, SubscriptionHistory
 from app.redis_client import close_redis, get_redis, init_redis
 
 logger = logging.getLogger("billing_cron")
 
 CHECK_INTERVAL_SECONDS = 3600  # hourly sweep
 GRACE_DAYS = 3                 # 3-day dunning grace before downgrade
-SCAN_BATCH = 100
+BATCH_LIMIT = 1000             # max subs processed per sweep
 HISTORY_MAX_LEN = 500
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────
-
-
-def _truthy(v: Any, default: bool = False) -> bool:
-    if v is None:
-        return default
-    s = v.decode() if isinstance(v, bytes) else str(v)
-    return s.lower() in ("1", "true", "yes", "on")
-
-
-def _float(v: Any, default: float = 0.0) -> float:
-    if v is None:
-        return default
-    try:
-        return float(v.decode() if isinstance(v, bytes) else v)
-    except (TypeError, ValueError):
-        return default
-
-
-def _str(v: Any, default: str = "") -> str:
-    if v is None:
-        return default
-    return v.decode() if isinstance(v, bytes) else str(v)
 
 
 # ── Main sweep ─────────────────────────────────────────────────────────────
 
 
-async def run_once() -> dict[str, int]:
-    """One pass over every ``brand:*:subscription`` hash.
+async def run_once(
+    db: AsyncSession | None = None,
+    r: Any | None = None,
+) -> dict[str, int]:
+    """One pass over every subscription whose ``next_charge_at`` has passed.
 
     Returns counters: ``scanned`` / ``charged`` / ``failed`` / ``downgraded``.
     Safe to call repeatedly; cron loop wraps this with a sleep.
-    """
-    r = await get_redis()
 
-    cursor: int = 0
+    Both ``db`` and ``r`` are optional — the worker entrypoint passes
+    ``None`` so the function creates its own session/connection. Callers
+    in tests or admin endpoints can pass live handles to share the
+    transaction context.
+    """
+    owns_db = db is None
+    if db is None:
+        db = async_session_factory()
+    if r is None:
+        r = await get_redis()
+
     processed = 0
     charged = 0
     failed = 0
     downgraded = 0
 
-    while True:
-        cursor, keys = await r.scan(
-            cursor=cursor, match="brand:*:subscription", count=SCAN_BATCH
+    try:
+        now = time.time()
+        stmt = (
+            select(BrandSubscription)
+            .where(BrandSubscription.next_charge_at <= int(now))
+            .where(BrandSubscription.tier != "free")
+            .order_by(BrandSubscription.next_charge_at)
+            .limit(BATCH_LIMIT)
         )
-        for key in keys:
-            key_s = _str(key)
-            # Skip history list keys etc. — only HASHes at the exact pattern.
-            # `brand:{id}:subscription:history` would not match our pattern
-            # because `*` in glob excludes ":" only via lack of brace-expand;
-            # to be safe we filter explicitly:
-            if key_s.count(":") != 2:
-                continue
+        result = await db.execute(stmt)
+        due: list[BrandSubscription] = list(result.scalars().all())
 
-            try:
-                sub = await r.hgetall(key)
-            except Exception:  # noqa: BLE001
-                logger.exception("hgetall failed for %s", key_s)
-                continue
-            if not sub:
-                continue
-
-            tier = _str(sub.get("tier"), "free")
-            if tier == "free":
-                continue
-
-            next_charge_at = _float(sub.get("next_charge_at"))
-            auto_renew = _truthy(sub.get("auto_renew"), default=True)
-            cancel_pending = _truthy(sub.get("cancel_pending"), default=False)
-
-            now = time.time()
-            if next_charge_at <= 0:
-                continue
-            if next_charge_at > now:
-                continue  # not due yet
-
-            brand_id = key_s.split(":")[1]
+        for sub in due:
+            brand_id = sub.brand_id
 
             # 1) Cancel-at-period-end takes priority over renewal.
-            if cancel_pending:
+            if sub.cancel_pending:
                 await _downgrade_to_free(
-                    r, brand_id, "user_cancelled_at_period_end"
+                    db, r, brand_id, "user_cancelled_at_period_end"
                 )
                 downgraded += 1
                 processed += 1
                 continue
 
             # 2) Auto-renew off → just expire to FREE silently.
-            if not auto_renew:
-                await _downgrade_to_free(r, brand_id, "auto_renew_disabled")
+            if not sub.auto_renew:
+                await _downgrade_to_free(
+                    db, r, brand_id, "auto_renew_disabled"
+                )
                 downgraded += 1
                 processed += 1
                 continue
 
-            payment_method_id = _str(sub.get("payment_method_id"))
+            payment_method_id = sub.payment_method_id or ""
             if not payment_method_id:
-                await _enter_dunning(r, brand_id, "no_payment_method")
+                await _enter_dunning(db, r, sub, "no_payment_method")
                 failed += 1
                 processed += 1
                 continue
@@ -143,28 +124,27 @@ async def run_once() -> dict[str, int]:
                 _tier_price_cents,
             )
 
-            billing = _str(sub.get("billing"), "monthly")
-            if billing not in ("monthly", "annual"):
-                billing = "monthly"
+            billing = sub.billing if sub.billing in ("monthly", "annual") else "monthly"
 
-            if tier not in TIERS:
+            if sub.tier not in TIERS:
                 # Unknown tier — sanity downgrade.
-                await _downgrade_to_free(r, brand_id, "invalid_tier")
+                await _downgrade_to_free(db, r, brand_id, "invalid_tier")
                 downgraded += 1
                 processed += 1
                 continue
 
-            charge_amount = _tier_price_cents(tier, billing)
+            charge_amount = _tier_price_cents(sub.tier, billing)
 
             # 4) Free trial month? Then $0 amount — treat as success and
             # advance the cycle without hitting the gateway.
             if charge_amount <= 0:
-                await _mark_renewed(r, brand_id, billing, amount=0)
+                await _mark_renewed(db, r, sub, billing, amount=0)
                 await _audit(
+                    db,
                     r,
                     brand_id,
                     "AUTO_RENEW_FREE_CYCLE",
-                    {"tier": tier, "billing": billing},
+                    {"tier": sub.tier, "billing": billing},
                 )
                 charged += 1
                 processed += 1
@@ -175,26 +155,34 @@ async def run_once() -> dict[str, int]:
             )
 
             if ok:
-                await _mark_renewed(r, brand_id, billing, amount=charge_amount)
+                await _mark_renewed(db, r, sub, billing, amount=charge_amount)
                 await _audit(
+                    db,
                     r,
                     brand_id,
                     "AUTO_RENEW_SUCCESS",
                     {
-                        "tier": tier,
+                        "tier": sub.tier,
                         "billing": billing,
                         "amount_cents": charge_amount,
                     },
                 )
                 charged += 1
             else:
-                await _enter_dunning(r, brand_id, "charge_failed")
+                await _enter_dunning(db, r, sub, "charge_failed")
                 failed += 1
 
             processed += 1
 
-        if cursor == 0:
-            break
+        if owns_db:
+            await db.commit()
+    except Exception:
+        if owns_db:
+            await db.rollback()
+        raise
+    finally:
+        if owns_db:
+            await db.close()
 
     logger.info(
         "billing_cron sweep complete: scanned=%d charged=%d failed=%d downgraded=%d",
@@ -231,18 +219,34 @@ async def _attempt_charge(
         return False
 
 
-async def _mark_renewed(r, brand_id: str, billing: str, amount: int) -> None:
+async def _mark_renewed(
+    db: AsyncSession,
+    r,
+    sub: BrandSubscription,
+    billing: str,
+    amount: int,
+) -> None:
     """Advance ``next_charge_at`` by one billing cycle + clear dunning."""
-    key = f"brand:{brand_id}:subscription"
     cycle = 30 * 86400 if billing == "monthly" else 365 * 86400
     now = time.time()
+    next_charge = int(now + cycle)
+
+    sub.next_charge_at = next_charge
+    sub.last_charged_at = int(now)
+    sub.last_charge_amount_cents = amount
+    sub.first_year_free = False  # trial consumed
+    sub.dunning_state = "none"
+    sub.dunning_attempts = 0
+    sub.dunning_reason = None
+
+    # Mirror to Redis for legacy readers
     await r.hset(
-        key,
+        f"brand:{sub.brand_id}:subscription",
         mapping={
-            "next_charge_at": str(now + cycle),
+            "next_charge_at": str(next_charge),
             "last_charged_at": str(now),
             "last_charge_amount_cents": str(amount),
-            "first_year_free": "false",  # trial consumed
+            "first_year_free": "false",
             "dunning_state": "none",
             "dunning_attempts": "0",
             "dunning_reason": "",
@@ -250,19 +254,23 @@ async def _mark_renewed(r, brand_id: str, billing: str, amount: int) -> None:
     )
 
 
-async def _enter_dunning(r, brand_id: str, reason: str) -> None:
+async def _enter_dunning(
+    db: AsyncSession, r, sub: BrandSubscription, reason: str
+) -> None:
     """Start or advance the dunning sequence for ``brand_id``."""
-    key = f"brand:{brand_id}:subscription"
-    sub = await r.hgetall(key) or {}
-
-    state = _str(sub.get("dunning_state"), "none")
-    attempts = int(_float(sub.get("dunning_attempts"), 0))
+    brand_id = sub.brand_id
+    state = sub.dunning_state or "none"
+    attempts = int(sub.dunning_attempts or 0)
     now = time.time()
 
     if state in ("none", "", "downgraded"):
-        grace_until = now + GRACE_DAYS * 86400
+        grace_until = int(now + GRACE_DAYS * 86400)
+        sub.dunning_state = "grace"
+        sub.dunning_attempts = 1
+        sub.dunning_grace_until = grace_until
+        sub.dunning_reason = reason
         await r.hset(
-            key,
+            f"brand:{brand_id}:subscription",
             mapping={
                 "dunning_state": "grace",
                 "dunning_attempts": "1",
@@ -272,6 +280,7 @@ async def _enter_dunning(r, brand_id: str, reason: str) -> None:
             },
         )
         await _audit(
+            db,
             r,
             brand_id,
             "DUNNING_START",
@@ -287,12 +296,16 @@ async def _enter_dunning(r, brand_id: str, reason: str) -> None:
 
     if state == "grace":
         attempts += 1
-        grace_until = _float(sub.get("dunning_grace_until"), 0.0)
+        grace_until = float(sub.dunning_grace_until or 0)
         if now > grace_until:
-            await _downgrade_to_free(r, brand_id, "dunning_grace_expired")
+            await _downgrade_to_free(
+                db, r, brand_id, "dunning_grace_expired"
+            )
             return
+        sub.dunning_attempts = attempts
+        sub.dunning_reason = reason
         await r.hset(
-            key,
+            f"brand:{brand_id}:subscription",
             mapping={
                 "dunning_attempts": str(attempts),
                 "dunning_last_attempt_at": str(now),
@@ -300,6 +313,7 @@ async def _enter_dunning(r, brand_id: str, reason: str) -> None:
             },
         )
         await _audit(
+            db,
             r,
             brand_id,
             "DUNNING_REMINDER",
@@ -313,11 +327,25 @@ async def _enter_dunning(r, brand_id: str, reason: str) -> None:
         )
 
 
-async def _downgrade_to_free(r, brand_id: str, reason: str) -> None:
-    key = f"brand:{brand_id}:subscription"
+async def _downgrade_to_free(
+    db: AsyncSession, r, brand_id: str, reason: str
+) -> None:
     now = time.time()
+    row = await db.get(BrandSubscription, brand_id)
+    if row is not None:
+        row.tier = "free"
+        row.billing = "monthly"
+        row.auto_renew = False
+        row.cancel_pending = False
+        row.dunning_state = "downgraded"
+        # Stash reason in metadata_json so we keep history without
+        # adding ad-hoc columns.
+        meta = dict(row.metadata_json or {})
+        meta["downgraded_at"] = now
+        meta["downgraded_reason"] = reason
+        row.metadata_json = meta
     await r.hset(
-        key,
+        f"brand:{brand_id}:subscription",
         mapping={
             "tier": "free",
             "billing": "monthly",
@@ -328,7 +356,7 @@ async def _downgrade_to_free(r, brand_id: str, reason: str) -> None:
             "downgraded_reason": reason,
         },
     )
-    await _audit(r, brand_id, "DOWNGRADE_TO_FREE", {"reason": reason})
+    await _audit(db, r, brand_id, "DOWNGRADE_TO_FREE", {"reason": reason})
     await _queue_email(
         r, brand_id, "downgrade_notice", {"reason": reason}
     )
@@ -337,9 +365,27 @@ async def _downgrade_to_free(r, brand_id: str, reason: str) -> None:
 # ── Side-effect sinks (audit + email queue) ────────────────────────────────
 
 
-async def _audit(r, brand_id: str, event: str, details: dict[str, Any]) -> None:
+async def _audit(
+    db: AsyncSession,
+    r,
+    brand_id: str,
+    event: str,
+    details: dict[str, Any],
+) -> None:
+    now = time.time()
+    db.add(
+        SubscriptionHistory(
+            brand_id=brand_id,
+            event=event,
+            from_tier=details.get("from_tier"),
+            to_tier=details.get("to_tier"),
+            charge_amount_cents=details.get("amount_cents"),
+            metadata_json=details,
+            ts=int(now),
+        )
+    )
     key = f"brand:{brand_id}:subscription:history"
-    record = {"event": event, "ts": time.time(), **details}
+    record = {"event": event, "ts": now, **details}
     try:
         await r.lpush(key, _json.dumps(record))
         await r.ltrim(key, 0, HISTORY_MAX_LEN - 1)

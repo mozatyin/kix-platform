@@ -965,14 +965,48 @@ async def admin_resolve(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "refund_requires_charge_id"},
             )
-        ok, ref_id, err = await _wallet_refund_internal(
-            r, brand_id, charge_id, amount_cents, reason=f"dispute:{dispute_id}"
+        # Trinity-B P0: run the refund as a saga so wallet/attribution/
+        # commission ledger move together (or all roll back together).
+        from app.saga_definitions import refund_cascade_saga
+
+        saga_result = await refund_cascade_saga(
+            r=r,
+            charge_id=charge_id,
+            brand_id=brand_id,
+            refund_amount_cents=amount_cents,
+            conversion_id=conversion_id,
+            reason=f"dispute:{dispute_id}",
         )
-        if not ok:
+        if not saga_result.success:
+            if saga_result.compensation_failures:
+                logger.error(
+                    "refund saga compensation failed dispute=%s saga=%s "
+                    "failures=%s",
+                    dispute_id, saga_result.saga_id,
+                    saga_result.compensation_failures,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "error": "refund_saga_failed_compensation_failed",
+                        "saga_id": saga_result.saga_id,
+                        "failed_step": saga_result.failed_step,
+                        "compensation_failures":
+                            saga_result.compensation_failures,
+                    },
+                )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"error": "wallet_refund_failed", "reason": err},
+                detail={
+                    "error": "refund_saga_failed_rolled_back",
+                    "saga_id": saga_result.saga_id,
+                    "failed_step": saga_result.failed_step,
+                    "reason": saga_result.failed_reason,
+                },
             )
+        # Saga succeeded: pull the wallet refund_id back out of the
+        # context for the finalize call.
+        ref_id = saga_result.context.get("wallet_refund_id")
         refund_id = ref_id
         refund_cents = amount_cents
         new_status = "resolved_refund_full"

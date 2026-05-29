@@ -1060,6 +1060,51 @@ async def track_conversion(
     # Idempotency record — tie order_id to event_id for replay protection.
     await r.set(idem_key, event_id, ex=EVENT_TTL_SECONDS)
 
+    # Multi-dim reporting fan-out — write the conversion to every
+    # materialised cube on the target brand. View-through if there was
+    # no preceding click (i.e. attribution came from an impression-only
+    # touch). Never raises.
+    try:
+        from app.routers.reporting import record_conversion as _rep_conv
+        # Pull dim hints from the attributed event meta when present.
+        rep_campaign_id: str | None = None
+        rep_source_brand: str | None = None
+        rep_ad_id: str | None = None
+        rep_placement: str | None = None
+        rep_country: str | None = None
+        rep_device: str | None = None
+        rep_view_through = True
+        if attributed_event:
+            try:
+                attr_meta = json.loads(attributed_event.get("meta", "{}") or "{}")
+                if isinstance(attr_meta, dict):
+                    rep_campaign_id = attr_meta.get("campaign_id") or None
+                    rep_ad_id = attr_meta.get("ad_id") or None
+                    rep_placement = attr_meta.get("placement") or None
+                    rep_country = attr_meta.get("country") or None
+                    rep_device = attr_meta.get("device") or None
+                    rep_view_through = bool(
+                        attr_meta.get("view_through", False)
+                    )
+            except Exception:
+                pass
+            rep_source_brand = attributed_event.get("source_brand") or None
+        await _rep_conv(
+            r,
+            brand_id=req.target_brand,
+            campaign_id=rep_campaign_id,
+            ad_id=rep_ad_id,
+            placement=rep_placement,
+            country=rep_country,
+            device=rep_device,
+            source_brand=rep_source_brand,
+            user_id=req.user_id,
+            value_cents=req.amount_cents,
+            view_through=rep_view_through,
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.debug("reporting fan-out (attribution conv) failed: %s", exc)
+
     # Account-level rollup. When account_id is present we index the
     # conversion under the account journey so /attribution/account/{aid}/journey
     # can report ABM ROI. Also share credit equally across the buying
@@ -1702,6 +1747,29 @@ async def track_conversion_multi(
     pipe.hincrby("kix:commission_collected", "cents", total_kix)
     pipe.hincrby(f"brand:{req.target_brand}:commission_paid", "cents", total_commission)
     await pipe.execute()
+
+    # Multi-dim reporting fan-out: one conversion event per attributed
+    # touchpoint, weighted by share. Each touchpoint becomes a row in
+    # the source-brand × target-brand reporting cube.
+    try:
+        from app.routers.reporting import record_conversion as _rep_conv
+        for s in splits:
+            share_amount = int(round(req.amount_cents * s.weight))
+            await _rep_conv(
+                r,
+                brand_id=req.target_brand,
+                campaign_id=req.campaign_id,
+                ad_id=None,
+                placement=None,
+                country=None,
+                device=None,
+                source_brand=s.source_brand or None,
+                user_id=req.user_id,
+                value_cents=share_amount,
+                view_through=bool(s.view_through),
+            )
+    except Exception as exc:  # pragma: no cover
+        logger.debug("reporting fan-out (mta conv) failed: %s", exc)
 
     resp = MultiTouchConversionResponse(
         attributed=True,

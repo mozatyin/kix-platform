@@ -91,6 +91,29 @@ CAMPAIGN_STATS_KEY = "campaign:{cid}:stats"
 CAMPAIGN_DAILY_SPEND_KEY = "campaign:{cid}:budget_spent_today:{date}"
 CAMPAIGN_TOTAL_SPEND_KEY = "campaign:{cid}:budget_spent_total"
 
+# ── Multi-dimensional active-campaign indexes (Trinity-F #1) ─────────────
+# At 10K+ active campaigns SMEMBERS campaigns:active + per-campaign HGETALL
+# blows up to 500ms+. Maintain per-dimension SETs so the auction can use
+# SINTERSTORE to fetch only the small slice of campaigns whose targeting
+# could possibly match the user. The legacy ``campaigns:active`` SET is
+# kept in lockstep (write-through) for backwards compat + as the
+# fall-through when no per-dim filter applies (admin tools, tiny installs).
+ACTIVE_BY_COUNTRY_KEY = "campaigns:active:country:{country}"
+ACTIVE_BY_OBJECTIVE_KEY = "campaigns:active:objective:{objective}"
+ACTIVE_BY_BRAND_KEY = "campaigns:active:brand:{bid}"
+ACTIVE_BY_AUDIENCE_KEY = "campaigns:active:audience:{aid}"
+ACTIVE_BY_GEOHASH_KEY = "campaigns:active:geohash:{gh}"
+# Untargeted campaigns — no country / geohash / audience filters set.
+# These must bid in every auction regardless of user context. The auction
+# UNIONs this with whatever partition slice it queries so universal-reach
+# campaigns aren't accidentally hidden behind the partition optimisation.
+ACTIVE_UNTARGETED_KEY = "campaigns:active:untargeted"
+# Per-campaign membership tracker — records every partitioned index a
+# campaign currently belongs to, so de-indexing on pause/delete/update is
+# O(membership) instead of "recompute targeting & hope it matches what we
+# wrote last time" (which breaks when targeting itself changes).
+CAMPAIGN_INDEX_MEMBERSHIP_KEY = "campaign:{cid}:active_indexes"
+
 DAILY_SPEND_TTL = 86400 * 2  # keep yesterday around briefly for reporting
 
 VALID_OBJECTIVES = {
@@ -378,6 +401,161 @@ async def _read_total_spend(r: aioredis.Redis, cid: str) -> int:
     return int(raw) if raw else 0
 
 
+# ── Geohash (5-char ≈ ±2.4 km) — self-contained, no new dep ──────────────
+
+_GEOHASH_BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"
+
+
+def _geohash_encode(lat: float, lng: float, precision: int = 5) -> str:
+    """Encode (lat, lng) into a geohash string.
+
+    Pure-python port of the standard geohash algorithm. 5 chars ≈ ±2.4km
+    cells, which matches the default ``radius_km`` of 5km for campaign geo
+    targeting — campaigns indexed under a geohash will match every user
+    whose location resolves into the same cell.
+    """
+    lat_lo, lat_hi = -90.0, 90.0
+    lng_lo, lng_hi = -180.0, 180.0
+    bits = 0
+    bit = 0
+    even = True
+    out: list[str] = []
+    while len(out) < precision:
+        if even:
+            mid = (lng_lo + lng_hi) / 2
+            if lng >= mid:
+                bits = (bits << 1) | 1
+                lng_lo = mid
+            else:
+                bits = bits << 1
+                lng_hi = mid
+        else:
+            mid = (lat_lo + lat_hi) / 2
+            if lat >= mid:
+                bits = (bits << 1) | 1
+                lat_lo = mid
+            else:
+                bits = bits << 1
+                lat_hi = mid
+        even = not even
+        bit += 1
+        if bit == 5:
+            out.append(_GEOHASH_BASE32[bits])
+            bits = 0
+            bit = 0
+    return "".join(out)
+
+
+# ── Active-campaign partition indexes ────────────────────────────────────
+
+
+def _compute_active_index_keys(raw: dict[str, str]) -> list[str]:
+    """Return the list of partition SET keys this campaign belongs to.
+
+    Includes the legacy ``campaigns:active`` aggregate plus every
+    dimension key that can be derived from the campaign hash. The output
+    is deterministic for a given (status-eligible) campaign — callers
+    should pair it with a per-campaign membership tracker to handle the
+    case where targeting changes between add and remove.
+    """
+    keys: list[str] = [ACTIVE_CAMPAIGNS_KEY]
+
+    bid = raw.get("brand_id") or ""
+    if bid:
+        keys.append(ACTIVE_BY_BRAND_KEY.format(bid=bid))
+
+    objective = (raw.get("objective") or "").strip()
+    if objective:
+        keys.append(ACTIVE_BY_OBJECTIVE_KEY.format(objective=objective))
+
+    targeting = _safe_json_loads(raw.get("targeting"), {}) or {}
+    geo = targeting.get("geo") or {}
+
+    country = (geo.get("country") or "").strip()
+    if country:
+        keys.append(ACTIVE_BY_COUNTRY_KEY.format(country=country.upper()))
+
+    # Audience targeting can live under multiple shapes; support all we've
+    # seen across the codebase without coupling to a specific schema.
+    audience_id = (
+        targeting.get("audience_id")
+        or targeting.get("include_audience_id")
+    )
+    if audience_id:
+        keys.append(ACTIVE_BY_AUDIENCE_KEY.format(aid=str(audience_id)))
+
+    lat = geo.get("lat")
+    lng = geo.get("lng")
+    has_geohash = False
+    if lat is not None and lng is not None:
+        try:
+            gh = _geohash_encode(float(lat), float(lng), precision=5)
+            keys.append(ACTIVE_BY_GEOHASH_KEY.format(gh=gh))
+            has_geohash = True
+        except (TypeError, ValueError):
+            pass
+
+    # Untargeted campaigns (no country / geohash / audience) must bid in
+    # every auction — add them to the untargeted SET so the auction can
+    # UNION it with any partition slice and still see them.
+    has_geo_filter = bool(country) or has_geohash
+    has_audience_filter = bool(audience_id)
+    if not has_geo_filter and not has_audience_filter:
+        keys.append(ACTIVE_UNTARGETED_KEY)
+
+    return keys
+
+
+async def _index_campaign_active(
+    r: aioredis.Redis, cid: str, raw: dict[str, str]
+) -> None:
+    """Add campaign to every applicable partition SET (+ track membership).
+
+    Idempotent: SADD is a no-op for keys already containing the cid; the
+    membership tracker is rewritten to the canonical set so subsequent
+    de-indexing can reverse exactly what was added.
+    """
+    if not cid:
+        return
+    keys = _compute_active_index_keys(raw)
+    membership_key = CAMPAIGN_INDEX_MEMBERSHIP_KEY.format(cid=cid)
+    pipe = r.pipeline()
+    pipe.delete(membership_key)
+    for key in keys:
+        pipe.sadd(key, cid)
+    if keys:
+        pipe.sadd(membership_key, *keys)
+    await pipe.execute()
+
+
+async def _deindex_campaign_active(
+    r: aioredis.Redis, cid: str, raw: dict[str, str] | None = None
+) -> None:
+    """Remove campaign from every partition SET it was added to.
+
+    Reads the per-campaign membership tracker so removal works correctly
+    even after targeting has been mutated (the campaign's *current* state
+    no longer matches the keys we wrote at add-time). Falls back to a
+    recompute from ``raw`` only if the tracker is missing/empty (e.g. a
+    legacy campaign that pre-dates the indexes).
+    """
+    if not cid:
+        return
+    membership_key = CAMPAIGN_INDEX_MEMBERSHIP_KEY.format(cid=cid)
+    keys = await r.smembers(membership_key)
+    if not keys and raw is not None:
+        keys = _compute_active_index_keys(raw)
+    if not keys:
+        # Last-ditch: at least drop the legacy SET so behaviour matches
+        # the pre-partition era.
+        keys = [ACTIVE_CAMPAIGNS_KEY]
+    pipe = r.pipeline()
+    for key in keys:
+        pipe.srem(key, cid)
+    pipe.delete(membership_key)
+    await pipe.execute()
+
+
 async def _add_spend(
     r: aioredis.Redis, cid: str, cents: int
 ) -> tuple[int, int]:
@@ -445,17 +623,25 @@ async def _persist_status_change(
     cid: str,
     old_status: str,
     new_status: str,
+    raw: dict[str, str] | None = None,
 ) -> None:
-    """Write back the derived status and update the active set membership."""
+    """Write back the derived status and update partition-index membership.
+
+    When transitioning into / out of an auction-eligible status, sync every
+    partition SET (country / objective / brand / audience / geohash) so
+    the auction can run intersection queries. ``raw`` is the campaign
+    hash; when omitted we re-fetch for the add-path (we need targeting
+    fields to compute index keys), but de-index works from the tracker.
+    """
     if old_status == new_status:
         return
-    pipe = r.pipeline()
-    pipe.hset(_ck(cid), mapping={"status": new_status, "updated_at": str(_now())})
+    await r.hset(_ck(cid), mapping={"status": new_status, "updated_at": str(_now())})
     if new_status in AUCTION_ELIGIBLE_STATUSES:
-        pipe.sadd(ACTIVE_CAMPAIGNS_KEY, cid)
+        if raw is None:
+            raw = await r.hgetall(_ck(cid))
+        await _index_campaign_active(r, cid, raw or {})
     else:
-        pipe.srem(ACTIVE_CAMPAIGNS_KEY, cid)
-    await pipe.execute()
+        await _deindex_campaign_active(r, cid, raw)
 
 
 async def _load_and_refresh(
@@ -469,7 +655,9 @@ async def _load_and_refresh(
         )
     new_status = await _derive_status(r, raw)
     if new_status != raw.get("status"):
-        await _persist_status_change(r, cid, raw.get("status", ""), new_status)
+        await _persist_status_change(
+            r, cid, raw.get("status", ""), new_status, raw=raw
+        )
         raw["status"] = new_status
     return raw
 
@@ -648,8 +836,6 @@ async def create_campaign(
     pipe = r.pipeline()
     pipe.hset(_ck(campaign_id), mapping=payload)
     pipe.sadd(BRAND_CAMPAIGNS_KEY.format(bid=body.brand_id), campaign_id)
-    if payload["status"] == STATUS_ACTIVE:
-        pipe.sadd(ACTIVE_CAMPAIGNS_KEY, campaign_id)
     if payload["status"] == STATUS_PENDING_REVIEW:
         # Bigger daily-budget campaigns surface first in the review queue.
         pipe.zadd(REVIEW_QUEUE_KEY, {campaign_id: float(body.daily_budget_cents)})
@@ -669,6 +855,12 @@ async def create_campaign(
     # consume merchant headroom; on delete / cancellation we DECR.
     pipe.incr(f"brand:{body.brand_id}:campaigns_count")
     await pipe.execute()
+
+    # Populate partition indexes — done after the HSET so the helper can
+    # read targeting from the freshly-written payload (it uses `payload`
+    # directly to avoid an extra round-trip).
+    if payload["status"] == STATUS_ACTIVE:
+        await _index_campaign_active(r, campaign_id, payload)
 
     logger.info(
         "campaign created cid=%s brand=%s obj=%s bid=%s status=%s auto=%s",
@@ -777,9 +969,26 @@ async def update_campaign(
     await r.hset(_ck(campaign_id), mapping=patch)
 
     # Status may need re-derivation (schedule / budget changed).
+    prev_status = raw.get("status", "")
     raw.update(patch)
     new_status = await _derive_status(r, raw)
-    await _persist_status_change(r, campaign_id, raw.get("status", ""), new_status)
+    await _persist_status_change(
+        r, campaign_id, prev_status, new_status, raw=raw
+    )
+
+    # If targeting / objective / brand changed while the campaign stays
+    # auction-eligible, we still need to refresh the partition indexes —
+    # _persist_status_change is a no-op when old == new. Re-index
+    # idempotently so the partitions reflect the new targeting.
+    targeting_changed = (
+        body.targeting is not None
+        or body.target_audience is not None
+    )
+    if new_status in AUCTION_ELIGIBLE_STATUSES and (
+        new_status == prev_status and targeting_changed
+    ):
+        await _deindex_campaign_active(r, campaign_id, raw)
+        await _index_campaign_active(r, campaign_id, raw)
 
     return {"ok": True, "status": new_status}
 
@@ -790,10 +999,11 @@ async def pause_campaign(
     r: aioredis.Redis = Depends(get_redis),
 ) -> dict[str, Any]:
     await _load_and_refresh(r, campaign_id)
-    pipe = r.pipeline()
-    pipe.hset(_ck(campaign_id), mapping={"status": STATUS_PAUSED, "updated_at": str(_now())})
-    pipe.srem(ACTIVE_CAMPAIGNS_KEY, campaign_id)
-    await pipe.execute()
+    await r.hset(
+        _ck(campaign_id),
+        mapping={"status": STATUS_PAUSED, "updated_at": str(_now())},
+    )
+    await _deindex_campaign_active(r, campaign_id)
     return {"ok": True, "status": STATUS_PAUSED}
 
 
@@ -833,12 +1043,16 @@ async def delete_campaign(
         raise HTTPException(status_code=404, detail="campaign not found")
     brand_id = raw.get("brand_id", "")
 
+    # De-index from partition SETs first (reads the membership tracker
+    # before we delete it). Falling back to ``raw`` if the tracker is
+    # absent (legacy campaigns pre-dating the indexes).
+    await _deindex_campaign_active(r, campaign_id, raw)
+
     pipe = r.pipeline()
     pipe.delete(_ck(campaign_id))
     pipe.delete(_sk(campaign_id))
     pipe.delete(_total_spend_key(campaign_id))
     pipe.delete(_daily_spend_key(campaign_id))
-    pipe.srem(ACTIVE_CAMPAIGNS_KEY, campaign_id)
     if brand_id:
         pipe.srem(BRAND_CAMPAIGNS_KEY.format(bid=brand_id), campaign_id)
         # Tier-quota counter — DECR campaigns_count. Floor at 0 to stay
@@ -1487,10 +1701,14 @@ async def admin_approve(
         "status": target,
         "updated_at": str(_now()),
     })
-    if target == STATUS_ACTIVE:
-        pipe.sadd(ACTIVE_CAMPAIGNS_KEY, campaign_id)
     pipe.zrem(REVIEW_QUEUE_KEY, campaign_id)
     await pipe.execute()
+    if target == STATUS_ACTIVE:
+        # Re-read with the new status so the helper picks up the fresh
+        # targeting + status. Pipeline above already committed the HSET.
+        await _index_campaign_active(
+            r, campaign_id, {**raw, "status": target}
+        )
 
     await _log_approval(
         r,
@@ -1521,9 +1739,9 @@ async def admin_reject(
         "status": STATUS_DISAPPROVED,
         "updated_at": str(_now()),
     })
-    pipe.srem(ACTIVE_CAMPAIGNS_KEY, campaign_id)
     pipe.zrem(REVIEW_QUEUE_KEY, campaign_id)
     await pipe.execute()
+    await _deindex_campaign_active(r, campaign_id, raw)
 
     await _log_approval(
         r,
@@ -1633,10 +1851,12 @@ async def submit_for_review(
         "status": target,
         "updated_at": str(_now()),
     })
-    if target == STATUS_ACTIVE:
-        pipe.sadd(ACTIVE_CAMPAIGNS_KEY, campaign_id)
     pipe.zrem(REVIEW_QUEUE_KEY, campaign_id)
     await pipe.execute()
+    if target == STATUS_ACTIVE:
+        await _index_campaign_active(
+            r, campaign_id, {**raw, "status": target}
+        )
 
     await _log_approval(
         r,

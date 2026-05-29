@@ -376,6 +376,12 @@ and the shim helpers in `app.api_standards`.
         pixel.router, prefix="/api/v1/pixel", tags=["pixel"]
     )
 
+    # ── Conversions API (CAPI): server-to-server pixel-parity ingestion ─
+    from app.routers import capi
+    app.include_router(
+        capi.router, prefix="/api/v1/capi", tags=["capi"]
+    )
+
     # ── Payouts & Settlement: bank accounts, payouts, invoices, cron ───
     from app.routers import payouts
     app.include_router(
@@ -514,6 +520,30 @@ and the shim helpers in `app.api_standards`.
         tags=["payment_methods"],
     )
 
+    # ── Customers: Stripe-style merchant billing root + tax/address ────
+    from app.routers import customers
+    app.include_router(
+        customers.router,
+        prefix="/api/v1/customers",
+        tags=["customers"],
+    )
+
+    # ── PaymentIntents + SetupIntents: save-card + charge state machines ─
+    from app.routers import payment_intents
+    app.include_router(
+        payment_intents.router,
+        prefix="/api/v1/payment-intents",
+        tags=["payment_intents"],
+    )
+
+    # ── Invoices: formal billing docs with line items + VAT + PDF ──────
+    from app.routers import invoices
+    app.include_router(
+        invoices.router,
+        prefix="/api/v1/invoices",
+        tags=["invoices"],
+    )
+
     # ── Stripe Webhook: payment_intent / subscription / invoice / refund ─
     from app.routers import stripe_webhook
     app.include_router(
@@ -530,12 +560,28 @@ and the shim helpers in `app.api_standards`.
         tags=["dashboards"],
     )
 
+    # ── Multi-Dimensional Reporting: TikTok/Google Ads Manager parity ──
+    from app.routers import reporting
+    app.include_router(
+        reporting.router,
+        prefix="/api/v1/reporting",
+        tags=["reporting"],
+    )
+
     # ── Welcome Kit: auto-generated table stand / poster / shipping ────
     from app.routers import welcome_kit
     app.include_router(
         welcome_kit.router,
         prefix="/api/v1/welcome-kit",
         tags=["welcome_kit"],
+    )
+
+    # ── Saga: cross-module compensating transactions ───────────────────
+    from app.routers import saga as saga_router
+    app.include_router(
+        saga_router.router,
+        prefix="/api/v1/saga",
+        tags=["saga"],
     )
 
     # ── Root redirect to Landing Page ──────────────────────────────────

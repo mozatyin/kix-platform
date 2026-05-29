@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>时间拍卖</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .screen { display: none; }
+  .screen.active { display: flex; flex-direction: column; }
+  #game-board { display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(10, 1fr); aspect-ratio: 9/10; max-height: 60vh; width: 100%; max-width: 360px; margin: 0 auto; }
+  #game-board .cell { border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; cursor: pointer; position: relative; background: #fdf6e3; }
+  #game-board .cell:nth-child(odd) { background: #faf3e0; }
+  #game-board .cell.selected { box-shadow: inset 0 0 0 3px #f59e0b; background: #fef3c7; }
+  #game-board .cell.valid-move { box-shadow: inset 0 0 0 2px #22c55e; background: #dcfce7; }
+  #game-board .cell.red-piece { color: #dc2626; font-weight: bold; }
+  #game-board .cell.black-piece { color: #1e293b; font-weight: bold; }
+  .action-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; }
+</style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS — Test Brand */
+:root {
+  --kix-brand: #8B4513;
+  --kix-accent: #F5DEB3;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #8B4513, #452209) !important;
+  --tw-gradient-from: #8B4513 !important;
+  --tw-gradient-to: #452209 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #8B4513 !important;
+  background: #8B4513 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #452209 !important;
+  background: #452209 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #8B4513 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-stone-900 text-stone-100 min-h-screen flex flex-col font-sans">
+
+<!-- SCREENS -->
+<div id="home-screen" class="screen active flex-col items-center justify-center gap-6 px-6 pt-16 pb-28">
+  <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">Test Brand</h1>
+  <p class="text-stone-400 text-sm">Time Auction</p>
+  <div class="flex flex-col gap-3 w-full max-w-xs mt-8">
+    <button id="btn-play" class="w-full py-4 bg-amber-500 text-stone-900 font-bold text-lg rounded-2xl shadow-lg hover:bg-amber-400 transition-colors">开始游戏</button>
+    <button id="btn-tutorial" class="w-full py-3 bg-stone-700 text-stone-200 font-semibold rounded-xl hover:bg-stone-600 transition-colors">教程</button>
+    <button id="btn-rules" class="w-full py-3 bg-stone-700 text-stone-200 font-semibold rounded-xl hover:bg-stone-600 transition-colors">规则</button>
+    <button id="btn-leaderboard" class="w-full py-3 bg-stone-700 text-stone-200 font-semibold rounded-xl hover:bg-stone-600 transition-colors">排行榜</button>
+    <button id="btn-settings" class="w-full py-3 bg-stone-700 text-stone-200 font-semibold rounded-xl hover:bg-stone-600 transition-colors">设置</button>
+  </div>
+</div>
+
+<div id="settings-screen" class="screen hidden flex-col items-center gap-6 px-6 pt-12 pb-28">
+  <h2 class="text-2xl font-bold text-amber-300">⚙️ 设置</h2>
+  <div id="settings-content" class="w-full max-w-xs flex flex-col gap-4 text-stone-300"></div>
+</div>
+
+<div id="rules-screen" class="screen hidden flex-col items-center gap-4 px-6 pt-12 pb-28 overflow-y-auto">
+  <h2 class="text-2xl font-bold text-amber-300">📜 规则</h2>
+  <div id="rules-content" class="w-full max-w-xs text-stone-300 text-sm leading-relaxed space-y-3"></div>
+</div>
+
+<div id="tutorial-screen" class="screen hidden flex-col items-center gap-4 px-6 pt-12 pb-28 overflow-y-auto">
+  <h2 class="text-2xl font-bold text-amber-300">🎓 教程</h2>
+  <div id="tutorial-content" class="w-full max-w-xs text-stone-300 text-sm leading-relaxed space-y-3"></div>
+</div>
+
+<div id="leaderboard-screen" class="screen hidden flex-col items-center gap-4 px-6 pt-12 pb-28 overflow-y-auto">
+  <h2 class="text-2xl font-bold text-amber-300">🏆 排行榜</h2>
+  <div id="leaderboard-content" class="w-full max-w-xs text-stone-300 text-sm"></div>
+</div>
+
+<div id="auction_phase-screen" class="screen hidden flex-col items-center gap-4 px-4 pt-8 pb-28">
+  <h2 class="text-xl font-bold text-amber-400">🔨 拍卖阶段</h2>
+  <div id="auction-info" class="w-full max-w-sm text-center text-stone-300 text-sm"></div>
+  <div id="auction-bid-display" class="text-3xl font-bold text-amber-300"></div>
+  <div id="auction-players" class="w-full max-w-sm flex justify-around text-sm"></div>
+  <div class="flex gap-3 mt-4 flex-wrap justify-center">
+    <button id="btn-bid-small" class="px-5 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-500 transition-colors">+1 ⏱</button>
+    <button id="btn-bid-medium" class="px-5 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-500 transition-colors">+5 ⏱</button>
+    <button id="btn-bid-large" class="px-5 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-500 transition-colors">+10 ⏱</button>
+    <button id="btn-pass-bid" class="px-5 py-3 bg-stone-600 text-stone-200 font-bold rounded-xl hover:bg-stone-500 transition-colors">跳过</button>
+  </div>
+</div>
+
+<div id="action_phase-screen" class="screen hidden flex-col items-center gap-3 px-2 pt-4 pb-28">
+  <h2 class="text-lg font-bold text-amber-400">⚔️ 行动阶段</h2>
+  <div id="action-status" class="text-sm text-stone-300 text-center"></div>
+  <div id="game-board"></div>
+  <div id="action-hint" class="text-xs text-stone-400 text-center"></div>
+</div>
+
+<div id="game_result-screen" class="screen hidden flex-col items-center justify-center gap-6 px-6 pt-16 pb-28">
+  <h2 class="text-3xl font-extrabold text-amber-400">🏁 游戏结束</h2>
+  <div id="result-content" class="text-center text-stone-300 text-lg"></div>
+  <button id="btn-rematch" class="px-8 py-4 bg-amber-500 text-stone-900 font-bold text-lg rounded-2xl shadow-lg hover:bg-amber-400 transition-colors">再来一局</button>
+  <button id="btn-go-home" class="px-6 py-3 bg-stone-700 text-stone-200 font-semibold rounded-xl hover:bg-stone-600 transition-colors">返回首页</button>
+</div>
+
+<!-- ACTION BAR (fixed bottom) -->
+<div class="action-bar bg-stone-800 border-t border-stone-700 flex items-center justify-around px-3 py-3 gap-2" id="action-bar">
+  <button id="btn-action-back" class="px-4 py-2 bg-stone-600 text-stone-200 rounded-xl font-semibold text-sm hover:bg-stone-500 transition-colors">← 返回</button>
+  <button id="btn-action-primary" class="px-5 py-2 bg-amber-500 text-stone-900 rounded-xl font-bold text-sm hover:bg-amber-400 transition-colors flex-1 max-w-[160px]">确认</button>
+  <button id="btn-action-secondary" class="px-4 py-2 bg-stone-600 text-stone-200 rounded-xl font-semibold text-sm hover:bg-stone-500 transition-colors">取消</button>
+</div>
+
+<!-- SINGLE SCRIPT TAG -->
+<script>
+/* ============================================================
+   STATE: plain objects only — no Set, Map, Date in game state
+   handleAction receives JSON.parse(JSON.stringify(state)) clone
+   ============================================================ */
+
+/** @returns {object} initial game state */
+function initState() { let board = [];
+for (let row = 0; row < 10; row++) {
+  board[row] = [];
+  for (let col = 0; col < 9; col++) {
+    board[row][col] = null;
+  }
+}
+
+// Place black pieces (top, row 0)
+board[0][0] = { type: 'chariot', color: 'black' };
+board[0][1] = { type: 'horse', color: 'black' };
+board[0][2] = { type: 'elephant', color: 'black' };
+board[0][3] = { type: 'advisor', color: 'black' };
+board[0][4] = { type: 'general', color: 'black' };
+board[0][5] = { type: 'advisor', color: 'black' };
+board[0][6] = { type: 'elephant', color: 'black' };
+board[0][7] = { type: 'horse', color: 'black' };
+board[0][8] = { type: 'chariot', color: 'black' };
+
+board[2][1] = { type: 'cannon', color: 'black' };
+board[2][7] = { type: 'cannon', color: 'black' };
+
+board[3][0] = { type: 'soldier', color: 'black' };
+board[3][2] = { type: 'soldier', color: 'black' };
+board[3][4] = { type: 'soldier', color: 'black' };
+board[3][6] = { type: 'soldier', color: 'black' };
+board[3][8] = { type: 'soldier', color: 'black' };
+
+// Place red pieces (bottom, row 9)
+board[9][0] = { type: 'chariot', color: 'red' };
+board[9][1] = { type: 'horse', color: 'red' };
+board[9][2] = { type: 'elephant', color: 'red' };
+board[9][3] = { type: 'advisor', color: 'red' };
+board[9][4] = { type: 'general', color: 'red' };
+board[9][5] = { type: 'advisor', color: 'red' };
+board[9][6] = { type: 'elephant', color: 'red' };
+board[9][7] = { type: 'horse', color: 'red' };
+board[9][8] = { type: 'chariot', color: 'red' };
+
+board[7][1] = { type: 'cannon', color: 'red' };
+board[7][7] = { type: 'cannon', color: 'red' };
+
+board[6][0] = { type: 'soldier', color: 'red' };
+board[6][2] = { type: 'soldier', color: 'red' };
+board[6][4] = { type: 'soldier', color: 'red' };
+board[6][6] = { type: 'soldier', color: 'red' };
+board[6][8] = { type: 'soldier', color: 'red' };
+
+return {
+  screen: 'home',
+  phase: null,
+  board: board,
+  players: {
+    red: { time: 100, color: 'red', isAI: false },
+    black: { time: 100, color: 'black', isAI: true }
+  },
+  currentPlayer: 'red',
+  auction: null,
+  selectedPiece: null,
+  validMoves: null,
+  winner: null
+}; }
+
+/**
+ * Pure synchronous reducer — returns new state, never mutates input
+ * @param {object} state
+ * @param {object} action — flat properties: action.type, action.row, action.col, etc.
+ * @returns {object} new state
+ */
+function handleAction(state, action) { let newState = { ...state };
+
+switch (action.type) {
+  case 'play':
+  case 'rematch': {
+    let base = initState();
+    base.screen = 'auction_phase';
+    return startAuctionRound(base);
+  }
+  case 'tutorial':
+    return { ...state, screen: 'tutorial' };
+  case 'rules':
+    return { ...state, screen: 'rules' };
+  case 'leaderboard':
+    return { ...state, screen: 'leaderboard' };
+  case 'settings':
+    return { ...state, screen: 'settings' };
+  case 'home':
+    return { ...state, screen: 'home' };
+  case 'back':
+    return { ...state, screen: 'home' };
+  case 'bid': {
+    if (state.screen !== 'auction_phase' || !state.auction) return state;
+    let increment = action.increment || 0;
+    let currentBid = state.auction.currentBid || 0;
+    let newAmount = currentBid + increment;
+    return placeBid(state, newAmount);
+  }
+  case 'pass_bid': {
+    if (state.screen !== 'auction_phase' || !state.auction) return state;
+    return resolveAuction(state);
+  }
+  case 'confirm_move': {
+    if (state.screen !== 'action_phase') return state;
+    let pending = state.actionPhase && state.actionPhase.pendingMove;
+    if (!pending) return state;
+    var { fromRow, fromCol, toRow, toCol } = pending;
+    let movedState = applyMove(state, fromRow, fromCol, toRow, toCol);
+    movedState = { ...movedState, actionPhase: { ...movedState.actionPhase, pendingMove: null } };
+    let mover = state.actionPhase.currentPlayer;
+    let opponent = mover === 'red' ? 'black' : 'red';
+    if (isCheckmate(movedState, opponent)) {
+      movedState.screen = 'game_result';
+      movedState.winner = mover;
+      movedState.gameOver = true;
+      return movedState;
+    } else {
+      return startAuctionRound(movedState);
+    }
+  }
+  case 'cancel_move': {
+    if (state.screen !== 'action_phase') return state;
+    return {
+      ...state,
+      actionPhase: { ...state.actionPhase, pendingMove: null },
+      selectedPiece: null
+    };
+  }
+  default:
+    return state;
+} }
+
+/**
+ * Updates DOM from state — calls showScreen(state.screen) internally
+ * @param {object} state
+ */
+function render(state) { showScreen(state.screen);
+
+if (state.screen === 'home') {
+  // 首页无需额外渲染
+} else if (state.screen === 'settings') {
+  let settingsContent = document.getElementById('settings-content');
+  if (settingsContent) {
+    let html = '<div class="space-y-2">';
+    if (state.settings) {
+      for (let key in state.settings) {
+        let value = state.settings[key];
+        html += `<div class="flex justify-between items-center"><span class="text-stone-300">${key}</span><span class="text-amber-300">${value ? '开启' : '关闭'}</span></div>`;
+      }
+    } else {
+      html += '<p class="text-stone-400 text-sm">暂无设置项</p>';
+    }
+    html += '</div>';
+    settingsContent.innerHTML = html;
+  }
+} else if (state.screen === 'rules') {
+  let rulesContent = document.getElementById('rules-content');
+  if (rulesContent && !rulesContent.dataset.loaded) {
+    rulesContent.innerHTML = `
+      <p class="mb-2 font-semibold">⏳ 时间拍卖规则</p>
+      <p>每位玩家拥有初始时间（例如300秒）。游戏分为拍卖阶段和行动阶段。</p>
+      <p>拍卖阶段：当前回合的玩家出价竞拍行动权，出价高者获得移动棋子的机会并消耗对应时间。</p>
+      <p>行动阶段：获得行动权的玩家移动一枚自己的棋子（遵守中国象棋移动规则）。</p>
+      <p>将杀对方将/帅即获胜。若一方时间耗尽，对方获胜。</p>
+      <p>拍卖与行动交替进行，直到分出胜负。</p>
+    `;
+    rulesContent.dataset.loaded = 'true';
+  }
+} else if (state.screen === 'tutorial') {
+  let tutorialContent = document.getElementById('tutorial-content');
+  if (tutorialContent && !tutorialContent.dataset.loaded) {
+    tutorialContent.innerHTML = `
+      <p class="mb-2 font-semibold">🎓 快速上手</p>
+      <p>1. 拍卖阶段：点击 +1/+5/+10 按钮递增出价，或点击"跳过"放弃本轮拍卖。</p>
+      <p>2. 最后出价者获得行动权，其所出时间会从其总时间中扣除。</p>
+      <p>3. 行动阶段：点击己方棋子（红色或黑色），再点击高亮的合法目标格子完成移动。</p>
+      <p>4. 交替进行，直到将杀对方或一方时间耗尽。</p>
+    `;
+    tutorialContent.dataset.loaded = 'true';
+  }
+} else if (state.screen === 'leaderboard') {
+  let leaderboardContent = document.getElementById('leaderboard-content');
+  if (leaderboardContent) {
+    let list = state.leaderboard || [];
+    let html = '<ol class="list-decimal list-inside space-y-1 text-sm">';
+    for (let i = 0; i < list.length; i++) {
+      let entry = list[i];
+      html += `<li>${entry.name || '无名'} - ${entry.score || 0} 分</li>`;
+    }
+    if (list.length === 0) html += '<li class="text-stone-400">暂无记录</li>';
+    html += '</ol>';
+    leaderboardContent.innerHTML = html;
+  }
+} else if (state.screen === 'auction_phase') {
+  let auctionInfo = document.getElementById('auction-info');
+  let auctionBidDisplay = document.getElementById('auction-bid-display');
+  let auctionPlayers = document.getElementById('auction-players');
+  let btnSmall = document.getElementById('btn-bid-small');
+  let btnMedium = document.getElementById('btn-bid-medium');
+  let btnLarge = document.getElementById('btn-bid-large');
+  let btnPass = document.getElementById('btn-pass-bid');
+
+  if (auctionInfo && auctionBidDisplay && auctionPlayers) {
+    let currentBidderName = '等待中';
+    if (state.currentAuctionTurn !== undefined && state.players && state.players[state.currentAuctionTurn]) {
+      currentBidderName = state.players[state.currentAuctionTurn].name + ' 出价中';
+    }
+    auctionInfo.textContent = `第${state.round || 1}轮拍卖 - ${currentBidderName}`;
+    auctionBidDisplay.textContent = (state.auction && state.auction.currentBid != null ? state.auction.currentBid : 0) + ' ⏱';
+
+    let html = '';
+    let auctionPlayersList = state.auctionPlayers || [];
+    for (let idx of auctionPlayersList) {
+      let player = state.players[idx];
+      html += `<div class="text-center"><span class="font-bold">${player.name}</span><br><small class="text-stone-400">剩余 ${player.time} ⏱</small></div>`;
+    }
+    auctionPlayers.innerHTML = html;
+
+    let isHumanTurn = state.currentAuctionTurn !== undefined && state.players && state.players[state.currentAuctionTurn].isHuman && state.phase === 'auction_phase';
+    if (btnSmall) btnSmall.disabled = !isHumanTurn;
+    if (btnMedium) btnMedium.disabled = !isHumanTurn;
+    if (btnLarge) btnLarge.disabled = !isHumanTurn;
+    if (btnPass) btnPass.disabled = !isHumanTurn;
+  }
+} else if (state.screen === 'action_phase') {
+  let actionStatus = document.getElementById('action-status');
+  if (actionStatus) {
+    actionStatus.textContent = state.currentTurn === 'red' ? '红方行动' : '黑方行动';
+  }
+  renderBoard(state);
+  let actionHint = document.getElementById('action-hint');
+  if (actionHint) {
+    if (state.selectedCell) {
+      actionHint.textContent = `选中棋子 (${state.selectedCell.row}, ${state.selectedCell.col}) - 再点击目标格子移动`;
+    } else {
+      actionHint.textContent = '点击棋子选择，再点击目标格子移动';
+    }
+  }
+  let confirmBtn = document.getElementById('btn-action-primary');
+  if (confirmBtn) {
+    if (state.selectedCell) {
+      confirmBtn.classList.remove('hidden');
+    } else {
+      confirmBtn.classList.add('hidden');
+    }
+  }
+} else if (state.screen === 'game_result') {
+  let resultContent = document.getElementById('result-content');
+  if (resultContent) {
+    resultContent.textContent = state.result || '游戏结束';
+  }
+} }
+
+/**
+ * Shows screen by base ID — appends '-screen' internally
+ * @param {string} screenId — base name e.g. 'home', 'auction_phase'
+ */
+function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+  for (let i = 0; i < screens.length; i++) {
+    screens[i].classList.remove('active');
+  }
+  let target = document.getElementById(screenId + '-screen');
+  if (target) {
+    target.classList.add('active');
+  } }
+
+/**
+ * Initializes game, wires ALL button listeners, calls render
+ * Called once from DOMContentLoaded
+ */
+function startGame() { let gameState = initState();
+
+let dispatch = (action) => {
+  gameState = handleAction(gameState, action);
+  render(gameState);
+};
+
+document.getElementById('btn-play').addEventListener('click', () => dispatch({ type: 'PLAY' }));
+document.getElementById('btn-tutorial').addEventListener('click', () => dispatch({ type: 'TUTORIAL' }));
+document.getElementById('btn-rules').addEventListener('click', () => dispatch({ type: 'RULES' }));
+document.getElementById('btn-leaderboard').addEventListener('click', () => dispatch({ type: 'LEADERBOARD' }));
+document.getElementById('btn-settings').addEventListener('click', () => dispatch({ type: 'SETTINGS' }));
+
+document.getElementById('btn-bid-small').addEventListener('click', () => dispatch({ type: 'BID', amount: 1 }));
+document.getElementById('btn-bid-medium').addEventListener('click', () => dispatch({ type: 'BID', amount: 5 }));
+document.getElementById('btn-bid-large').addEventListener('click', () => dispatch({ type: 'BID', amount: 10 }));
+document.getElementById('btn-pass-bid').addEventListener('click', () => dispatch({ type: 'PASS_BID' }));
+
+document.getElementById('btn-rematch').addEventListener('click', () => dispatch({ type: 'REMATCH' }));
+document.getElementById('btn-go-home').addEventListener('click', () => dispatch({ type: 'GO_HOME' }));
+
+document.getElementById('btn-action-back').addEventListener('click', () => dispatch({ type: 'NAV_BACK' }));
+document.getElementById('btn-action-primary').addEventListener('click', () => dispatch({ type: 'NAV_CONFIRM' }));
+document.getElementById('btn-action-secondary').addEventListener('click', () => dispatch({ type: 'NAV_CANCEL' }));
+
+render(gameState); }
+
+/* ---------- BOARD & PIECE HELPERS ---------- */
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color — 'red' | 'black'
+ * @returns {Array<[number,number]>} valid destination squares
+ */
+function getGeneralMoves(state, row, col, color) { let moves = [];
+let minRow, maxRow;
+if (color === 'red') {
+  minRow = 7;
+  maxRow = 9;
+} else {
+  minRow = 0;
+  maxRow = 2;
+}
+let minCol = 3;
+let maxCol = 5;
+
+let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+for (let i = 0; i < directions.length; i++) {
+  let dr = directions[i][0];
+  let dc = directions[i][1];
+  let newRow = row + dr;
+  let newCol = col + dc;
+  
+  if (newRow >= minRow && newRow <= maxRow && newCol >= minCol && newCol <= maxCol) {
+    let target = state.board[newRow][newCol];
+    if (!target || target.color !== color) {
+      moves.push([newRow, newCol]);
+    }
+  }
+}
+
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color
+ * @returns {Array<[number,number]>}
+ */
+function getHorseMoves(state, row, col, color) { let board = state.board;
+let moves = [];
+let offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+for (let off of offsets) {
+  let dr = off[0], dc = off[1];
+  let tr = row + dr, tc = col + dc;
+  if (tr < 0 || tr >= 10 || tc < 0 || tc >= 9) continue;
+  let blockR = row + (Math.abs(dr) === 2 ? (dr > 0 ? 1 : -1) : 0);
+  let blockC = col + (Math.abs(dc) === 2 ? (dc > 0 ? 1 : -1) : 0);
+  if (blockR < 0 || blockR >= 10 || blockC < 0 || blockC >= 9) continue;
+  if (board[blockR][blockC] !== null) continue;
+  let targetPiece = board[tr][tc];
+  if (targetPiece === null || targetPiece.color !== color) {
+    moves.push([tr, tc]);
+  }
+}
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color
+ * @returns {Array<[number,number]>}
+ */
+function getAdvisorMoves(state, row, col, color) { let moves = [];
+let palaceRows = color === 'red' ? [7,8,9] : [0,1,2];
+let palaceCols = [3,4,5];
+let dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+for (let d of dirs) {
+  let newRow = row + d[0];
+  let newCol = col + d[1];
+  if (newRow < 0 || newRow > 9 || newCol < 0 || newCol > 8) continue;
+  if (!palaceRows.includes(newRow) || !palaceCols.includes(newCol)) continue;
+  let targetPiece = state.board[newRow][newCol];
+  if (targetPiece && targetPiece.color === color) continue;
+  moves.push([newRow, newCol]);
+}
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color
+ * @returns {Array<[number,number]>}
+ */
+function getElephantMoves(state, row, col, color) { let moves = [];
+let dirs = [[2, 2], [2, -2], [-2, 2], [-2, -2]];
+for (let i = 0; i < dirs.length; i++) {
+  let dr = dirs[i][0];
+  let dc = dirs[i][1];
+  let newRow = row + dr;
+  let newCol = col + dc;
+  if (newRow < 0 || newRow >= 10 || newCol < 0 || newCol >= 9) continue;
+  if (color === 'red' && newRow < 5) continue;
+  if (color === 'black' && newRow > 4) continue;
+  let eyeRow = row + (dr > 0 ? 1 : -1);
+  let eyeCol = col + (dc > 0 ? 1 : -1);
+  if (state.board[eyeRow][eyeCol] !== null) continue;
+  let target = state.board[newRow][newCol];
+  if (target !== null && target.color === color) continue;
+  moves.push([newRow, newCol]);
+}
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color
+ * @returns {Array<[number,number]>}
+ */
+function getChariotMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+let rows = 10;
+let cols = 9;
+// Up
+for (let r = row - 1; r >= 0; r--) {
+    let cell = board[r][col];
+    if (cell === null) {
+        moves.push([r, col]);
+    } else {
+        if (cell.color !== color) moves.push([r, col]);
+        break;
+    }
+}
+// Down
+for (let r = row + 1; r < rows; r++) {
+    let cell = board[r][col];
+    if (cell === null) {
+        moves.push([r, col]);
+    } else {
+        if (cell.color !== color) moves.push([r, col]);
+        break;
+    }
+}
+// Left
+for (let c = col - 1; c >= 0; c--) {
+    let cell = board[row][c];
+    if (cell === null) {
+        moves.push([row, c]);
+    } else {
+        if (cell.color !== color) moves.push([row, c]);
+        break;
+    }
+}
+// Right
+for (let c = col + 1; c < cols; c++) {
+    let cell = board[row][c];
+    if (cell === null) {
+        moves.push([row, c]);
+    } else {
+        if (cell.color !== color) moves.push([row, c]);
+        break;
+    }
+}
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color
+ * @returns {Array<[number,number]>}
+ */
+function getCannonMoves(state, row, col, color) { let moves = [];
+let board = state.board;
+let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+for (let [dr, dc] of directions) {
+  let r = row + dr;
+  let c = col + dc;
+
+  // Non-capture moves: slide through empty squares like a chariot
+  while (r >= 0 && r < 10 && c >= 0 && c < 9 && board[r][c] === null) {
+    moves.push([r, c]);
+    r += dr;
+    c += dc;
+  }
+
+  // Capture moves: must jump over exactly one piece (the "screen")
+  if (r >= 0 && r < 10 && c >= 0 && c < 9 && board[r][c] !== null) {
+    // Found the screen piece; look beyond it
+    r += dr;
+    c += dc;
+    while (r >= 0 && r < 10 && c >= 0 && c < 9) {
+      if (board[r][c] !== null) {
+        // First piece after the screen — capture if enemy
+        if (board[r][c].color !== color) {
+          moves.push([r, c]);
+        }
+        break;
+      }
+      r += dr;
+      c += dc;
+    }
+  }
+}
+
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @param {string} color
+ * @returns {Array<[number,number]>}
+ */
+function getSoldierMoves(state, row, col, color) { let moves = [];
+let direction = color === 'red' ? -1 : 1;
+let forwardR = row + direction;
+if (forwardR >= 0 && forwardR <= 9) {
+  let target = state.board[forwardR][col];
+  if (!target || target.color !== color) {
+    moves.push([forwardR, col]);
+  }
+}
+let crossed = (color === 'red' && row <= 4) || (color === 'black' && row >= 5);
+if (crossed) {
+  let leftC = col - 1;
+  if (leftC >= 0) {
+    let target = state.board[row][leftC];
+    if (!target || target.color !== color) {
+      moves.push([row, leftC]);
+    }
+  }
+  let rightC = col + 1;
+  if (rightC <= 8) {
+    let target = state.board[row][rightC];
+    if (!target || target.color !== color) {
+      moves.push([row, rightC]);
+    }
+  }
+}
+return moves; }
+
+/**
+ * @param {object} state
+ * @param {string} color
+ * @returns {boolean}
+ */
+function isInCheck(state, color) { let opponentColor = color === 'red' ? 'black' : 'red';
+let generalRow = -1, generalCol = -1;
+for (let r = 0; r < 10; r++) {
+  for (let c = 0; c < 9; c++) {
+    let p = state.board[r][c];
+    if (p && p.color === color && p.type === 'general') {
+      generalRow = r;
+      generalCol = c;
+      break;
+    }
+  }
+  if (generalRow !== -1) break;
+}
+if (generalRow === -1) return false;
+for (let r = 0; r < 10; r++) {
+  for (let c = 0; c < 9; c++) {
+    let piece = state.board[r][c];
+    if (!piece || piece.color !== opponentColor) continue;
+    let moves;
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, r, c, piece.color); break;
+      case 'advisor': moves = getAdvisorMoves(state, r, c, piece.color); break;
+      case 'elephant': moves = getElephantMoves(state, r, c, piece.color); break;
+      case 'horse': moves = getHorseMoves(state, r, c, piece.color); break;
+      case 'chariot': moves = getChariotMoves(state, r, c, piece.color); break;
+      case 'cannon': moves = getCannonMoves(state, r, c, piece.color); break;
+      case 'soldier': moves = getSoldierMoves(state, r, c, piece.color); break;
+      default: moves = [];
+    }
+    for (let i = 0; i < moves.length; i++) {
+      let [mr, mc] = moves[i];
+      if (mr === generalRow && mc === generalCol) {
+        return true;
+      }
+    }
+  }
+}
+return false; }
+
+/**
+ * @param {object} state
+ * @param {string} color
+ * @returns {boolean}
+ */
+function isCheckmate(state, color) { if (!isInCheck(state, color)) return false;
+let board = state.board;
+for (let r = 0; r < board.length; r++) {
+  let rowData = board[r];
+  for (let c = 0; c < rowData.length; c++) {
+    let piece = rowData[c];
+    if (!piece || piece.color !== color) continue;
+    let moves;
+    switch (piece.type) {
+      case 'general': moves = getGeneralMoves(state, r, c, color); break;
+      case 'horse': moves = getHorseMoves(state, r, c, color); break;
+      case 'advisor': moves = getAdvisorMoves(state, r, c, color); break;
+      case 'elephant': moves = getElephantMoves(state, r, c, color); break;
+      case 'chariot': moves = getChariotMoves(state, r, c, color); break;
+      case 'cannon': moves = getCannonMoves(state, r, c, color); break;
+      case 'soldier': moves = getSoldierMoves(state, r, c, color); break;
+      default: continue;
+    }
+    for (let i = 0; i < moves.length; i++) {
+      let toRow = moves[i][0];
+      let toCol = moves[i][1];
+      let newState = applyMove(state, r, c, toRow, toCol);
+      if (!isInCheck(newState, color)) return false;
+    }
+  }
+}
+return true; }
+
+/**
+ * Simple AI — returns a move for the given color
+ * @param {object} state
+ * @param {string} color
+ * @returns {{fromRow:number,fromCol:number,toRow:number,toCol:number}|null}
+ */
+function getAIMove(state, color) { let allMoves = [];
+for (let r = 0; r < state.board.length; r++) {
+    let rowData = state.board[r];
+    for (let c = 0; c < rowData.length; c++) {
+        let piece = rowData[c];
+        if (piece && piece.color === color) {
+            let moves;
+            let type = piece.type;
+            if (type === 'general') moves = getGeneralMoves(state, r, c, color);
+            else if (type === 'horse') moves = getHorseMoves(state, r, c, color);
+            else if (type === 'advisor') moves = getAdvisorMoves(state, r, c, color);
+            else if (type === 'elephant') moves = getElephantMoves(state, r, c, color);
+            else if (type === 'chariot') moves = getChariotMoves(state, r, c, color);
+            else if (type === 'cannon') moves = getCannonMoves(state, r, c, color);
+            else if (type === 'soldier') moves = getSoldierMoves(state, r, c, color);
+            else continue;
+            for (let i = 0; i < moves.length; i++) {
+                let toRow = moves[i][0];
+                let toCol = moves[i][1];
+                allMoves.push({fromRow: r, fromCol: c, toRow: toRow, toCol: toCol});
+            }
+        }
+    }
+}
+if (allMoves.length === 0) return {};
+let bestScore = -Infinity;
+let bestMoves = [];
+let opponentColor = color === 'red' ? 'black' : 'red';
+function pieceValue(p, row) {
+    if (!p) return 0;
+    let t = p.type;
+    if (t === 'general') return 10000;
+    if (t === 'chariot') return 9;
+    if (t === 'cannon') return 4.5;
+    if (t === 'horse') return 4;
+    if (t === 'advisor') return 2;
+    if (t === 'elephant') return 2;
+    if (t === 'soldier') {
+        let crossed;
+        if (p.color === 'red') crossed = row <= 4;
+        else crossed = row >= 5;
+        return crossed ? 2 : 1;
+    }
+    return 0;
+}
+for (let i = 0; i < allMoves.length; i++) {
+    let move = allMoves[i];
+    let fromRow = move.fromRow, fromCol = move.fromCol, toRow = move.toRow, toCol = move.toCol;
+    let captured = state.board[toRow][toCol];
+    let captureValue = (captured && captured.color !== color) ? pieceValue(captured, toRow) : 0;
+    let testState = JSON.parse(JSON.stringify(state));
+    testState = applyMove(testState, fromRow, fromCol, toRow, toCol);
+    if (isInCheck(testState, color)) continue;
+    let score = captureValue * 10;
+    if (isCheckmate(testState, opponentColor)) {
+        score += 100000;
+    } else if (isInCheck(testState, opponentColor)) {
+        score += 15;
+    }
+    if (score > bestScore) {
+        bestScore = score;
+        bestMoves = [move];
+    } else if (score === bestScore) {
+        bestMoves.push(move);
+    }
+}
+if (bestMoves.length === 0) return {};
+let idx = Math.floor(Math.random() * bestMoves.length);
+return bestMoves[idx]; }
+
+/**
+ * Populates #game-board with cells based on state.board
+ * @param {object} state
+ */
+function renderBoard(state) { let boardEl = document.getElementById('game-board');
+boardEl.innerHTML = '';
+let selected = state.selectedPiece;
+let validMoves = state.validMoves || [];
+let piecesChar = {
+  general: { red: '帅', black: '将' },
+  advisor: { red: '仕', black: '士' },
+  elephant: { red: '相', black: '象' },
+  horse: { red: '马', black: '马' },
+  chariot: { red: '车', black: '车' },
+  cannon: { red: '炮', black: '炮' },
+  soldier: { red: '兵', black: '卒' }
+};
+let html = '';
+for (let row = 0; row < 10; row++) {
+  for (let col = 0; col < 9; col++) {
+    let piece = state.board[row][col];
+    let classes = ['cell'];
+    if (piece) {
+      classes.push(piece.color === 'red' ? 'red-piece' : 'black-piece');
+    }
+    if (selected && selected.row === row && selected.col === col) {
+      classes.push('selected');
+    } else if (validMoves.some(m => m.row === row && m.col === col)) {
+      classes.push('valid-move');
+    }
+    let char = '';
+    if (piece) {
+      char = piecesChar[piece.type][piece.color];
+    }
+    html += `<div class="${classes.join(' ')}" data-row="${row}" data-col="${col}">${char}</div>`;
+  }
+}
+boardEl.innerHTML = html; }
+
+/**
+ * Handles a click on a board cell at (row, col)
+ * @param {object} state
+ * @param {number} row
+ * @param {number} col
+ * @returns {object} new state
+ */
+function handleBoardClick(state, row, col) { if (state.phase !== 'action_phase') { return state; }
+let currentPlayer = state.currentPlayer;
+let board = state.board;
+let selected = state.selected;
+
+function getMovesForPiece(state, r, c, color, type) {
+  switch (type) {
+    case 'general': return getGeneralMoves(state, r, c, color);
+    case 'horse': return getHorseMoves(state, r, c, color);
+    case 'advisor': return getAdvisorMoves(state, r, c, color);
+    case 'elephant': return getElephantMoves(state, r, c, color);
+    case 'chariot': return getChariotMoves(state, r, c, color);
+    case 'cannon': return getCannonMoves(state, r, c, color);
+    case 'soldier': return getSoldierMoves(state, r, c, color);
+    default: return [];
+  }
+}
+
+if (!selected) {
+    let piece = board[row][col];
+    if (!piece || piece.color !== currentPlayer) { return state; }
+    let moves = getMovesForPiece(state, row, col, piece.color, piece.type);
+    moves = moves.filter(function([tr, tc]) {
+        let temp = applyMove(state, row, col, tr, tc);
+        return !isInCheck(temp, currentPlayer);
+    });
+    return { ...state, selected: { row: row, col: col }, validMoves: moves };
+} else {
+    if (row === selected.row && col === selected.col) {
+        return { ...state, selected: null, validMoves: [] };
+    }
+    let clickedPiece = board[row][col];
+    if (clickedPiece && clickedPiece.color === currentPlayer) {
+        let moves = getMovesForPiece(state, row, col, clickedPiece.color, clickedPiece.type);
+        moves = moves.filter(function([tr, tc]) {
+            let temp = applyMove(state, row, col, tr, tc);
+            return !isInCheck(temp, currentPlayer);
+        });
+        return { ...state, selected: { row: row, col: col }, validMoves: moves };
+    }
+    let validMoves = state.validMoves || [];
+    let isValidMove = validMoves.some(function([r, c]) { return r === row && c === col; });
+    if (!isValidMove) {
+        return { ...state, selected: null, validMoves: [] };
+    }
+    let targetPiece = board[row][col];
+    let isCapturingGeneral = targetPiece && targetPiece.type === 'general' && targetPiece.color !== currentPlayer;
+    let newState = applyMove(state, selected.row, selected.col, row, col);
+    newState = { ...newState, selected: null, validMoves: [] };
+    if (isCapturingGeneral) {
+        newState = { ...newState, phase: 'game_result', winner: currentPlayer };
+    } else {
+        newState = { ...newState, phase: 'auction_phase' };
+        newState = startAuctionRound(newState);
+    }
+    return newState;
+} }
+
+/**
+ * Applies a piece move on the board — assumes move is validated
+ * @param {object} state
+ * @param {number} fromRow
+ * @param {number} fromCol
+ * @param {number} toRow
+ * @param {number} toCol
+ * @returns {object} new state
+ */
+function applyMove(state, fromRow, fromCol, toRow, toCol) { let board = state.board.map(row => row.map(cell => cell));
+board[toRow][toCol] = board[fromRow][fromCol];
+board[fromRow][fromCol] = null;
+return { ...state, board, selected: null, validMoves: [] }; }
+
+/* ---------- AUCTION HELPERS ---------- */
+
+/**
+ * Starts a new auction round
+ * @param {object} state
+ * @returns {object} new state
+ */
+function startAuctionRound(state) { let newState = { ...state };
+newState.screen = 'auction_phase';
+newState.phase = 'auction';
+let round = 1;
+if (state.auction && state.auction.round) {
+  round = state.auction.round + 1;
+}
+newState.auction = {
+  currentBid: 0,
+  currentBidderIndex: 0,
+  highestBidder: null,
+  passedPlayers: [],
+  round: round,
+  item: null
+};
+newState.selectedPiece = null;
+newState.validMoves = [];
+return newState; }
+
+/**
+ * Places a bid for the current player
+ * @param {object} state
+ * @param {number} amount
+ * @returns {object} new state
+ */
+function placeBid(state, amount) { if (state.phase !== 'auction') return state;
+if (amount <= 0) return state;
+let auction = state.auction;
+let turnIndex = auction.turnIndex;
+let player = state.players[turnIndex];
+let newBid = auction.currentBid + amount;
+if (player.time < newBid) return state;
+let nextIndex = (turnIndex + 1) % state.players.length;
+let newAuction = {
+  ...auction,
+  currentBid: newBid,
+  highestBidder: turnIndex,
+  turnIndex: nextIndex,
+  passCount: 0
+};
+return { ...state, auction: newAuction }; }
+
+/**
+ * Resolves the current auction — determines winner, deducts time, transitions phase
+ * @param {object} state
+ * @returns {object} new state
+ */
+function resolveAuction(state) { let newState = JSON.parse(JSON.stringify(state));
+let auction = newState.auction;
+let winner = auction.currentBid > 0 ? auction.highestBidder : 'red';
+let players = newState.players;
+for (let i = 0; i < players.length; i++) {
+  if (players[i].color === winner) {
+    players[i].time = Math.max(0, players[i].time - auction.currentBid);
+    break;
+  }
+}
+newState.currentTurn = winner;
+newState.screen = 'action_phase';
+newState.auction = null;
+return newState; }
+
+/* ---------- DOM READY ---------- */
+document.addEventListener('DOMContentLoaded', startGame);
+
+        function getPieceEmoji(pieceType) { const emojis = ['☕','🫘','🧋','🍵','🥤','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>

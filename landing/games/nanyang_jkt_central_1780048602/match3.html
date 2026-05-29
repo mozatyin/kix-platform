@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+    <title>消消乐 - Match-3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --gem-0: #ef4444;
+            --gem-1: #3b82f6;
+            --gem-2: #22c55e;
+            --gem-3: #eab308;
+            --gem-4: #a855f7;
+            --cell-size: 11vw;
+            --max-cell: 44px;
+        }
+        .screen {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .screen.hidden {
+            display: none;
+        }
+        #game-board {
+            display: grid;
+            gap: 2px;
+            padding: 4px;
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, .3);
+            width: fit-content;
+            margin: 0 auto;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .board-cell {
+            width: var(--cell-size);
+            max-width: var(--max-cell);
+            aspect-ratio: 1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform .12s ease, opacity .2s ease;
+            position: relative;
+        }
+        .board-cell:active {
+            transform: scale(.9);
+        }
+        .board-cell.selected {
+            box-shadow: 0 0 0 3px #fff, 0 0 14px 3px #fbbf24;
+            z-index: 2;
+            transform: scale(1.06);
+        }
+        .board-cell.matched {
+            animation: pop .3s ease forwards;
+        }
+        @keyframes pop {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.25);
+                opacity: .6;
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+        .gem-0 {
+            background: radial-gradient(circle at 35% 35%, #fca5a5, #ef4444 60%, #b91c1c);
+        }
+        .gem-1 {
+            background: radial-gradient(circle at 35% 35%, #93c5fd, #3b82f6 60%, #1d4ed8);
+        }
+        .gem-2 {
+            background: radial-gradient(circle at 35% 35%, #86efac, #22c55e 60%, #15803d);
+        }
+        .gem-3 {
+            background: radial-gradient(circle at 35% 35%, #fde047, #eab308 60%, #a16207);
+        }
+        .gem-4 {
+            background: radial-gradient(circle at 35% 35%, #d8b4fe, #a855f7 60%, #7e22ce);
+        }
+        #action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 40;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 12px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            background: rgba(15, 23, 42, .92);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-top: 1px solid rgba(255, 255, 255, .1);
+        }
+        .btn-action {
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all .15s ease;
+            white-space: nowrap;
+        }
+        .btn-action:active {
+            transform: scale(.94);
+            opacity: .85;
+        }
+    </style>
+<style>.screen:not(.active){display:none!important}.screen.active{display:block!important}
+/* RING0: intersection-based board — SVG background lines */
+.board{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 100'><line x1='5' y1='5' x2='85' y2='5' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='15' x2='85' y2='15' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='25' x2='85' y2='25' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='35' x2='85' y2='35' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='45' x2='85' y2='45' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='55' x2='85' y2='55' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='65' x2='85' y2='65' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='75' x2='85' y2='75' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='85' x2='85' y2='85' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='95' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='5' y1='5' x2='5' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='15' y1='5' x2='15' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='25' y1='5' x2='25' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='35' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='45' y1='5' x2='45' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='55' y1='5' x2='55' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='65' y1='5' x2='65' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='75' y1='5' x2='75' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='85' y1='5' x2='85' y2='95' stroke='%238B4513' stroke-width='1'/><line x1='35' y1='5' x2='55' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='5' x2='35' y2='25' stroke='%238B4513' stroke-width='0.8'/><line x1='35' y1='75' x2='55' y2='95' stroke='%238B4513' stroke-width='0.8'/><line x1='55' y1='75' x2='35' y2='95' stroke='%238B4513' stroke-width='0.8'/></svg>")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:#E8D5A0!important}}
+/* Clear cell borders — SVG handles all lines */
+.board>div,.board>*,.cell,[class*=cell],[class*=board-cell]{border:none!important;background:transparent!important}
+</style>
+<style>
+/* KiX Brand CSS — 南洋茶饮 */
+:root {
+  --kix-brand: #5B3A29;
+  --kix-accent: #D4A574;
+}
+
+/* Override body background */
+body {
+  background: linear-gradient(135deg, #5B3A29, #2d1d14) !important;
+  --tw-gradient-from: #5B3A29 !important;
+  --tw-gradient-to: #2d1d14 !important;
+}
+
+/* Brand-colored buttons */
+.btn-green, .bg-green-500, button.bg-green-500, [class*="bg-green"] {
+  background-color: #5B3A29 !important;
+  background: #5B3A29 !important;
+}
+
+/* Brand-colored interactive elements */
+button.bg-blue-500, button.bg-blue-600,
+[class*="from-purple"], [class*="from-pink"],
+[class*="to-pink"], [class*="to-purple"] {
+  background-color: #2d1d14 !important;
+  background: #2d1d14 !important;
+}
+
+/* Score / accent highlights */
+.text-green-500, .text-green-400, [class*="text-green"] {
+  color: #5B3A29 !important;
+}
+
+/* Board background */
+.bg-white, [class*="bg-white"] {
+  background-color: rgba(255,255,255,0.92) !important;
+}
+
+[class*="bg-black"][class*="bg-opacity"] {
+  background-color: rgba(0,0,0,0.3) !important;
+}
+</style>
+
+<script>
+// KiX Platform Score Bridge — DO NOT REMOVE
+(function(){
+  var _kixFinalScore = 0;
+  var _kixReported = false;
+  window._kixSetScore = function(s) { _kixFinalScore = Math.round(s); };
+  window._kixUpdateScore = function(s) {
+    _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_score_update', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  window._kixEndGame = function(s) {
+    if (_kixReported) return;
+    _kixReported = true;
+    if (s !== undefined) _kixFinalScore = Math.round(s);
+    try { window.parent.postMessage({type:'kix_game_end', score:_kixFinalScore}, '*'); } catch(e){}
+  };
+  // Safety net: if game doesn't call _kixEndGame, report on unload
+  window.addEventListener('beforeunload', function() {
+    if (!_kixReported && _kixFinalScore > 0) window._kixEndGame();
+  });
+})();
+</script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col font-sans">
+
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="screen items-center justify-center gap-4 px-6">
+        <div style="font-size:48px;margin-bottom:8px">☕</div>
+<h1 style="font-size:2rem;font-weight:700;color:white;margin-bottom:4px">南洋茶饮</h1>
+        <p class="text-slate-300 text-sm -mt-2 mb-2">Match-3 Puzzle</p>
+        <button id="btn-play" class="w-48 py-3 bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-900 font-bold rounded-full text-lg shadow-lg">开始游戏</button>
+        <button id="btn-level-select" class="w-40 py-2 bg-slate-700 text-white font-semibold rounded-full text-sm">选关</button>
+        <div class="flex gap-3 mt-1">
+            <button id="btn-settings" class="w-20 py-2 bg-slate-700 text-white font-semibold rounded-full text-xs">设置</button>
+            <button id="btn-shop" class="w-20 py-2 bg-slate-700 text-white font-semibold rounded-full text-xs">商店</button>
+            <button id="btn-high-scores" class="w-20 py-2 bg-slate-700 text-white font-semibold rounded-full text-xs">排行</button>
+        </div>
+    </div>
+
+    <!-- LEVEL SELECT SCREEN -->
+    <div id="level_select-screen" class="screen hidden px-4 pt-6">
+        <h2 class="text-2xl font-bold text-center mb-4">选择关卡</h2>
+        <div id="level-grid" class="grid grid-cols-5 gap-3 max-w-sm mx-auto"></div>
+        <button id="btn-level-select-back" class="mt-6 mx-auto py-2 px-6 bg-slate-600 text-white rounded-full text-sm font-semibold">返回</button>
+    </div>
+
+    <!-- GAMEPLAY SCREEN -->
+    <div id="gameplay-screen" class="screen hidden px-3 pt-3">
+        <div id="game-header" class="flex justify-between items-center max-w-sm mx-auto w-full mb-3 px-2">
+            <div class="text-sm"><span class="text-slate-400">分数</span><br><span id="score-display" class="font-bold text-lg">0</span></div>
+            <div class="text-sm text-center"><span class="text-slate-400">目标</span><br><span id="target-display" class="font-bold text-lg text-yellow-400">1000</span></div>
+            <div class="text-sm text-right"><span class="text-slate-400">步数</span><br><span id="moves-display" class="font-bold text-lg">30</span></div>
+        </div>
+        <div id="game-board" class="mx-auto"></div>
+        <div id="powerup-bar" class="flex justify-center gap-2 mt-3 max-w-sm mx-auto">
+            <button id="btn-powerup-bomb" class="px-3 py-1 bg-red-600 text-white rounded-full text-xs font-bold">💣<span id="bomb-count">3</span></button>
+            <button id="btn-powerup-rocket" class="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-bold">🚀<span id="rocket-count">2</span></button>
+            <button id="btn-powerup-swap" class="px-3 py-1 bg-purple-600 text-white rounded-full text-xs font-bold">🔄<span id="swap-count">1</span></button>
+        </div>
+        <button id="btn-pause" class="absolute top-4 right-4 w-10 h-10 bg-slate-700 bg-opacity-70 rounded-full text-lg font-bold z-20">⏸</button>
+    </div>
+
+    <!-- PAUSE MENU SCREEN (overlay) -->
+    <div id="pause_menu-screen" class="screen hidden items-center justify-center gap-4 bg-black bg-opacity-70 z-30">
+        <div class="bg-slate-800 rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <h2 class="text-2xl font-bold">暂停</h2>
+            <button id="btn-resume" class="w-40 py-3 bg-emerald-500 text-white font-bold rounded-full">继续</button>
+            <button id="btn-restart" class="w-40 py-2 bg-yellow-500 text-slate-900 font-bold rounded-full">重新开始</button>
+            <button id="btn-quit" class="w-40 py-2 bg-slate-600 text-white font-semibold rounded-full">退出</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div id="settings-screen" class="screen hidden px-6 pt-10 items-center gap-5">
+        <h2 class="text-2xl font-bold mb-2">设置</h2>
+        <div class="flex items-center justify-between w-56 bg-slate-700 rounded-xl px-4 py-3">
+            <span>音效</span><button id="btn-toggle-sound" class="w-12 h-7 bg-emerald-500 rounded-full relative transition"><span class="absolute top-1 right-1 w-5 h-5 bg-white rounded-full"></span></button>
+        </div>
+        <div class="flex items-center justify-between w-56 bg-slate-700 rounded-xl px-4 py-3">
+            <span>音乐</span><button id="btn-toggle-music" class="w-12 h-7 bg-emerald-500 rounded-full relative transition"><span class="absolute top-1 right-1 w-5 h-5 bg-white rounded-full"></span></button>
+        </div>
+        <button id="btn-reset-progress" class="mt-4 px-6 py-2 bg-red-600 text-white rounded-full text-sm font-semibold">重置进度</button>
+        <button id="btn-settings-back" class="px-6 py-2 bg-slate-600 text-white rounded-full text-sm font-semibold">返回</button>
+    </div>
+
+    <!-- SHOP SCREEN -->
+    <div id="shop-screen" class="screen hidden px-4 pt-6 items-center gap-4">
+        <h2 class="text-2xl font-bold">商店</h2>
+        <p class="text-slate-300">金币: <span id="coins-display" class="text-yellow-400 font-bold">100</span></p>
+        <div id="shop-items" class="flex flex-col gap-3 w-56"></div>
+        <button id="btn-shop-back" class="px-6 py-2 bg-slate-600 text-white rounded-full text-sm font-semibold">返回</button>
+    </div>
+
+    <!-- GAME RESULT SCREEN -->
+    <div id="game_result-screen" class="screen hidden items-center justify-center gap-4 bg-black bg-opacity-60 z-30">
+        <div id="result-card" class="bg-slate-800 rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <h2 id="result-title" class="text-3xl font-bold"></h2>
+            <p id="result-score" class="text-lg text-slate-300"></p>
+            <button id="btn-next-level" class="w-40 py-3 bg-emerald-500 text-white font-bold rounded-full hidden">下一关</button>
+            <button id="btn-retry" class="w-40 py-3 bg-yellow-500 text-slate-900 font-bold rounded-full">再试一次</button>
+            <button id="btn-result-home" class="w-40 py-2 bg-slate-600 text-white font-semibold rounded-full">返回主页</button>
+        </div>
+    </div>
+
+    <!-- HIGH SCORES SCREEN -->
+    <div id="high_scores-screen" class="screen hidden px-4 pt-6 items-center gap-3">
+        <h2 class="text-2xl font-bold">排行榜</h2>
+        <ol id="scores-list" class="w-56 text-sm space-y-2"></ol>
+        <button id="btn-high-scores-back" class="px-6 py-2 bg-slate-600 text-white rounded-full text-sm font-semibold">返回</button>
+    </div>
+
+    <!-- FIXED BOTTOM ACTION BAR -->
+    <div id="action-bar">
+        <button id="btn-action-home" class="btn-action bg-slate-600 text-white hidden">🏠 主页</button>
+        <button id="btn-action-replay" class="btn-action bg-yellow-500 text-slate-900 hidden">🔄 重玩</button>
+    </div>
+
+    <script>
+        /* ========== CONSTANTS ========== */
+        const ROWS = 8;
+        const COLS = 8;
+        const NUM_GEM_TYPES = 5;
+        const GEM_COLORS = ['gem-0', 'gem-1', 'gem-2', 'gem-3', 'gem-4'];
+
+        /* ========== STATE ========== */
+
+        /** @returns {object} initial game state */
+        function initState() { let levels = [];
+for (let i = 0; i < 20; i++) {
+  levels.push({
+    targetScore: 1000 * (i + 1),
+    moves: Math.max(15, 30 - i)
+  });
+}
+let state = {
+  screen: 'home',
+  board: createBoard(ROWS, COLS, NUM_GEM_TYPES),
+  score: 0,
+  moves: levels[0].moves,
+  targetScore: levels[0].targetScore,
+  currentLevel: 0,
+  currentLevelUnlocked: 0,
+  levels: levels,
+  selectedCell: null,
+  result: null,
+  soundOn: true,
+  musicOn: true,
+  coins: 100,
+  powerUps: {
+    bomb: 3,
+    rocket: 2,
+    swap: 1
+  },
+  highScores: [],
+  shopItems: [
+    { type: 'bomb', name: '💣 炸弹', cost: 50, description: '摧毁3x3区域' },
+    { type: 'rocket', name: '🚀 火箭', cost: 40, description: '清除一整行' },
+    { type: 'swap', name: '🔄 交换', cost: 60, description: '任意交换两个宝石' },
+    { type: 'extra_moves', name: '➕ 额外步数', cost: 30, description: '+5步' }
+  ]
+};
+return state; }
+
+        /* ========== SCREEN NAVIGATION ========== */
+
+        /**
+         * @param {string} screenId - base screen name (e.g. 'home', 'gameplay')
+         */
+        function showScreen(screenId) { let screens = document.querySelectorAll('.screen');
+for (let screen of screens) {
+    screen.classList.add('hidden');
+}
+let target = document.getElementById(screenId + '-screen');
+if (target) {
+    target.classList.remove('hidden');
+} }
+
+        /* ========== RENDER ========== */
+
+        /** @param {object} state */
+        function render(state) { showScreen(state.screen);
+if (state.screen === 'gameplay') {
+    document.getElementById('score-display').textContent = state.score;
+    document.getElementById('target-display').textContent = state.target;
+    document.getElementById('moves-display').textContent = state.moves;
+    document.getElementById('bomb-count').textContent = state.bombCount;
+    document.getElementById('rocket-count').textContent = state.rocketCount;
+    document.getElementById('swap-count').textContent = state.swapCount;
+    renderBoard(state);
+} else if (state.screen === 'level_select') {
+    renderLevelSelect(state);
+} else if (state.screen === 'shop') {
+    document.getElementById('coins-display').textContent = state.coins;
+    renderShop(state);
+} else if (state.screen === 'game_result') {
+    renderGameResult(state);
+} else if (state.screen === 'high_scores') {
+    renderHighScores(state);
+} else if (state.screen === 'settings') {
+    renderSettings(state);
+}
+renderActionBar(state); }
+
+        /** @param {object} state */
+        function renderBoard(state) { const boardEl = document.getElementById('game-board');
+boardEl.style.gridTemplateColumns = `repeat(${COLS}, var(--cell-size))`;
+let html = '';
+for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+        let gemType = state.board[r][c];
+        let gemClass = gemType >= 0 && gemType < NUM_GEM_TYPES ? GEM_COLORS[gemType] : '';
+        let selectedClass = '';
+        if (state.selectedCell && state.selectedCell.row === r && state.selectedCell.col === c) {
+            selectedClass = ' selected';
+        }
+        html += `<div class="board-cell ${gemClass}${selectedClass}" data-row="${r}" data-col="${c}"></div>`;
+    }
+}
+boardEl.innerHTML = html; }
+
+        /** @param {object} state */
+        function renderLevelSelect(state) { let grid = document.getElementById('level-grid');
+    grid.innerHTML = '';
+    let levels = state.levels;
+    if (!levels || levels.length === 0) {
+        levels = [];
+        let maxLevel = state.maxLevel || 20;
+        let unlocked = state.unlockedLevel || 1;
+        for (let i = 1; i <= maxLevel; i++) {
+            levels.push({ id: i, unlocked: i <= unlocked });
+        }
+    }
+    for (let i = 0; i < levels.length; i++) {
+        let level = levels[i];
+        let btn = document.createElement('button');
+        btn.textContent = level.id;
+        btn.className = 'w-12 h-12 rounded-full font-bold text-lg ' + (level.unlocked ? 'bg-yellow-400 text-slate-900 active:scale-95 transition' : 'bg-slate-600 text-slate-400 cursor-not-allowed');
+        btn.disabled = !level.unlocked;
+        if (level.unlocked) {
+            btn.addEventListener('click', function() {
+                gameState = handleAction(gameState, { type: 'select_level', level: level.id });
+                render(gameState);
+            });
+        }
+        grid.appendChild(btn);
+    } }
+
+        /** @param {object} state */
+        function renderShop(state) { let coinsDisplay = document.getElementById('coins-display');
+coinsDisplay.textContent = state.coins;
+
+let shopItemsContainer = document.getElementById('shop-items');
+shopItemsContainer.innerHTML = '';
+
+let items = [
+    { type: 'bomb', icon: '💣', name: '炸弹', price: 100 },
+    { type: 'rocket', icon: '🚀', name: '火箭', price: 150 },
+    { type: 'swap', icon: '🔄', name: '交换', price: 200 }
+];
+
+for (let item of items) {
+    let itemDiv = document.createElement('div');
+    itemDiv.className = 'flex justify-between items-center bg-slate-700 rounded-xl px-4 py-3';
+    
+    let infoSpan = document.createElement('span');
+    infoSpan.textContent = `${item.icon} ${item.name} - ${item.price}💰`;
+    infoSpan.className = 'text-white text-sm';
+    
+    let buyBtn = document.createElement('button');
+    buyBtn.textContent = '购买';
+    buyBtn.className = 'px-4 py-1 bg-yellow-500 text-slate-900 rounded-full text-xs font-bold';
+    
+    if (state.coins < item.price) {
+        buyBtn.disabled = true;
+        buyBtn.className += ' opacity-50 cursor-not-allowed';
+    }
+    
+    buyBtn.addEventListener('click', function() {
+        gameState = handleAction(gameState, { type: 'buy_item', itemType: item.type });
+        render(gameState);
+    });
+    
+    itemDiv.appendChild(infoSpan);
+    itemDiv.appendChild(buyBtn);
+    shopItemsContainer.appendChild(itemDiv);
+} }
+
+        /** @param {object} state */
+        function renderHighScores(state) { let scoresList = document.getElementById('scores-list');
+scoresList.innerHTML = '';
+let scores = state.highScores || [];
+if (scores.length === 0) {
+    let emptyItem = document.createElement('li');
+    emptyItem.textContent = '暂无记录';
+    emptyItem.className = 'text-slate-400 text-center';
+    scoresList.appendChild(emptyItem);
+} else {
+    for (let i = 0; i < scores.length; i++) {
+        let entry = scores[i];
+        let scoreValue = (typeof entry === 'object' && entry !== null) ? entry.score : entry;
+        let levelValue = (typeof entry === 'object' && entry !== null && entry.level !== undefined) ? entry.level : null;
+        let li = document.createElement('li');
+        let text = `${i + 1}. ${scoreValue}分`;
+        if (levelValue !== null) {
+            text += ` (关卡${levelValue})`;
+        }
+        li.textContent = text;
+        li.className = 'py-1';
+        scoresList.appendChild(li);
+    }
+} }
+
+        /** @param {object} state */
+        function renderGameResult(state) { let resultTitle = document.getElementById('result-title');
+let resultScore = document.getElementById('result-score');
+let btnNextLevel = document.getElementById('btn-next-level');
+
+if (state.result === 'win') {
+    resultTitle.textContent = '🎉 恭喜过关！';
+    btnNextLevel.classList.remove('hidden');
+} else {
+    resultTitle.textContent = '😢 失败了';
+    btnNextLevel.classList.add('hidden');
+}
+resultScore.textContent = '分数: ' + state.score; }
+
+        /** @param {object} state */
+        function renderSettings(state) { let soundBtn = document.getElementById('btn-toggle-sound');
+let soundSpan = soundBtn.querySelector('span');
+if (state.sound) {
+    soundSpan.className = 'absolute top-1 right-1 w-5 h-5 bg-white rounded-full';
+    soundBtn.classList.remove('bg-gray-500');
+    soundBtn.classList.add('bg-emerald-500');
+} else {
+    soundSpan.className = 'absolute top-1 left-1 w-5 h-5 bg-white rounded-full';
+    soundBtn.classList.remove('bg-emerald-500');
+    soundBtn.classList.add('bg-gray-500');
+}
+
+let musicBtn = document.getElementById('btn-toggle-music');
+let musicSpan = musicBtn.querySelector('span');
+if (state.music) {
+    musicSpan.className = 'absolute top-1 right-1 w-5 h-5 bg-white rounded-full';
+    musicBtn.classList.remove('bg-gray-500');
+    musicBtn.classList.add('bg-emerald-500');
+} else {
+    musicSpan.className = 'absolute top-1 left-1 w-5 h-5 bg-white rounded-full';
+    musicBtn.classList.remove('bg-emerald-500');
+    musicBtn.classList.add('bg-gray-500');
+} }
+
+        /** @param {object} state */
+        function renderActionBar(state) { let homeBtn = document.getElementById('btn-action-home');
+    let replayBtn = document.getElementById('btn-action-replay');
+    if (!homeBtn || !replayBtn) return {};
+    let showHome = false;
+    let showReplay = false;
+    let screen = state.screen;
+    if (screen === 'gameplay') {
+        showHome = true;
+        showReplay = true;
+    } else if (screen === 'level_select' || screen === 'settings' || screen === 'shop' || screen === 'high_scores') {
+        showHome = true;
+        showReplay = false;
+    } else {
+        showHome = false;
+        showReplay = false;
+    }
+    if (showHome) {
+        homeBtn.classList.remove('hidden');
+    } else {
+        homeBtn.classList.add('hidden');
+    }
+    if (showReplay) {
+        replayBtn.classList.remove('hidden');
+    } else {
+        replayBtn.classList.add('hidden');
+    } }
+
+        /* ========== BOARD LOGIC ========== */
+
+        /**
+         * @param {number} rows
+         * @param {number} cols
+         * @param {number} numTypes
+         * @returns {Array<Array<number>>} 2D board array with no initial matches
+         */
+        function createBoard(rows, cols, numTypes) { let board = [];
+for (let r = 0; r < rows; r++) {
+    board[r] = [];
+    for (let c = 0; c < cols; c++) {
+        let type;
+        do {
+            type = Math.floor(Math.random() * numTypes);
+        } while (
+            (c >= 2 && board[r][c - 1] === type && board[r][c - 2] === type) ||
+            (r >= 2 && board[r - 1][c] === type && board[r - 2][c] === type)
+        );
+        board[r][c] = type;
+    }
+}
+return board; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @returns {Array<{r:number,c:number,count:number,dir:string}>} list of match groups
+         */
+        function findMatches(board) { let matches = [];
+let rows = board.length;
+let cols = board[0].length;
+let visitedH = [];
+let visitedV = [];
+for (let i = 0; i < rows; i++) {
+    let rowH = [];
+    let rowV = [];
+    for (let j = 0; j < cols; j++) {
+        rowH.push(false);
+        rowV.push(false);
+    }
+    visitedH.push(rowH);
+    visitedV.push(rowV);
+}
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        if (board[r][c] === -1) continue;
+        // horizontal match
+        if (!visitedH[r][c]) {
+            let color = board[r][c];
+            let count = 1;
+            let c2 = c + 1;
+            while (c2 < cols && board[r][c2] === color) {
+                count++;
+                c2++;
+            }
+            if (count >= 3) {
+                matches.push({ r: r, c: c, count: count, dir: 'h' });
+                for (let i = c; i < c + count; i++) {
+                    visitedH[r][i] = true;
+                }
+            }
+        }
+        // vertical match
+        if (!visitedV[r][c]) {
+            let color = board[r][c];
+            let count = 1;
+            let r2 = r + 1;
+            while (r2 < rows && board[r2][c] === color) {
+                count++;
+                r2++;
+            }
+            if (count >= 3) {
+                matches.push({ r: r, c: c, count: count, dir: 'v' });
+                for (let i = r; i < r + count; i++) {
+                    visitedV[i][c] = true;
+                }
+            }
+        }
+    }
+}
+return matches; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @param {Array<{r:number,c:number}>} cells - cells to remove
+         * @returns {Array<Array<number>>} new board with matched cells set to -1
+         */
+        function removeMatches(board, cells) { let newBoard = board.map(row => [...row]);
+for (let cell of cells) {
+    newBoard[cell.r][cell.c] = -1;
+}
+return newBoard; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @returns {Array<Array<number>>} board after gravity applied
+         */
+        function applyGravity(board) { let rows = board.length;
+let cols = board[0].length;
+let newBoard = Array.from({ length: rows }, () => new Array(cols).fill(-1));
+for (let c = 0; c < cols; c++) {
+    let colValues = [];
+    for (let r = rows - 1; r >= 0; r--) {
+        if (board[r][c] !== -1) {
+            colValues.push(board[r][c]);
+        }
+    }
+    for (let i = 0; i < colValues.length; i++) {
+        newBoard[rows - 1 - i][c] = colValues[i];
+    }
+}
+return newBoard; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @param {number} numTypes
+         * @returns {Array<Array<number>>} board with empty cells (-1) filled
+         */
+        function fillBoard(board, numTypes) { for (let r = 0; r < board.length; r++) {
+  for (let c = 0; c < board[r].length; c++) {
+    if (board[r][c] === -1) {
+      board[r][c] = Math.floor(Math.random() * numTypes);
+    }
+  }
+}
+return board; }
+
+        /**
+         * @param {number} r1
+         * @param {number} c1
+         * @param {number} r2
+         * @param {number} c2
+         * @returns {boolean}
+         */
+        function isValidSwap(r1, c1, r2, c2) { return Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @param {number} r1
+         * @param {number} c1
+         * @param {number} r2
+         * @param {number} c2
+         * @returns {boolean} whether the swap would create at least one match
+         */
+        function wouldCreateMatch(board, r1, c1, r2, c2) { let tempBoard = board.map(row => [...row]);
+let temp = tempBoard[r1][c1];
+tempBoard[r1][c1] = tempBoard[r2][c2];
+tempBoard[r2][c2] = temp;
+let matches = findMatches(tempBoard);
+return matches.length > 0; }
+
+        /**
+         * Process cascading: find matches, remove, apply gravity, fill, repeat.
+         * @param {Array<Array<number>>} board
+         * @param {number} numTypes
+         * @returns {{board:Array<Array<number>>, totalCleared:number, cascades:number}}
+         */
+        function processBoard(board, numTypes) { let workingBoard = deepCloneBoard(board);
+let totalCleared = 0;
+let cascades = 0;
+while (true) {
+    let matches = findMatches(workingBoard);
+    if (!matches || matches.length === 0) break;
+    let cellSet = {};
+    for (let i = 0; i < matches.length; i++) {
+        let m = matches[i];
+        let r = m.r;
+        let c = m.c;
+        let count = m.count;
+        let dir = m.dir;
+        for (let d = 0; d < count; d++) {
+            let rr = r;
+            let cc = c;
+            if (dir === 'vertical') {
+                rr = r + d;
+            } else if (dir === 'horizontal') {
+                cc = c + d;
+            }
+            let key = rr + ',' + cc;
+            cellSet[key] = { r: rr, c: cc };
+        }
+    }
+    let cells = Object.values(cellSet);
+    if (cells.length === 0) break;
+    totalCleared += cells.length;
+    cascades++;
+    workingBoard = removeMatches(workingBoard, cells);
+    workingBoard = applyGravity(workingBoard);
+    workingBoard = fillBoard(workingBoard, numTypes);
+}
+return { board: workingBoard, totalCleared, cascades }; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @returns {boolean} true if no valid moves exist
+         */
+        function isBoardDeadlocked(board) { let rows = board.length;
+let cols = board[0].length;
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        if (c + 1 < cols && wouldCreateMatch(board, r, c, r, c + 1)) return false;
+        if (r + 1 < rows && wouldCreateMatch(board, r, c, r + 1, c)) return false;
+    }
+}
+return true; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @param {number} numTypes
+         * @returns {Array<Array<number>>} shuffled board with at least one valid move
+         */
+        function shuffleBoard(board, numTypes) { let rows = board.length;
+let cols = board[0].length;
+let flat = [];
+for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+        flat.push(board[r][c]);
+    }
+}
+let attempts = 0;
+let maxAttempts = 100;
+while (true) {
+    // Fisher-Yates shuffle
+    for (let i = flat.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        let temp = flat[i];
+        flat[i] = flat[j];
+        flat[j] = temp;
+    }
+    // Reconstruct 2D board
+    let newBoard = [];
+    for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < cols; c++) {
+            row.push(flat[r * cols + c]);
+        }
+        newBoard.push(row);
+    }
+    // Check for initial matches
+    let matches = findMatches(newBoard);
+    if (matches.length > 0) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+            // fallback to fresh board generation via createBoard then process
+            newBoard = createBoard(rows, cols, numTypes);
+            // In case createBoard yields a deadlock, we rely on caller to handle
+            break;
+        }
+        continue;
+    }
+    // Ensure at least one valid move
+    if (!isBoardDeadlocked(newBoard)) {
+        return newBoard;
+    }
+    attempts++;
+    if (attempts >= maxAttempts) {
+        // fallback: create a fresh board, process it, and hope
+        newBoard = createBoard(rows, cols, numTypes);
+        let processed = processBoard(newBoard, numTypes);
+        newBoard = processed.board;
+        break;
+    }
+}
+return newBoard; }
+
+        /**
+         * @param {number} matchSize - number of gems in the match
+         * @returns {number} score value
+         */
+        function calculateScore(matchSize) { let score = 0;
+if (matchSize === 3) {
+    score = 30;
+} else if (matchSize === 4) {
+    score = 60;
+} else if (matchSize === 5) {
+    score = 100;
+} else {
+    score = 100 + (matchSize - 5) * 50;
+}
+return score; }
+
+        /**
+         * @param {object} state
+         * @returns {string|null} 'win' | 'lose' | null
+         */
+        function checkWinCondition(state) { if (state.score >= state.targetScore) {
+    return 'win';
+}
+if (state.movesLeft <= 0) {
+    return 'lose';
+}
+return {}; }
+
+        /**
+         * @param {Array<Array<number>>} board
+         * @returns {Array<Array<number>>} deep clone
+         */
+        function deepCloneBoard(board) { let newBoard = board.map(row => row.slice());
+return newBoard; }
+
+        /* ========== POWER-UPS ========== */
+
+        /**
+         * @param {object} state
+         * @param {string} type - 'bomb' | 'rocket' | 'swap'
+         * @param {number} row
+         * @param {number} col
+         * @returns {object} new state after power-up applied
+         */
+        function applyPowerUp(state, type, row, col) { if (type === 'bomb') {
+            if (state.bombs <= 0) return state;
+            let newBoard = deepCloneBoard(state.board);
+            for (let r = row - 1; r <= row + 1; r++) {
+                for (let c = col - 1; c <= col + 1; c++) {
+                    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+                        newBoard[r][c] = -1;
+                    }
+                }
+            }
+            var { board: processedBoard, totalCleared } = processBoard(newBoard, NUM_GEM_TYPES);
+            let newScore = state.score + totalCleared * 10;
+            let newState = { ...state, board: processedBoard, score: newScore, bombs: state.bombs - 1, selectedCell: null, selectedPowerUp: null };
+            let gameResult = checkWinCondition(newState);
+            if (gameResult) newState.gameResult = gameResult;
+            return newState;
+        }
+        if (type === 'rocket') {
+            if (state.rockets <= 0) return state;
+            let newBoard = deepCloneBoard(state.board);
+            for (let c = 0; c < COLS; c++) newBoard[row][c] = -1;
+            for (let r = 0; r < ROWS; r++) newBoard[r][col] = -1;
+            var { board: processedBoard, totalCleared } = processBoard(newBoard, NUM_GEM_TYPES);
+            let newScore = state.score + totalCleared * 10;
+            let newState = { ...state, board: processedBoard, score: newScore, rockets: state.rockets - 1, selectedCell: null, selectedPowerUp: null };
+            let gameResult = checkWinCondition(newState);
+            if (gameResult) newState.gameResult = gameResult;
+            return newState;
+        }
+        if (type === 'swap') {
+            if (state.swaps <= 0) return state;
+            let source = state.swapSource;
+            if (!source) return state;
+            let newBoard = deepCloneBoard(state.board);
+            let temp = newBoard[source.row][source.col];
+            newBoard[source.row][source.col] = newBoard[row][col];
+            newBoard[row][col] = temp;
+            var { board: processedBoard, totalCleared } = processBoard(newBoard, NUM_GEM_TYPES);
+            let newScore = state.score + totalCleared * 10;
+            let newState = { ...state, board: processedBoard, score: newScore, swaps: state.swaps - 1, swapSource: null, selectedCell: null, selectedPowerUp: null };
+            let gameResult = checkWinCondition(newState);
+            if (gameResult) newState.gameResult = gameResult;
+            return newState;
+        }
+        return state; }
+
+        /* ========== ACTION HANDLER ========== */
+
+        /**
+         * Pure sync reducer. Receives a deep clone of state.
+         * @param {object} state - game state (plain objects only)
+         * @param {object} action - flat action object with .type and optional .row .col .row2 .col2 .level .itemType
+         * @returns {object} new state
+         */
+        function handleAction(state, action) { let newState = state;
+switch (action.type) {
+    case 'START_GAME':
+        newState.screen = 'gameplay';
+        newState.level = 1;
+        newState.board = createBoard(ROWS, COLS, NUM_GEM_TYPES);
+        newState.moves = 30;
+        newState.target = 1000;
+        newState.score = 0;; if (window._kixUpdateScore) window._kixUpdateScore(newState.score);
+        newState.selectedCell = null;
+        newState.activePowerUp = null;
+        newState.gameResult = null;
+        break;
+    case 'SELECT_LEVEL':
+        newState.level = action.level;
+        newState.screen = 'gameplay';
+        newState.board = createBoard(ROWS, COLS, NUM_GEM_TYPES);
+        newState.moves = 30 + (newState.level - 1) * 2;
+        newState.target = 1000 + (newState.level - 1) * 200;
+        newState.score = 0;
+        newState.selectedCell = null;
+        newState.activePowerUp = null;
+        newState.gameResult = null;
+        break;
+    case 'NEXT_LEVEL':
+        newState.level += 1;
+        newState.screen = 'gameplay';
+        newState.board = createBoard(ROWS, COLS, NUM_GEM_TYPES);
+        newState.moves = 30 + (newState.level - 1) * 2;
+        newState.target = 1000 + (newState.level - 1) * 200;
+        newState.score = 0;
+        newState.selectedCell = null;
+        newState.activePowerUp = null;
+        newState.gameResult = null;
+        break;
+    case 'RESTART':
+    case 'RETRY':
+        newState.screen = 'gameplay';
+        newState.board = createBoard(ROWS, COLS, NUM_GEM_TYPES);
+        newState.moves = 30 + (newState.level - 1) * 2;
+        newState.target = 1000 + (newState.level - 1) * 200;
+        newState.score = 0;
+        newState.selectedCell = null;
+        newState.activePowerUp = null;
+        newState.gameResult = null;
+        break;
+    case 'PAUSE':
+        newState.previousScreen = newState.screen;
+        newState.screen = 'pause_menu';
+        break;
+    case 'RESUME':
+        newState.screen = newState.previousScreen || 'gameplay';
+        newState.previousScreen = null;
+        break;
+    case 'QUIT':
+        newState.screen = 'home';
+        newState.previousScreen = null;
+        break;
+    case 'GO_HOME':
+    case 'ACTION_HOME':
+        newState.screen = 'home';
+        break;
+    case 'ACTION_REPLAY':
+        newState.screen = 'gameplay';
+        newState.board = createBoard(ROWS, COLS, NUM_GEM_TYPES);
+        newState.moves = 30 + (newState.level - 1) * 2;
+        newState.target = 1000 + (newState.level - 1) * 200;
+        newState.score = 0;
+        newState.selectedCell = null;
+        newState.activePowerUp = null;
+        newState.gameResult = null;
+        break;
+    case 'LEVEL_SELECT':
+        newState.previousScreen = newState.screen;
+        newState.screen = 'level_select';
+        break;
+    case 'LEVEL_SELECT_BACK':
+        newState.screen = newState.previousScreen || 'home';
+        newState.previousScreen = null;
+        break;
+    case 'SETTINGS':
+        newState.previousScreen = newState.screen;
+        newState.screen = 'settings';
+        break;
+    case 'SETTINGS_BACK':
+        newState.screen = newState.previousScreen || 'home';
+        newState.previousScreen = null;
+        break;
+    case 'TOGGLE_SOUND':
+        newState.soundOn = !newState.soundOn;
+        break;
+    case 'TOGGLE_MUSIC':
+        newState.musicOn = !newState.musicOn;
+        break;
+    case 'RESET_PROGRESS':
+        newState.level = 1;
+        newState.highScores = [];
+        newState.coins = 100;
+        newState.bombCount = 3;
+        newState.rocketCount = 2;
+        newState.swapCount = 1;
+        newState.screen = 'home';
+        break;
+    case 'SHOP':
+        newState.previousScreen = newState.screen;
+        newState.screen = 'shop';
+        break;
+    case 'SHOP_BACK':
+        newState.screen = newState.previousScreen || 'home';
+        newState.previousScreen = null;
+        break;
+    case 'BUY_ITEM': {
+        let item = action.itemType;
+        let costs = { bomb: 50, rocket: 40, swap: 30 };
+        let cost = costs[item] || 0;
+        if (newState.coins >= cost) {
+            newState.coins -= cost;
+            if (item === 'bomb') newState.bombCount = (newState.bombCount || 0) + 1;
+            else if (item === 'rocket') newState.rocketCount = (newState.rocketCount || 0) + 1;
+            else if (item === 'swap') newState.swapCount = (newState.swapCount || 0) + 1;
+        }
+        break;
+    }
+    case 'SELECT_POWERUP': {
+        let type = action.powerupType;
+        newState.activePowerUp = (newState.activePowerUp === type) ? null : type;
+        break;
+    }
+    case 'HIGH_SCORES':
+        newState.previousScreen = newState.screen;
+        newState.screen = 'high_scores';
+        break;
+    case 'HIGH_SCORES_BACK':
+        newState.screen = newState.previousScreen || 'home';
+        newState.previousScreen = null;
+        break;
+    case 'RESULT_HOME':
+        newState.screen = 'home';
+        break;
+    default:
+        // unknown action – no state change
+        break;
+}
+return newState; }
+
+        /* ========== BOARD CLICK HANDLER (event delegation) ========== */
+
+        /**
+         * @param {object} state
+         * @param {number} row
+         * @param {number} col
+         * @returns {object} new state after processing the cell click
+         */
+        function handleBoardClick(state, row, col) { let selected = state.selected;
+if (!selected) {
+    return { ...state, selected: { row, col } };
+}
+
+if (selected.row === row && selected.col === col) {
+    return { ...state, selected: null };
+}
+
+let isAdjacent = Math.abs(selected.row - row) + Math.abs(selected.col - col) === 1;
+if (!isAdjacent) {
+    return { ...state, selected: { row, col } };
+}
+
+if (!wouldCreateMatch(state.board, selected.row, selected.col, row, col)) {
+    return { ...state, selected: { row, col } };
+}
+
+let newBoard = deepCloneBoard(state.board);
+let temp = newBoard[selected.row][selected.col];
+newBoard[selected.row][selected.col] = newBoard[row][col];
+newBoard[row][col] = temp;
+
+let processed = processBoard(newBoard, NUM_GEM_TYPES);
+let scoreGain = processed.totalCleared * 10;
+let newMoves = state.moves - 1;
+
+let newState = {
+    ...state,
+    board: processed.board,
+    score: state.score + scoreGain,
+    moves: newMoves,
+    selected: null,
+};
+
+let result = checkWinCondition(newState);
+if (result) {
+    newState.gameResult = result;
+}
+
+return newState; }
+
+        /* ========== STARTUP ========== */
+
+        /** Creates initial state, wires ALL button listeners, renders initial screen. */
+        function startGame() { let gameState = initState();
+
+// ---- power-up pending mode (UI state only) ----
+let pendingPowerUp = null;
+
+// ---- helper: dispatch action, update state, re-render ----
+function dispatch(action) {
+    gameState = handleAction(gameState, action);
+    render(gameState);
+}
+
+// ---- home screen buttons ----
+document.getElementById('btn-play')?.addEventListener('click', () => dispatch({ type: 'start_game' }));
+document.getElementById('btn-level-select')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'level_select' }));
+document.getElementById('btn-settings')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'settings' }));
+document.getElementById('btn-shop')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'shop' }));
+document.getElementById('btn-high-scores')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'high_scores' }));
+
+// ---- level select screen ----
+document.getElementById('btn-level-select-back')?.addEventListener('click', () => dispatch({ type: 'go_back' }));
+
+// ---- gameplay screen ----
+document.getElementById('btn-pause')?.addEventListener('click', () => dispatch({ type: 'pause' }));
+
+// ---- pause menu ----
+document.getElementById('btn-resume')?.addEventListener('click', () => dispatch({ type: 'resume' }));
+document.getElementById('btn-restart')?.addEventListener('click', () => dispatch({ type: 'restart' }));
+document.getElementById('btn-quit')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'home' }));
+
+// ---- settings screen ----
+document.getElementById('btn-toggle-sound')?.addEventListener('click', () => dispatch({ type: 'toggle_sound' }));
+document.getElementById('btn-toggle-music')?.addEventListener('click', () => dispatch({ type: 'toggle_music' }));
+document.getElementById('btn-reset-progress')?.addEventListener('click', () => dispatch({ type: 'reset_progress' }));
+document.getElementById('btn-settings-back')?.addEventListener('click', () => dispatch({ type: 'go_back' }));
+
+// ---- shop screen ----
+document.getElementById('btn-shop-back')?.addEventListener('click', () => dispatch({ type: 'go_back' }));
+
+// ---- game result screen ----
+document.getElementById('btn-next-level')?.addEventListener('click', () => dispatch({ type: 'next_level' }));
+document.getElementById('btn-retry')?.addEventListener('click', () => dispatch({ type: 'restart' }));
+document.getElementById('btn-result-home')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'home' }));
+
+// ---- high scores screen ----
+document.getElementById('btn-high-scores-back')?.addEventListener('click', () => dispatch({ type: 'go_back' }));
+
+// ---- fixed action bar ----
+document.getElementById('btn-action-home')?.addEventListener('click', () => dispatch({ type: 'go_to', screen: 'home' }));
+document.getElementById('btn-action-replay')?.addEventListener('click', () => dispatch({ type: 'restart' }));
+
+// ---- power-up buttons (set pending power-up) ----
+document.getElementById('btn-powerup-bomb')?.addEventListener('click', () => { pendingPowerUp = 'bomb'; });
+document.getElementById('btn-powerup-rocket')?.addEventListener('click', () => { pendingPowerUp = 'rocket'; });
+document.getElementById('btn-powerup-swap')?.addEventListener('click', () => { pendingPowerUp = 'swap'; });
+
+// ---- board click delegation (gameplay grid) ----
+document.getElementById('game-board')?.addEventListener('click', (e) => {
+    let cell = e.target.closest('.board-cell');
+    if (!cell) return {};
+    let row = parseInt(cell.getAttribute('data-row'), 10);
+    let col = parseInt(cell.getAttribute('data-col'), 10);
+    if (isNaN(row) || isNaN(col)) return {};
+
+    if (pendingPowerUp) {
+        dispatch({ type: 'apply_powerup', powerupType: pendingPowerUp, row, col });
+        pendingPowerUp = null;
+    } else {
+        dispatch({ type: 'cell_click', row, col });
+    }
+});
+
+// ---- initial render ----
+render(gameState); }
+
+        /* ========== ENTRY POINT ========== */
+        document.addEventListener('DOMContentLoaded', startGame);
+    
+        function getPieceEmoji(pieceType) { const emojis = ['🍵','🫖','🧋','🍃','🪷','☕']; return emojis[pieceType - 1] || emojis[0]; }
+    </script>
+</body>
+</html>
