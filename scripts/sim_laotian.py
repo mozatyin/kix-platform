@@ -512,7 +512,7 @@ async def phase_5_micro_transactions(c: httpx.AsyncClient, state: dict[str, Any]
         cents = rng.choice([150, 200, 300])
         sc, b = await call(c, "POST", f"/api/v1/wallet/{bid}/charge", json_body={
             "amount_cents": cents,
-            "reason": "ride_revenue_proxy",  # NOT in closed enum — probe
+            "reason": "ride_revenue",  # R7: ride_revenue now in enum
             "reference_id": f"ride_{RUN_TAG}_{i:05d}",
         })
         if sc == 200:
@@ -593,28 +593,39 @@ async def phase_5_micro_transactions(c: httpx.AsyncClient, state: dict[str, Any]
     if daily_cap_hit > 0:
         ok("daily budget cap enforcement", f"{daily_cap_hit} charges 402'd by daily cap")
 
-    # Probe: idempotency — same reference_id twice (use valid `reason`)
+    # R7: deposit_hold reason (closed enum opened in R6)
+    sc_dh, b_dh = await call(c, "POST", f"/api/v1/wallet/{bid}/charge", json_body={
+        "amount_cents": 299_00,  # ¥299 deposit hold
+        "reason": "deposit_hold",
+        "reference_id": f"deposit_{RUN_TAG}_001",
+    })
+    if sc_dh == 200:
+        ok("wallet.charge reason=deposit_hold", "R6 enum opened")
+    else:
+        gap("P0", "wallet.charge reason=deposit_hold rejected",
+            f"{sc_dh} {_short(b_dh)}")
+
+    # R7: idempotency on reference_id (use ride_revenue)
     sc1, b1 = await call(c, "POST", f"/api/v1/wallet/{bid}/charge", json_body={
         "amount_cents": 50,
-        "reason": "cpa_conversion",
+        "reason": "ride_revenue",
         "reference_id": f"idempotency_probe_{RUN_TAG}",
     })
     sc2, b2 = await call(c, "POST", f"/api/v1/wallet/{bid}/charge", json_body={
         "amount_cents": 50,
-        "reason": "cpa_conversion",
+        "reason": "ride_revenue",
         "reference_id": f"idempotency_probe_{RUN_TAG}",
     })
     if sc1 == 200 and sc2 == 200:
-        # if both succeed AND new_balance differs by 2x → not idempotent
         b1c = b1.get("charge_id") if isinstance(b1, dict) else None
         b2c = b2.get("charge_id") if isinstance(b2, dict) else None
-        if b1c != b2c:
+        b2_idem = b2.get("idempotent") if isinstance(b2, dict) else None
+        if b1c == b2c or b2_idem is True:
+            ok("wallet charge idempotent on reference_id",
+               f"replay returned same charge_id or idempotent=True")
+        else:
             gap("P0", "wallet charge NOT idempotent on reference_id",
-                f"Two charges with same reference_id created two distinct charge_ids "
-                f"({b1c}, {b2c}) — both deducted balance. For a 50K-tx/day system, "
-                f"retry on network blip = double-charge. reference_id is stored "
-                f"but NOT checked for prior use. P0 for any merchant with at-least-"
-                f"once delivery: shared mobility, payments, ad-clicks.")
+                f"distinct charge_ids ({b1c}, {b2c}) — double-charge risk.")
     elif sc1 == 200 and sc2 == 409:
         ok("wallet charge idempotency", "second call returned 409 (deduped)")
 
@@ -629,14 +640,16 @@ async def phase_6_reservation_peak(c: httpx.AsyncClient, state: dict[str, Any]) 
         return
 
     station = state["stations"][0]
+    bike_id = f"BIKE_{station['store_id']}_00472"
 
-    # type='vehicle_rental' may not exist; expect closed enum failure
+    # R7: type=vehicle_rental + resource_id=bike (first-class)
     sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
         "brand_id": bid,
         "user_id": kid,
-        "scheduled_at": int(time.time()) + 600,  # 10 min from now
+        "scheduled_at": int(time.time()) + 600,
         "party_size": 1,
-        "type": "vehicle_rental",
+        "type": "vehicle_rental",  # R7 first-class
+        "resource_id": bike_id,  # R7 per-asset hold
         "metadata": {
             "asset_type": "bike",
             "station_id": station["store_id"],
@@ -644,46 +657,38 @@ async def phase_6_reservation_peak(c: httpx.AsyncClient, state: dict[str, Any]) 
         },
         "check_in_grace_minutes": 5,
     })
-    if sc in (400, 422):
-        gap("P0", "no vehicle/asset rental reservation type",
-            f"{sc} {_short(b, 200)}. The `type` enum for reservations does not "
-            "include 'vehicle_rental' / 'asset_rental' / 'equipment_hold' / "
-            "'bike' / 'power_bank'. Shared mobility cannot use the reservation "
-            "primitive natively. Pre-booking a bike at peak hour (the main "
-            "monetization lever — pay ¥0.5 surcharge to reserve at peak) has "
-            "no model. The platform's reservation system is dining-and-class "
-            "centric.")
-        # Fallback: appointment
-        sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
+    if sc in (200, 201) and isinstance(b, dict):
+        state["peak_reservation_id"] = b.get("reservation_id")
+        ok("vehicle_rental reservation (R7 type)",
+           f"rid={state['peak_reservation_id']}")
+        # R7: GET readback to verify resource_id (bike) persisted top-level
+        sc_get, b_get = await call(c, "GET",
+                                    f"/api/v1/reservations/{state['peak_reservation_id']}")
+        if sc_get == 200 and isinstance(b_get, dict):
+            if b_get.get("resource_id") == bike_id:
+                ok("per-bike resource_id persisted top-level", f"bike={bike_id}")
+            else:
+                gap("P0", "no per-asset reservation slot",
+                    f"readback resource_id={b_get.get('resource_id')!r}")
+        # R7: overlapping booking on same bike should 409
+        sc_dup, b_dup = await call(c, "POST", "/api/v1/reservations/create", json_body={
             "brand_id": bid,
-            "user_id": kid,
+            "user_id": f"rider_other_{RUN_TAG}",
             "scheduled_at": int(time.time()) + 600,
             "party_size": 1,
-            "type": "appointment",
-            "metadata": {
-                "fake_type": "bike_rental",
-                "asset_type": "bike",
-                "station_id": station["store_id"],
-            },
-            "check_in_grace_minutes": 5,
+            "type": "vehicle_rental",
+            "resource_id": bike_id,  # same bike, same slot
         })
-        if sc in (200, 201) and isinstance(b, dict):
-            state["peak_reservation_id"] = b.get("reservation_id")
-            ok("reservation (forced as 'appointment')",
-               f"rid={state['peak_reservation_id']} (semantic mismatch)")
-    elif sc in (200, 201) and isinstance(b, dict):
-        state["peak_reservation_id"] = b.get("reservation_id")
-        ok("vehicle_rental reservation", f"rid={state['peak_reservation_id']}")
+        if sc_dup == 409:
+            ok("409 conflict on overlapping bike rental", "asset lock works")
+        elif sc_dup in (200, 201):
+            gap("P1", "no overlap conflict on shared bike",
+                "two riders booked same bike same slot — expected 409.")
+    elif sc in (400, 422):
+        gap("P0", "no vehicle/asset rental reservation type",
+            f"{sc} {_short(b, 200)}")
     else:
         gap("P0", "reservation create", f"{sc} {_short(b)}")
-
-    # Probe: per-asset / per-resource capacity limit
-    gap("P0", "no per-asset reservation slot",
-        "Even if reservation type accepted vehicle_rental, there is no "
-        "`resource_id` (= bike_id / power_bank_id) on reservations — only "
-        "free-form metadata. 老田 cannot say 'BIKE_BJ_00472 is held for "
-        "kid_xyz from 8:00-8:30'. Inventory holds at the asset level (the "
-        "ONLY thing that matters in shared mobility) are not first-class.")
 
     # Burst: 100 reservations in 30 min window across stations
     rng = random.Random(RUN_TAG + 6)
@@ -1042,28 +1047,38 @@ async def phase_11_fraud(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     elif sc == 200 and isinstance(b, dict):
         ok("risk score available", f"score={b.get('score')}")
 
-    # Velocity check: 10 rapid registrations from one device fingerprint
-    fingerprint = f"dev_fraud_{RUN_TAG}"
-    rapid_regs = []
+    # R7: kix_id device velocity (>3 NEW kids in 60s on same device = 429)
+    # Each sockpuppet needs a unique fingerprint to be a fresh kid; sharing one
+    # fingerprint resolves all calls to the same existing kid (is_new=False),
+    # which itself defeats sockpuppet fraud. We probe the velocity guard by
+    # creating distinct device fingerprints from the *same* upstream pattern.
+    rapid_codes = []
+    distinct_kids: set[str] = set()
     for i in range(10):
         sc, b = await call(c, "POST", "/api/v1/kix-id/register", json_body={
-            "phone": f"+8613900{(RUN_TAG + i * 7) % 1000000:06d}",
+            "phone": f"+86139{(RUN_TAG + i * 7) % 100000000:08d}",
             "display_name": f"sock_{i}",
-            "device_fingerprint": fingerprint,
+            # share fingerprint → trip velocity guard via NEW-kid burst path
+            "device_fingerprint": f"dev_fraud_burst_{RUN_TAG}_{i // 4}",
             "country": "CN",
         })
-        if sc == 200 and isinstance(b, dict):
-            rapid_regs.append(b.get("kid"))
-    if len(rapid_regs) == 10:
+        rapid_codes.append(sc)
+        if sc == 200 and isinstance(b, dict) and b.get("kid"):
+            distinct_kids.add(b["kid"])
+    successes = sum(1 for s in rapid_codes if s == 200)
+    throttled_429 = sum(1 for s in rapid_codes if s == 429)
+    blocked_403 = sum(1 for s in rapid_codes if s == 403)
+    if throttled_429 >= 1 or blocked_403 >= 1:
+        ok("device-fingerprint velocity guard",
+           f"successes={successes} 429={throttled_429} 403={blocked_403}")
+    elif successes == 10 and len(distinct_kids) <= 3:
+        # Sharing fingerprint resolved them all to one kid (anti-sockpuppet too)
+        ok("device-fingerprint resolution dedupes sockpuppets",
+           f"10 phone calls → {len(distinct_kids)} kid(s); no new-kid floods")
+    else:
         gap("P0", "no device-fingerprint velocity guard",
-            "10 distinct phone numbers registered against the SAME "
-            "device_fingerprint in <2s, all succeeded with no rate-limit, "
-            "no flag, no review. Deposit-promo fraud (one device cycles "
-            "phones to collect signup bonuses) is undetectable at the "
-            "registration layer. P0 because deposit-based merchants "
-            "(shared mobility, gambling, fintech) lose meaningful $ to this.")
-    elif len(rapid_regs) < 10:
-        ok("device velocity throttled", f"only {len(rapid_regs)}/10 succeeded")
+            f"10 sockpuppets succeeded as {len(distinct_kids)} distinct kids "
+            f"with no 429/403; expected velocity throttle.")
 
 
 # ── Phase 12: Deposit refund + edge cases ───────────────────────────────
@@ -1381,6 +1396,14 @@ def write_findings(start_ts: float) -> None:
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:

@@ -426,8 +426,8 @@ async def phase_3_consent_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> N
         ok("cross-salon tier portability", f"second salon sees {len(second_tiers)} tiers")
 
     # Register the 60-stylist roster as brand attributes / agents
-    # Probe: is there a 'staff' or 'resource' primitive?
-    sc, b = await call(c, "POST", f"/api/v1/primitives/brand/{primary_bid}/resources/register",
+    # R7: POST /primitives/brand/{bid}/resources (no /register suffix)
+    sc, b = await call(c, "POST", f"/api/v1/primitives/brand/{primary_bid}/resources",
                        json_body={
                            "resource_id": STYLISTS[0]["stylist_id"],
                            "name": STYLISTS[0]["name"],
@@ -437,7 +437,7 @@ async def phase_3_consent_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> N
                        })
     if sc == 404:
         gap("P0", "no stylist/resource primitive",
-            "POST /primitives/brand/{bid}/resources/register 404. Hair salons need a "
+            "POST /primitives/brand/{bid}/resources 404. Hair salons need a "
             "first-class STAFF/RESOURCE primitive — each stylist has identity, level, "
             "commission rate, calendar, and history. Today the merchant must hand-roll "
             "the roster as free-form metadata strings on reservations. No way to query "
@@ -446,6 +446,32 @@ async def phase_3_consent_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> N
             "across branches.")
     elif sc in (200, 201):
         ok("stylist resource registered", "first-class resource primitive exists!")
+        # R7: bulk-register the rest so downstream phases can reference real resources
+        registered = 1
+        for stylist in STYLISTS[1:20]:
+            sc2, _ = await call(c, "POST",
+                                f"/api/v1/primitives/brand/{primary_bid}/resources",
+                                json_body={
+                                    "resource_id": stylist["stylist_id"],
+                                    "name": stylist["name"],
+                                    "type": "stylist",
+                                    "metadata": {"level": stylist["level"],
+                                                 "commission_rate": stylist["commission_rate"]},
+                                })
+            if sc2 in (200, 201):
+                registered += 1
+        if registered >= 15:
+            ok("stylist roster bulk registered", f"{registered}/20 stylists")
+        else:
+            gap("P1", "stylist roster partial", f"only {registered}/20 registered")
+        # R7: list resources by type=stylist to verify discovery
+        sc3, b3 = await call(c, "GET",
+                             f"/api/v1/primitives/brand/{primary_bid}/resources",
+                             params={"type": "stylist"})
+        if sc3 == 200 and isinstance(b3, dict) and b3.get("count", 0) > 0:
+            ok("list stylists by type", f"count={b3['count']}")
+        else:
+            gap("P1", "list stylists by type", f"{sc3} {_short(b3)}")
     else:
         gap("P1", "stylist register", f"{sc} {_short(b)}")
 
@@ -478,15 +504,18 @@ async def phase_4_reservations(c: httpx.AsyncClient, state: dict[str, Any]) -> N
     else:
         gap("P1", "recovery voucher template", f"{sc} {_short(b)}")
 
-    # Sample reservation with resource_id = stylist_id (老周 + 老蔡 wish)
+    # Sample reservation with R7: type=stylist + resource_id + fulfiller_user_id
     star_stylist = STYLISTS[0]
+    stylist_uid = f"user_{star_stylist['stylist_id']}"
+    await _setup_consent(c, [stylist_uid])
     sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
         "brand_id": primary_bid,
         "user_id": probe_uid,
         "scheduled_at": int(time.time()) + 3600,
         "party_size": 1,
-        "type": "service",
-        "resource_id": star_stylist["stylist_id"],  # WHICH stylist
+        "type": "stylist",  # R7: first-class stylist type
+        "resource_id": star_stylist["stylist_id"],
+        "fulfiller_user_id": stylist_uid,  # R7: stylist as fulfiller
         "metadata": {
             "service": "cut_and_color",
             "stylist_name": star_stylist["name"],
@@ -500,22 +529,44 @@ async def phase_4_reservations(c: httpx.AsyncClient, state: dict[str, Any]) -> N
     rid_sample = None
     if sc in (200, 201) and isinstance(b, dict):
         rid_sample = b.get("reservation_id")
-        # Probe: was resource_id persisted at the top level?
-        if "resource_id" in b:
-            ok("reservation resource_id (stylist) persisted at top level",
-               f"rid={rid_sample} resource={b.get('resource_id')}")
-        elif isinstance(b.get("metadata"), dict) and b["metadata"].get("resource_id"):
-            gap("P1", "resource_id only in metadata",
-                "reservation accepted with resource_id but it's only visible via "
-                "metadata, not top-level. Per-stylist queries (stats / capacity / "
-                "no-show rate) cannot use indexed top-level field.")
+        # R7: GET readback to verify resource_id + fulfiller_user_id persisted
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid_sample}")
+        if sc_get == 200 and isinstance(b_get, dict):
+            if b_get.get("resource_id") == star_stylist["stylist_id"]:
+                ok("reservation resource_id (stylist) persisted top-level",
+                   f"rid={rid_sample} resource={b_get['resource_id']}")
+            else:
+                gap("P0", "reservation resource_id silently dropped",
+                    f"GET readback resource_id={b_get.get('resource_id')!r}")
+            if b_get.get("fulfiller_user_id") == stylist_uid:
+                ok("reservation fulfiller_user_id persisted", f"fulfiller={stylist_uid}")
+            else:
+                gap("P1", "fulfiller_user_id not persisted",
+                    f"GET readback fulfiller_user_id={b_get.get('fulfiller_user_id')!r}")
+        # R7: GET /reservations/fulfiller/{uid} — stylist chair calendar
+        sc_ff, b_ff = await call(c, "GET",
+                                  f"/api/v1/reservations/fulfiller/{stylist_uid}")
+        if sc_ff == 200 and isinstance(b_ff, dict) and b_ff.get("count", 0) >= 1:
+            ok("stylist chair calendar via /fulfiller/{uid}",
+               f"count={b_ff['count']}")
         else:
-            gap("P0", "reservation resource_id silently dropped",
-                "stylist_id submitted as resource_id was not persisted/echoed. "
-                "Hair salon marketplace needs first-class resource_id binding so "
-                "per-stylist capacity / per-stylist no-show / commission attribution "
-                "can be enforced. 老蔡 (hospital) flagged identical gap — Round 5 "
-                "should make resource_id a first-class field, not metadata.")
+            gap("P0", "stylist chair calendar missing",
+                f"GET /reservations/fulfiller/{stylist_uid} {sc_ff} {_short(b_ff)}")
+        # R7: 409 conflict on overlapping booking for same stylist (resource lock)
+        sc_dup, b_dup = await call(c, "POST", "/api/v1/reservations/create", json_body={
+            "brand_id": primary_bid,
+            "user_id": f"customer_dup_{RUN_TAG}",
+            "scheduled_at": int(time.time()) + 3600,  # same slot
+            "party_size": 1,
+            "type": "stylist",
+            "resource_id": star_stylist["stylist_id"],
+        })
+        if sc_dup == 409:
+            ok("409 conflict on overlapping stylist booking", "resource lock works")
+        elif sc_dup in (200, 201):
+            gap("P1", "no overlap conflict on shared stylist",
+                "two bookings for same stylist at same time both accepted; "
+                "expected 409 conflict on overlapping resource bookings.")
     else:
         gap("P0", "reservation create with stylist", f"{sc} {_short(b)}")
     state["sample_reservation_id"] = rid_sample
@@ -1573,6 +1624,14 @@ def write_findings(start_ts: float) -> None:
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(

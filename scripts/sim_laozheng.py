@@ -409,28 +409,28 @@ async def phase_4_consent(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
         return
     state["consent_version"] = f"v_{RUN_TAG}"
 
-    # Probe: pii_kyc scope (FINTECH-SPECIFIC, 个保法 § 28 敏感个人信息)
+    # R7: pii_kyc — REGULATED, needs consent_evidence
+    pii_probe_uid = f"pii_probe_{RUN_TAG}"
     sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
-        "user_id": f"pii_probe_{RUN_TAG}",
+        "user_id": pii_probe_uid,
         "scopes": ["pii_kyc"],
         "policy_version": f"v_{RUN_TAG}",
         "source": "app",
+        "consent_evidence": {
+            "method": "signature",
+            "reference": f"sig_kyc_{RUN_TAG}",
+        },
     })
     body_str = json.dumps(b) if isinstance(b, dict) else str(b)
     if sc == 200:
-        ok("pii_kyc scope accepted", "FINTECH-SPECIFIC scope wired")
+        ok("pii_kyc scope accepted w/ consent_evidence", "FINTECH 个保法 §28 wired")
+        state["pii_probe_uid"] = pii_probe_uid
     elif sc in (400, 422) and "scope" in body_str.lower():
-        gap("P0", "pii_kyc consent scope missing",
-            f"{sc} {_short(b)} — VALID_SCOPES = "
-            "{cross_brand_tracking, geo_lbs, personalization, marketing} only. "
-            "Fintech merchants cannot grant separate consent for KYC PII (身份证号/银行卡) vs "
-            "marketing. 个保法 § 28 + § 29 require SEPARATE consent for 敏感个人信息. "
-            "Without pii_kyc / financial_data scopes, every audit log collapses 身份证 access "
-            "into 'personalization'. Direct 个保法 violation.")
+        gap("P0", "pii_kyc consent scope missing", f"{sc} {_short(b)}")
     else:
         gap("P1", "pii_kyc scope probe", f"{sc} {_short(b)}")
 
-    # Probe: financial_data scope (alternate name)
+    # R7: financial_data scope
     sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
         "user_id": f"fin_probe_{RUN_TAG}",
         "scopes": ["financial_data"],
@@ -442,27 +442,58 @@ async def phase_4_consent(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     elif sc not in (400, 422):
         gap("P2", "financial_data scope probe", f"{sc} {_short(b)}")
 
-    # Probe: 双录 (audio+video recording) consent — 适当性管理办法 requires
+    # R7: 双录 audio_video_recording REGULATED scope — needs consent_evidence
+    shuanglu_uid = f"shuanglu_probe_{RUN_TAG}"
     sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
-        "user_id": f"shuanglu_probe_{RUN_TAG}",
+        "user_id": shuanglu_uid,
         "scopes": ["audio_video_recording"],
         "policy_version": f"v_{RUN_TAG}",
         "source": "app",
-        "evidence": {
-            "recording_id": f"REC_{RUN_TAG}",
-            "duration_sec": 180,
-            "retain_years": 10,    # 双录 retention required ≥ 2 yrs; bank ≥ 10 yrs
+        "consent_evidence": {
+            "method": "video",
+            "reference": f"REC_{RUN_TAG}_av180s",
         },
     })
     if sc == 200:
-        ok("双录 audio_video_recording scope accepted", "")
+        ok("双录 audio_video_recording scope accepted w/ evidence",
+           "适当性管理办法 §28 双录 wired")
+        state["shuanglu_uid"] = shuanglu_uid
     elif sc in (400, 422):
-        gap("P0", "双录 (audio+video) consent scope missing",
-            f"{sc} {_short(b)} — 适当性管理办法 § 28 mandates 双录 for any 中高风险 product "
-            "sale. Without an audio_video_recording consent scope + evidence binding "
-            "(recording_id, duration, retain_years), the platform cannot legally onboard "
-            "investors to R3+ products. Bigger than HIPAA — fintech 双录 is a HARD legal "
-            "prerequisite, not a best practice.")
+        gap("P0", "双录 (audio+video) consent scope missing", f"{sc} {_short(b)}")
+
+    # R7: /consent/document/sign type="双录" with signature_method=video_recording
+    sc, b = await call(c, "POST", "/api/v1/consent/document/sign", json_body={
+        "user_id": pii_probe_uid,
+        "document_type": "双录",
+        "document_version": f"v_{RUN_TAG}",
+        "document_url": "https://example.com/双录.pdf",
+        "signature_method": "video_recording",
+        "signature_evidence_url": f"s3://kix-fintech/rec_{RUN_TAG}.mp4",
+        "granted_scopes": ["audio_video_recording", "financial_data"],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("document_consent_id"):
+        ok("双录 /document/sign", f"dcons={b['document_consent_id']}")
+        state["shuanglu_doc_id"] = b["document_consent_id"]
+    else:
+        gap("P0", "双录 /document/sign", f"{sc} {_short(b)}")
+
+    # R7: media.upload for KYC document (身份证 scan)
+    sc, b = await call(c, "POST", "/api/v1/media/upload", json_body={
+        "owner_user_id": pii_probe_uid,
+        "brand_id": primary_bid,
+        "media_class": "document",  # 身份证 = document class
+        "storage_url": f"s3://kix-fintech/kyc_idcard_{RUN_TAG}.jpg",
+        "content_hash": "sha256:" + "k" * 40,
+        "mime_type": "image/jpeg",
+        "size_bytes": 204800,
+        "retention_days": 1825,  # 5y KYC retention
+        "metadata": {"document_kind": "id_card_front"},
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("media_id"):
+        ok("media.upload KYC document", f"media_id={b['media_id']}")
+        state["kyc_media_id"] = b["media_id"]
+    else:
+        gap("P0", "media.upload KYC document", f"{sc} {_short(b)}")
 
     # Probe: investor tier ladder (mass / affluent / hnw / uhnw)
     sc, b = await call(c, "POST", "/api/v1/primitives/tier/configure", json_body={
@@ -784,6 +815,50 @@ async def phase_8_master_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> No
             "(holds MMF + wealth + insurance → gold) cannot be queried.")
     else:
         gap("P1", "master tier query", f"{sc} {_short(b)}")
+
+    # R7: scope=global tier ladder via /master/{mid}/tier/configure
+    sc, b = await call(c, "POST",
+                       f"/api/v1/master/{master_id}/tier/configure",
+                       json_body={
+                           "tiers": [
+                               {"name": "starter_global", "xp_min": 0},
+                               {"name": "gold_global", "xp_min": 50_000_000},
+                               {"name": "private_bank_global", "xp_min": 600_000_000},
+                           ],
+                           "aggregation": "sum",
+                           "scope": "global",
+                       })
+    if sc == 200 and isinstance(b, dict) and b.get("scope") == "global":
+        ok("master tier scope=global configured",
+           f"fanned_to={len(b.get('fanned_to', []))}")
+        state["global_tier_works"] = True
+    else:
+        gap("P0", "master tier scope=global", f"{sc} {_short(b)}")
+
+    # R7: tier-portability — full map across brand/region/master/global
+    sc, b = await call(c, "GET",
+                       f"/api/v1/master/{master_id}/user/{primary_uid}/tier-portability")
+    if sc == 200 and isinstance(b, dict):
+        if "portability_map" in b and "brand_tiers" in b:
+            ok("tier-portability map", f"global_tier={b.get('global_tier')} "
+               f"brands={len(b.get('brand_tiers', {}))} "
+               f"map_entries={len(b.get('portability_map', {}))}")
+        else:
+            gap("P1", "tier-portability shape", f"missing keys: {list(b.keys())}")
+    elif sc == 404:
+        gap("P0", "tier-portability endpoint missing",
+            "GET /master/{mid}/user/{uid}/tier-portability 404")
+    else:
+        gap("P1", "tier-portability", f"{sc} {_short(b)}")
+
+    # R7: tier-by-scope?scope=global
+    sc, b = await call(c, "GET",
+                       f"/api/v1/master/{master_id}/user/{primary_uid}/tier-by-scope",
+                       params={"scope": "global"})
+    if sc == 200 and isinstance(b, dict):
+        ok("tier-by-scope scope=global", f"tier={b.get('tier')}")
+    else:
+        gap("P1", "tier-by-scope scope=global", f"{sc} {_short(b)}")
 
 
 # ── Phase 9: Regulatory Creative-Gen Compliance Flag ─────────────────────
@@ -1409,6 +1484,14 @@ def write_findings(start_ts: float) -> None:
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:

@@ -217,19 +217,21 @@ async def phase_1_master_setup(c: httpx.AsyncClient) -> dict[str, Any]:
                 "cannot self-declare their vertical at the master level — every downstream "
                 "compliance / creative / audience filter must guess from brand_id or sub-brand name.")
 
-    # Probe: industry='healthcare' / 'medical' recipe support
-    sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": "healthcare"})
-    if sc == 200 and isinstance(b, (list, dict)):
-        items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
-        if items:
-            ok("recipes industry=healthcare", f"{len(items)} match")
-        else:
-            gap("P0", "no healthcare recipes seeded",
-                "?industry=healthcare returns 0 entries. Hospital merchants get a generic "
-                "starbucks_loyalty fallback — wrong copy, wrong mechanic, wrong compliance "
-                "(promises of cure/diagnosis are illegal in CN medical advertising 医疗广告法).")
-    else:
-        gap("P1", "recipe industry filter", f"{sc} {_short(b)}")
+    # R7: 27 new industry recipes seeded. Hospital should match medical or medical_aesthetics.
+    found_any = False
+    for industry in ("medical", "healthcare", "medical_aesthetics", "wellness"):
+        sc, b = await call(c, "GET", "/api/v1/recipes", params={"industry": industry})
+        if sc == 200 and isinstance(b, (list, dict)):
+            items = b if isinstance(b, list) else b.get("recipes", b.get("items", []))
+            if items:
+                ok(f"recipes industry={industry}", f"{len(items)} match")
+                found_any = True
+                if industry == "medical":
+                    state["medical_recipes"] = [it.get("id") for it in items[:5]]
+    if not found_any:
+        gap("P0", "no healthcare recipes seeded",
+            "?industry={medical,healthcare,medical_aesthetics,wellness} all return 0 "
+            "entries. Hospital merchants get a generic starbucks_loyalty fallback.")
 
     return state
 
@@ -307,38 +309,95 @@ async def phase_3_consent_tier(c: httpx.AsyncClient, state: dict[str, Any]) -> N
         return
     state["consent_version"] = f"v_{RUN_TAG}"
 
-    # Probe: phi_storage scope (HEALTHCARE-SPECIFIC). Use a valid `source` so
-    # the only thing that can fail is scope validation.
+    # R7: phi_storage scope is REGULATED — requires consent_evidence
+    phi_probe_uid = f"phi_probe_{RUN_TAG}"
     sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
-        "user_id": f"phi_probe_{RUN_TAG}",
+        "user_id": phi_probe_uid,
         "scopes": ["phi_storage"],
         "policy_version": f"v_{RUN_TAG}",
         "source": "app",
+        "consent_evidence": {
+            "method": "signature",
+            "reference": f"sig_phi_{RUN_TAG}_001",
+        },
     })
     body_str = json.dumps(b) if isinstance(b, dict) else str(b)
     if sc == 200:
-        ok("phi_storage scope accepted", "HEALTHCARE-SPECIFIC scope is wired")
+        ok("phi_storage scope accepted w/ consent_evidence",
+           "HEALTHCARE-SPECIFIC scope wired with signature evidence")
+        state["phi_probe_uid"] = phi_probe_uid
     elif sc in (400, 422) and "scope" in body_str.lower():
         gap("P0", "phi_storage consent scope missing",
-            f"{sc} {_short(b)} — consent.VALID_SCOPES = "
-            "{cross_brand_tracking, geo_lbs, personalization, marketing} only. "
-            "Healthcare merchants cannot grant separate consent for PHI vs marketing "
-            "(HIPAA/PDPA/GDPR-Article-9 all require this distinction). Without a "
-            "phi_storage scope every audit trail collapses PHI access into 'personalization'.")
+            f"{sc} {_short(b)} — phi_storage rejected even with consent_evidence")
     else:
         gap("P1", "phi_storage scope probe", f"{sc} {_short(b)}")
 
-    # Probe: medical_data scope (alternate name)
+    # R7: medical_data scope (REGULATED — requires evidence)
     sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
         "user_id": f"phi_probe_alt_{RUN_TAG}",
         "scopes": ["medical_data"],
         "policy_version": f"v_{RUN_TAG}",
         "source": "app",
+        "consent_evidence": {
+            "method": "signature",
+            "reference": f"sig_md_{RUN_TAG}_002",
+        },
     })
     if sc == 200:
-        ok("medical_data scope accepted", "")
+        ok("medical_data scope accepted w/ evidence", "")
     elif sc not in (400, 422):
         gap("P2", "medical_data scope probe", f"{sc} {_short(b)}")
+
+    # R7: /consent/document/sign for medical_consent (informed consent form)
+    sc, b = await call(c, "POST", "/api/v1/consent/document/sign", json_body={
+        "user_id": phi_probe_uid,
+        "document_type": "medical_consent",
+        "document_version": f"v_{RUN_TAG}",
+        "document_url": "https://example.com/med-consent.pdf",
+        "signature_method": "signature",
+        "signature_evidence_url": "https://example.com/sig-blob",
+        "granted_scopes": ["medical_data", "phi_storage"],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("document_consent_id"):
+        ok("medical_consent document signed",
+           f"dcons_id={b['document_consent_id']}")
+        state["medical_consent_id"] = b["document_consent_id"]
+    else:
+        gap("P0", "medical_consent /document/sign", f"{sc} {_short(b)}")
+
+    # R7: media.upload with media_class=medical_sensitive (needs consent_grant_id)
+    # First grant a consent record to pair with the upload
+    sc, b = await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": phi_probe_uid,
+        "scopes": ["medical_record_retention"],
+        "policy_version": f"v_{RUN_TAG}",
+        "source": "app",
+        "consent_evidence": {
+            "method": "signature",
+            "reference": f"sig_retn_{RUN_TAG}",
+        },
+    })
+    consent_grant_id = None
+    if sc == 200 and isinstance(b, dict):
+        consent_grant_id = b.get("grant_id") or b.get("user_id") or phi_probe_uid
+    sc, b = await call(c, "POST", "/api/v1/media/upload", json_body={
+        "owner_user_id": phi_probe_uid,
+        "brand_id": primary_bid,
+        "media_class": "medical_sensitive",
+        "storage_url": "s3://kix-medical/lab-result-001.pdf",
+        "content_hash": "sha256:" + "a" * 40,
+        "mime_type": "application/pdf",
+        "size_bytes": 102400,
+        "consent_grant_id": consent_grant_id or f"grant_{phi_probe_uid}",
+        "retention_days": 3650,  # 10y medical
+        "metadata": {"document_kind": "lab_result"},
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("media_id"):
+        ok("media.upload medical_sensitive",
+           f"media_id={b['media_id']} retention=10y")
+        state["medical_media_id"] = b["media_id"]
+    else:
+        gap("P0", "media.upload medical_sensitive", f"{sc} {_short(b)}")
 
     # Configure patient tier ladder — regular / premium / executive
     sc, b = await call(c, "POST", "/api/v1/primitives/tier/configure", json_body={
@@ -509,31 +568,53 @@ async def phase_5_specialist_reservations(c: httpx.AsyncClient, state: dict[str,
             "Hospitals need first-class gp/specialist/lab_test/vaccination/dental subtyping "
             "for stats, no-show rate by type, and per-type recovery policies.")
 
-    # Use the generic 'appointment' type but probe resource_id (老周 said this is needed)
+    # R7: type=specialist + resource_id=doctor + fulfiller_user_id=doctor
     rid_sample = None
+    doctor_uid = f"user_{SPECIALISTS[0]['doctor_id']}"
+    sc_consent, _ = await call(c, "POST", "/api/v1/consent/grant", json_body={
+        "user_id": doctor_uid,
+        "scopes": ["cross_brand_tracking"],
+        "policy_version": state.get("consent_version", f"v_{RUN_TAG}"),
+        "source": "app",
+    })
     sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
         "brand_id": bid,
         "user_id": state["family1"]["payer"],
         "scheduled_at": int(time.time()) + 3600,
         "party_size": 1,
-        "type": "appointment",
-        "resource_id": SPECIALISTS[0]["doctor_id"],   # which doctor (Round-3 wish)
+        "type": "specialist",  # R7: first-class specialist type
+        "resource_id": SPECIALISTS[0]["doctor_id"],
+        "fulfiller_user_id": doctor_uid,  # R7: doctor as fulfiller
         "metadata": {"specialty": SPECIALISTS[0]["specialty"], "fee_cents": SPECIALISTS[0]["fee_cents"]},
         "check_in_grace_minutes": 15,
     })
     if sc in (200, 201) and isinstance(b, dict):
         rid_sample = b.get("reservation_id")
-        # Was resource_id actually persisted?
-        if "resource_id" in b or (isinstance(b.get("metadata"), dict) and b["metadata"].get("resource_id")):
-            ok("reservation resource_id (doctor) persisted", f"rid={rid_sample}")
+        # R7: GET readback to verify resource_id + fulfiller_user_id persisted
+        sc_get, b_get = await call(c, "GET", f"/api/v1/reservations/{rid_sample}")
+        if sc_get == 200 and isinstance(b_get, dict):
+            if b_get.get("resource_id") == SPECIALISTS[0]["doctor_id"]:
+                ok("reservation resource_id (doctor) persisted top-level",
+                   f"rid={rid_sample} resource={b_get['resource_id']}")
+            else:
+                gap("P0", "reservation resource_id silently dropped",
+                    f"readback resource_id={b_get.get('resource_id')!r}")
+            if b_get.get("fulfiller_user_id") == doctor_uid:
+                ok("reservation fulfiller_user_id (doctor) persisted",
+                   f"fulfiller={doctor_uid}")
+            else:
+                gap("P1", "fulfiller_user_id not persisted",
+                    f"readback fulfiller_user_id={b_get.get('fulfiller_user_id')!r}")
+        # R7: GET /reservations/fulfiller/{uid} — doctor day-view
+        sc_ff, b_ff = await call(c, "GET",
+                                  f"/api/v1/reservations/fulfiller/{doctor_uid}")
+        if sc_ff == 200 and isinstance(b_ff, dict) and b_ff.get("count", 0) >= 1:
+            ok("doctor day-view via /fulfiller/{uid}", f"count={b_ff['count']}")
         else:
-            gap("P0", "reservation resource_id silently dropped",
-                "reservation accepted but readback has no resource_id field; doctor binding "
-                "stored only in free-form metadata. Specialist marketplace needs first-class "
-                "resource_id so per-doctor capacity / per-doctor stats / per-doctor no-show "
-                "policy can be enforced (老周 P1 already flagged this).")
+            gap("P0", "doctor day-view missing",
+                f"GET /reservations/fulfiller/{doctor_uid} {sc_ff} {_short(b_ff)}")
     else:
-        gap("P0", "reservation appointment create", f"{sc} {_short(b)}")
+        gap("P0", "reservation specialist create", f"{sc} {_short(b)}")
     state["sample_reservation_id"] = rid_sample
 
     # Burst: 50 reservations across 5 specialists
@@ -1800,6 +1881,14 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:

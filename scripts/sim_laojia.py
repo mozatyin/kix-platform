@@ -530,19 +530,18 @@ async def phase_5_pickup_reservation(c: httpx.AsyncClient, state: dict[str, Any]
     else:
         gap("P1", "reservation policy", f"{sc} {_short(b)}")
 
-    # Probe: create a pickup reservation. There is no "pickup" / "logistics_pickup"
-    # type — must fall back to a documented enum value.
+    # R7: type=pickup (first-class) + fulfiller_user_id=courier + recipient_user_id
     triad0 = triads[0]
     sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
         "brand_id": BRAND_ID,
-        "user_id": triad0["sender_kid"],  # sender is the booker
+        "user_id": triad0["sender_kid"],  # sender = booker
         "scheduled_at": int(time.time()) + 3600,
         "party_size": 1,
-        "type": "pickup",  # speculative — does enum accept logistics?
+        "type": "pickup",  # R7 first-class
+        "fulfiller_user_id": triad0["courier_kid"],  # R7
+        "recipient_user_id": triad0["recipient_kid"],  # R7
         "metadata": {
             "address": "天河区天河北路",
-            "courier_kid": triad0["courier_kid"],
-            "recipient_kid": triad0["recipient_kid"],
             "package_weight_g": 850,
             "delivery_type": "b2c",
         },
@@ -550,56 +549,72 @@ async def phase_5_pickup_reservation(c: httpx.AsyncClient, state: dict[str, Any]
     })
     if sc in (200, 201) and isinstance(b, dict):
         state["pickup_rid"] = b.get("reservation_id")
-        ok("pickup reservation (type=pickup)", f"rid={b.get('reservation_id')}")
+        ok("pickup reservation (type=pickup, R7)",
+           f"rid={b.get('reservation_id')}")
     elif sc in (400, 422):
         gap("P0", "no 'pickup' reservation type",
-            f"Reservation type='pickup' rejected ({sc} {_short(b, 120)}). The enum is "
-            "{dining|fitness_class|appointment|event|tour|service} — no LOGISTICS "
-            "type. We fall back to type='service'. Real-world impact: logistics "
-            "stats endpoint cannot filter 'pickup-type reservations' vs other "
-            "service bookings, and the no-show semantics (grace period for courier "
-            "vs grace for sender) collapse into one config.")
-        # Fallback
-        sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
-            "brand_id": BRAND_ID,
-            "user_id": triad0["sender_kid"],
-            "scheduled_at": int(time.time()) + 3600,
-            "party_size": 1,
-            "type": "service",
-            "metadata": {
-                "domain": "logistics_pickup",
-                "courier_kid": triad0["courier_kid"],
-                "recipient_kid": triad0["recipient_kid"],
-            },
-            "check_in_grace_minutes": 30,
-        })
-        if sc in (200, 201) and isinstance(b, dict):
-            state["pickup_rid"] = b.get("reservation_id")
-            ok("pickup reservation (fallback type=service)", f"rid={b.get('reservation_id')}")
-        else:
-            gap("P1", "pickup fallback create", f"{sc} {_short(b)}")
+            f"Reservation type='pickup' rejected ({sc} {_short(b, 120)})")
     else:
         gap("P1", "pickup reservation", f"{sc} {_short(b)}")
 
-    # Probe: does the reservation primitive carry the COURIER_KID + RECIPIENT_KID
-    # as first-class linked-actor fields, or only as metadata?
+    # R7: GET readback to verify fulfiller_user_id + recipient_user_id persisted
     rid = state.get("pickup_rid")
     if rid:
         sc, b = await call(c, "GET", f"/api/v1/reservations/{rid}")
         if sc == 200 and isinstance(b, dict):
-            # Look for first-class linked-actor fields
-            has_assignee = any(k in b for k in
-                               ("assignee_user_id", "fulfiller_user_id",
-                                "courier_user_id", "linked_user_ids"))
-            if not has_assignee:
-                gap("P0", "no fulfiller/assignee field on reservation",
-                    f"GET /reservations/{{rid}} returns no assignee_user_id / "
-                    "fulfiller_user_id / linked_user_ids field. The courier_kid is "
-                    "buried in metadata as a string. Implications: cannot query "
-                    "'all reservations assigned to courier X', cannot enforce "
-                    "courier-level capacity, cannot route courier-completion events "
-                    "back to the reservation. Logistics needs a "
-                    "linked_actor[role,user_id] field on reservations.")
+            if b.get("fulfiller_user_id") == triad0["courier_kid"]:
+                ok("reservation fulfiller_user_id (courier) persisted",
+                   f"fulfiller={triad0['courier_kid']}")
+            else:
+                gap("P0", "fulfiller_user_id (courier) not persisted",
+                    f"readback fulfiller_user_id={b.get('fulfiller_user_id')!r}")
+            if b.get("recipient_user_id") == triad0["recipient_kid"]:
+                ok("reservation recipient_user_id persisted",
+                   f"recipient={triad0['recipient_kid']}")
+            else:
+                gap("P1", "recipient_user_id not persisted",
+                    f"readback recipient_user_id={b.get('recipient_user_id')!r}")
+
+        # R7: GET /reservations/fulfiller/{courier_kid} — courier route board
+        sc2, b2 = await call(c, "GET",
+                              f"/api/v1/reservations/fulfiller/{triad0['courier_kid']}")
+        if sc2 == 200 and isinstance(b2, dict) and b2.get("count", 0) >= 1:
+            ok("courier route board via /fulfiller/{uid}",
+               f"count={b2['count']}")
+        else:
+            gap("P0", "courier route board missing",
+                f"GET /reservations/fulfiller/{triad0['courier_kid']} {sc2} {_short(b2)}")
+        # R7: GET /reservations/recipient/{recipient_kid}
+        sc3, b3 = await call(c, "GET",
+                              f"/api/v1/reservations/recipient/{triad0['recipient_kid']}")
+        if sc3 == 200 and isinstance(b3, dict) and b3.get("count", 0) >= 1:
+            ok("recipient view via /recipient/{uid}", f"count={b3['count']}")
+        else:
+            gap("P1", "recipient view missing",
+                f"GET /reservations/recipient/{triad0['recipient_kid']} {sc3} {_short(b3)}")
+
+        # R7: payouts.inter-brand-transfer (sender brand → courier brand)
+        # The triad lives under one brand here; use brand+self test reference
+        sc_pay, b_pay = await call(c, "POST",
+                                    "/api/v1/payouts/inter-brand-transfer",
+                                    json_body={
+                                        "from_brand_id": BRAND_ID,
+                                        "to_brand_id": f"{BRAND_ID}_courier_pool",
+                                        "amount_cents": 5_00,  # ¥5 courier fee
+                                        "reason": "supplier_payment",
+                                        "reference_id": f"delivery_fee_{rid}",
+                                        "ledger_entry_metadata": {
+                                            "category": "courier_delivery_fee",
+                                            "courier_kid": triad0["courier_kid"],
+                                            "reservation_id": rid,
+                                        },
+                                    })
+        if sc_pay in (200, 201) and isinstance(b_pay, dict) and b_pay.get("entry_id"):
+            ok("payouts.inter-brand-transfer (courier fee)",
+               f"entry={b_pay['entry_id']}")
+        else:
+            gap("P1", "payouts.inter-brand-transfer (courier fee)",
+                f"{sc_pay} {_short(b_pay)}")
 
     # Burst: 100 reservations across senders × 8 zones
     rng = random.Random(RUN_TAG + 5)
@@ -1486,6 +1501,14 @@ def write_findings(start_ts: float) -> None:
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:

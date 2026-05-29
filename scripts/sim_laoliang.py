@@ -291,34 +291,63 @@ async def phase_2_wallet(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
     else:
         gap("P0", "region wallet funding", f"only {funded}/{len(SUB_BRANDS)}")
 
-    # Probe: Can wallet topup specify a currency? (e.g. ¥6K base + USD 500 sub-balance)
-    sc, b = await call(c, "POST",
-                       f"/api/v1/wallet/{SUB_BRANDS[0]['brand_id']}/topup",
-                       json_body={"amount_cents": 500_00,  # USD 500 in "cents"
-                                  "currency": "USD",
-                                  "payment_method": "wechat"})
-    if sc == 200:
-        # Inspect to see if currency was honored
-        sc2, b2 = await call(c, "GET",
-                             f"/api/v1/wallet/{SUB_BRANDS[0]['brand_id']}/daily-budget-status")
-        if isinstance(b2, dict) and (b2.get("currency") or b2.get("currencies")):
-            ok("multi-currency wallet topup", f"currency preserved")
-        else:
-            gap("P0", "multi-currency wallet — no FX support",
-                "POST /wallet/{bid}/topup accepted a `currency: USD` field but the "
-                "wallet status returns no currency metadata. The platform appears to "
-                "store all balances as a single CNY-cents integer. Travel agencies "
-                "running USD promotion budgets for international flights cannot "
-                "separate USD reserves from CNY reserves — every conversion happens "
-                "off-platform manually. Multi-currency is a P0 for travel / "
-                "luxury-imports / international-ecommerce / FX-hedging merchants.")
-    elif sc in (400, 422):
-        gap("P0", "no currency field on wallet topup",
-            f"POST /wallet/topup rejects `currency` field ({sc} {_short(b, 120)}). "
-            "Wallet is implicitly single-currency (CNY). International travel agencies "
-            "promoting in USD/EUR/JPY have no way to declare a foreign budget pool.")
+    # R7: Configure FX rates via /api/v1/fx/rates/configure
+    from app.config import settings as _settings
+    admin_token = _settings.jwt_secret
+    sc, b = await call(c, "POST", "/api/v1/fx/rates/configure", json_body={
+        "admin_token": admin_token,
+        "pairs": [
+            {"from_currency": "CNY", "to_currency": "USD", "rate": "0.1376", "source": "manual"},
+            {"from_currency": "USD", "to_currency": "EUR", "rate": "0.9200", "source": "manual"},
+            {"from_currency": "CNY", "to_currency": "JPY", "rate": "20.5", "source": "manual"},
+            {"from_currency": "CNY", "to_currency": "EUR", "rate": "0.1266", "source": "manual"},
+        ],
+    })
+    if sc == 200 and isinstance(b, dict) and b.get("configured", 0) >= 4:
+        ok("fx.rates.configure", f"configured={b['configured']} pairs")
     else:
-        gap("P1", "wallet currency probe", f"{sc} {_short(b)}")
+        gap("P0", "fx.rates.configure", f"{sc} {_short(b)}")
+
+    # R7: fx.convert CNY → USD → EUR multi-leg
+    sc, b = await call(c, "POST", "/api/v1/fx/convert", json_body={
+        "amount_cents": 100_000,  # ¥1000
+        "from_currency": "CNY",
+        "to_currency": "USD",
+    })
+    usd_cents = None
+    if sc == 200 and isinstance(b, dict) and b.get("equivalent_cents"):
+        usd_cents = b["equivalent_cents"]
+        ok("fx.convert CNY→USD", f"¥1000 → ${usd_cents/100:.2f} (rate={b.get('rate')})")
+    else:
+        gap("P0", "fx.convert CNY→USD", f"{sc} {_short(b)}")
+    if usd_cents:
+        sc, b = await call(c, "POST", "/api/v1/fx/convert", json_body={
+            "amount_cents": usd_cents,
+            "from_currency": "USD",
+            "to_currency": "EUR",
+        })
+        if sc == 200 and isinstance(b, dict):
+            ok("fx.convert USD→EUR (chained)",
+               f"${usd_cents/100:.2f} → €{b['equivalent_cents']/100:.2f}")
+        else:
+            gap("P1", "fx.convert USD→EUR", f"{sc} {_short(b)}")
+
+    # R7: wallet.topup-with-fx — pay in USD, credit CNY wallet
+    sc, b = await call(c, "POST",
+                       f"/api/v1/wallet/{SUB_BRANDS[0]['brand_id']}/topup-with-fx",
+                       json_body={
+                           "amount_cents": 50_000,  # USD $500
+                           "payment_method": "stripe",
+                           "payment_currency": "USD",
+                           "convert_to_currency": "CNY",
+                       })
+    if sc == 200 and isinstance(b, dict) and b.get("credited_amount_cents"):
+        ok("wallet.topup-with-fx (USD→CNY)",
+           f"paid=$500 → credited=¥{b['credited_amount_cents']/100:.2f} "
+           f"rate={b.get('fx_rate')}")
+        state["fx_topup_ok"] = True
+    else:
+        gap("P0", "wallet.topup-with-fx", f"{sc} {_short(b)}")
 
     # Probe: daily-budget status returns FX info?
     sc, b = await call(c, "GET",
@@ -443,65 +472,63 @@ async def phase_4_group_booking(c: httpx.AsyncClient, state: dict[str, Any]) -> 
     organizer_uid = f"group_organizer_{RUN_TAG}"
     await _setup_consent(c, [organizer_uid])
 
-    # Create a group booking reservation — single buyer, 20 travelers
+    # R7: type=group_tour (first-class) + POST /reservations/{rid}/travelers
     sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
         "brand_id": primary_bid,
         "user_id": organizer_uid,
-        "scheduled_at": int(time.time()) + 86400 * 90,  # 90 days from now
+        "scheduled_at": int(time.time()) + 86400 * 90,
         "party_size": 20,
-        "type": "tour",
+        "type": "group_tour",  # R7 first-class
         "metadata": {
             "destination": "Tokyo + Kyoto + Osaka 10-day",
             "departure_city": "Hangzhou",
-            "total_value_cents": 30_000_00 * 20,  # ¥30K × 20 people = ¥600K
-            "travelers": [  # speculative — does it accept per-traveler details?
-                {"name": f"Traveler_{i}", "passport": f"E{10000000 + i}",
-                 "dob": f"198{i%10}-01-{(i%28)+1:02d}"}
-                for i in range(20)
-            ],
+            "total_value_cents": 30_000_00 * 20,
         },
         "check_in_grace_minutes": 60,
     })
     if sc in (200, 201) and isinstance(b, dict):
         rid = b.get("reservation_id")
         state["group_reservation_id"] = rid
-        ok("group reservation create", f"rid={rid} party_size=20 type=tour")
+        ok("group_tour reservation create", f"rid={rid} party_size=20 type=group_tour")
 
-        # Read back and check if travelers list was preserved
-        sc2, b2 = await call(c, "GET", f"/api/v1/reservations/{rid}")
-        if sc2 == 200 and isinstance(b2, dict):
-            meta = b2.get("metadata", {})
-            travelers = meta.get("travelers")
-            if travelers and isinstance(travelers, list) and len(travelers) == 20:
-                ok("group traveler manifest preserved",
-                   f"{len(travelers)} travelers in metadata")
-                gap("P1", "no first-class group_manifest primitive",
-                    "Travelers were stored in `metadata.travelers` (free-form JSON). "
-                    "There is no first-class `group_manifest` schema with per-traveler "
-                    "passport / DOB / dietary / mobility / visa-status fields. Compliance "
-                    "for international travel needs validated per-traveler records — "
-                    "today everything is unstructured metadata.")
+        # R7: POST /reservations/{rid}/travelers manifest
+        travelers_payload = {
+            "travelers": [
+                {"name": f"Traveler_{i}",
+                 "passport_number": f"E{10000000 + i}",
+                 "dob_year": 1980 + (i % 10),
+                 "dietary": "halal" if i % 5 == 0 else None,
+                 "role": "primary" if i == 0 else ("child" if i >= 18 else "companion")}
+                for i in range(20)
+            ],
+            "replace": True,
+        }
+        sc2, b2 = await call(c, "POST",
+                              f"/api/v1/reservations/{rid}/travelers",
+                              json_body=travelers_payload)
+        if sc2 in (200, 201) and isinstance(b2, dict) and b2.get("travelers_count") == 20:
+            ok("travelers manifest upsert", f"count={b2['travelers_count']}")
+        else:
+            gap("P0", "POST /reservations/{rid}/travelers failed",
+                f"{sc2} {_short(b2)}")
+
+        # R7: GET /reservations/{rid}/travelers reads back manifest w/ hashed passports
+        sc3, b3 = await call(c, "GET", f"/api/v1/reservations/{rid}/travelers")
+        if sc3 == 200 and isinstance(b3, dict) and b3.get("count", 0) == 20:
+            sample = (b3.get("travelers") or [{}])[0]
+            if sample.get("passport_number_hash"):
+                ok("travelers manifest GET — passport HASHED",
+                   f"count=20 passport_number_hash={sample['passport_number_hash'][:12]}...")
             else:
-                gap("P0", "group traveler manifest not preserved",
-                    f"Created reservation with 20 traveler objects in metadata but "
-                    f"readback shows travelers={travelers!r}. Either metadata is "
-                    "truncated or the platform's reservation primitive only models "
-                    "party_size as a count — multi-traveler bookings cannot store "
-                    "passport/identity per traveler. This breaks every international "
-                    "tour: airlines need passport numbers per seat, hotels need "
-                    "rooming lists, immigration needs identity documents.")
-        # Probe: is there a separate /reservations/{rid}/travelers endpoint?
-        sc3, _ = await call(c, "GET", f"/api/v1/reservations/{rid}/travelers")
-        if sc3 == 200:
-            ok("dedicated traveler manifest endpoint exists", "")
+                gap("P1", "travelers manifest passport not hashed",
+                    f"sample={sample}")
         elif sc3 == 404:
             gap("P0", "no /reservations/{rid}/travelers endpoint",
-                "GET /reservations/{rid}/travelers returns 404 — there is no API "
-                "to fetch/edit the per-traveler list separately from the main "
-                "reservation body. Group bookings must hand-roll their own.")
+                "GET 404 — no separate manifest API.")
+        else:
+            gap("P1", "travelers manifest GET", f"{sc3} {_short(b3)}")
     else:
-        gap("P0", "group reservation create",
-            f"{sc} {_short(b)} — could not create party_size=20 tour reservation")
+        gap("P0", "group_tour reservation create", f"{sc} {_short(b)}")
 
     # Probe: party_size limits (50 = bus-tour edge)
     sc, b = await call(c, "POST", "/api/v1/reservations/create", json_body={
@@ -850,23 +877,60 @@ async def phase_8_supplier_marketplace(c: httpx.AsyncClient, state: dict[str, An
             "GET /master/{id}/suppliers 404. There is no 'who are 老梁's 50 suppliers' "
             "endpoint. Reports cannot rollup commission across the supplier network.")
 
-    # Probe: per-supplier revenue split tracking
+    # R7: payouts.inter-brand-transfer for supplier payments
     sc, b = await call(c, "POST",
-                       "/api/v1/payouts/ledger/create",
+                       "/api/v1/payouts/inter-brand-transfer",
                        json_body={
                            "from_brand_id": SUB_BRANDS[0]["brand_id"],
-                           "to_supplier_id": SUPPLIERS[0]["id"],
+                           "to_brand_id": SUPPLIERS[0]["id"],
                            "amount_cents": 100_000,
-                           "currency": "JPY",
-                           "reason": "hotel_booking_split",
+                           "reason": "supplier_payment",
+                           "reference_id": f"booking_split_{RUN_TAG}_001",
+                           "ledger_entry_metadata": {
+                               "category": "hotel_booking_split",
+                               "supplier_name": SUPPLIERS[0].get("name", "Hilton"),
+                           },
                        })
-    if sc == 404:
+    if sc in (200, 201) and isinstance(b, dict) and b.get("entry_id"):
+        ok("payouts.inter-brand-transfer (supplier)",
+           f"entry={b['entry_id']} amount=¥1000")
+        # R7: idempotent on reference_id
+        sc2, b2 = await call(c, "POST",
+                              "/api/v1/payouts/inter-brand-transfer",
+                              json_body={
+                                  "from_brand_id": SUB_BRANDS[0]["brand_id"],
+                                  "to_brand_id": SUPPLIERS[0]["id"],
+                                  "amount_cents": 100_000,
+                                  "reason": "supplier_payment",
+                                  "reference_id": f"booking_split_{RUN_TAG}_001",
+                              })
+        if sc2 in (200, 201) and isinstance(b2, dict) and b2.get("idempotent") is True:
+            ok("inter-brand-transfer idempotency", "replay flagged idempotent=True")
+        else:
+            gap("P1", "inter-brand-transfer idempotency",
+                f"replay {sc2} idempotent={b2.get('idempotent') if isinstance(b2, dict) else None}")
+        # R7: GET /payouts/ledger
+        sc3, b3 = await call(c, "GET", "/api/v1/payouts/ledger",
+                              params={"brand_id": SUB_BRANDS[0]["brand_id"]})
+        if sc3 == 200 and isinstance(b3, dict) and b3.get("total", 0) >= 1:
+            ok("payouts.ledger query", f"entries={b3['total']}")
+        else:
+            gap("P1", "payouts.ledger query", f"{sc3} {_short(b3)}")
+        # R7: GET /payouts/brand/{bid}/inter-brand-summary
+        sc4, b4 = await call(c, "GET",
+                              f"/api/v1/payouts/brand/{SUB_BRANDS[0]['brand_id']}/inter-brand-summary",
+                              params={"period": "monthly"})
+        if sc4 == 200 and isinstance(b4, dict):
+            ok("inter-brand-summary",
+               f"paid_out={sum(b4.get('paid_out',{}).values())} net={b4.get('net_cents')}")
+        else:
+            gap("P1", "inter-brand-summary", f"{sc4} {_short(b4)}")
+    elif sc == 404:
         gap("P0", "no inter-brand payout ledger",
-            "POST /payouts/ledger/create 404. The agency cannot record 'Hilton Tokyo "
-            "earned ¥X from our booking, owe them 88% of it'. Revenue split "
-            "reconciliation lives entirely off-platform.")
-    elif sc in (200, 201):
-        ok("inter-brand payout ledger", "supplier revenue split recorded")
+            "POST /payouts/inter-brand-transfer 404. Supplier revenue split reconciliation "
+            "lives entirely off-platform.")
+    else:
+        gap("P1", "inter-brand-transfer", f"{sc} {_short(b)}")
 
     # Sub-brand network model
     gap("P1", "single-level brand hierarchy",
@@ -1944,6 +2008,14 @@ async def phase_r5_round5(c: httpx.AsyncClient, state: dict[str, Any]) -> None:
 async def main() -> int:
     start_ts = time.time()
     await init_redis()
+    # R7: lifespan startup isn't triggered by ASGITransport, so manually seed recipes
+    try:
+        from app.redis_client import get_redis as _get_redis
+        from app.routers.recipes import load_seed_recipes as _load_seed
+        _r = await _get_redis()
+        await _load_seed(_r)
+    except Exception:
+        pass
     transport = httpx.ASGITransport(app=app)
 
     try:
