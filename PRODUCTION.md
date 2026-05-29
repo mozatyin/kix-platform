@@ -1,0 +1,262 @@
+# KiX Production Deployment Guide
+
+This document captures everything needed to take KiX Platform from a fresh
+Linux box to a production-grade deployment serving real merchants.
+
+## Prerequisites
+
+- Linux server (Ubuntu 22.04+ recommended; Debian 12 also fine)
+- Python 3.12+
+- Redis 7+ with persistence (AOF `appendonly yes` + nightly RDB snapshot)
+- PostgreSQL 15+
+- nginx (TLS termination + static asset cache)
+- SSL certificate (Let's Encrypt via certbot)
+- DNS for: `partner.letskix.com` / `api.letskix.com` / `letskix.com`
+
+## Environment Variables
+
+The app reads config from environment (`app/config.py`). Keep secrets out
+of git — use `EnvironmentFile=` in systemd or a secret manager.
+
+```bash
+# ── Required ──────────────────────────────────────────────────────────
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+ANTHROPIC_API_KEY=sk-ant-...
+DATABASE_URL=postgres://kix:***@localhost:5432/kix
+REDIS_URL=redis://localhost:6379/0
+JWT_SECRET=<openssl rand -base64 48>
+ADMIN_TOKEN=<openssl rand -base64 32>
+
+# ── Optional ──────────────────────────────────────────────────────────
+ELTM_BASE_URL=http://localhost:8001
+KIX_PUBLIC_URL=https://api.letskix.com
+KIX_CONSENT_ENFORCEMENT=strict   # or `permissive` for staging
+LOG_LEVEL=INFO
+```
+
+## Deployment Steps
+
+### 1. Server bootstrap
+
+```bash
+sudo apt update
+sudo apt install -y python3.12 python3.12-venv \
+    redis-server postgresql-15 nginx certbot python3-certbot-nginx
+sudo systemctl enable --now redis-server postgresql nginx
+```
+
+### 2. Database
+
+```bash
+sudo -u postgres createuser kix --pwprompt
+sudo -u postgres createdb kix -O kix
+# Apply schema migrations (see migrations/ directory)
+psql -U kix -d kix -f migrations/init.sql
+```
+
+### 3. Application install
+
+```bash
+sudo useradd -m -s /bin/bash kix
+sudo -u kix git clone https://github.com/mozatyin/kix-platform.git /opt/kix-platform
+cd /opt/kix-platform
+sudo -u kix python3.12 -m venv .venv
+sudo -u kix .venv/bin/pip install -e ".[dev]"
+sudo -u kix cp .env.example .env  # then edit secrets
+```
+
+### 4. systemd unit — API
+
+`/etc/systemd/system/kix-api.service`:
+
+```ini
+[Unit]
+Description=KiX Platform API
+After=network.target redis-server.service postgresql.service
+
+[Service]
+User=kix
+Group=kix
+WorkingDirectory=/opt/kix-platform
+Environment="PATH=/opt/kix-platform/.venv/bin"
+EnvironmentFile=/opt/kix-platform/.env
+ExecStart=/opt/kix-platform/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 --port 8000 --workers 4 --proxy-headers
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now kix-api
+```
+
+### 5. Background workers
+
+KiX ships several workers under `workers/`. Each runs as its own systemd
+unit (or systemd `*.timer` if cron-style).
+
+| Worker | Cadence | Purpose |
+|---|---|---|
+| `billing_cron.py` | hourly | Auto-renew subscriptions, settle PG charges |
+| `push_worker.py` | always-on | Drains the smart-push delivery queue |
+| `moderation_worker.py` (TBD) | always-on | Consumes the content-review queue |
+
+Example timer for `billing_cron.py`:
+
+```ini
+# /etc/systemd/system/kix-billing.service
+[Unit]
+Description=KiX Billing Cron (one-shot)
+
+[Service]
+Type=oneshot
+User=kix
+WorkingDirectory=/opt/kix-platform
+EnvironmentFile=/opt/kix-platform/.env
+ExecStart=/opt/kix-platform/.venv/bin/python -m workers.billing_cron
+```
+
+```ini
+# /etc/systemd/system/kix-billing.timer
+[Unit]
+Description=Run kix-billing every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl enable --now kix-billing.timer
+```
+
+### 6. nginx + TLS
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api.letskix.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api.letskix.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.letskix.com/privkey.pem;
+
+    client_max_body_size 10M;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.letskix.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+```bash
+sudo certbot --nginx -d api.letskix.com -d partner.letskix.com -d letskix.com
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 7. Monitoring & observability
+
+- **Metrics**: Prometheus scrape on the API + node_exporter on each host;
+  dashboards in Grafana.
+- **Errors**: Sentry SDK wired into `app/main.py` (set `SENTRY_DSN`).
+- **Logs**: ship to ELK / Datadog / CloudWatch via `journald` →
+  `filebeat` or `vector`.
+- **Uptime**: external probe hitting `GET /api/v1/attribution/health`
+  every 60s.
+
+### 8. Backups
+
+- **Redis**: AOF on (`appendonly yes`, `appendfsync everysec`) + daily RDB
+  snapshot rsynced to S3.
+- **Postgres**: `pg_dump` nightly to S3, 30-day retention. Test restores
+  monthly.
+
+## Health Checks
+
+```bash
+# API liveness
+curl https://api.letskix.com/api/v1/attribution/health
+
+# Redis
+redis-cli ping
+
+# Worker status
+systemctl status kix-api kix-billing.timer kix-push
+```
+
+## Smoke Tests After Deploy
+
+```bash
+# 1. OpenAPI schema generation works (regression guard)
+.venv/bin/python -c "import app.main; app.main.app.openapi()" \
+    && echo "OPENAPI OK"
+
+# 2. Run the unit test suite
+.venv/bin/pytest tests/ -v
+
+# 3. End-to-end: register kid → topup wallet → run auction → report click
+#    (see scripts/smoke_e2e.sh)
+```
+
+## Rollback Procedure
+
+```bash
+cd /opt/kix-platform
+sudo -u kix git fetch --tags
+sudo -u kix git checkout <last_good_tag>
+sudo -u kix .venv/bin/pip install -e ".[dev]"
+sudo systemctl restart kix-api
+# verify
+curl -fsS https://api.letskix.com/api/v1/attribution/health
+```
+
+## Common Issues
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `502 Bad Gateway` | uvicorn down or Redis unreachable | `systemctl status kix-api`; `redis-cli ping` |
+| Payments failing silently | bad `STRIPE_SECRET_KEY` or webhook URL | verify env, hit `/v1/charges` in Stripe dashboard, check webhook deliveries |
+| Push not delivered | FCM/APNS creds missing | check `push_worker` logs, verify provider keys |
+| OpenAPI 500 on `/docs` | forward-ref `Request` in a route | use `Request` (module-level import) or `include_in_schema=False` |
+| `Event loop is closed` in tests | session-scoped Redis fixture bound to wrong loop | confirm `asyncio_default_fixture_loop_scope = "session"` in pyproject.toml |
+
+## Security Hardening Checklist
+
+- [ ] All secrets in `EnvironmentFile`, never committed
+- [ ] Redis bound to `127.0.0.1` only (or VPC with `requirepass`)
+- [ ] Postgres bound to `127.0.0.1` only
+- [ ] nginx has rate-limiting + WAF rules for `/api/v1/*`
+- [ ] TLS A+ rating on https://www.ssllabs.com/ssltest/
+- [ ] `ADMIN_TOKEN` rotated quarterly
+- [ ] PII fields are hashed (phone/email → SHA-256) — see `kix_id._hash_identifier`
+- [ ] GDPR/PIPL consent enforcement enabled (`KIX_CONSENT_ENFORCEMENT=strict`)
+
+## Capacity Planning Starting Points
+
+- API: 4 uvicorn workers per 4-core box; ~500 RPS comfortable headroom
+- Redis: 8 GB RAM handles ~10M active brand/user keys
+- Postgres: nightly VACUUM; partition `attribution_events` by month once
+  monthly volume > 10M rows
+
+---
+
+Last reviewed: 2026-05-29

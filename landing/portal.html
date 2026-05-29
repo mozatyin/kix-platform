@@ -1113,6 +1113,95 @@ textarea.form-input{
 #campaign-modal .modal-body label input:focus,
 #campaign-modal .modal-body label select:focus { outline: none; border-color: var(--green); }
 #campaign-modal .modal-body h4 { color: var(--green); font-size: 13px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ─── Redeem Center / 核销中心 ───────────────────────────────────────── */
+#view-redeem h1 { font-size: 22px; margin: 0 0 16px; color: var(--text); }
+#view-redeem h3 { font-size: 14px; margin: 0 0 12px; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+.redeem-input-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px; margin-bottom: 20px;
+}
+.redeem-input-card .input-modes { display: flex; gap: 8px; margin-bottom: 16px; }
+.redeem-input-card .mode-btn {
+  flex: 1; padding: 10px 14px; background: var(--dark);
+  border: 1px solid var(--border); color: var(--text-dim);
+  border-radius: 6px; cursor: pointer; font-size: 13px;
+  font-weight: 600; transition: all 0.15s;
+}
+.redeem-input-card .mode-btn:hover { border-color: var(--border-light); color: var(--text); }
+.redeem-input-card .mode-btn.active {
+  background: var(--green-bg); border-color: var(--green-border); color: var(--green);
+}
+.redeem-input-card .mode-content { display: flex; gap: 8px; }
+.redeem-input-card .mode-content input {
+  flex: 1; padding: 10px 12px; background: var(--dark);
+  border: 1px solid var(--border-light); color: var(--text);
+  border-radius: 6px; font-size: 14px;
+}
+.redeem-input-card .mode-content input:focus { outline: none; border-color: var(--green); }
+.redeem-input-card .mode-content button {
+  padding: 10px 20px; background: var(--green); color: var(--dark);
+  border: none; border-radius: 6px; font-weight: 700; cursor: pointer;
+  font-size: 13px;
+}
+.redeem-input-card .mode-content button:hover { background: var(--green-dim); }
+
+.voucher-card {
+  background: var(--card); border: 1px solid var(--green-border);
+  border-radius: 8px; padding: 20px; margin-bottom: 20px;
+  background: linear-gradient(135deg, rgba(0,252,0,.04), transparent);
+}
+.voucher-card h2 { margin: 0 0 8px; font-size: 20px; color: var(--green); }
+.voucher-card p { margin: 6px 0; font-size: 13px; color: var(--text); }
+.voucher-card .conditions {
+  font-family: monospace; font-size: 11px; color: var(--text-dim);
+  background: var(--dark); padding: 8px; border-radius: 4px;
+  word-break: break-all; margin-top: 10px;
+}
+.voucher-card .primary-btn {
+  display: block; width: 100%; padding: 14px;
+  background: var(--green); color: var(--dark); border: none;
+  border-radius: 6px; font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-top: 16px; transition: all 0.15s;
+}
+.voucher-card .primary-btn:hover:not(:disabled) { background: var(--green-dim); }
+.voucher-card .primary-btn:disabled {
+  background: var(--border); color: var(--text-dim);
+  cursor: not-allowed; opacity: 0.6;
+}
+
+.today-stats { margin-bottom: 20px; }
+.today-stats .stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.today-stats .stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px; text-align: center;
+}
+.today-stats .stat-number {
+  font-size: 32px; font-weight: 700; color: var(--green);
+  line-height: 1; margin-bottom: 6px;
+}
+.today-stats .stat-label {
+  font-size: 11px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.recent-redemptions { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.recent-redemptions table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.recent-redemptions th {
+  text-align: left; padding: 10px 8px; color: var(--text-dim);
+  font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+}
+.recent-redemptions td { padding: 10px 8px; color: var(--text); border-bottom: 1px solid var(--border); }
+.recent-redemptions tr:last-child td { border-bottom: none; }
+.recent-redemptions tbody:empty::after,
+.recent-redemptions tbody tr:only-child td:empty { display: none; }
+.recent-redemptions .empty-row td {
+  text-align: center; color: var(--text-dim);
+  font-style: italic; padding: 20px;
+}
 </style>
 </head>
 <body>
@@ -1466,6 +1555,68 @@ textarea.form-input{
     <!-- ─── Primitives / 原语管理 ──────────────────────────────── -->
     <div id="view-primitives" class="view"></div>
 
+    <!-- ─── Redeem Center / 核销中心 ──────────────────────────── -->
+    <div id="view-redeem" class="view">
+      <h1>核销中心 / Redeem Center</h1>
+
+      <!-- Scan / input -->
+      <div class="redeem-input-card">
+        <div class="input-modes">
+          <button class="mode-btn active" data-mode="scan">&#128247; 扫描二维码</button>
+          <button class="mode-btn" data-mode="code">&#9000;&#65039; 手动输入</button>
+        </div>
+
+        <div id="scan-mode" class="mode-content">
+          <input type="text" id="scan-input" placeholder="扫描或粘贴优惠券二维码 / Scan or paste QR" />
+          <button onclick="lookupVoucher()">查询</button>
+        </div>
+
+        <div id="code-mode" class="mode-content" style="display:none;">
+          <input type="text" id="code-input" placeholder="输入优惠券码 (vid_xxxxxx)" />
+          <button onclick="lookupVoucher()">查询</button>
+        </div>
+      </div>
+
+      <!-- Voucher preview -->
+      <div id="voucher-preview" class="voucher-card" style="display:none;">
+        <h2 id="voucher-title">&mdash;</h2>
+        <p id="voucher-value">&yen;&mdash; 价值</p>
+        <p id="voucher-holder">持有人: &mdash;</p>
+        <p id="voucher-expires">有效期至: &mdash;</p>
+        <p id="voucher-status">状态: &mdash;</p>
+        <p id="voucher-conditions" class="conditions">&mdash;</p>
+        <button id="redeem-btn" class="primary-btn" onclick="redeemVoucher()">立即核销 &check;</button>
+      </div>
+
+      <!-- Today stats -->
+      <div class="today-stats">
+        <h3>今日核销 / Today</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="redeem-count-today">0</div>
+            <div class="stat-label">核销次数 / Count</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="redeem-value-today">&yen;0</div>
+            <div class="stat-label">核销总额 / Value</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent redemptions -->
+      <div class="recent-redemptions">
+        <h3>最近核销 / Recent</h3>
+        <table id="recent-redemptions-table">
+          <thead>
+            <tr><th>时间</th><th>用户</th><th>金额</th><th>员工</th></tr>
+          </thead>
+          <tbody id="recent-redemptions-body">
+            <tr class="empty-row"><td colspan="4">暂无核销记录 / No redemptions yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ─── Settings ──────────────────────────────────────────── -->
     <div id="view-settings" class="view">
       <h2 class="page-title">Settings / 设置</h2>
@@ -1659,6 +1810,10 @@ textarea.form-input{
     <div class="nav-item" data-view="ads" onclick="navigate('ads')">
       <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 13h2l3 6 4-10 3 6h6v-2h-4l-5-10-4 10-2-4H3z" fill="currentColor" stroke="none"/></svg>
       <span>Ads</span>
+    </div>
+    <div class="nav-item" data-view="redeem" onclick="navigate('redeem')">
+      <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Redeem</span>
     </div>
     <div class="nav-item" data-view="settings" onclick="navigate('settings')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2385,6 +2540,7 @@ function navigate(view){
     case'monitoring':if(window.MonitoringView)MonitoringView.render();break;
     case'primitives':if(window.PrimitivesAdminView)PrimitivesAdminView.render();break;
     case'ads':if(window.AdsView)AdsView.render();break;
+    case'redeem':onRedeemViewShown();break;
   }
 }
 
@@ -2393,7 +2549,7 @@ function showApp(){
   document.getElementById('app-shell').className='active';
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem'];
   navigate(validViews.includes(hash)?hash:'dashboard');
 }
 
@@ -4225,7 +4381,7 @@ async function applyGeneratedAsTutorial() {
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }
@@ -4616,6 +4772,165 @@ window.ConditionsBuilder = (function(){
     }
   };
 })();
+
+// ═══════════════════════════════════════════════════════════════════════
+// REDEEM CENTER / 核销中心
+// ═══════════════════════════════════════════════════════════════════════
+function _fmtDate(s){
+  if(!s) return '—';
+  try { const d=new Date(s); return d.toLocaleDateString('zh-CN')+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return s; }
+}
+function _fmtTime(s){
+  if(!s) return '—';
+  try { const d=new Date(s); return d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return s; }
+}
+function _statusBadge(s){
+  const map={issued:'已发行 / Issued',claimed:'已领取 / Claimed',redeemed:'已核销 / Redeemed',expired:'已过期 / Expired',revoked:'已撤销 / Revoked'};
+  return map[s]||s||'—';
+}
+
+async function lookupVoucher(){
+  const activeBtn=document.querySelector('#view-redeem .mode-btn.active');
+  const mode=activeBtn?activeBtn.dataset.mode:'scan';
+  const input=mode==='scan'
+    ? document.getElementById('scan-input').value
+    : document.getElementById('code-input').value;
+  if(!input || !input.trim()){
+    showToast('请输入优惠券码 / Enter voucher code','error');
+    return;
+  }
+  // Parse QR URL or use as code directly
+  let vid=input.trim();
+  if(vid.startsWith('http')){
+    try {
+      const url=new URL(vid);
+      vid=url.searchParams.get('vid')||url.pathname.split('/').pop();
+    } catch(e){ /* keep as-is */ }
+  }
+  try {
+    const res=await apiFetch('/api/v1/vouchers/'+encodeURIComponent(vid));
+    if(!res.ok){
+      showToast('优惠券未找到或已过期 / Not found','error');
+      document.getElementById('voucher-preview').style.display='none';
+      return;
+    }
+    const v=await res.json();
+    document.getElementById('voucher-title').textContent=v.template_name||v.template_id||'Voucher';
+    document.getElementById('voucher-value').textContent='¥'+((v.value_cents||0)/100)+' 价值';
+    document.getElementById('voucher-holder').textContent='持有人: '+(v.holder_user_id||v.holder_device_fp||'匿名');
+    document.getElementById('voucher-expires').textContent='有效期至: '+_fmtDate(v.expires_at);
+    document.getElementById('voucher-status').textContent='状态: '+_statusBadge(v.status);
+    document.getElementById('voucher-conditions').textContent=JSON.stringify(v.conditions||{},null,2);
+    const btn=document.getElementById('redeem-btn');
+    btn.disabled=!['issued','claimed'].includes(v.status);
+    btn.dataset.vid=vid;
+    btn.dataset.valueCents=v.value_cents||0;
+    document.getElementById('voucher-preview').style.display='block';
+  } catch(e){
+    console.error('lookupVoucher error',e);
+    showToast('查询失败 / Lookup failed','error');
+  }
+}
+
+async function redeemVoucher(){
+  const btn=document.getElementById('redeem-btn');
+  const vid=btn.dataset.vid;
+  if(!vid) return;
+  if(!confirm('确认核销？此操作不可撤销。 / Confirm redemption? This cannot be undone.')) return;
+  try {
+    const res=await apiFetch('/api/v1/vouchers/'+encodeURIComponent(vid)+'/redeem',{
+      method:'POST',
+      json:{
+        at_brand_id:state.brandId,
+        redeemer_staff_id:state.brandId,
+        redeem_amount_cents:0
+      }
+    });
+    if(res.ok){
+      showToast('✓ 核销成功 / Redeemed','success');
+      document.getElementById('voucher-preview').style.display='none';
+      document.getElementById('scan-input').value='';
+      document.getElementById('code-input').value='';
+      refreshTodayStats();
+      refreshRecentRedemptions();
+    } else {
+      let detail=res.status;
+      try { const err=await res.json(); detail=err.detail||detail; } catch(e){}
+      showToast('核销失败 / Failed: '+detail,'error');
+    }
+  } catch(e){
+    console.error('redeemVoucher error',e);
+    showToast('核销失败 / Redemption error','error');
+  }
+}
+
+async function refreshTodayStats(){
+  if(!state.brandId) return;
+  try {
+    const res=await apiFetch('/api/v1/dashboards/'+state.brandId+'/today',{noAuth:true});
+    if(!res.ok) return;
+    const data=await res.json();
+    const m=data.metrics||{};
+    document.getElementById('redeem-count-today').textContent=m.vouchers_redeemed||0;
+    const cents=m.vouchers_redeemed_value_cents||0;
+    document.getElementById('redeem-value-today').textContent='¥'+(cents/100).toFixed(2);
+  } catch(e){
+    console.warn('refreshTodayStats',e);
+  }
+}
+
+async function refreshRecentRedemptions(){
+  if(!state.brandId) return;
+  const tbody=document.getElementById('recent-redemptions-body');
+  try {
+    const res=await apiFetch('/api/v1/vouchers/brand/'+state.brandId+'/redeemed?limit=20');
+    if(!res.ok){
+      tbody.innerHTML='<tr class="empty-row"><td colspan="4">暂无核销记录 / No redemptions yet</td></tr>';
+      return;
+    }
+    const data=await res.json();
+    const events=data.events||data.items||[];
+    if(events.length===0){
+      tbody.innerHTML='<tr class="empty-row"><td colspan="4">暂无核销记录 / No redemptions yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML=events.map(e=>(
+      '<tr>'+
+      '<td>'+_fmtTime(e.timestamp||e.redeemed_at||e.created_at)+'</td>'+
+      '<td>'+((e.user_id||e.holder_user_id||'').slice(0,8)||'-')+'</td>'+
+      '<td>¥'+((e.value_cents||0)/100)+'</td>'+
+      '<td>'+((e.redeemer_staff_id||'').slice(0,8)||'-')+'</td>'+
+      '</tr>'
+    )).join('');
+  } catch(e){
+    console.warn('refreshRecentRedemptions',e);
+    tbody.innerHTML='<tr class="empty-row"><td colspan="4">加载失败 / Load failed</td></tr>';
+  }
+}
+
+function onRedeemViewShown(){
+  refreshTodayStats();
+  refreshRecentRedemptions();
+}
+
+// Tab switching for input modes (scoped to redeem view)
+document.querySelectorAll('#view-redeem .mode-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#view-redeem .mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#view-redeem .mode-content').forEach(c=>c.style.display='none');
+    const target=document.getElementById(btn.dataset.mode+'-mode');
+    if(target) target.style.display='flex';
+  });
+});
+
+// Enter key triggers lookup
+['scan-input','code-input'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter') lookupVoucher(); });
+});
 </script>
 
 <!-- ─── Tutorial Engine Overlay ─────────────────────────────────────── -->

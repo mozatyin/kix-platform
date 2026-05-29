@@ -443,9 +443,16 @@ class IssueVoucherRequest(BaseModel):
     expires_at: int | None = Field(None, ge=0)
     conditions: dict[str, Any] = Field(default_factory=dict)
     relational_conditions: dict[str, Any] | None = None
-    source: Literal["campaign", "gift", "promo", "purchase", "support"] = "campaign"
+    source: Literal[
+        "campaign", "gift", "promo", "purchase", "support", "game_win"
+    ] = "campaign"
     transferable: bool = True
     max_uses: int = Field(1, ge=1, le=100)
+    # Holder type discriminator for the QR→game→voucher anonymous flow.
+    # When ``holder_type="device_fp"``, the ``user_id`` field stores the
+    # device fingerprint instead of a kid, and the voucher is expected to
+    # be reserved + claimed (upgraded to a kid) before redemption.
+    holder_type: Literal["kid", "device_fp"] = "kid"
 
     @field_validator("redeemable_at")
     @classmethod
@@ -710,6 +717,7 @@ async def _do_issue(
         "issuer_brand_id": issuer_brand_id,
         "issuer_master_id": master_id or "",
         "holder_user_id": body.user_id,
+        "holder_type": body.holder_type,
         "original_holder_user_id": body.user_id,
         "redeemable_at": _dumps(resolved_redeemable),
         "value_cents": str(body.value_cents if body.value_cents is not None else 0),
@@ -1679,6 +1687,741 @@ async def void_voucher(
     return {
         "ok": True, "voucher_id": voucher_id, "status": "void",
         "previous_status": event["previous_status"],
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 5-minute reservation + claim flow (anonymous device_fp → registered kid)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# This solves the 80%→20% funnel loss in the QR→game→voucher flow: when a
+# user wins a voucher anonymously (via device_fp), the voucher is held in a
+# short-lived reservation until they either claim it (binding a phone/kid)
+# or 5 minutes elapse and the reservation is released back to "issued".
+#
+# Redis schema additions:
+#
+#   voucher:{vid}:reservation         HASH  {device_fp|kid, reserved_at,
+#                                            expires_at, reservation_token}
+#                                     EXPIRE = ttl_seconds (default 300)
+#   device:{fp}:reserved_vouchers     SET   of vid
+#   kid:{kid}:reserved_vouchers       SET   of vid
+#   voucher_reservation_token:{tok}   STR   → vid, EXPIRE = ttl_seconds
+#
+
+DEFAULT_RESERVATION_TTL_SECONDS = 300
+MAX_RESERVATION_TTL_SECONDS = 3600
+MIN_RESERVATION_TTL_SECONDS = 30
+
+
+def _k_voucher_reservation(vid: str) -> str:
+    return f"voucher:{vid}:reservation"
+
+
+def _k_device_reserved(fp: str) -> str:
+    return f"device:{fp}:reserved_vouchers"
+
+
+def _k_kid_reserved(kid: str) -> str:
+    return f"kid:{kid}:reserved_vouchers"
+
+
+def _k_reservation_token(token: str) -> str:
+    return f"voucher_reservation_token:{token}"
+
+
+def _new_reservation_token() -> str:
+    return uuid4().hex
+
+
+class ReserveVoucherRequest(BaseModel):
+    device_fingerprint: str | None = Field(None, min_length=1, max_length=128)
+    kid: str | None = Field(None, min_length=1, max_length=128)
+    ttl_seconds: int = Field(
+        DEFAULT_RESERVATION_TTL_SECONDS,
+        ge=MIN_RESERVATION_TTL_SECONDS,
+        le=MAX_RESERVATION_TTL_SECONDS,
+    )
+
+    @field_validator("kid")
+    @classmethod
+    def _at_least_one_holder(cls, v: str | None, info: Any) -> str | None:
+        fp = (info.data or {}).get("device_fingerprint")
+        if not fp and not v:
+            raise ValueError(
+                "device_fingerprint or kid required"
+            )
+        return v
+
+
+class ClaimVoucherRequest(BaseModel):
+    device_fingerprint: str | None = Field(None, min_length=1, max_length=128)
+    kid: str | None = Field(None, min_length=1, max_length=128)
+    phone: str | None = Field(None, min_length=1, max_length=64)
+    otp: str | None = Field(None, min_length=1, max_length=32)
+    email: str | None = Field(None, min_length=1, max_length=128)
+
+    @field_validator("kid")
+    @classmethod
+    def _at_least_one_holder(cls, v: str | None, info: Any) -> str | None:
+        fp = (info.data or {}).get("device_fingerprint")
+        if not fp and not v:
+            raise ValueError(
+                "device_fingerprint or kid required"
+            )
+        return v
+
+
+class ReleaseReservationRequest(BaseModel):
+    device_fingerprint: str | None = Field(None, min_length=1, max_length=128)
+    kid: str | None = Field(None, min_length=1, max_length=128)
+
+    @field_validator("kid")
+    @classmethod
+    def _at_least_one_holder(cls, v: str | None, info: Any) -> str | None:
+        fp = (info.data or {}).get("device_fingerprint")
+        if not fp and not v:
+            raise ValueError(
+                "device_fingerprint or kid required"
+            )
+        return v
+
+
+def _holder_matches(
+    reservation: dict[str, str],
+    device_fp: str | None,
+    kid: str | None,
+) -> bool:
+    """True iff the reservation was made by the same fp or kid presented."""
+    res_fp = reservation.get("device_fp") or ""
+    res_kid = reservation.get("kid") or ""
+    if device_fp and res_fp and device_fp == res_fp:
+        return True
+    if kid and res_kid and kid == res_kid:
+        return True
+    return False
+
+
+async def _load_reservation(
+    r: aioredis.Redis, vid: str
+) -> dict[str, str] | None:
+    data = await r.hgetall(_k_voucher_reservation(vid))
+    if not data:
+        return None
+    return dict(data)
+
+
+@cross_store_router.post(
+    "/{voucher_id}/reserve",
+    summary="Reserve a voucher for 5 minutes (game-win → claim flow)",
+)
+async def reserve_voucher(
+    voucher_id: str,
+    body: ReserveVoucherRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Hold a freshly-issued voucher for the device/kid that won it.
+
+    Idempotent: a same-fp / same-kid re-call extends the TTL and returns
+    the existing reservation_token.
+    """
+    key = _k_voucher(voucher_id)
+
+    for _attempt in range(5):
+        async with r.pipeline(transaction=True) as pipe:
+            try:
+                await pipe.watch(key)
+                voucher = await pipe.hgetall(key)
+                if not voucher:
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"voucher_id={voucher_id} not found",
+                    )
+
+                cur_status = voucher.get("status", "")
+                existing_res = await r.hgetall(_k_voucher_reservation(voucher_id))
+
+                if cur_status == "reserved" and existing_res:
+                    # Idempotent: same holder extends TTL.
+                    if not _holder_matches(
+                        existing_res, body.device_fingerprint, body.kid
+                    ):
+                        await pipe.unwatch()
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "ok": False,
+                                "reason": "already_reserved_by_other",
+                                "voucher_id": voucher_id,
+                            },
+                        )
+                    # Extend TTL on the same reservation.
+                    now = _now()
+                    new_expires_at = now + body.ttl_seconds
+                    token = existing_res.get("reservation_token") or _new_reservation_token()
+                    pipe.multi()
+                    pipe.hset(
+                        _k_voucher_reservation(voucher_id),
+                        mapping={
+                            "reserved_at": existing_res.get("reserved_at", str(now)),
+                            "expires_at": str(new_expires_at),
+                            "reservation_token": token,
+                        },
+                    )
+                    pipe.expire(_k_voucher_reservation(voucher_id), body.ttl_seconds)
+                    pipe.set(
+                        _k_reservation_token(token), voucher_id,
+                        ex=body.ttl_seconds,
+                    )
+                    pipe.hset(
+                        key,
+                        mapping={
+                            "reservation_expires_at": str(new_expires_at),
+                        },
+                    )
+                    await pipe.execute()
+                    return {
+                        "ok": True,
+                        "voucher_id": voucher_id,
+                        "status": "reserved",
+                        "reservation_token": token,
+                        "expires_at": new_expires_at,
+                        "expires_at_iso": _iso(new_expires_at),
+                        "extended": True,
+                    }
+
+                if cur_status != "issued":
+                    await pipe.unwatch()
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "ok": False,
+                            "reason": "invalid_status",
+                            "current_status": cur_status,
+                            "voucher_id": voucher_id,
+                        },
+                    )
+
+                # Status is "issued" — create new reservation.
+                now = _now()
+                expires_at = now + body.ttl_seconds
+                token = _new_reservation_token()
+
+                res_hash: dict[str, str] = {
+                    "reserved_at": str(now),
+                    "expires_at": str(expires_at),
+                    "reservation_token": token,
+                }
+                if body.device_fingerprint:
+                    res_hash["device_fp"] = body.device_fingerprint
+                if body.kid:
+                    res_hash["kid"] = body.kid
+
+                voucher_update: dict[str, str] = {
+                    "status": "reserved",
+                    "reserved_at": str(now),
+                    "reservation_expires_at": str(expires_at),
+                }
+                if body.device_fingerprint:
+                    voucher_update["reserved_for_device_fp"] = body.device_fingerprint
+                if body.kid:
+                    voucher_update["reserved_for_kid"] = body.kid
+
+                pipe.multi()
+                pipe.hset(key, mapping=voucher_update)
+                pipe.hset(
+                    _k_voucher_reservation(voucher_id), mapping=res_hash
+                )
+                pipe.expire(_k_voucher_reservation(voucher_id), body.ttl_seconds)
+                pipe.set(
+                    _k_reservation_token(token), voucher_id,
+                    ex=body.ttl_seconds,
+                )
+                if body.device_fingerprint:
+                    pipe.sadd(
+                        _k_device_reserved(body.device_fingerprint),
+                        voucher_id,
+                    )
+                    pipe.expire(
+                        _k_device_reserved(body.device_fingerprint),
+                        max(body.ttl_seconds * 2, 86400),
+                    )
+                if body.kid:
+                    pipe.sadd(_k_kid_reserved(body.kid), voucher_id)
+                    pipe.expire(
+                        _k_kid_reserved(body.kid),
+                        max(body.ttl_seconds * 2, 86400),
+                    )
+                await pipe.execute()
+                logger.info(
+                    "Voucher reserved: vid=%s holder=%s ttl=%ds",
+                    voucher_id,
+                    body.device_fingerprint or body.kid,
+                    body.ttl_seconds,
+                )
+                return {
+                    "ok": True,
+                    "voucher_id": voucher_id,
+                    "status": "reserved",
+                    "reservation_token": token,
+                    "expires_at": expires_at,
+                    "expires_at_iso": _iso(expires_at),
+                    "extended": False,
+                }
+            except aioredis.WatchError:
+                continue
+            except HTTPException:
+                raise
+    raise HTTPException(
+        status_code=503, detail="reserve_contention_exceeded_retries"
+    )
+
+
+@cross_store_router.post(
+    "/{voucher_id}/claim",
+    summary="Claim a reserved voucher (bind to kid; optional phone upgrade)",
+)
+async def claim_voucher(
+    voucher_id: str,
+    body: ClaimVoucherRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Bind an active reservation to a registered kid.
+
+    If a ``phone`` (+ ``otp``) is supplied, the anonymous device_fp is
+    upgraded to a registered kid via ``ensure_kid`` from kix_id (which is
+    the identity-link entry point for anon→registered upgrades).
+    """
+    key = _k_voucher(voucher_id)
+    reservation = await _load_reservation(r, voucher_id)
+    if not reservation:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "ok": False,
+                "reason": "no_active_reservation",
+                "voucher_id": voucher_id,
+            },
+        )
+    if not _holder_matches(reservation, body.device_fingerprint, body.kid):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "ok": False,
+                "reason": "reservation_holder_mismatch",
+                "voucher_id": voucher_id,
+            },
+        )
+
+    voucher = await r.hgetall(key)
+    if not voucher:
+        raise HTTPException(
+            status_code=404, detail=f"voucher_id={voucher_id} not found"
+        )
+    if voucher.get("status") != "reserved":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "ok": False,
+                "reason": "invalid_status",
+                "current_status": voucher.get("status", ""),
+                "voucher_id": voucher_id,
+            },
+        )
+
+    # Resolve / mint the kid to bind to.
+    target_kid: str | None = body.kid
+    is_new_kid = False
+    device_fp_used = body.device_fingerprint or reservation.get("device_fp") or ""
+
+    if body.phone:
+        # Phone upgrade path: anonymous device → registered kid.
+        if not body.otp:
+            raise HTTPException(
+                status_code=400,
+                detail="otp required when phone is supplied",
+            )
+        try:
+            from app.routers.kix_id import ensure_kid  # local import to avoid cycle
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(
+                status_code=500, detail=f"identity link unavailable: {exc}"
+            )
+        target_kid, is_new_kid = await ensure_kid(
+            r,
+            phone=body.phone,
+            email=body.email,
+            device_fp=device_fp_used or None,
+        )
+    elif not target_kid:
+        # No phone, no kid — fall back to a device-bound synthetic kid.
+        # We only do this if the reservation was made by device_fp; the
+        # caller is asserting they don't need phone-level identity yet.
+        if not device_fp_used:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "must provide one of {kid, phone+otp} to claim"
+                ),
+            )
+        try:
+            from app.routers.kix_id import ensure_kid
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(
+                status_code=500, detail=f"identity link unavailable: {exc}"
+            )
+        target_kid, is_new_kid = await ensure_kid(r, device_fp=device_fp_used)
+
+    if not target_kid:  # defensive
+        raise HTTPException(
+            status_code=500, detail="failed to resolve target kid"
+        )
+
+    now = _now()
+    prior_holder = voucher.get("holder_user_id", "")
+    issued_at_score = int(voucher.get("issued_at", now) or now)
+    token = reservation.get("reservation_token") or ""
+
+    pipe = r.pipeline()
+    pipe.hset(
+        key,
+        mapping={
+            "status": "claimed",
+            "holder_user_id": target_kid,
+            "holder_type": "kid",
+            "claimed_at": str(now),
+            "claimed_via_device_fp": device_fp_used,
+            "reservation_expires_at": "",
+            "reserved_for_device_fp": "",
+            "reserved_for_kid": "",
+        },
+    )
+    # Re-anchor the user-vouchers zset onto the registered kid.
+    pipe.zadd(_k_user_vouchers(target_kid), {voucher_id: issued_at_score})
+    if prior_holder and prior_holder != target_kid:
+        pipe.zrem(_k_user_vouchers(prior_holder), voucher_id)
+    # Clear reservation state.
+    pipe.delete(_k_voucher_reservation(voucher_id))
+    if token:
+        pipe.delete(_k_reservation_token(token))
+    if device_fp_used:
+        pipe.srem(_k_device_reserved(device_fp_used), voucher_id)
+    res_kid_field = reservation.get("kid") or ""
+    if res_kid_field:
+        pipe.srem(_k_kid_reserved(res_kid_field), voucher_id)
+    # Append claim event to redemption history (audit trail).
+    pipe.rpush(
+        _k_voucher_redemption_history(voucher_id),
+        _dumps({
+            "type": "claim",
+            "voucher_id": voucher_id,
+            "kid": target_kid,
+            "is_new_kid": is_new_kid,
+            "device_fp_used": device_fp_used,
+            "phone_provided": bool(body.phone),
+            "ts": now,
+        }),
+    )
+    await pipe.execute()
+
+    # Hooks (fail-soft)
+    await _fire_pixel(
+        r,
+        brand_id=voucher.get("issuer_brand_id", ""),
+        user_id=target_kid,
+        event="voucher_claimed",
+        meta={
+            "voucher_id": voucher_id,
+            "is_new_kid": is_new_kid,
+            "via_phone": bool(body.phone),
+        },
+    )
+    await _enqueue_notification(
+        r, target_kid, kind="voucher_claimed",
+        payload={
+            "voucher_id": voucher_id,
+            "issuer_brand_id": voucher.get("issuer_brand_id", ""),
+        },
+    )
+
+    # Return enriched voucher dict.
+    new_state = await r.hgetall(key)
+    return {
+        "ok": True,
+        "voucher_id": voucher_id,
+        "status": "claimed",
+        "kid": target_kid,
+        "is_new_kid": is_new_kid,
+        "voucher": _voucher_to_dict(new_state),
+    }
+
+
+@cross_store_router.post(
+    "/{voucher_id}/release",
+    summary="Release a voucher reservation (user clicked discard)",
+)
+async def release_voucher_reservation(
+    voucher_id: str,
+    body: ReleaseReservationRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Return a reserved voucher to ``issued`` so it can be re-claimed."""
+    key = _k_voucher(voucher_id)
+    reservation = await _load_reservation(r, voucher_id)
+    if not reservation:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "ok": False,
+                "reason": "no_active_reservation",
+                "voucher_id": voucher_id,
+            },
+        )
+    if not _holder_matches(reservation, body.device_fingerprint, body.kid):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "ok": False,
+                "reason": "reservation_holder_mismatch",
+                "voucher_id": voucher_id,
+            },
+        )
+
+    voucher = await r.hgetall(key)
+    if not voucher:
+        raise HTTPException(
+            status_code=404, detail=f"voucher_id={voucher_id} not found"
+        )
+    if voucher.get("status") != "reserved":
+        # Reservation already torn down / voucher mutated elsewhere — treat
+        # as a no-op release rather than 409.
+        await r.delete(_k_voucher_reservation(voucher_id))
+        return {
+            "ok": True,
+            "voucher_id": voucher_id,
+            "status": voucher.get("status", ""),
+            "released": False,
+            "noop": True,
+        }
+
+    token = reservation.get("reservation_token") or ""
+    device_fp = reservation.get("device_fp") or ""
+    res_kid = reservation.get("kid") or ""
+
+    pipe = r.pipeline()
+    pipe.hset(
+        key,
+        mapping={
+            "status": "issued",
+            "reserved_at": "",
+            "reservation_expires_at": "",
+            "reserved_for_device_fp": "",
+            "reserved_for_kid": "",
+            "reservation_released_at": str(_now()),
+        },
+    )
+    pipe.delete(_k_voucher_reservation(voucher_id))
+    if token:
+        pipe.delete(_k_reservation_token(token))
+    if device_fp:
+        pipe.srem(_k_device_reserved(device_fp), voucher_id)
+    if res_kid:
+        pipe.srem(_k_kid_reserved(res_kid), voucher_id)
+    await pipe.execute()
+
+    return {
+        "ok": True,
+        "voucher_id": voucher_id,
+        "status": "issued",
+        "released": True,
+    }
+
+
+@cross_store_router.get(
+    "/reserved/by-device/{device_fingerprint}",
+    summary="List active reservations for a device",
+)
+async def list_reservations_by_device(
+    device_fingerprint: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    return await _list_reservations(
+        r, key=_k_device_reserved(device_fingerprint),
+        holder_field="device_fp", holder_value=device_fingerprint,
+    )
+
+
+@cross_store_router.get(
+    "/reserved/by-kid/{kid}",
+    summary="List active reservations for a kid",
+)
+async def list_reservations_by_kid(
+    kid: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    return await _list_reservations(
+        r, key=_k_kid_reserved(kid),
+        holder_field="kid", holder_value=kid,
+    )
+
+
+async def _list_reservations(
+    r: aioredis.Redis,
+    *,
+    key: str,
+    holder_field: str,
+    holder_value: str,
+) -> dict[str, Any]:
+    """Return only reservations that are still alive (TTL not expired).
+
+    The voucher hash may still say ``status=reserved`` even after the
+    reservation HASH has been evicted by Redis TTL; we treat the absence
+    of the reservation HASH as authoritative and prune the membership set
+    in passing.
+    """
+    vids = await r.smembers(key)
+    alive: list[dict[str, Any]] = []
+    stale: list[str] = []
+    for vid in vids or []:
+        res = await r.hgetall(_k_voucher_reservation(vid))
+        if not res:
+            stale.append(vid)
+            continue
+        # Cross-check the holder.
+        if res.get(holder_field) != holder_value:
+            stale.append(vid)
+            continue
+        try:
+            expires_at = int(res.get("expires_at", "0") or 0)
+        except (TypeError, ValueError):
+            expires_at = 0
+        if expires_at and expires_at <= _now():
+            stale.append(vid)
+            continue
+        state = await r.hgetall(_k_voucher(vid))
+        if not state:
+            stale.append(vid)
+            continue
+        v = _voucher_to_dict(state)
+        v["reservation"] = {
+            "reserved_at": int(res.get("reserved_at", "0") or 0),
+            "expires_at": expires_at,
+            "expires_at_iso": _iso(expires_at),
+            "reservation_token": res.get("reservation_token", ""),
+        }
+        alive.append(v)
+    # Prune membership set lazily.
+    if stale:
+        await r.srem(key, *stale)
+    return {
+        holder_field: holder_value,
+        "count": len(alive),
+        "reservations": alive,
+    }
+
+
+@cross_store_router.post(
+    "/admin/cleanup-expired-reservations",
+    summary="Release expired reservations back to issued (admin)",
+)
+async def cleanup_expired_reservations(
+    body: CleanupRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Scan for expired reservations and release vouchers back to ``issued``.
+
+    Idempotent. Two failure modes are healed:
+
+    1. Reservation HASH still alive but ``expires_at <= now`` (timer not
+       yet fired — should not happen with Redis EXPIRE but is possible
+       under clock skew or manual ttl edits).
+    2. Reservation HASH evicted by TTL but voucher still says
+       ``status=reserved`` (the common case — Redis EXPIRE cleared the
+       reservation but did not roll back the voucher hash).
+    """
+    from app.config import settings  # local to avoid top-level coupling
+    expected = getattr(settings, "admin_token", None)
+    if expected and body.admin_token != expected:
+        raise HTTPException(status_code=403, detail="invalid admin_token")
+
+    scanned = 0
+    released: list[str] = []
+    now = _now()
+    cursor = 0
+    while True:
+        cursor, keys = await r.scan(cursor=cursor, match="voucher:*", count=200)
+        for k in keys:
+            # Only voucher HASHes, not sub-keys.
+            if k.count(":") != 1:
+                continue
+            scanned += 1
+            if scanned > body.limit:
+                cursor = 0
+                break
+            state = await r.hgetall(k)
+            if not state:
+                continue
+            if state.get("status") != "reserved":
+                continue
+            vid = state.get("voucher_id") or k.split(":", 1)[1]
+            res = await r.hgetall(_k_voucher_reservation(vid))
+            is_expired = False
+            if not res:
+                # Reservation HASH evicted; voucher still says reserved.
+                is_expired = True
+            else:
+                try:
+                    exp_ts = int(res.get("expires_at", "0") or 0)
+                except (TypeError, ValueError):
+                    exp_ts = 0
+                if exp_ts and exp_ts <= now:
+                    is_expired = True
+            if not is_expired:
+                continue
+            released.append(vid)
+            if body.dry_run:
+                continue
+            # Release: roll status back to issued + tear down side state.
+            token = (res or {}).get("reservation_token") or ""
+            device_fp = (res or {}).get("device_fp") or state.get(
+                "reserved_for_device_fp", ""
+            )
+            res_kid = (res or {}).get("kid") or state.get(
+                "reserved_for_kid", ""
+            )
+            pipe = r.pipeline()
+            pipe.hset(
+                k,
+                mapping={
+                    "status": "issued",
+                    "reservation_expires_at": "",
+                    "reserved_for_device_fp": "",
+                    "reserved_for_kid": "",
+                    "reservation_released_at": str(now),
+                    "reservation_release_reason": "expired",
+                },
+            )
+            pipe.delete(_k_voucher_reservation(vid))
+            if token:
+                pipe.delete(_k_reservation_token(token))
+            if device_fp:
+                pipe.srem(_k_device_reserved(device_fp), vid)
+            if res_kid:
+                pipe.srem(_k_kid_reserved(res_kid), vid)
+            await pipe.execute()
+        if cursor == 0:
+            break
+    logger.info(
+        "Reservation cleanup: dry_run=%s scanned=%d released=%d",
+        body.dry_run, scanned, len(released),
+    )
+    return {
+        "ok": True,
+        "dry_run": body.dry_run,
+        "scanned": scanned,
+        "released": len(released),
+        "released_voucher_ids": released[:200],
     }
 
 

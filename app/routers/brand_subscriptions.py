@@ -681,3 +681,47 @@ async def auto_renew_config(
         "renew_to_tier": renew_to,
         "payment_method_id": body.payment_method_id,
     }
+
+
+# ── Admin: trigger the billing cron manually ───────────────────────────────
+
+
+class RunBillingCronRequest(BaseModel):
+    admin_token: str = Field(..., min_length=8, max_length=512)
+
+
+class RunBillingCronResponse(BaseModel):
+    scanned: int
+    charged: int
+    failed: int
+    downgraded: int
+
+
+@router.post(
+    "/admin/run-billing-cron",
+    response_model=RunBillingCronResponse,
+)
+async def admin_run_billing_cron(
+    body: RunBillingCronRequest,
+) -> RunBillingCronResponse:
+    """Manually fire one billing-cron sweep.
+
+    For staging/dev verification + ops break-glass — production should rely
+    on the worker process (``python -m app.workers.billing_cron``). The
+    auth model mirrors ``payouts._check_admin``: shared pre-shared key
+    against ``settings.jwt_secret`` until JWT roles land.
+    """
+    import secrets as _secrets
+
+    from app.config import settings
+
+    if not _secrets.compare_digest(body.admin_token, settings.jwt_secret):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "admin_token_invalid"},
+        )
+
+    from app.workers.billing_cron import run_once
+
+    result = await run_once()
+    return RunBillingCronResponse(**result)

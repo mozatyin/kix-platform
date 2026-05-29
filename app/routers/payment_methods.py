@@ -28,11 +28,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import time
 from typing import Any, Literal
 from uuid import uuid4
 
 import redis.asyncio as aioredis
+import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
@@ -41,6 +43,17 @@ from app.redis_client import get_redis
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ── Stripe SDK init ───────────────────────────────────────────────────────
+# In production set STRIPE_SECRET_KEY (sk_live_… or sk_test_…). With the
+# default "sk_test_stub" sentinel the gateway calls fall back to a local
+# simulation so dev/CI can run without network credentials.
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_stub")
+
+
+def _stripe_is_live() -> bool:
+    """True when a real Stripe API key is configured."""
+    return bool(stripe.api_key) and stripe.api_key != "sk_test_stub"
 
 
 # ── Constants ────────────────────────────────────────────────────────────
@@ -123,6 +136,7 @@ class AddPaymentMethodRequest(BaseModel):
     expiry_month: int | None = Field(default=None, ge=1, le=12)
     expiry_year: int | None = Field(default=None, ge=2024, le=2099)
     holder_name: str = Field(..., min_length=1, max_length=128)
+    holder_email: str | None = Field(default=None, max_length=320)
     billing_address: dict[str, Any] | None = None
     is_default: bool = True
     # Anti-fraud context (optional but recommended at registration)
@@ -255,10 +269,13 @@ async def _gateway_charge(
     reference_id: str,
     r: aioredis.Redis,
 ) -> dict[str, Any]:
-    """Stub for payment-gateway integration (Stripe/Adyen/etc.).
+    """Real Stripe PaymentIntent integration.
 
-    In production: real API call to the gateway with the stored payment_token.
-    In MVP: simulated success with a fake transaction_id.
+    Behaviour:
+      - No real STRIPE_SECRET_KEY → simulated success (preserves dev/CI flow).
+      - Real key  → off-session, auto-confirmed PaymentIntent against the
+        stored Stripe customer + payment-method ids; idempotent on
+        ``reference_id`` so retries collapse to one charge upstream.
     """
     method = await r.hgetall(_k_pm(pm_id))
     if not method:
@@ -268,14 +285,130 @@ async def _gateway_charge(
     if method.get("verified") != "1":
         return {"success": False, "error": "method_unverified"}
 
-    fee = (amount_cents * GATEWAY_FEE_BPS) // 10_000 + GATEWAY_FEE_FIXED_CENTS
+    # Simulated path — no real Stripe key configured.
+    if not _stripe_is_live():
+        logger.warning("No STRIPE_SECRET_KEY; using simulated charge")
+        fee = (amount_cents * GATEWAY_FEE_BPS) // 10_000 + GATEWAY_FEE_FIXED_CENTS
+        return {
+            "success": True,
+            "gateway_tx_id": f"sim_tx_{uuid4().hex}",
+            "gateway_fee_cents": fee,
+            "currency": currency,
+            "reference_id": reference_id,
+        }
+
+    # Real Stripe path.
+    stripe_pm_id = method.get("payment_token", "")
+    stripe_customer_id = method.get("stripe_customer_id", "")
+
+    if not stripe_customer_id:
+        return {"success": False, "error": "no_stripe_customer"}
+    if not stripe_pm_id:
+        return {"success": False, "error": "no_stripe_payment_method"}
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency=currency.lower(),
+            customer=stripe_customer_id,
+            payment_method=stripe_pm_id,
+            off_session=True,
+            confirm=True,
+            metadata={
+                "reference_id": reference_id,
+                "brand_id": method.get("brand_id", ""),
+                "payment_method_id": pm_id,
+            },
+            idempotency_key=reference_id,
+        )
+    except stripe.error.CardError as e:
+        return {
+            "success": False,
+            "error": f"card_declined:{e.code}",
+            "decline_code": getattr(e, "decline_code", None),
+        }
+    except stripe.error.RateLimitError:
+        return {"success": False, "error": "rate_limited"}
+    except stripe.error.StripeError as e:
+        logger.exception("Stripe error: %s", e)
+        return {"success": False, "error": str(e)[:200]}
+
+    if intent.status != "succeeded":
+        return {"success": False, "error": f"intent_status_{intent.status}"}
+
+    # Best-effort fee extraction — depends on Stripe expand options.
+    gateway_fee = 0
+    try:
+        charges = getattr(intent, "charges", None)
+        if charges and charges.data:
+            bt = charges.data[0].balance_transaction
+            if bt is not None:
+                gateway_fee = int(getattr(bt, "fee", 0) or 0)
+    except Exception:  # noqa: BLE001 — fee is informational
+        gateway_fee = 0
+
+    if gateway_fee == 0:
+        # Fallback estimate so callers always see a fee figure.
+        gateway_fee = (amount_cents * GATEWAY_FEE_BPS) // 10_000 + GATEWAY_FEE_FIXED_CENTS
+
     return {
         "success": True,
-        "gateway_tx_id": f"sim_tx_{uuid4().hex}",
-        "gateway_fee_cents": fee,
+        "gateway_tx_id": intent.id,
+        "gateway_fee_cents": gateway_fee,
         "currency": currency,
         "reference_id": reference_id,
     }
+
+
+async def _create_stripe_customer(
+    brand_id: str, holder_name: str, email: str | None = None
+) -> str:
+    """Create a Stripe Customer for the brand (or return a simulated id in dev)."""
+    if not _stripe_is_live():
+        return f"cus_sim_{brand_id}"
+    customer = stripe.Customer.create(
+        name=holder_name,
+        email=email,
+        metadata={"brand_id": brand_id},
+    )
+    return customer.id
+
+
+async def _attach_stripe_payment_method(
+    stripe_pm_id: str, stripe_customer_id: str
+) -> None:
+    """Attach a payment method to a customer (no-op in simulated mode)."""
+    if not _stripe_is_live():
+        return
+    try:
+        stripe.PaymentMethod.attach(stripe_pm_id, customer=stripe_customer_id)
+    except stripe.error.InvalidRequestError as e:
+        # Already attached / re-attach is fine — surface anything else.
+        msg = str(e).lower()
+        if "already" in msg or "attached" in msg:
+            return
+        raise
+
+
+async def _get_or_create_brand_stripe_customer(
+    brand_id: str,
+    holder_name: str,
+    email: str | None,
+    r: aioredis.Redis,
+) -> str:
+    """Look up cached brand → Stripe customer id; create on miss.
+
+    Cache key: ``brand:{brand_id}:stripe_customer_id``. We persist it on the
+    brand so subsequent payment methods reuse the same Stripe customer (one
+    customer per brand is the right granularity for billing).
+    """
+    cache_key = f"brand:{brand_id}:stripe_customer_id"
+    cached = await r.get(cache_key)
+    if cached:
+        return cached
+    customer_id = await _create_stripe_customer(brand_id, holder_name, email)
+    await r.set(cache_key, customer_id)
+    return customer_id
 
 
 async def _gateway_auth_reverse(
@@ -347,16 +480,49 @@ async def add_payment_method(
 
     pm_id = f"pm_{uuid4().hex}"
     now = time.time()
+
+    # ── Stripe customer + attach ────────────────────────────────────────
+    # For card/debit methods we expect ``payment_token`` to be a Stripe
+    # PaymentMethod id (``pm_…``) coming from Stripe.js / Elements. We tie
+    # it to a Stripe Customer scoped to the brand so future off-session
+    # charges work. For non-card method types (wechat/alipay/bank) we still
+    # create a customer record so the brand has a uniform billing entity.
+    stripe_customer_id = ""
+    stripe_attach_error: str | None = None
+    try:
+        stripe_customer_id = await _get_or_create_brand_stripe_customer(
+            brand_id, body.holder_name, body.holder_email, r
+        )
+        if body.method_type in ("credit_card", "debit_card"):
+            await _attach_stripe_payment_method(
+                body.payment_token, stripe_customer_id
+            )
+    except stripe.error.StripeError as exc:  # type: ignore[attr-defined]
+        # Don't hard-fail registration in dev; capture for audit and continue.
+        stripe_attach_error = str(exc)[:200]
+        logger.warning(
+            "Stripe customer/attach failed brand=%s pm=%s err=%s",
+            brand_id, pm_id, stripe_attach_error,
+        )
+    except Exception as exc:  # noqa: BLE001
+        stripe_attach_error = str(exc)[:200]
+        logger.warning(
+            "Stripe customer setup non-stripe failure brand=%s pm=%s: %s",
+            brand_id, pm_id, exc,
+        )
+
     mapping: dict[str, Any] = {
         "payment_method_id": pm_id,
         "brand_id": brand_id,
         "method_type": body.method_type,
-        "payment_token": body.payment_token,  # gateway reference, not PAN
+        "payment_token": body.payment_token,  # Stripe pm_… or other gateway ref
         "payment_token_hash": token_hash,
+        "stripe_customer_id": stripe_customer_id,
         "last4": body.last4 or "",
         "expiry_month": str(body.expiry_month) if body.expiry_month else "",
         "expiry_year": str(body.expiry_year) if body.expiry_year else "",
         "holder_name": body.holder_name,
+        "holder_email": body.holder_email or "",
         "billing_address": json.dumps(body.billing_address or {}, ensure_ascii=False),
         "status": "active",
         "verified": "0",
@@ -366,6 +532,8 @@ async def add_payment_method(
         "ip_address": body.ip_address or "",
         "device_fingerprint": body.device_fingerprint or "",
     }
+    if stripe_attach_error:
+        mapping["stripe_attach_error"] = stripe_attach_error
     await r.hset(_k_pm(pm_id), mapping=mapping)
     await r.sadd(_k_brand_pms(brand_id), pm_id)
     await link_payment_to_brand(brand_id, token_hash, r)

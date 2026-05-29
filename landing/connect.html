@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>KiX Connect — 授权</title>
+  <meta name="description" content="授权商家访问你的 KiX 账户数据 — 你可随时撤销。">
+  <meta name="robots" content="noindex,nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html,body{
+      font-family:'Inter',system-ui,-apple-system,sans-serif;
+      -webkit-font-smoothing:antialiased;
+    }
+    body {
+      background: linear-gradient(180deg, #0a0a0a 0%, #0d1d0d 60%, #0a0a0a 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      line-height: 1.5;
+    }
+    .connect-card {
+      width: 100%;
+      max-width: 480px;
+      background: #1a1a1a;
+      border-radius: 18px;
+      padding: 28px 24px 24px;
+      border: 1px solid rgba(0,252,0,0.27);
+      box-shadow: 0 24px 80px rgba(0,252,0,0.06), 0 4px 24px rgba(0,0,0,0.4);
+      animation: fade-in .35s ease;
+    }
+    @keyframes fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    .kix-mark {
+      display:flex;align-items:center;gap:8px;
+      font-weight:800;font-size:13px;letter-spacing:.5px;
+      color:#00FC00;margin-bottom:18px;
+    }
+    .kix-mark .dot{width:8px;height:8px;border-radius:50%;background:#00FC00;box-shadow:0 0 12px #00FC00}
+
+    .brand-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .brand-logo {
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      background: rgba(0,252,0,0.14);
+      flex-shrink:0;
+      overflow:hidden;
+      display:flex;align-items:center;justify-content:center;
+      font-size:22px;font-weight:800;color:#00FC00;
+    }
+    .brand-logo img{width:100%;height:100%;object-fit:cover;display:block}
+    .brand-info h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
+    .brand-info .tagline{margin-top:4px;color:#9aa;font-size:13px;line-height:1.4}
+
+    .intro {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #cfd;
+      margin-bottom: 8px;
+    }
+    .intro strong{color:#fff}
+
+    .scopes-list {
+      background: #0a0a0a;
+      border: 1px solid #1f1f1f;
+      border-radius: 12px;
+      padding: 6px 14px;
+      margin: 14px 0 16px;
+    }
+    .scope-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #1d1d1d;
+    }
+    .scope-item:last-child { border-bottom: none; }
+    .scope-icon {
+      font-size: 22px;
+      width: 28px;
+      text-align:center;
+      flex-shrink:0;
+      line-height:1.2;
+    }
+    .scope-text{flex:1;min-width:0}
+    .scope-title{font-weight:600;font-size:14px;color:#fff}
+    .scope-detail{margin-top:2px;color:#888;font-size:12.5px;line-height:1.4}
+
+    .guarantees{
+      font-size:12.5px;color:#9ca29c;line-height:1.7;
+      padding:12px 14px;border-radius:10px;background:rgba(0,252,0,0.04);
+      border:1px solid rgba(0,252,0,0.12);
+    }
+    .guarantees .check{color:#00FC00;font-weight:700;margin-right:6px}
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .actions button {
+      flex: 1;
+      padding: 13px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 15px;
+      transition: transform .12s ease, opacity .15s ease, background .15s ease;
+      font-family:inherit;
+    }
+    .actions button:active{transform:scale(.97)}
+    .actions button:disabled{opacity:.6;cursor:wait}
+    .deny-btn {
+      background: #2a2a2a;
+      color: #ddd;
+      border: 1px solid #3a3a3a;
+    }
+    .deny-btn:hover{background:#333}
+    .allow-btn {
+      background: #00FC00;
+      color: #0a0a0a;
+      border: none;
+      box-shadow: 0 4px 16px rgba(0,252,0,0.25);
+    }
+    .allow-btn:hover{background:#1aff1a}
+
+    .footer-note {
+      text-align: center;
+      color: #777;
+      font-size: 11.5px;
+      margin-top: 18px;
+      letter-spacing:.2px;
+    }
+    .err-banner{
+      display:none;
+      margin:0 0 14px;padding:10px 14px;
+      background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.35);
+      border-radius:10px;color:#ff9a9a;font-size:13px;
+    }
+    .err-banner.show{display:block}
+
+    @media (max-width: 380px){
+      .connect-card{padding:22px 18px 20px}
+      .brand-info h2{font-size:17px}
+      .scope-icon{font-size:20px;width:24px}
+      .actions button{font-size:14px;padding:12px 12px}
+    }
+  </style>
+</head>
+<body>
+  <div class="connect-card" role="dialog" aria-labelledby="brand-name">
+    <div class="kix-mark"><span class="dot"></span>KIX CONNECT</div>
+
+    <div class="err-banner" id="err-banner"></div>
+
+    <div class="brand-info">
+      <div class="brand-logo" id="brand-logo-wrap">
+        <span id="brand-initial">—</span>
+        <img id="brand-logo" alt="" style="display:none">
+      </div>
+      <div style="min-width:0;flex:1">
+        <h2 id="brand-name">—</h2>
+        <p class="tagline" id="brand-tagline">想接入你的 KiX 账户</p>
+      </div>
+    </div>
+
+    <p class="intro">
+      <strong id="brand-name-inline">—</strong> 想访问以下数据：
+    </p>
+
+    <div class="scopes-list" id="scopes-list"></div>
+
+    <div class="guarantees">
+      <div><span class="check">✓</span>你可以随时在 KiX App 撤销此授权</div>
+      <div><span class="check">✓</span>你的密码和个人识别信息不会分享给商家</div>
+      <div><span class="check">✓</span>商家只能在你授权的范围内访问数据</div>
+    </div>
+
+    <div class="actions">
+      <button class="deny-btn" id="deny-btn" type="button">拒绝</button>
+      <button class="allow-btn" id="allow-btn" type="button">允许</button>
+    </div>
+
+    <p class="footer-note">
+      KiX 不卖广告 — 商家直接为效果付费
+    </p>
+  </div>
+
+  <script>
+    const SCOPE_DESCRIPTIONS = {
+      profile:   { icon: "👤", title: "查看你的基本资料", detail: "显示名 / 语言 / 国家" },
+      history:   { icon: "📊", title: "查看你在 KiX 上的活动", detail: "玩过的游戏、领过的券（不含密码）" },
+      location:  { icon: "📍", title: "在你附近时推送", detail: "用于附近商家的优惠通知" },
+      favorites: { icon: "❤️", title: "了解你的偏好", detail: "推荐你可能喜欢的活动" },
+      email:     { icon: "📧", title: "发送邮件给你", detail: "营销邮件 / 提醒" },
+      phone:     { icon: "📱", title: "发送短信给你", detail: "紧急通知 / 验证码" },
+      insights:  { icon: "🔍", title: "查看跨商户洞察", detail: "你的整体偏好分析（聚合，非具体购买）" },
+    };
+
+    function escapeHtml(s){
+      return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function showError(msg){
+      const e = document.getElementById('err-banner');
+      e.textContent = msg;
+      e.classList.add('show');
+    }
+
+    const params = new URLSearchParams(location.search);
+    const brandId = params.get("brand_id");
+    const scopes = (params.get("scopes") || "").split(",").map(s=>s.trim()).filter(Boolean);
+    const redirectUri = params.get("redirect_uri") || "";
+    const state = params.get("state") || "";
+
+    // Validate inputs early
+    if(!brandId){
+      showError("缺少 brand_id 参数");
+    } else if(!scopes.length){
+      showError("缺少 scopes 参数");
+    } else if(!redirectUri){
+      showError("缺少 redirect_uri 参数");
+    }
+
+    // Load brand info
+    if(brandId){
+      fetch(`/api/v1/storefront/${encodeURIComponent(brandId)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('brand_not_found')))
+        .then(brand => {
+          const name = brand.display_name || brandId;
+          document.getElementById("brand-name").textContent = name;
+          document.getElementById("brand-name-inline").textContent = name;
+          document.getElementById("brand-initial").textContent = (name||'?')[0].toUpperCase();
+          if (brand.logo_url) {
+            const img = document.getElementById("brand-logo");
+            img.src = brand.logo_url;
+            img.onload = () => {
+              img.style.display = 'block';
+              document.getElementById("brand-initial").style.display = 'none';
+            };
+          }
+          if (brand.bio) {
+            document.getElementById("brand-tagline").textContent = brand.bio.slice(0, 80);
+          }
+          document.title = `授权 ${name} — KiX Connect`;
+        })
+        .catch(() => {
+          document.getElementById("brand-name").textContent = brandId;
+          document.getElementById("brand-name-inline").textContent = brandId;
+          document.getElementById("brand-initial").textContent = (brandId||'?')[0].toUpperCase();
+        });
+    }
+
+    // Render scopes
+    const scopesList = document.getElementById("scopes-list");
+    scopesList.innerHTML = scopes.map(scope => {
+      const def = SCOPE_DESCRIPTIONS[scope] || { icon: "🔑", title: scope, detail: "" };
+      return `
+        <div class="scope-item">
+          <span class="scope-icon">${def.icon}</span>
+          <div class="scope-text">
+            <div class="scope-title">${escapeHtml(def.title)}</div>
+            ${def.detail ? `<div class="scope-detail">${escapeHtml(def.detail)}</div>` : ''}
+          </div>
+        </div>`;
+    }).join("") || '<div class="scope-item"><div class="scope-text scope-detail">未指定权限范围</div></div>';
+
+    function safeRedirect(target){
+      // Only allow http(s) redirect to avoid javascript: scheme injection
+      if(!/^https?:\/\//i.test(target)){
+        showError("redirect_uri 不合法");
+        return;
+      }
+      window.location.href = target;
+    }
+
+    async function allow() {
+      const btn = document.getElementById('allow-btn');
+      btn.disabled = true;
+      btn.textContent = '处理中…';
+      try {
+        const kid = localStorage.getItem("kid") || localStorage.getItem("_kix_uid");
+        if (!kid) {
+          showError("请先登录 KiX 后再授权");
+          btn.disabled = false;
+          btn.textContent = '允许';
+          return;
+        }
+        const res = await fetch(`/api/v1/kix-id/connect/authorize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brand_id: brandId,
+            scopes,
+            redirect_uri: redirectUri,
+            kid,
+            state,
+          }),
+        });
+        if (!res.ok) {
+          let msg = '授权失败';
+          try { const j = await res.json(); if(j.detail) msg += ': '+j.detail; } catch(_){}
+          showError(msg);
+          btn.disabled = false;
+          btn.textContent = '允许';
+          return;
+        }
+        const data = await res.json();
+        const url = new URL(redirectUri);
+        url.searchParams.set('code', data.code);
+        if(state) url.searchParams.set('state', state);
+        safeRedirect(url.toString());
+      } catch (e) {
+        showError("网络错误，请重试");
+        btn.disabled = false;
+        btn.textContent = '允许';
+      }
+    }
+
+    function deny() {
+      if(!redirectUri) return;
+      try {
+        const url = new URL(redirectUri);
+        url.searchParams.set('error', 'access_denied');
+        if(state) url.searchParams.set('state', state);
+        safeRedirect(url.toString());
+      } catch(_) {
+        showError("redirect_uri 不合法");
+      }
+    }
+
+    document.getElementById('allow-btn').addEventListener('click', allow);
+    document.getElementById('deny-btn').addEventListener('click', deny);
+  </script>
+</body>
+</html>

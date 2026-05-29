@@ -3,147 +3,406 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
 <title id="page-title">Brand on KiX</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- SEO -->
+<meta id="meta-description" name="description" content="Discover games, vouchers, and stores on KiX — earn rewards by playing.">
+<link id="meta-canonical" rel="canonical" href="">
+
+<!-- Open Graph -->
+<meta id="og-title" property="og:title" content="Brand on KiX">
+<meta id="og-description" property="og:description" content="Discover games, vouchers, and stores on KiX — earn rewards by playing.">
+<meta id="og-image" property="og:image" content="">
+<meta id="og-url" property="og:url" content="">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KiX">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta id="tw-title" name="twitter:title" content="Brand on KiX">
+<meta id="tw-description" name="twitter:description" content="Discover games, vouchers, and stores on KiX — earn rewards by playing.">
+<meta id="tw-image" name="twitter:image" content="">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
 :root{
-  --brand:#00FC00;
-  --dark:#0a0a0a;
-  --card:#111;
-  --card-hover:#161616;
-  --border:#1e1e1e;
+  --brand-primary: var(--user-brand-color, #00FC00);
+  --brand: var(--brand-primary);
+  --brand-soft: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+  --brand-glow: color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  --bg:#0a0a0a;
+  --bg-elevated:#0f0f0f;
+  --card:#141414;
+  --card-hover:#191919;
+  --border:#1f1f1f;
+  --border-bright:#2a2a2a;
   --text:#fff;
-  --text-dim:rgba(255,255,255,.65);
-  --text-muted:rgba(255,255,255,.4);
+  --text-dim:rgba(255,255,255,.7);
+  --text-muted:rgba(255,255,255,.45);
   --radius:14px;
   --radius-sm:10px;
+  --radius-lg:20px;
+  --header-h:56px;
+  --tab-h:50px;
 }
-html,body{font-family:'Inter',system-ui,sans-serif;background:var(--dark);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
-a{color:inherit;text-decoration:none}
-button{font-family:inherit;cursor:pointer;border:none;outline:none}
 
-/* ── Hero ─────────────────────────────────────────── */
+html,body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  scroll-behavior:smooth;
+  overscroll-behavior-y:none;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;background:none}
+img{display:block;max-width:100%}
+
+/* ── Reveal animation utility ───────────────────── */
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ── Top bar (sticky) ───────────────────────────── */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  height:var(--header-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  background:linear-gradient(180deg,rgba(10,10,10,.95) 0%,rgba(10,10,10,.75) 100%);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid transparent;
+  transition:border-color .2s;
+}
+.topbar.scrolled{border-bottom-color:var(--border)}
+.topbar .brand-mini{
+  display:flex;align-items:center;gap:8px;
+  opacity:0;transition:opacity .25s;
+  min-width:0;
+}
+.topbar.scrolled .brand-mini{opacity:1}
+.topbar .brand-mini img{
+  width:28px;height:28px;border-radius:8px;object-fit:cover;flex-shrink:0;
+}
+.topbar .brand-mini h3{
+  font-size:14px;font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.topbar .kix-mark{
+  font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--brand);
+  display:flex;align-items:center;gap:6px;
+}
+.topbar .kix-mark .dot{
+  width:6px;height:6px;border-radius:50%;background:var(--brand);
+  box-shadow:0 0 8px var(--brand-glow);
+}
+
+/* ── Hero ───────────────────────────────────────── */
 .storefront-hero{
-  position:relative;width:100%;height:280px;
-  background:#222;overflow:hidden;
+  position:relative;width:100%;
+  min-height:320px;
+  background:linear-gradient(180deg,#1a1a1a 0%,#0a0a0a 100%);
+  overflow:hidden;
 }
 .storefront-hero img.bg{
   position:absolute;inset:0;width:100%;height:100%;
-  object-fit:cover;opacity:.45;
+  object-fit:cover;opacity:.4;
+}
+.storefront-hero::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 0%,var(--brand-soft) 0%,transparent 60%),
+             linear-gradient(180deg,transparent 0%,rgba(0,0,0,.6) 60%,#0a0a0a 100%);
+  pointer-events:none;
 }
 .hero-overlay{
-  position:absolute;inset:0;display:flex;flex-direction:column;
-  justify-content:flex-end;padding:20px 20px 24px;gap:8px;
-  background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.85) 100%);
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;
+  justify-content:flex-end;
+  padding:60px 20px 24px;
+  gap:10px;min-height:320px;
 }
 .hero-overlay .logo{
-  width:64px;height:64px;border-radius:50%;background:#222;
+  width:72px;height:72px;border-radius:18px;background:#1a1a1a;
   border:3px solid var(--brand);object-fit:cover;
+  box-shadow:0 8px 24px var(--brand-glow);
+  margin-bottom:4px;
 }
-.hero-overlay h1{font-size:24px;font-weight:800;line-height:1.1}
-.hero-overlay p{font-size:13px;color:var(--text-dim);line-height:1.45;max-width:90%}
-.hero-meta{display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:4px}
-.hero-meta span b{color:var(--text);font-weight:600}
-.follow-btn{
-  position:absolute;top:16px;right:16px;
-  padding:8px 16px;border-radius:20px;
-  background:var(--brand);color:#000;font-weight:700;font-size:13px;
-  transition:transform .15s ease,opacity .15s ease;
+.hero-overlay h1{
+  font-size:28px;font-weight:800;line-height:1.1;
+  letter-spacing:-.02em;
 }
-.follow-btn:active{transform:scale(.96)}
-.follow-btn.following{background:#222;color:var(--text-dim);border:1px solid var(--border)}
+.hero-overlay p.bio{
+  font-size:14px;color:var(--text-dim);line-height:1.5;
+  max-width:90%;
+}
+.hero-meta{
+  display:flex;flex-wrap:wrap;gap:6px 14px;
+  font-size:12px;color:var(--text-muted);margin-top:6px;
+}
+.hero-meta span{display:inline-flex;align-items:center;gap:4px}
+.hero-meta span b{color:var(--text);font-weight:700}
+.hero-meta .sep{display:none}
 
-/* ── Tabs ─────────────────────────────────────────── */
-.storefront-tabs{
-  display:flex;gap:4px;padding:0 12px;border-bottom:1px solid var(--border);
-  background:var(--dark);position:sticky;top:0;z-index:10;
-  overflow-x:auto;-webkit-overflow-scrolling:touch;
+.follow-btn{
+  position:absolute;top:calc(var(--header-h) + 14px);right:16px;z-index:5;
+  padding:9px 18px;border-radius:22px;
+  background:var(--brand);color:#000;font-weight:800;font-size:13px;
+  letter-spacing:.2px;
+  box-shadow:0 6px 18px var(--brand-glow);
+  transition:transform .15s ease,opacity .15s ease,background .15s;
 }
+.follow-btn:active{transform:scale(.94)}
+.follow-btn.following{
+  background:#1a1a1a;color:var(--text-dim);
+  border:1px solid var(--border-bright);box-shadow:none;
+}
+
+/* ── Tabs ───────────────────────────────────────── */
+.storefront-tabs{
+  display:flex;gap:2px;
+  padding:0 8px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+  position:sticky;top:var(--header-h);z-index:20;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.storefront-tabs::-webkit-scrollbar{display:none}
 .storefront-tabs button{
-  background:transparent;color:var(--text-dim);
+  color:var(--text-dim);
   padding:14px 16px;font-size:14px;font-weight:600;
   border-bottom:2px solid transparent;white-space:nowrap;
   transition:color .15s,border-color .15s;
+  position:relative;
 }
 .storefront-tabs button.active{color:var(--brand);border-bottom-color:var(--brand)}
+.storefront-tabs button:active{color:var(--brand)}
 
-/* ── Content ──────────────────────────────────────── */
-#storefront-content{padding:16px 12px 80px;min-height:200px}
+/* ── Content ────────────────────────────────────── */
+#storefront-content{padding:16px 12px 96px;min-height:220px}
 .loading,.empty{padding:48px 20px;text-align:center;color:var(--text-muted);font-size:14px}
+.empty .emoji{display:block;font-size:32px;margin-bottom:8px;opacity:.6}
+
+/* ── Card base ─────────────────────────────────── */
 .card{
   background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius);padding:14px;margin-bottom:10px;
-  transition:background .15s;
+  transition:background .15s,transform .12s,border-color .15s;
 }
-.card:active{background:var(--card-hover)}
-.card h3{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.card:active{background:var(--card-hover);transform:scale(.997)}
+.card h3{
+  font-size:15.5px;font-weight:700;margin-bottom:4px;
+  display:flex;align-items:center;gap:6px;
+  letter-spacing:-.005em;
+}
 .card .badge{
-  display:inline-block;padding:2px 6px;border-radius:4px;
-  background:var(--brand);color:#000;font-size:10px;font-weight:700;
+  display:inline-block;padding:2px 7px;border-radius:5px;
+  background:var(--brand);color:#000;font-size:10px;font-weight:800;
+  letter-spacing:.3px;text-transform:uppercase;
 }
 .card p{font-size:13px;color:var(--text-dim);line-height:1.5;margin-bottom:10px}
 .card .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card .meta{font-size:11px;color:var(--text-muted)}
-.card button{
-  padding:8px 14px;border-radius:8px;
-  background:var(--brand);color:#000;font-weight:700;font-size:13px;
+.card button.primary{
+  padding:9px 16px;border-radius:9px;
+  background:var(--brand);color:#000;font-weight:800;font-size:13px;
+  transition:transform .12s,opacity .15s;
+  letter-spacing:.2px;
 }
+.card button.primary:active{transform:scale(.95)}
 
-/* ── Review-specific ──────────────────────────────── */
+/* ── Game card visual upgrade ──────────────────── */
+.game-card{
+  position:relative;overflow:hidden;
+  padding:0;
+}
+.game-card .thumb{
+  width:100%;aspect-ratio: 16/9;
+  background:linear-gradient(135deg,var(--brand-soft) 0%,#1a1a1a 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;
+  position:relative;
+}
+.game-card .thumb img{
+  width:100%;height:100%;object-fit:cover;
+}
+.game-card .thumb .play-overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.25);opacity:0;transition:opacity .2s;
+}
+.game-card:active .thumb .play-overlay{opacity:1}
+.game-card .play-overlay::after{
+  content:'▶';color:var(--brand);font-size:36px;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.6));
+}
+.game-card .body{padding:12px 14px 14px}
+
+/* ── Reviews ──────────────────────────────────── */
 .reviews-summary{
-  display:flex;align-items:center;gap:14px;padding:14px;
+  display:flex;align-items:center;gap:14px;padding:16px;
   background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius);margin-bottom:12px;
 }
-.reviews-summary .avg{font-size:36px;font-weight:800;color:var(--brand)}
-.reviews-summary .meta{font-size:12px;color:var(--text-dim)}
-.review-item{padding:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px}
-.review-item .head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:6px}
+.reviews-summary .avg{
+  font-size:42px;font-weight:900;color:var(--brand);
+  line-height:1;letter-spacing:-.02em;
+}
+.reviews-summary .meta{font-size:12px;color:var(--text-dim);margin-top:4px}
+.review-item{
+  padding:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-sm);margin-bottom:8px;
+}
+.review-item .head{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:var(--text-dim);margin-bottom:6px;
+}
 .review-item .stars{color:var(--brand);font-size:13px;letter-spacing:1px}
-.review-item .body{font-size:13px;line-height:1.5}
+.review-item .body{font-size:13.5px;line-height:1.55;color:var(--text)}
 
 .write-review{
-  margin-top:14px;padding:14px;background:var(--card);
-  border:1px dashed var(--border);border-radius:var(--radius-sm);
+  margin-top:16px;padding:16px;background:var(--card);
+  border:1px dashed var(--border-bright);border-radius:var(--radius-sm);
 }
-.write-review h4{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text-dim)}
-.write-review .rating-pick{display:flex;gap:4px;margin-bottom:8px;font-size:24px}
-.write-review .rating-pick span{cursor:pointer;color:var(--text-muted);transition:color .12s}
-.write-review .rating-pick span.on{color:var(--brand)}
+.write-review h4{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+.write-review .rating-pick{display:flex;gap:6px;margin-bottom:10px;font-size:28px}
+.write-review .rating-pick span{cursor:pointer;color:var(--text-muted);transition:color .12s,transform .12s}
+.write-review .rating-pick span.on{color:var(--brand);transform:scale(1.05)}
 .write-review textarea{
-  width:100%;background:var(--dark);color:var(--text);
-  border:1px solid var(--border);border-radius:8px;
-  padding:10px;font-size:13px;font-family:inherit;
-  min-height:64px;resize:vertical;
+  width:100%;background:var(--bg);color:var(--text);
+  border:1px solid var(--border);border-radius:9px;
+  padding:11px;font-size:13.5px;font-family:inherit;
+  min-height:72px;resize:vertical;
+  transition:border-color .15s;
 }
-.write-review .submit{margin-top:8px;padding:9px 16px;border-radius:8px;background:var(--brand);color:#000;font-weight:700;font-size:13px}
+.write-review textarea:focus{border-color:var(--brand);outline:none}
+.write-review .submit{
+  margin-top:10px;padding:10px 18px;border-radius:9px;
+  background:var(--brand);color:#000;font-weight:800;font-size:13.5px;
+  transition:transform .12s;
+}
+.write-review .submit:active{transform:scale(.96)}
 
-/* ── Stores ───────────────────────────────────────── */
-.store-item .addr{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+/* ── Stores ───────────────────────────────────── */
+.store-item{display:flex;gap:14px;align-items:flex-start}
+.store-item .pin{
+  font-size:22px;width:36px;height:36px;
+  background:var(--brand-soft);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.store-item .info{flex:1;min-width:0}
+.store-item .addr{font-size:12.5px;color:var(--text-dim);margin-bottom:4px;line-height:1.5}
 .store-item .geo{font-size:11px;color:var(--text-muted)}
+.store-item .hours{
+  font-size:11.5px;color:var(--text-muted);margin-top:4px;
+  display:flex;align-items:center;gap:4px;
+}
+.store-item .hours.open{color:var(--brand);font-weight:600}
 
-/* ── Toast ────────────────────────────────────────── */
+/* ── Voucher card visual upgrade ──────────────── */
+.voucher-card{
+  position:relative;
+  background:linear-gradient(135deg,var(--card) 0%,#171717 100%);
+  border:1px solid var(--brand-soft);
+  overflow:hidden;
+}
+.voucher-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:var(--brand);
+}
+.voucher-card .value{
+  display:inline-block;
+  font-size:22px;font-weight:900;color:var(--brand);
+  letter-spacing:-.02em;margin-right:8px;
+}
+
+/* ── Toast ────────────────────────────────────── */
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:var(--brand);color:#000;padding:10px 20px;border-radius:24px;
-  font-weight:700;font-size:13px;z-index:1000;
+  background:var(--brand);color:#000;padding:11px 22px;border-radius:24px;
+  font-weight:800;font-size:13px;z-index:1000;
+  box-shadow:0 8px 24px var(--brand-glow);
   animation:toast-in .25s ease;
+  max-width:90vw;
 }
 @keyframes toast-in{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ── Footer ───────────────────────────────────── */
+.kix-footer{
+  padding:24px 20px 40px;text-align:center;
+  color:var(--text-muted);font-size:11.5px;
+  border-top:1px solid var(--border);
+  margin-top:16px;
+}
+.kix-footer .tag{color:var(--brand);font-weight:700}
+
+/* ── Tablet + ─────────────────────────────────── */
+@media (min-width: 640px){
+  .storefront-hero{min-height:380px}
+  .hero-overlay{padding:80px 32px 32px;max-width:760px;margin:0 auto}
+  .hero-overlay h1{font-size:34px}
+  .storefront-tabs{padding:0 24px;justify-content:center}
+  #storefront-content{
+    padding:20px 20px 96px;
+    max-width:760px;margin:0 auto;
+  }
+  /* Two-column game/voucher grid on tablet */
+  .grid-2{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+  }
+  .grid-2 .card{margin-bottom:0}
+}
+
+@media (min-width: 960px){
+  .hero-overlay h1{font-size:42px}
+  #storefront-content{max-width:920px}
+  .grid-2{grid-template-columns:repeat(3,1fr)}
+}
+
+/* ── Tight mobile (≤375) ──────────────────────── */
+@media (max-width: 380px){
+  .hero-overlay{padding:52px 16px 20px}
+  .hero-overlay h1{font-size:24px}
+  .hero-overlay .logo{width:64px;height:64px}
+  .follow-btn{padding:8px 14px;font-size:12.5px;right:12px}
+  #storefront-content{padding:14px 10px 96px}
+  .storefront-tabs button{padding:13px 12px;font-size:13.5px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+}
 </style>
 </head>
 <body>
-  <div class="storefront-hero" id="hero">
+  <header class="topbar" id="topbar">
+    <div class="brand-mini" id="brand-mini">
+      <img id="topbar-logo" alt="" style="display:none">
+      <h3 id="topbar-name">—</h3>
+    </div>
+    <div class="kix-mark"><span class="dot"></span>KIX</div>
+  </header>
+
+  <section class="storefront-hero" id="hero">
     <div class="loading">加载中...</div>
-  </div>
-  <div class="storefront-tabs" id="tabs">
+  </section>
+
+  <nav class="storefront-tabs" id="tabs" aria-label="Sections">
     <button data-tab="games" class="active">游戏</button>
     <button data-tab="vouchers">优惠券</button>
     <button data-tab="stores">门店</button>
     <button data-tab="reviews">评价</button>
-  </div>
-  <div id="storefront-content"><div class="loading">加载中...</div></div>
+  </nav>
+
+  <main id="storefront-content"><div class="loading">加载中...</div></main>
+
+  <footer class="kix-footer">
+    Powered by <span class="tag">KiX</span> — play games, earn rewards.
+  </footer>
 
   <script src="/landing/sdk/kix-pixel.js" data-pixel="STOREFRONT_PIXEL"></script>
   <script>
@@ -161,9 +420,46 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
       return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    /* ── Reveal-on-scroll observer ─────────────── */
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries)=>{
+      entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {threshold: 0.08, rootMargin: '0px 0px -40px 0px'}) : null;
+
+    function applyReveal(root){
+      if(!io) return;
+      root.querySelectorAll('.reveal').forEach(el => io.observe(el));
+    }
+
+    /* ── Topbar scroll state ──────────────────── */
+    const topbar = document.getElementById('topbar');
+    window.addEventListener('scroll', () => {
+      if(window.scrollY > 30) topbar.classList.add('scrolled');
+      else topbar.classList.remove('scrolled');
+    }, {passive:true});
+
+    /* ── SEO meta injection ──────────────────── */
+    function applySeo(p){
+      const name = p.display_name || brandId;
+      const bio = p.bio || `Discover games, vouchers, and stores at ${name} on KiX — earn rewards by playing.`;
+      const img = p.hero_image_url || p.logo_url || '';
+      const url = location.origin + location.pathname + '?b=' + encodeURIComponent(brandId);
+      const title = `${name} · KiX`;
+      document.getElementById('page-title').textContent = title;
+      document.getElementById('meta-description').content = bio;
+      document.getElementById('meta-canonical').href = url;
+      document.getElementById('og-title').content = title;
+      document.getElementById('og-description').content = bio;
+      document.getElementById('og-image').content = img;
+      document.getElementById('og-url').content = url;
+      document.getElementById('tw-title').content = title;
+      document.getElementById('tw-description').content = bio;
+      document.getElementById('tw-image').content = img;
+    }
+
+    /* ── Load ─────────────────────────────────── */
     async function load(){
       if(!brandId){
-        document.getElementById('hero').innerHTML='<div class="loading">缺少 brand 参数 (?b=...)</div>';
+        document.getElementById('hero').innerHTML='<div class="loading"><div class="empty"><span class="emoji">🔗</span>缺少 brand 参数 (?b=...)</div></div>';
         document.getElementById('storefront-content').innerHTML='';
         return;
       }
@@ -173,16 +469,26 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
           return r.json();
         });
       }catch(e){
-        document.getElementById('hero').innerHTML='<div class="loading">店铺不存在</div>';
+        document.getElementById('hero').innerHTML='<div class="loading"><div class="empty"><span class="emoji">❓</span>店铺不存在</div></div>';
         document.getElementById('storefront-content').innerHTML='';
         return;
       }
-      document.getElementById('page-title').textContent=(profile.display_name||brandId)+' · KiX';
       if(profile.brand_color){
-        document.documentElement.style.setProperty('--brand',profile.brand_color);
+        document.documentElement.style.setProperty('--user-brand-color', profile.brand_color);
       }
+      applySeo(profile);
       renderHero();
+      renderTopbar();
       loadTab('games');
+    }
+
+    function renderTopbar(){
+      document.getElementById('topbar-name').textContent = profile.display_name || brandId;
+      if(profile.logo_url){
+        const im = document.getElementById('topbar-logo');
+        im.src = profile.logo_url;
+        im.onload = () => im.style.display = 'block';
+      }
     }
 
     function renderHero(){
@@ -193,15 +499,16 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
         ${profile.hero_image_url ? `<img class="bg" src="${escapeHtml(profile.hero_image_url)}" alt="">` : ''}
         ${followBtn}
         <div class="hero-overlay">
-          ${profile.logo_url ? `<img class="logo" src="${escapeHtml(profile.logo_url)}" alt="">` : ''}
-          <h1>${escapeHtml(profile.display_name)}</h1>
-          ${profile.bio ? `<p>${escapeHtml(profile.bio)}</p>` : ''}
-          <div class="hero-meta">
+          ${profile.logo_url ? `<img class="logo reveal" src="${escapeHtml(profile.logo_url)}" alt="${escapeHtml(profile.display_name||'')}">` : ''}
+          <h1 class="reveal">${escapeHtml(profile.display_name||brandId)}</h1>
+          ${profile.bio ? `<p class="bio reveal">${escapeHtml(profile.bio)}</p>` : ''}
+          <div class="hero-meta reveal">
             <span><b>${profile.follower_count||0}</b> 粉丝</span>
             <span><b>${(profile.avg_rating||0).toFixed(1)}</b> ★ (${profile.rating_count||0})</span>
-            ${profile.country?`<span>${escapeHtml(profile.country)}</span>`:''}
+            ${profile.country?`<span>📍 ${escapeHtml(profile.country)}</span>`:''}
           </div>
         </div>`;
+      applyReveal(document.getElementById('hero'));
     }
 
     function isFollowing(){
@@ -242,49 +549,78 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
         const data = await fetch(`/api/v1/storefront/${brandId}/${tab}`).then(r=>r.json());
         if(tab==='reviews'){ renderReviews(data); return; }
         const items = data.games || data.vouchers || data.stores || [];
-        if(!items.length){ c.innerHTML='<div class="empty">暂无内容</div>'; return; }
-        c.innerHTML = items.map(item => renderItem(tab, item)).join('');
+        if(!items.length){
+          const emojis = {games:'🎮',vouchers:'🎟️',stores:'🏬'};
+          c.innerHTML = `<div class="empty"><span class="emoji">${emojis[tab]||'📭'}</span>暂无内容</div>`;
+          return;
+        }
+        const gridClass = (tab==='games' || tab==='vouchers') ? 'grid-2' : '';
+        c.innerHTML = `<div class="${gridClass}">${items.map(item => renderItem(tab, item)).join('')}</div>`;
+        applyReveal(c);
       }catch(e){
-        c.innerHTML='<div class="empty">加载失败</div>';
+        c.innerHTML='<div class="empty"><span class="emoji">⚠️</span>加载失败</div>';
       }
     }
 
     function renderItem(tab, item){
       if(tab==='games'){
-        return `<div class="card">
-          <h3>${escapeHtml(item.name||item.game_slug||'-')}${item.featured?'<span class="badge">精选</span>':''}</h3>
-          ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
-          <div class="row">
-            <span class="meta">${escapeHtml(item.game_slug||'')}</span>
-            <button onclick="play('${encodeURIComponent(item.game_slug||item.id)}')">玩</button>
+        const thumb = item.thumbnail_url || item.image_url;
+        return `<div class="card game-card reveal" onclick="play('${encodeURIComponent(item.game_slug||item.id)}')">
+          <div class="thumb">
+            ${thumb ? `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(item.name||'')}">` : '🎮'}
+            <div class="play-overlay"></div>
+          </div>
+          <div class="body">
+            <h3>${escapeHtml(item.name||item.game_slug||'-')}${item.featured?'<span class="badge">精选</span>':''}</h3>
+            ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
+            <div class="row">
+              <span class="meta">${escapeHtml(item.game_slug||'')}</span>
+              <button class="primary" onclick="event.stopPropagation();play('${encodeURIComponent(item.game_slug||item.id)}')">玩</button>
+            </div>
           </div>
         </div>`;
       }
       if(tab==='vouchers'){
         const value = item.value!=null ? `${item.value}${item.currency?' '+item.currency:''}` : '';
-        return `<div class="card">
+        return `<div class="card voucher-card reveal">
           <h3>${escapeHtml(item.title||'-')}${item.featured?'<span class="badge">精选</span>':''}</h3>
           ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
           <div class="row">
-            <span class="meta">${escapeHtml(value)}</span>
-            <button onclick="claim('${escapeHtml(item.id)}')">领取</button>
+            <span class="value">${escapeHtml(value)}</span>
+            <button class="primary" onclick="claim('${escapeHtml(item.id)}')">领取</button>
           </div>
         </div>`;
       }
       if(tab==='stores'){
-        return `<div class="card store-item">
-          <h3>${escapeHtml(item.name||'-')}</h3>
-          ${item.address?`<div class="addr">${escapeHtml(item.address)}</div>`:''}
-          ${item.lat!=null?`<div class="geo">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)} · ${item.radius_meters||0}m</div>`:''}
+        const hours = formatHours(item.hours || item.opening_hours);
+        return `<div class="card reveal">
+          <div class="store-item">
+            <div class="pin">📍</div>
+            <div class="info">
+              <h3>${escapeHtml(item.name||'-')}</h3>
+              ${item.address?`<div class="addr">${escapeHtml(item.address)}</div>`:''}
+              ${item.lat!=null?`<div class="geo">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)} · ${item.radius_meters||0}m</div>`:''}
+              ${hours?`<div class="hours ${hours.openNow?'open':''}">🕐 ${escapeHtml(hours.label)}</div>`:''}
+            </div>
+          </div>
         </div>`;
       }
       return '';
     }
 
+    function formatHours(h){
+      if(!h) return null;
+      if(typeof h === 'string') return {label:h, openNow:false};
+      // best-effort: {open:"09:00", close:"22:00"} or {today:"09:00-22:00"}
+      if(h.today) return {label:h.today, openNow:false};
+      if(h.open && h.close) return {label:`${h.open} – ${h.close}`, openNow:false};
+      return null;
+    }
+
     function renderReviews(data){
       const c = document.getElementById('storefront-content');
       const reviews = data.reviews || [];
-      const summary = `<div class="reviews-summary">
+      const summary = `<div class="reviews-summary reveal">
         <div class="avg">${(data.avg_rating||0).toFixed(1)}</div>
         <div>
           <div class="stars">${stars(data.avg_rating||0)}</div>
@@ -292,15 +628,15 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
         </div>
       </div>`;
       const list = reviews.length
-        ? reviews.map(rv => `<div class="review-item">
+        ? reviews.map(rv => `<div class="review-item reveal">
             <div class="head">
               <span>${escapeHtml(rv.user_id)}</span>
               <span class="stars">${stars(rv.rating)}</span>
             </div>
             ${rv.comment?`<div class="body">${escapeHtml(rv.comment)}</div>`:''}
           </div>`).join('')
-        : '<div class="empty">还没有评价 — 第一个评价吧</div>';
-      const form = `<div class="write-review">
+        : '<div class="empty"><span class="emoji">✍️</span>还没有评价 — 第一个评价吧</div>';
+      const form = `<div class="write-review reveal">
         <h4>写一条评价</h4>
         <div class="rating-pick" id="rating-pick">
           ${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="pickRating(${n})">★</span>`).join('')}
@@ -309,6 +645,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
         <button class="submit" onclick="submitReview()">提交</button>
       </div>`;
       c.innerHTML = summary + list + form;
+      applyReveal(c);
     }
 
     let pickedRating = 0;
@@ -360,6 +697,10 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
         document.querySelectorAll('.storefront-tabs button').forEach(x=>x.classList.remove('active'));
         b.classList.add('active');
         loadTab(b.dataset.tab);
+        // Smooth scroll into content
+        const content = document.getElementById('storefront-content');
+        const top = content.getBoundingClientRect().top + window.scrollY - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h'))||56) - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tab-h'))||50);
+        if(window.scrollY > top) window.scrollTo({top, behavior:'smooth'});
       });
     });
 

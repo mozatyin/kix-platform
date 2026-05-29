@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -323,6 +323,14 @@ KiX = TikTok Ads for Gamification.
         media.router, prefix="/api/v1/media", tags=["media"]
     )
 
+    # ── Moderation: image safety + LLM text scan + human review queue ──
+    from app.routers import moderation
+    app.include_router(
+        moderation.router,
+        prefix="/api/v1/moderation",
+        tags=["moderation"],
+    )
+
     # ── Campaign Manager + Auction Engine (Google-Ads-style) ───────────
     from app.routers import campaigns, auction
     app.include_router(
@@ -490,6 +498,14 @@ KiX = TikTok Ads for Gamification.
         tags=["payment_methods"],
     )
 
+    # ── Stripe Webhook: payment_intent / subscription / invoice / refund ─
+    from app.routers import stripe_webhook
+    app.include_router(
+        stripe_webhook.router,
+        prefix="/api/v1/webhooks/stripe",
+        tags=["stripe_webhook"],
+    )
+
     # ── Merchant Dashboards: today / cumulative / leaderboard / insights ─
     from app.routers import dashboards
     app.include_router(
@@ -526,16 +542,17 @@ KiX = TikTok Ads for Gamification.
     # ── Vanity URL for KiX App (`/app/*` → `/landing/app/*`) ───────────
     # Lets us advertise `partner.letskix.com/app/` as the user-facing
     # front door while keeping the static bundle under /landing/app/.
-    from fastapi import Request as _Request
-
-    @app.get("/app")
-    @app.get("/app/")
-    async def kix_app_root(request: _Request):
+    # NOTE: include_in_schema=False — `Request` forward-refs break OpenAPI
+    # generation under `from __future__ import annotations`. These routes
+    # are static-asset redirects and have no business being in the schema.
+    @app.get("/app", include_in_schema=False)
+    @app.get("/app/", include_in_schema=False)
+    async def kix_app_root(request: Request):
         qs = ("?" + request.url.query) if request.url.query else ""
         return RedirectResponse(url=f"/landing/app/index.html{qs}")
 
-    @app.get("/app/{path:path}")
-    async def kix_app_passthrough(path: str, request: _Request):
+    @app.get("/app/{path:path}", include_in_schema=False)
+    async def kix_app_passthrough(path: str, request: Request):
         qs = ("?" + request.url.query) if request.url.query else ""
         target = (
             f"/landing/app/{path}" if path else "/landing/app/index.html"

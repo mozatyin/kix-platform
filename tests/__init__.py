@@ -1,0 +1,1 @@
+"""KiX Platform test package."""

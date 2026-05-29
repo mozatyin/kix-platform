@@ -249,6 +249,17 @@ class QRScanBindRequest(BaseModel):
     device_fingerprint: str = Field(..., min_length=4, max_length=128)
 
 
+class PushDeviceRegisterRequest(BaseModel):
+    platform: Literal["ios", "android", "wechat", "web"]
+    token: str = Field(..., min_length=4, max_length=4096)
+    device_id: str | None = Field(None, max_length=128)
+
+
+class PushDeviceRegisterResponse(BaseModel):
+    device_id: str
+    status: str
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
@@ -1473,3 +1484,117 @@ async def qr_scan_bind(
         "is_new_kid": is_new_kid,
         "is_new_to_brand": is_new_to_brand,
     }
+
+
+# ── Endpoints: push device registration ─────────────────────────────────
+#
+# Production push delivery requires the kid → device-token mapping. The
+# KiX App (or any merchant SDK with the right scope) calls these
+# endpoints whenever:
+#
+#   * the user installs / reopens the app and FCM/APNS returns a token,
+#   * the user grants browser-notification permission and the Web Push
+#     subscription endpoint becomes available,
+#   * the user binds a WeChat openid via the official account flow,
+#   * the user uninstalls or rotates their token (→ unregister).
+#
+# The actual delivery worker (``app.workers.push_worker``) consumes
+# ``push:outbound:queue`` and reads ``kid:{kid}:push_devices`` /
+# ``push_device:{device_id}`` to route each push to the right gateway.
+
+
+@router.post(
+    "/{kid}/push-device/register",
+    response_model=PushDeviceRegisterResponse,
+)
+async def push_device_register(
+    kid: str,
+    body: PushDeviceRegisterRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> PushDeviceRegisterResponse:
+    """Register a push token for a kid.
+
+    * ``platform`` — one of ``ios`` / ``android`` / ``wechat`` / ``web``.
+    * ``token``    — APNS device token, FCM registration token, WeChat
+      openid, or Web Push subscription endpoint (caller serialises Web
+      Push subscriptions to JSON before passing).
+    * ``device_id`` (optional) — supply to upsert in place after a token
+      rotation on the same physical device; otherwise a fresh id is
+      minted from the token hash.
+
+    Returns ``{device_id, status}``. The worker can immediately route
+    pushes to this device on the next dispatch cycle.
+    """
+    profile = await _load_kid(r, kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+    if profile.get("status") == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE, detail="kid is deleted"
+        )
+
+    # Lazy import — the worker pulls in app.redis_client at module load,
+    # and we already have an active connection; we only need the helper.
+    from app.workers.push_worker import device_register
+
+    try:
+        device_id = await device_register(
+            r,
+            kid=kid,
+            platform=body.platform,
+            token=body.token,
+            device_id=body.device_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+    await _identity_audit(
+        r,
+        kid,
+        "push_device_register",
+        {"platform": body.platform, "device_id": device_id},
+    )
+    return PushDeviceRegisterResponse(device_id=device_id, status="registered")
+
+
+@router.delete("/{kid}/push-device/{device_id}")
+async def push_device_unregister(
+    kid: str,
+    device_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Unregister a push device.
+
+    Typical triggers:
+
+    * user disables notifications in the OS,
+    * user uninstalls the KiX App (server-side detected via FCM/APNS
+      ``Unregistered`` feedback),
+    * user signs out / switches accounts on the device.
+    """
+    profile = await _load_kid(r, kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+
+    from app.workers.push_worker import device_unregister
+
+    removed = await device_unregister(r, kid=kid, device_id=device_id)
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="device_id not found for this kid",
+        )
+
+    await _identity_audit(
+        r,
+        kid,
+        "push_device_unregister",
+        {"device_id": device_id},
+    )
+    return {"kid": kid, "device_id": device_id, "status": "unregistered"}

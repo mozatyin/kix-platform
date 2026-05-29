@@ -386,6 +386,66 @@ async def request_creative(
         # Module not available or unknown resource — fail-open.
         pass
 
+    # ── Content moderation gate ─────────────────────────────────────────
+    # Scan the brand_description + name before we spend an ELTM build on
+    # disallowed content. Block on hard violations; route review-bound
+    # text into the moderation queue and let the merchant know it's
+    # pending human review.
+    try:
+        from app.routers.moderation import moderate_text_internal
+        mod_text = f"{body.name}\n\n{body.spec.brand_description}"
+        scan = await moderate_text_internal(
+            mod_text,
+            context="ad_creative",
+            r=r,
+            brand_id=body.brand_id,
+        )
+    except HTTPException:
+        raise
+    except Exception as _mexc:  # noqa: BLE001
+        # Moderation module unavailable — fail-open with a log so we
+        # don't block legitimate builds when the side-router is down.
+        logger.warning("moderation gate skipped: %s", _mexc)
+        scan = None
+
+    if scan and scan.get("verdict") == "block":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "content_blocked",
+                "reason": scan.get("reason"),
+                "categories": scan.get("categories"),
+                "suggested_action": scan.get("suggested_action"),
+            },
+        )
+    if scan and scan.get("verdict") == "review":
+        # Enqueue for human review and refuse the build until reviewed.
+        try:
+            from app.routers.moderation import (
+                QueueAddRequest as _QAR,
+                queue_add as _queue_add,
+            )
+            qres = await _queue_add(_QAR(
+                content=f"{body.name}\n\n{body.spec.brand_description}",
+                content_type="text",
+                context="ad_creative",
+                brand_id=body.brand_id,
+                user_id=None,
+                scan_result=scan,
+            ), r=r)
+            review_id = getattr(qres, "review_id", None)
+        except Exception as _qexc:  # noqa: BLE001
+            logger.warning("moderation queue_add failed: %s", _qexc)
+            review_id = None
+        raise HTTPException(
+            status_code=202,
+            detail={
+                "status": "pending_review",
+                "review_id": review_id,
+                "reason": scan.get("reason"),
+            },
+        )
+
     creative_id = f"crv_{uuid.uuid4().hex[:12]}"
     job_id = f"job_{uuid.uuid4().hex[:8]}"
 
