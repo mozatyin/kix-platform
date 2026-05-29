@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Common ────────────────────────────────────────────────────────────────
@@ -113,14 +113,78 @@ class StreakCheckResponse(BaseModel):
 
 # ── Brands ────────────────────────────────────────────────────────────────
 class BrandConfigCreate(BaseModel):
-    brand_id: str
-    brand_name: str
-    brand_slug: str
-    config_json: dict
+    """Payload for creating a brand configuration.
+
+    ``config_json`` MUST contain the following top-level sections:
+
+    * ``energy``      — energy economy config (regen rate, max, refill costs).
+                        See ``BrandConfigEnergySection`` for the canonical
+                        shape; the brand_register flow auto-fills sane
+                        defaults when missing rather than 422-ing.
+    * ``games``       — game catalog binding (which titles this brand
+                        exposes + per-game multipliers).
+    * ``leaderboard`` — leaderboard scope/window/visibility settings.
+
+    For a complete valid minimal payload call
+    ``GET /api/v1/brands/config-template``. For the JSON schema describing
+    these sections, call ``GET /api/v1/brands/{brand_id}/config-schema``.
+
+    The legacy "send any dict" behaviour is preserved on the wire — the
+    field is still ``dict`` — but the router auto-fills missing sections
+    (energy/games/leaderboard) with documented defaults before persisting.
+    """
+
+    brand_id: str = Field(
+        ...,
+        description="Stable merchant identifier. Lowercase letters / digits / "
+        "underscores. Used as the partition key in Redis and PG.",
+        examples=["acme_coffee"],
+    )
+    brand_name: str = Field(
+        ...,
+        description="Human-readable brand name shown in dashboards and the "
+        "consumer Portal.",
+        examples=["Acme Coffee"],
+    )
+    brand_slug: str = Field(
+        ...,
+        description="URL-safe slug for the public Storefront. Must be unique "
+        "platform-wide.",
+        examples=["acme-coffee"],
+    )
+    config_json: dict = Field(
+        ...,
+        description=(
+            "Brand-scoped config payload. Required top-level sections: "
+            "`energy`, `games`, `leaderboard`. Missing sections are auto-"
+            "filled with documented defaults; explicit invalid sections "
+            "(wrong types) still 422. Call "
+            "`GET /api/v1/brands/config-template` for a complete example."
+        ),
+        examples=[
+            {
+                "energy": {
+                    "max": 5,
+                    "regen_minutes": 30,
+                    "refill_cost_cents": 100,
+                },
+                "games": {"catalog": ["spin_wheel", "scratch_card"]},
+                "leaderboard": {
+                    "scope": "brand",
+                    "window": "weekly",
+                    "visibility": "public",
+                },
+            }
+        ],
+    )
 
 
 class BrandConfigUpdate(BaseModel):
-    config_json: dict
+    config_json: dict = Field(
+        ...,
+        description="Full config_json replacement. Same shape contract as "
+        "BrandConfigCreate.config_json.",
+    )
 
 
 class BrandConfigResponse(BaseModel):

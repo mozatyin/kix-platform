@@ -37,15 +37,146 @@ _REQUIRED_CONFIG_SECTIONS = {"energy", "games", "leaderboard"}
 _REDIS_CONFIG_PREFIX = "config:"
 _REDIS_INVALIDATION_CHANNEL = "config_invalidation"
 
+# Documented defaults — used by the auto-fill path and the
+# /config-template endpoint. Tuned to be safely conservative (low energy
+# cap, weekly leaderboard, an empty game catalog so the brand can ship
+# day-one without unintentionally exposing games).
+_DEFAULT_ENERGY_SECTION = {
+    "max": 5,
+    "regen_minutes": 30,
+    "refill_cost_cents": 100,
+}
+_DEFAULT_GAMES_SECTION = {
+    "catalog": [],          # list of game slugs the brand has enabled
+    "multipliers": {},      # per-game score multiplier overrides
+}
+_DEFAULT_LEADERBOARD_SECTION = {
+    "scope": "brand",       # brand | global | master_account
+    "window": "weekly",     # daily | weekly | monthly | all_time
+    "visibility": "public", # public | brand_internal | private
+}
+
+_DEFAULT_SECTIONS: dict[str, dict] = {
+    "energy": _DEFAULT_ENERGY_SECTION,
+    "games": _DEFAULT_GAMES_SECTION,
+    "leaderboard": _DEFAULT_LEADERBOARD_SECTION,
+}
+
+
+def _autofill_config_sections(config_json: dict) -> dict:
+    """Ensure required top-level sections exist by inserting defaults.
+
+    Caller passes through whatever it had. We only insert missing
+    sections — explicit but malformed sections (wrong types) are still
+    rejected by ``_validate_config_json`` for safety.
+    """
+    if not isinstance(config_json, dict):
+        return config_json
+    out = dict(config_json)
+    for section, default in _DEFAULT_SECTIONS.items():
+        if section not in out:
+            out[section] = dict(default)
+    return out
+
 
 def _validate_config_json(config_json: dict) -> None:
-    """Ensure config_json contains all required top-level sections."""
+    """Ensure config_json contains all required top-level sections.
+
+    Pure validation — does NOT mutate. Pair with
+    ``_autofill_config_sections`` upstream so callers that pass a minimal
+    payload get auto-filled defaults instead of a 422 (sim-log feedback:
+    minimal `{"brand_id":"x","name":"y"}` payloads kept hitting 422
+    despite all sections being documented as required).
+    """
     missing = _REQUIRED_CONFIG_SECTIONS - set(config_json.keys())
     if missing:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"config_json missing required sections: {sorted(missing)}",
         )
+
+
+def _build_config_template() -> dict:
+    """Return a complete, valid minimal config_json payload for callers.
+
+    The shape is the same as what ``_autofill_config_sections`` produces
+    against an empty dict, so a brand that POSTs this back unchanged is
+    guaranteed not to hit a 422.
+    """
+    return {section: dict(default) for section, default in _DEFAULT_SECTIONS.items()}
+
+
+def _build_config_schema() -> dict:
+    """Return a JSON-schema-ish dict describing the config_json contract.
+
+    Not a fully JSON-Schema-draft-2020 document — we intentionally keep
+    this human-readable and field-descriptive so portal devs can read it
+    inline. Standardising on full JSON Schema can come later behind a
+    versioned ``/v2/`` endpoint if a tool actually needs it.
+    """
+    return {
+        "type": "object",
+        "required": sorted(_REQUIRED_CONFIG_SECTIONS),
+        "properties": {
+            "energy": {
+                "type": "object",
+                "description": "Energy economy config",
+                "properties": {
+                    "max": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum energy units a user may hold.",
+                    },
+                    "regen_minutes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Minutes to regenerate 1 energy.",
+                    },
+                    "refill_cost_cents": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Cost in cents to instantly refill.",
+                    },
+                },
+                "example": _DEFAULT_ENERGY_SECTION,
+            },
+            "games": {
+                "type": "object",
+                "description": "Game catalog binding for this brand",
+                "properties": {
+                    "catalog": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of enabled game slugs.",
+                    },
+                    "multipliers": {
+                        "type": "object",
+                        "description": "Per-game score multiplier overrides.",
+                    },
+                },
+                "example": _DEFAULT_GAMES_SECTION,
+            },
+            "leaderboard": {
+                "type": "object",
+                "description": "Leaderboard scope + window + visibility",
+                "properties": {
+                    "scope": {
+                        "type": "string",
+                        "enum": ["brand", "global", "master_account"],
+                    },
+                    "window": {
+                        "type": "string",
+                        "enum": ["daily", "weekly", "monthly", "all_time"],
+                    },
+                    "visibility": {
+                        "type": "string",
+                        "enum": ["public", "brand_internal", "private"],
+                    },
+                },
+                "example": _DEFAULT_LEADERBOARD_SECTION,
+            },
+        },
+    }
 
 
 def _brand_to_response(brand: BrandConfig) -> BrandConfigResponse:
@@ -85,6 +216,48 @@ async def _propagate_config(
 # ── Brand Config Endpoints ───────────────────────────────────────────────
 
 
+# Discovery endpoints must be declared BEFORE the catch-all /{brand_id}
+# routes so FastAPI doesn't treat ``config-template`` as a brand id.
+@router.get(
+    "/config-template",
+    summary="Get a complete valid minimal config_json payload",
+)
+async def get_config_template() -> dict:
+    """Return the canonical minimal config_json payload.
+
+    Sim feedback (sg-marketplace 30-day): merchants kept getting 422s on
+    `{"brand_id":"x","name":"y"}` because the required `config_json`
+    sections (energy/games/leaderboard) were undocumented in the OpenAPI
+    surface. This endpoint hands back a complete valid payload they can
+    copy verbatim into their bootstrap script.
+    """
+    return {
+        "brand_id": "example_brand",
+        "brand_name": "Example Brand",
+        "brand_slug": "example-brand",
+        "config_json": _build_config_template(),
+    }
+
+
+@router.get(
+    "/{brand_id}/config-schema",
+    summary="Get the JSON schema for this brand's config_json",
+)
+async def get_config_schema(brand_id: str) -> dict:
+    """Return a human-readable schema describing the config_json contract.
+
+    Same schema for every brand today — kept under ``/{brand_id}/`` so we
+    can specialise per-tier later (e.g. enterprise brands get extra
+    sections like ``loyalty_tiers``) without breaking the URL contract.
+    """
+    return {
+        "brand_id": brand_id,
+        "schema": _build_config_schema(),
+        "required_sections": sorted(_REQUIRED_CONFIG_SECTIONS),
+        "autofill_defaults": _build_config_template(),
+    }
+
+
 @router.post(
     "/",
     response_model=BrandConfigResponse,
@@ -95,8 +268,15 @@ async def create_brand_config(
     db: AsyncSession = Depends(get_db),
     r: aioredis.Redis = Depends(get_redis),
 ) -> BrandConfigResponse:
-    """Create a new brand configuration."""
-    _validate_config_json(body.config_json)
+    """Create a new brand configuration.
+
+    Missing top-level sections in ``config_json`` are auto-filled with
+    documented defaults (energy / games / leaderboard) so brand_register
+    bootstraps don't 422 on minimal payloads. Explicit invalid sections
+    (wrong types) still fail validation downstream.
+    """
+    config_json = _autofill_config_sections(body.config_json or {})
+    _validate_config_json(config_json)
 
     # Check for duplicate brand_id
     existing = await db.get(BrandConfig, body.brand_id)
@@ -110,7 +290,7 @@ async def create_brand_config(
         brand_id=body.brand_id,
         brand_name=body.brand_name,
         brand_slug=body.brand_slug,
-        config_json=body.config_json,
+        config_json=config_json,
     )
     db.add(brand)
     await db.flush()
@@ -165,8 +345,14 @@ async def update_brand_config(
     db: AsyncSession = Depends(get_db),
     r: aioredis.Redis = Depends(get_redis),
 ) -> BrandConfigResponse:
-    """Update brand configuration JSON."""
-    _validate_config_json(body.config_json)
+    """Update brand configuration JSON.
+
+    Mirrors create_brand_config: missing top-level sections are auto-
+    filled from documented defaults so a PUT with a partial payload is
+    not destructive in unexpected ways.
+    """
+    config_json = _autofill_config_sections(body.config_json or {})
+    _validate_config_json(config_json)
 
     brand = await db.get(BrandConfig, brand_id)
     if brand is None:
@@ -179,13 +365,13 @@ async def update_brand_config(
     await db.execute(
         update(BrandConfig)
         .where(BrandConfig.brand_id == brand_id)
-        .values(config_json=body.config_json, updated_at=now)
+        .values(config_json=config_json, updated_at=now)
     )
     await db.flush()
     await db.refresh(brand)
 
     # Propagate: PG → Redis SET → Redis PUBLISH
-    await _propagate_config(r, brand_id, body.config_json)
+    await _propagate_config(r, brand_id, config_json)
 
     return _brand_to_response(brand)
 
