@@ -128,6 +128,29 @@ async def issue_token(
     # 9. Update last_seen_at
     user.last_seen_at = now
 
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # Fire-and-forget — never breaks the token-issuance path.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=str(user_id),
+            actor_type="customer",
+            action="auth.login",
+            target_type="user",
+            target_id=str(user_id),
+            brand_id=body.brand_id,
+            result="success",
+            payload={
+                "is_new_user": bool(is_new),
+                "is_day1": bool(is_day1),
+                "device_sig": body.device_sig,
+            },
+        )
+    except Exception as exc:
+        logger.warning("audit_log (auth.login) skipped: %s", exc)
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -204,6 +227,26 @@ async def refresh_token(
     balance_key = f"energy:balance:{brand_id}:{user_id}"
     raw_balance = await r.get(balance_key)
     energy_balance = int(raw_balance) if raw_balance is not None else 0
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # Token refresh = continuation of an authenticated session. Useful
+    # forensically when a refresh token is exfiltrated and re-used.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=user_id,
+            actor_type="customer",
+            action="auth.token_refresh",
+            target_type="user",
+            target_id=user_id,
+            brand_id=brand_id,
+            result="success",
+            payload={"device_sig": body.device_sig, "is_day1": bool(is_day1)},
+        )
+    except Exception as exc:
+        logger.warning("audit_log (auth.token_refresh) skipped: %s", exc)
 
     return TokenResponse(
         access_token=access_token,
