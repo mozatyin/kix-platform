@@ -1,200 +1,285 @@
-### KiX Platform — Vietnamese (Vietnam) catalog
-### Source-of-truth locale for SG bilingual launch (Wave 2).
-### See /Users/mozat/a-docs/i18n-trinity-strategy.md for strategy.
+### KiX Platform — Vietnamese catalog
+
+### Auto-translated via OpenRouter (DeepSeek) 2026-05-31
+
+### Source: app/i18n/catalogs/en-SG/main.ftl
+
 ###
-### Naming convention: <router>-<semantic-action>
-### ICU MessageFormat for plurals/select; otherwise plain text.
 
+welcome-message = Chào mừng { $name }!
+    .description = Bạn có { $count ->
+        [one] 1 tin nhắn
+        *[other] { $count } tin nhắn
+    }
 
-## ─────────────────────────────────────────────────────────────────────────
-## Smoke-test message (from Wave 1)
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-module-progression = Tiến trình
 
-welcome-message = Welcome { $name }!
-    .description =
-        You have { $count ->
-            [one] 1 message
-           *[other] { $count } messages
-        }
+tutorials-module-currency = Tiền tệ
 
-## ─────────────────────────────────────────────────────────────────────────
-## tutorials.py — module display names (MODULE_META)
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-module-item = Vật phẩm
 
-tutorials-module-progression = Progression
-tutorials-module-currency = Currency
-tutorials-module-item = Item
-tutorials-module-achievement = Achievement
-tutorials-module-quest = Quest
-tutorials-module-tier = Tier
-tutorials-module-event = Event
-tutorials-module-roulette = Reward Roulette
-tutorials-module-league = League
+tutorials-module-achievement = Thành tựu
+
+tutorials-module-quest = Nhiệm vụ
+
+tutorials-module-tier = Cấp độ
+
+tutorials-module-event = Sự kiện
+
+tutorials-module-roulette = Vòng quay phần thưởng
+
+tutorials-module-league = Giải đấu
+
 tutorials-module-pass = Battle Pass
-tutorials-module-smartquests = Smart Quests
-tutorials-module-storyquest = Story Quest
-tutorials-module-lives = Lives
-tutorials-module-tourney = Tournament
-tutorials-module-collection = Collection
-tutorials-module-badgewall = Badge Wall
-tutorials-module-streak = Streak
-tutorials-module-voucher_builder = Voucher Builder
+
+tutorials-module-smartquests = Nhiệm vụ thông minh
+
+tutorials-module-storyquest = Nhiệm vụ cốt truyện
+
+tutorials-module-lives = Mạng sống
+
+tutorials-module-tourney = Giải đấu
+
+tutorials-module-collection = Bộ sưu tập
+
+tutorials-module-badgewall = Tường huy hiệu
+
+tutorials-module-streak = Chuỗi
+
+tutorials-module-voucher_builder = Công cụ tạo voucher
+
 tutorials-module-voucher = Voucher
-tutorials-module-social_graph = Social Graph
-tutorials-module-social_feed = Social Feed
-tutorials-module-auto_share = Auto Share
-tutorials-module-share_to_win = Share to Win
-tutorials-module-energy_invite = Energy Invite
-tutorials-module-friend_challenge = Friend Challenge
-tutorials-module-ladder_climb = Ladder Climb
-tutorials-module-streak_rescue = Streak Rescue
-tutorials-module-leaderboard = Leaderboard
-tutorials-module-network_effect = Network Effect
-tutorials-module-score_to_coupon = Score → Coupon
-tutorials-module-energy = Energy
-tutorials-module-upsell = Upsell
-tutorials-module-redemption_store = Redemption Store
-tutorials-module-rate_limit = Rate Limit
-tutorials-module-group_actions = Group Actions
-tutorials-module-groupbuy = Group Buy
-tutorials-module-atomic_group = Atomic Group
-tutorials-module-pricecut = Price Cut
-tutorials-module-coop_quest = Coop Quest
+
+tutorials-module-social_graph = Đồ thị Xã hội
+
+tutorials-module-social_feed = Bảng tin Xã hội
+
+tutorials-module-auto_share = Tự động Chia sẻ
+
+tutorials-module-share_to_win = Chia sẻ để Thắng
+
+tutorials-module-energy_invite = Mời Nạp Năng lượng
+
+tutorials-module-friend_challenge = Thử thách Bạn bè
+
+tutorials-module-ladder_climb = Leo Thang
+
+tutorials-module-streak_rescue = Cứu Chuỗi
+
+tutorials-module-leaderboard = Bảng Xếp hạng
+
+tutorials-module-network_effect = Hiệu ứng Mạng lưới
+
+tutorials-module-score_to_coupon = Điểm → Phiếu giảm giá
+
+tutorials-module-energy = Năng lượng
+
+tutorials-module-upsell = Bán thêm
+
+tutorials-module-redemption_store = Cửa hàng Đổi thưởng
+
+tutorials-module-rate_limit = Giới hạn Tốc độ
+
+tutorials-module-group_actions = Hành động Nhóm
+
+tutorials-module-groupbuy = Mua theo Nhóm
+
+tutorials-module-atomic_group = Nhóm Nguyên tử
+
+tutorials-module-pricecut = Giảm Giá
+
+tutorials-module-coop_quest = Nhiệm vụ Hợp tác
+
 tutorials-module-raid = Raid
+
 tutorials-module-squad = Squad
+
 tutorials-module-territory = Territory
-tutorials-module-gift_sending = Gift Sending
-tutorials-module-trading_post = Trading Post
-tutorials-module-group_reward = Group Reward
-tutorials-module-fcfs = First-Come First-Served
-tutorials-module-limited_drop = Limited Drop
-tutorials-module-triggers = Triggers
 
-## tutorials.py — step instruction templates
+tutorials-module-gift_sending = Gửi quà tặng
 
-tutorials-step-intro =
-    We'll walk you through setting up "{ $recipe_name }". { $module_count ->
+tutorials-module-trading_post = Trạm giao dịch
+
+tutorials-module-group_reward = Phần thưởng nhóm
+
+tutorials-module-fcfs = Ưu tiên ai đến trước
+
+tutorials-module-limited_drop = Phát hành giới hạn
+
+tutorials-module-triggers = Kích hoạt
+
+tutorials-step-intro = Chúng tôi sẽ hướng dẫn bạn thiết lập "{ $recipe_name }". { $module_count ->
         [one] 1 module
-       *[other] { $module_count } modules
-    } and { $rule_count ->
-        [one] 1 rule
-       *[other] { $rule_count } rules
+        *[other] { $module_count } modules
+    } và { $rule_count ->
+        [one] 1 quy tắc
+        *[other] { $rule_count } quy tắc
     }.
-tutorials-step-navigate-engagement = Click Engagement in the sidebar to open the module marketplace
-tutorials-step-navigate-vouchers = Open Vouchers in the sidebar to configure voucher templates
-tutorials-step-navigate-rules = Open Rules in the sidebar to configure event rules
-tutorials-step-enable-module = Enable the { $module_name } module
-tutorials-step-configure-module = Configure { $module_name }: { $params_summary }
-tutorials-step-create-voucher-template = Create voucher template: { $template_summary }
-tutorials-step-create-rule = Create rule: when { $trigger_event } → { $actions_summary }
-tutorials-step-test-action = Let's simulate "{ $event_name }" to test the rules
-tutorials-step-celebrate = Done! Your "{ $recipe_name }" setup is live.
 
-## ─────────────────────────────────────────────────────────────────────────
-## conditions.py — FIX_HINTS for eligibility blockers
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-step-navigate-engagement = Nhấp vào Engagement trong thanh bên để mở marketplace module
 
-conditions-blocker-supply_exhausted = This campaign's supply has been fully claimed.
-conditions-blocker-budget_exhausted = This campaign's budget has been fully spent.
-conditions-blocker-tier_required = A higher tier is required for this campaign.
-conditions-blocker-first_time_only = This campaign is for first-time participants only.
-conditions-blocker-user_segment_excluded = You are not in an eligible user segment.
-conditions-blocker-user_segment_not_included = You are not in an eligible user segment.
-conditions-blocker-min_account_age_days = Your account is too new to participate yet.
-conditions-blocker-user_attribute_filter = Your account does not match the required attributes.
-conditions-blocker-frequency_per_user_per_day = You have hit today's limit. Try again tomorrow.
-conditions-blocker-frequency_per_user_per_week = You have hit this week's limit.
-conditions-blocker-frequency_per_user_per_month = You have hit this month's limit.
-conditions-blocker-frequency_per_user_total = You have reached the total limit for this campaign.
-conditions-blocker-frequency_global_per_day = Today's global limit has been reached.
-conditions-blocker-time_not_yet_started = The campaign has not started yet.
-conditions-blocker-time_already_ended = The campaign has ended.
-conditions-blocker-time_invalid_day_of_week = The campaign is not open today.
-conditions-blocker-time_invalid_hour = The campaign is not open at this hour.
-conditions-blocker-action_prerequisites_unmet = Prerequisite actions have not been completed.
-conditions-blocker-campaign_not_found = Campaign not found.
-conditions-blocker-reservation_not_found = Reservation not found or expired.
-conditions-blocker-reservation_already_committed = Reservation has already been committed.
-conditions-blocker-reservation_already_refunded = Reservation has already been refunded.
-conditions-blocker-reservation_expired = Reservation has expired; please retry.
-conditions-blocker-commit_contention = High contention on commit; please retry.
+tutorials-step-navigate-vouchers = Mở Vouchers trong thanh bên để cấu hình mẫu voucher
 
-## ─────────────────────────────────────────────────────────────────────────
-## welcome_kit.py — printable collateral items
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-step-navigate-rules = Mở Rules trong thanh bên để cấu hình quy tắc sự kiện
 
-welcome_kit-item-table_stand-title = Table Stand (A5, double-sided)
-welcome_kit-item-table_stand-desc = A5 desktop standee with QR call-to-action on both faces.
-welcome_kit-item-counter_standing-title = Counter Standee (A4)
-welcome_kit-item-counter_standing-desc = A4 upright display for the counter or reception area.
-welcome_kit-item-door_sticker-title = Door Sticker (150mm round)
-welcome_kit-item-door_sticker-desc = Static-cling door / window decal inviting passers-by to scan.
-welcome_kit-item-social_poster-title = Social Poster (1080×1080)
-welcome_kit-item-social_poster-desc = Square poster ready for Instagram, Facebook, TikTok.
-welcome_kit-item-handover_kit-title = Full Handover Pack
-welcome_kit-item-handover_kit-desc = All assets above bundled into a single HTML index.
-welcome_kit-default-tagline = Scan to play. Win rewards.
+tutorials-step-enable-module = Kích hoạt module { $module_name }
 
-## ─────────────────────────────────────────────────────────────────────────
-## recipe_generator.py — generator output labels
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-step-configure-module = Cấu hình { $module_name }: { $params_summary }
 
-recipe_generator-match-found = Matched recipe '{ $recipe_name }' from the library.
-recipe_generator-match-score = Match score { $score }; reasons: { $reasons }.
-recipe_generator-summary-untitled = Untitled
-recipe_generator-summary-empty-modules = none
-recipe_generator-summary-recipe-includes =
-    Recipe '{ $recipe_name }' includes { $module_count ->
+tutorials-step-create-voucher-template = Tạo mẫu voucher: { $template_summary }
+
+tutorials-step-create-rule = Tạo quy tắc: khi { $trigger_event } → { $actions_summary }
+
+tutorials-step-test-action = Hãy mô phỏng "{ $event_name }" để kiểm tra quy tắc
+
+tutorials-step-celebrate = Hoàn tất! Thiết lập "{ $recipe_name }" của bạn đã sẵn sàng.
+
+conditions-blocker-supply_exhausted = Nguồn cung của chiến dịch này đã được nhận hết.
+
+conditions-blocker-budget_exhausted = Ngân sách của chiến dịch này đã được sử dụng hết.
+
+conditions-blocker-tier_required = Yêu cầu cấp độ cao hơn để tham gia chiến dịch này.
+
+conditions-blocker-first_time_only = Chiến dịch này chỉ dành cho người tham gia lần đầu.
+
+conditions-blocker-user_segment_excluded = Bạn không thuộc phân khúc người dùng đủ điều kiện.
+
+conditions-blocker-user_segment_not_included = Bạn không thuộc phân khúc người dùng đủ điều kiện.
+
+conditions-blocker-min_account_age_days = Tài khoản của bạn còn quá mới để tham gia.
+
+conditions-blocker-user_attribute_filter = Tài khoản của bạn không đáp ứng các thuộc tính bắt buộc.
+
+conditions-blocker-frequency_per_user_per_day = Bạn đã đạt giới hạn hôm nay. Vui lòng thử lại vào ngày mai.
+
+conditions-blocker-frequency_per_user_per_week = Bạn đã đạt giới hạn tuần này.
+
+conditions-blocker-frequency_per_user_per_month = Bạn đã đạt giới hạn tháng này.
+
+conditions-blocker-frequency_per_user_total = Bạn đã đạt giới hạn tổng cho chiến dịch này.
+
+conditions-blocker-frequency_global_per_day = Đã đạt giới hạn toàn cầu hôm nay.
+
+conditions-blocker-time_not_yet_started = Chiến dịch chưa bắt đầu.
+
+conditions-blocker-time_already_ended = Chiến dịch đã kết thúc.
+
+conditions-blocker-time_invalid_day_of_week = Chiến dịch không mở vào ngày hôm nay.
+
+conditions-blocker-time_invalid_hour = Chiến dịch không mở vào giờ này.
+
+conditions-blocker-action_prerequisites_unmet = Chưa hoàn thành các hành động điều kiện tiên quyết.
+
+conditions-blocker-campaign_not_found = Không tìm thấy chiến dịch.
+
+conditions-blocker-reservation_not_found = Không tìm thấy hoặc đã hết hạn đặt chỗ.
+
+conditions-blocker-reservation_already_committed = Đặt chỗ đã được xác nhận.
+
+conditions-blocker-reservation_already_refunded = Đặt chỗ đã được hoàn tiền.
+
+conditions-blocker-reservation_expired = Đặt chỗ đã hết hạn; vui lòng thử lại.
+
+conditions-blocker-commit_contention = Xung đột cao khi commit; vui lòng thử lại.
+
+welcome_kit-item-table_stand-title = Giá để bàn (A5, hai mặt)
+
+welcome_kit-item-table_stand-desc = Giá để bàn A5 với mã QR kêu gọi hành động trên cả hai mặt.
+
+welcome_kit-item-counter_standing-title = Giá đứng quầy (A4)
+
+welcome_kit-item-counter_standing-desc = Màn hình đứng A4 dành cho quầy hoặc khu vực tiếp tân.
+
+welcome_kit-item-door_sticker-title = Dán cửa (150mm tròn)
+
+welcome_kit-item-door_sticker-desc = Decal dính tĩnh điện trên cửa / cửa sổ mời gọi người qua đường quét mã.
+
+welcome_kit-item-social_poster-title = Poster mạng xã hội (1080×1080)
+
+welcome_kit-item-social_poster-desc = Poster vuông sẵn sàng cho Instagram, Facebook, TikTok.
+
+welcome_kit-item-handover_kit-title = Bộ chuyển giao đầy đủ
+
+welcome_kit-item-handover_kit-desc = Tất cả các tài liệu trên được gói gọn trong một chỉ mục HTML duy nhất.
+
+welcome_kit-default-tagline = Quét để chơi. Nhận phần thưởng.
+
+recipe_generator-match-found = Đã tìm thấy công thức '{ $recipe_name }' từ thư viện.
+
+recipe_generator-match-score = Điểm khớp { $score }; lý do: { $reasons }.
+
+recipe_generator-summary-untitled = Không có tiêu đề
+
+recipe_generator-summary-empty-modules = không có
+
+recipe_generator-summary-recipe-includes = Công thức '{ $recipe_name }' bao gồm { $module_count ->
         [one] 1 module
-       *[other] { $module_count } modules
-    }: { $module_list }, connected by { $rule_count ->
+        *[other] { $module_count } modules
+    }: { $module_list }, được kết nối bởi { $rule_count ->
         [one] 1 rule
-       *[other] { $rule_count } rules
+        *[other] { $rule_count } rules
     }.
-recipe_generator-heuristic-fallback = (Heuristic template) Matched related modules and default rules from keywords.
-recipe_generator-default-description = Invite 10 friends, unlock a free coffee voucher.
 
-## ─────────────────────────────────────────────────────────────────────────
-## modules.py — module marketplace labels (samples)
-## ─────────────────────────────────────────────────────────────────────────
+recipe_generator-heuristic-fallback = (Mẫu heuristic) Đã khớp các module liên quan và các quy tắc mặc định từ từ khóa.
 
-modules-status-active = Active
-modules-status-inactive = Inactive
-modules-status-coming_soon = Coming soon
-modules-action-enable = Enable
-modules-action-disable = Disable
-modules-action-configure = Configure
+recipe_generator-default-description = Mời 10 người bạn, nhận voucher cà phê miễn phí.
 
-## ─────────────────────────────────────────────────────────────────────────
-## Generic API error codes (Stripe-style)
-## ─────────────────────────────────────────────────────────────────────────
+modules-status-active = Đang hoạt động
 
-error-internal = An internal error occurred. Please retry shortly.
-error-not_found = The requested resource was not found.
-error-unauthorized = Authentication is required.
-error-forbidden = You do not have permission to perform this action.
-error-validation = The request payload failed validation.
-error-rate_limited = You have exceeded the rate limit. Try again later.
-error-conflict = The request conflicts with the current resource state.
+modules-status-inactive = Không hoạt động
 
-## ─────────────────────────────────────────────────────────────────────────
-## Common UI labels (landing pages)
-## ─────────────────────────────────────────────────────────────────────────
+modules-status-coming_soon = Sắp ra mắt
 
-common-cta-login = Login
-common-cta-logout = Logout
-common-cta-signup = Sign up
-common-cta-cancel = Cancel
-common-cta-save = Save
-common-cta-confirm = Confirm
-common-cta-back = Back
-common-cta-next = Next
-common-cta-loading = Loading…
-common-nav-home = Home
-common-nav-portal = Portal
-common-nav-storefront = Storefront
-common-nav-play = Play
-common-nav-connect = Connect
+modules-action-enable = Bật
+
+modules-action-disable = Tắt
+
+modules-action-configure = Cấu hình
+
+error-internal = Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.
+
+error-not_found = Không tìm thấy tài nguyên yêu cầu.
+
+error-unauthorized = Yêu cầu xác thực.
+
+error-forbidden = Bạn không có quyền thực hiện hành động này.
+
+error-validation = Dữ liệu gửi lên không hợp lệ.
+
+error-rate_limited = Bạn đã vượt quá giới hạn truy cập. Vui lòng thử lại sau.
+
+error-conflict = Yêu cầu xung đột với trạng thái tài nguyên hiện tại.
+
+common-cta-login = Đăng nhập
+
+common-cta-logout = Đăng xuất
+
+common-cta-signup = Đăng ký
+
+common-cta-cancel = Hủy
+
+common-cta-save = Lưu
+
+common-cta-confirm = Xác nhận
+
+common-cta-back = Quay lại
+
+common-cta-next = Tiếp theo
+
+common-cta-loading = Đang tải…
+
+common-nav-home = Trang chủ
+
+common-nav-portal = Cổng thông tin
+
+common-nav-storefront = Gian hàng
+
+common-nav-play = Chơi
+
+common-nav-connect = Kết nối
+
 common-currency-sgd = SGD
+
 common-currency-cny = CNY
+
 common-currency-usd = USD

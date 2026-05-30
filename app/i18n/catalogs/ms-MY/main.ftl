@@ -1,200 +1,285 @@
 ### KiX Platform — Malay (Malaysia) catalog
-### Source-of-truth locale for SG bilingual launch (Wave 2).
-### See /Users/mozat/a-docs/i18n-trinity-strategy.md for strategy.
+
+### Auto-translated via OpenRouter (DeepSeek) 2026-05-31
+
+### Source: app/i18n/catalogs/en-SG/main.ftl
+
 ###
-### Naming convention: <router>-<semantic-action>
-### ICU MessageFormat for plurals/select; otherwise plain text.
 
+welcome-message = Selamat datang { $name }!
+    .description = Anda mempunyai { $count ->
+        [one] 1 mesej
+        *[other] { $count } mesej
+    }
 
-## ─────────────────────────────────────────────────────────────────────────
-## Smoke-test message (from Wave 1)
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-module-progression = Kemajuan
 
-welcome-message = Welcome { $name }!
-    .description =
-        You have { $count ->
-            [one] 1 message
-           *[other] { $count } messages
-        }
+tutorials-module-currency = Mata Wang
 
-## ─────────────────────────────────────────────────────────────────────────
-## tutorials.py — module display names (MODULE_META)
-## ─────────────────────────────────────────────────────────────────────────
-
-tutorials-module-progression = Progression
-tutorials-module-currency = Currency
 tutorials-module-item = Item
-tutorials-module-achievement = Achievement
-tutorials-module-quest = Quest
-tutorials-module-tier = Tier
-tutorials-module-event = Event
-tutorials-module-roulette = Reward Roulette
-tutorials-module-league = League
-tutorials-module-pass = Battle Pass
-tutorials-module-smartquests = Smart Quests
-tutorials-module-storyquest = Story Quest
-tutorials-module-lives = Lives
-tutorials-module-tourney = Tournament
-tutorials-module-collection = Collection
-tutorials-module-badgewall = Badge Wall
-tutorials-module-streak = Streak
-tutorials-module-voucher_builder = Voucher Builder
-tutorials-module-voucher = Voucher
-tutorials-module-social_graph = Social Graph
-tutorials-module-social_feed = Social Feed
-tutorials-module-auto_share = Auto Share
-tutorials-module-share_to_win = Share to Win
-tutorials-module-energy_invite = Energy Invite
-tutorials-module-friend_challenge = Friend Challenge
-tutorials-module-ladder_climb = Ladder Climb
-tutorials-module-streak_rescue = Streak Rescue
-tutorials-module-leaderboard = Leaderboard
-tutorials-module-network_effect = Network Effect
-tutorials-module-score_to_coupon = Score → Coupon
-tutorials-module-energy = Energy
-tutorials-module-upsell = Upsell
-tutorials-module-redemption_store = Redemption Store
-tutorials-module-rate_limit = Rate Limit
-tutorials-module-group_actions = Group Actions
-tutorials-module-groupbuy = Group Buy
-tutorials-module-atomic_group = Atomic Group
-tutorials-module-pricecut = Price Cut
-tutorials-module-coop_quest = Coop Quest
-tutorials-module-raid = Raid
-tutorials-module-squad = Squad
-tutorials-module-territory = Territory
-tutorials-module-gift_sending = Gift Sending
-tutorials-module-trading_post = Trading Post
-tutorials-module-group_reward = Group Reward
-tutorials-module-fcfs = First-Come First-Served
-tutorials-module-limited_drop = Limited Drop
-tutorials-module-triggers = Triggers
 
-## tutorials.py — step instruction templates
+tutorials-module-achievement = Pencapaian
 
-tutorials-step-intro =
-    We'll walk you through setting up "{ $recipe_name }". { $module_count ->
-        [one] 1 module
-       *[other] { $module_count } modules
-    } and { $rule_count ->
-        [one] 1 rule
-       *[other] { $rule_count } rules
+tutorials-module-quest = Mis
+
+tutorials-module-tier = Tingkat
+
+tutorials-module-event = Acara
+
+tutorials-module-roulette = Roulette Hadiah
+
+tutorials-module-league = Liga
+
+tutorials-module-pass = Pas Pertempuran
+
+tutorials-module-smartquests = Misi Pintar
+
+tutorials-module-storyquest = Misi Cerita
+
+tutorials-module-lives = Nyawa
+
+tutorials-module-tourney = Kejohanan
+
+tutorials-module-collection = Koleksi
+
+tutorials-module-badgewall = Dinding Lencana
+
+tutorials-module-streak = Rentak
+
+tutorials-module-voucher_builder = Pembina Baucar
+
+tutorials-module-voucher = Baucar
+
+tutorials-module-social_graph = Graf Sosial
+
+tutorials-module-social_feed = Suapan Sosial
+
+tutorials-module-auto_share = Kongsi Automatik
+
+tutorials-module-share_to_win = Kongsi untuk Menang
+
+tutorials-module-energy_invite = Jemputan Tenaga
+
+tutorials-module-friend_challenge = Cabaran Rakan
+
+tutorials-module-ladder_climb = Pendakian Tangga
+
+tutorials-module-streak_rescue = Selamatkan Streak
+
+tutorials-module-leaderboard = Papan Pemuka
+
+tutorials-module-network_effect = Kesan Rangkaian
+
+tutorials-module-score_to_coupon = Skor → Kupon
+
+tutorials-module-energy = Tenaga
+
+tutorials-module-upsell = Jualan Tambahan
+
+tutorials-module-redemption_store = Kedai Penebusan
+
+tutorials-module-rate_limit = Had Kadar
+
+tutorials-module-group_actions = Tindakan Berkumpulan
+
+tutorials-module-groupbuy = Belian Berkumpulan
+
+tutorials-module-atomic_group = Kumpulan Atom
+
+tutorials-module-pricecut = Potongan Harga
+
+tutorials-module-coop_quest = Misian Koperasi
+
+tutorials-module-raid = Serbuan
+
+tutorials-module-squad = Pasukan
+
+tutorials-module-territory = Wilayah
+
+tutorials-module-gift_sending = Penghantaran Hadiah
+
+tutorials-module-trading_post = Pos Perdagangan
+
+tutorials-module-group_reward = Ganjar Kumpulan
+
+tutorials-module-fcfs = Siapa Cepat Dia Dapat
+
+tutorials-module-limited_drop = Tawaran Terhad
+
+tutorials-module-triggers = Pencetus
+
+tutorials-step-intro = Kami akan pandu anda untuk menyediakan "{ $recipe_name }". { $module_count ->
+        [one] 1 modul
+        *[other] { $module_count } modul
+    } dan { $rule_count ->
+        [one] 1 peraturan
+        *[other] { $rule_count } peraturan
     }.
-tutorials-step-navigate-engagement = Click Engagement in the sidebar to open the module marketplace
-tutorials-step-navigate-vouchers = Open Vouchers in the sidebar to configure voucher templates
-tutorials-step-navigate-rules = Open Rules in the sidebar to configure event rules
-tutorials-step-enable-module = Enable the { $module_name } module
-tutorials-step-configure-module = Configure { $module_name }: { $params_summary }
-tutorials-step-create-voucher-template = Create voucher template: { $template_summary }
-tutorials-step-create-rule = Create rule: when { $trigger_event } → { $actions_summary }
-tutorials-step-test-action = Let's simulate "{ $event_name }" to test the rules
-tutorials-step-celebrate = Done! Your "{ $recipe_name }" setup is live.
 
-## ─────────────────────────────────────────────────────────────────────────
-## conditions.py — FIX_HINTS for eligibility blockers
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-step-navigate-engagement = Klik Engagement di bar sisi untuk membuka pasaran modul
 
-conditions-blocker-supply_exhausted = This campaign's supply has been fully claimed.
-conditions-blocker-budget_exhausted = This campaign's budget has been fully spent.
-conditions-blocker-tier_required = A higher tier is required for this campaign.
-conditions-blocker-first_time_only = This campaign is for first-time participants only.
-conditions-blocker-user_segment_excluded = You are not in an eligible user segment.
-conditions-blocker-user_segment_not_included = You are not in an eligible user segment.
-conditions-blocker-min_account_age_days = Your account is too new to participate yet.
-conditions-blocker-user_attribute_filter = Your account does not match the required attributes.
-conditions-blocker-frequency_per_user_per_day = You have hit today's limit. Try again tomorrow.
-conditions-blocker-frequency_per_user_per_week = You have hit this week's limit.
-conditions-blocker-frequency_per_user_per_month = You have hit this month's limit.
-conditions-blocker-frequency_per_user_total = You have reached the total limit for this campaign.
-conditions-blocker-frequency_global_per_day = Today's global limit has been reached.
-conditions-blocker-time_not_yet_started = The campaign has not started yet.
-conditions-blocker-time_already_ended = The campaign has ended.
-conditions-blocker-time_invalid_day_of_week = The campaign is not open today.
-conditions-blocker-time_invalid_hour = The campaign is not open at this hour.
-conditions-blocker-action_prerequisites_unmet = Prerequisite actions have not been completed.
-conditions-blocker-campaign_not_found = Campaign not found.
-conditions-blocker-reservation_not_found = Reservation not found or expired.
-conditions-blocker-reservation_already_committed = Reservation has already been committed.
-conditions-blocker-reservation_already_refunded = Reservation has already been refunded.
-conditions-blocker-reservation_expired = Reservation has expired; please retry.
-conditions-blocker-commit_contention = High contention on commit; please retry.
+tutorials-step-navigate-vouchers = Buka Vouchers di bar sisi untuk mengkonfigurasi templat baucar
 
-## ─────────────────────────────────────────────────────────────────────────
-## welcome_kit.py — printable collateral items
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-step-navigate-rules = Buka Rules di bar sisi untuk mengkonfigurasi peraturan acara
 
-welcome_kit-item-table_stand-title = Table Stand (A5, double-sided)
-welcome_kit-item-table_stand-desc = A5 desktop standee with QR call-to-action on both faces.
-welcome_kit-item-counter_standing-title = Counter Standee (A4)
-welcome_kit-item-counter_standing-desc = A4 upright display for the counter or reception area.
-welcome_kit-item-door_sticker-title = Door Sticker (150mm round)
-welcome_kit-item-door_sticker-desc = Static-cling door / window decal inviting passers-by to scan.
-welcome_kit-item-social_poster-title = Social Poster (1080×1080)
-welcome_kit-item-social_poster-desc = Square poster ready for Instagram, Facebook, TikTok.
-welcome_kit-item-handover_kit-title = Full Handover Pack
-welcome_kit-item-handover_kit-desc = All assets above bundled into a single HTML index.
-welcome_kit-default-tagline = Scan to play. Win rewards.
+tutorials-step-enable-module = Dayakan modul { $module_name }
 
-## ─────────────────────────────────────────────────────────────────────────
-## recipe_generator.py — generator output labels
-## ─────────────────────────────────────────────────────────────────────────
+tutorials-step-configure-module = Konfigurasi { $module_name }: { $params_summary }
 
-recipe_generator-match-found = Matched recipe '{ $recipe_name }' from the library.
-recipe_generator-match-score = Match score { $score }; reasons: { $reasons }.
-recipe_generator-summary-untitled = Untitled
-recipe_generator-summary-empty-modules = none
-recipe_generator-summary-recipe-includes =
-    Recipe '{ $recipe_name }' includes { $module_count ->
-        [one] 1 module
-       *[other] { $module_count } modules
-    }: { $module_list }, connected by { $rule_count ->
-        [one] 1 rule
-       *[other] { $rule_count } rules
+tutorials-step-create-voucher-template = Cipta templat baucar: { $template_summary }
+
+tutorials-step-create-rule = Cipta peraturan: apabila { $trigger_event } → { $actions_summary }
+
+tutorials-step-test-action = Mari simulasi "{ $event_name }" untuk menguji peraturan
+
+tutorials-step-celebrate = Selesai! Penyediaan "{ $recipe_name }" anda telah aktif.
+
+conditions-blocker-supply_exhausted = Bekalan kempen ini telah habis dituntut.
+
+conditions-blocker-budget_exhausted = Bajet kempen ini telah habis dibelanjakan.
+
+conditions-blocker-tier_required = Tahap yang lebih tinggi diperlukan untuk kempen ini.
+
+conditions-blocker-first_time_only = Kempen ini hanya untuk peserta kali pertama sahaja.
+
+conditions-blocker-user_segment_excluded = Anda tidak berada dalam segmen pengguna yang layak.
+
+conditions-blocker-user_segment_not_included = Anda tidak berada dalam segmen pengguna yang layak.
+
+conditions-blocker-min_account_age_days = Akaun anda terlalu baru untuk menyertai lagi.
+
+conditions-blocker-user_attribute_filter = Akaun anda tidak memenuhi atribut yang diperlukan.
+
+conditions-blocker-frequency_per_user_per_day = Anda telah mencapai had hari ini. Cuba lagi esok.
+
+conditions-blocker-frequency_per_user_per_week = Anda telah mencapai had minggu ini.
+
+conditions-blocker-frequency_per_user_per_month = Anda telah mencapai had bulan ini.
+
+conditions-blocker-frequency_per_user_total = Anda telah mencapai had keseluruhan untuk kempen ini.
+
+conditions-blocker-frequency_global_per_day = Had global hari ini telah dicapai.
+
+conditions-blocker-time_not_yet_started = Kempen belum bermula lagi.
+
+conditions-blocker-time_already_ended = Kempen telah tamat.
+
+conditions-blocker-time_invalid_day_of_week = Kempen tidak dibuka hari ini.
+
+conditions-blocker-time_invalid_hour = Kempen tidak dibuka pada waktu ini.
+
+conditions-blocker-action_prerequisites_unmet = Tindakan prasyarat belum diselesaikan.
+
+conditions-blocker-campaign_not_found = Kempen tidak ditemui.
+
+conditions-blocker-reservation_not_found = Tempahan tidak ditemui atau telah tamat tempoh.
+
+conditions-blocker-reservation_already_committed = Tempahan telah pun dilakukan.
+
+conditions-blocker-reservation_already_refunded = Tempahan telah dipulangkan.
+
+conditions-blocker-reservation_expired = Tempahan telah tamat; sila cuba semula.
+
+conditions-blocker-commit_contention = Pertikaian tinggi pada komit; sila cuba semula.
+
+welcome_kit-item-table_stand-title = Pendiri Meja (A5, dua sisi)
+
+welcome_kit-item-table_stand-desc = Pendiri meja A5 dengan seruan tindakan QR pada kedua-dua muka.
+
+welcome_kit-item-counter_standing-title = Pendiri Kaunter (A4)
+
+welcome_kit-item-counter_standing-desc = Paparan tegak A4 untuk kaunter atau ruang penerimaan.
+
+welcome_kit-item-door_sticker-title = Stiker Pintu (150mm bulat)
+
+welcome_kit-item-door_sticker-desc = Dekal pintu/tetingkap statik yang mengajak orang ramai untuk mengimbas.
+
+welcome_kit-item-social_poster-title = Poster Sosial (1080×1080)
+
+welcome_kit-item-social_poster-desc = Poster segi empat sama sedia untuk Instagram, Facebook, TikTok.
+
+welcome_kit-item-handover_kit-title = Pek Penyerahan Penuh
+
+welcome_kit-item-handover_kit-desc = Semua aset di atas dibundelkan ke dalam indeks HTML tunggal.
+
+welcome_kit-default-tagline = Imbas untuk bermain. Menangi ganjaran.
+
+recipe_generator-match-found = Resipi '{ $recipe_name }' dipadankan dari perpustakaan.
+
+recipe_generator-match-score = Skor padanan { $score }; sebab: { $reasons }.
+
+recipe_generator-summary-untitled = Tanpa Tajuk
+
+recipe_generator-summary-empty-modules = tiada
+
+recipe_generator-summary-recipe-includes = Resipi '{ $recipe_name }' termasuk { $module_count ->
+        [one] 1 modul
+        *[other] { $module_count } modul
+    }: { $module_list }, disambungkan oleh { $rule_count ->
+        [one] 1 peraturan
+        *[other] { $rule_count } peraturan
     }.
-recipe_generator-heuristic-fallback = (Heuristic template) Matched related modules and default rules from keywords.
-recipe_generator-default-description = Invite 10 friends, unlock a free coffee voucher.
 
-## ─────────────────────────────────────────────────────────────────────────
-## modules.py — module marketplace labels (samples)
-## ─────────────────────────────────────────────────────────────────────────
+recipe_generator-heuristic-fallback = (Templat heuristik) Modul berkaitan dan peraturan lalai dipadankan dari kata kunci.
 
-modules-status-active = Active
-modules-status-inactive = Inactive
-modules-status-coming_soon = Coming soon
-modules-action-enable = Enable
-modules-action-disable = Disable
-modules-action-configure = Configure
+recipe_generator-default-description = Jemput 10 rakan, dapatkan baucar kopi percuma.
 
-## ─────────────────────────────────────────────────────────────────────────
-## Generic API error codes (Stripe-style)
-## ─────────────────────────────────────────────────────────────────────────
+modules-status-active = Aktif
 
-error-internal = An internal error occurred. Please retry shortly.
-error-not_found = The requested resource was not found.
-error-unauthorized = Authentication is required.
-error-forbidden = You do not have permission to perform this action.
-error-validation = The request payload failed validation.
-error-rate_limited = You have exceeded the rate limit. Try again later.
-error-conflict = The request conflicts with the current resource state.
+modules-status-inactive = Tidak aktif
 
-## ─────────────────────────────────────────────────────────────────────────
-## Common UI labels (landing pages)
-## ─────────────────────────────────────────────────────────────────────────
+modules-status-coming_soon = Akan datang
 
-common-cta-login = Login
-common-cta-logout = Logout
-common-cta-signup = Sign up
-common-cta-cancel = Cancel
-common-cta-save = Save
-common-cta-confirm = Confirm
-common-cta-back = Back
-common-cta-next = Next
-common-cta-loading = Loading…
-common-nav-home = Home
+modules-action-enable = Dayakan
+
+modules-action-disable = Nyahdayakan
+
+modules-action-configure = Konfigurasi
+
+error-internal = Ralat dalaman berlaku. Sila cuba sebentar lagi.
+
+error-not_found = Sumber yang diminta tidak ditemui.
+
+error-unauthorized = Pengesahan diperlukan.
+
+error-forbidden = Anda tidak mempunyai kebenaran untuk melakukan tindakan ini.
+
+error-validation = Muatan permintaan gagal pengesahan.
+
+error-rate_limited = Anda telah melebihi had kadar. Cuba lagi nanti.
+
+error-conflict = Permintaan bercanggah dengan keadaan sumber semasa.
+
+common-cta-login = Log masuk
+
+common-cta-logout = Log keluar
+
+common-cta-signup = Daftar
+
+common-cta-cancel = Batal
+
+common-cta-save = Simpan
+
+common-cta-confirm = Sahkan
+
+common-cta-back = Kembali
+
+common-cta-next = Seterusnya
+
+common-cta-loading = Memuatkan…
+
+common-nav-home = Laman Utama
+
 common-nav-portal = Portal
-common-nav-storefront = Storefront
-common-nav-play = Play
-common-nav-connect = Connect
+
+common-nav-storefront = Kedai
+
+common-nav-play = Main
+
+common-nav-connect = Sambung
+
 common-currency-sgd = SGD
+
 common-currency-cny = CNY
+
 common-currency-usd = USD
