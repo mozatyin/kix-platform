@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>KiX Brand Portal</title>
+<title data-i18n="portal.title">KiX Ads Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2047,7 +2047,7 @@ textarea.form-input{
     </nav>
     <div class="ent-sidebar-foot">
       <span id="sidebar-version">v2026.5</span>
-      <button class="lang-toggle" onclick="window.KiXLocale && KiXLocale.toggle && KiXLocale.toggle()" data-i18n="portal.sidebar.lang">EN / 中文</button>
+      <button class="lang-toggle" onclick="kixToggleLocale()" data-i18n="portal.sidebar.lang">EN / 中文</button>
     </div>
   </aside>
 
@@ -2086,38 +2086,126 @@ textarea.form-input{
 
   <!-- Content -->
   <div class="app-content">
-    <!-- ─── Dashboard ─────────────────────────────────────────── -->
+    <!-- ─── Dashboard (Overview) ───────────────────────────────────────── -->
     <div id="view-dashboard" class="view">
-      <h2 class="page-title">Dashboard / 仪表盘</h2>
-      <p class="page-subtitle" id="dash-welcome">Welcome back</p>
-
-      <!-- First-time guide card -->
-      <div id="dash-guide" class="card" style="display:none;background:linear-gradient(135deg,rgba(0,252,0,.08),rgba(0,252,0,.02));border-color:var(--green-border);margin-bottom:16px;padding:24px">
-        <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:var(--green)">&#128075; 欢迎，<span id="dash-guide-name"></span>！</div>
-        <p style="font-size:14px;color:var(--text-dim);margin-bottom:16px">你的游戏化平台已就绪。这是你的第一步：</p>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <button class="btn btn-green" onclick="navigate('games')">&#127918; 创建第一款游戏</button>
-          <button class="btn btn-outline" onclick="openGamePlayer()">&#9654; 体验顾客视角</button>
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.dashboard.title">Welcome back<span id="dash-welcome-name"></span></h1>
+          <p class="ent-page-subtitle" data-i18n="portal.dashboard.subtitle">Here's how your campaigns performed in the last 7 days vs the previous 7 days.</p>
+        </div>
+        <div class="ent-page-actions">
+          <button class="ebtn primary" type="button" onclick="navigate('ads')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="portal.actions.createCampaign">Create campaign</span>
+          </button>
         </div>
       </div>
 
-      <div class="section" id="dash-games-section" style="display:none">
-        <div class="section-title">你的游戏 / Your Games</div>
-        <div id="dash-games-mini"></div>
-        <button class="btn btn-outline" onclick="navigate('games')" style="margin-top:8px">查看全部 / View All</button>
+      <!-- KPI metrics -->
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.totalSpend">Total spend</span></div>
+          <div class="value">S$12,486</div>
+          <div class="delta up">▲ 12.3% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.reach">Reach</span></div>
+          <div class="value">245,800</div>
+          <div class="delta up">▲ 3.1% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.conversions">Conversions</span></div>
+          <div class="value">1,420</div>
+          <div class="delta up">▲ 28.4% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.voucherCr">Voucher CR</span></div>
+          <div class="value">34%</div>
+          <div class="delta down">▼ 2.1% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+        </div>
       </div>
 
-      <div class="section">
-        <div class="section-title">快捷操作 / Quick Actions</div>
-        <div class="quick-actions">
-          <button class="action-btn" onclick="navigate('vouchers')">
-            <svg viewBox="0 0 24 24"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z"/><path d="M9 5v14M15 5v14"/></svg>
-            Upload Vouchers / 上传优惠券
-          </button>
-          <button class="action-btn" onclick="navigate('qr')">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 18h3v3h-3z"/></svg>
-            Generate QR / 生成二维码
-          </button>
+      <div class="grid-2">
+        <div>
+          <!-- First-run guide card (rendered conditionally for new merchants) -->
+          <div id="dash-guide" class="ecard" style="display:none;border-left:3px solid var(--brand)">
+            <h3 class="ecard-title"><span data-i18n="portal.dashboard.guide.welcome">Welcome aboard,</span> <span id="dash-guide-name"></span></h3>
+            <p style="color:var(--text-subdued);margin:var(--space-2) 0 var(--space-4)" data-i18n="portal.dashboard.guide.body">Your gamified marketing platform is ready. Here's where to start:</p>
+            <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+              <button class="ebtn primary" onclick="navigate('ads')"><span data-i18n="portal.dashboard.guide.createCta">Create your first campaign</span></button>
+              <button class="ebtn secondary" onclick="openGamePlayer()"><span data-i18n="portal.dashboard.guide.previewCta">Preview customer view</span></button>
+            </div>
+          </div>
+
+          <div class="ecard">
+            <div class="ecard-head">
+              <h3 class="ecard-title" data-i18n="portal.dashboard.topCampaigns">Top campaigns this week</h3>
+              <button class="ebtn tertiary sm" onclick="navigate('ads')" data-i18n="portal.actions.viewAll">View all →</button>
+            </div>
+            <table class="etable">
+              <thead><tr><th data-i18n="portal.table.name">Name</th><th class="numeric" data-i18n="portal.table.spend">Spend</th><th class="numeric" data-i18n="portal.table.conversions">Conv</th><th class="numeric">ROAS</th></tr></thead>
+              <tbody>
+                <tr><td class="col-name">Toast Box · Morning Combo</td><td class="numeric tnum">S$1,840</td><td class="numeric tnum">312</td><td class="numeric tnum">6.4×</td></tr>
+                <tr><td class="col-name">Ya Kun Kaya · Weekend Spin</td><td class="numeric tnum">S$1,620</td><td class="numeric tnum">288</td><td class="numeric tnum">5.9×</td></tr>
+                <tr><td class="col-name">CHIR CHIR · K-Drama Trivia</td><td class="numeric tnum">S$2,150</td><td class="numeric tnum">320</td><td class="numeric tnum">5.2×</td></tr>
+                <tr><td class="col-name">Bean Brothers · Loyalty Ladder</td><td class="numeric tnum">S$1,210</td><td class="numeric tnum">196</td><td class="numeric tnum">4.6×</td></tr>
+                <tr><td class="col-name">Killiney · Lunch Hour Roulette</td><td class="numeric tnum">S$945</td><td class="numeric tnum">148</td><td class="numeric tnum">4.1×</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section" id="dash-games-section" style="display:none">
+            <div class="ecard">
+              <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.dashboard.yourCampaigns">Your campaigns</h3></div>
+              <div id="dash-games-mini"></div>
+              <button class="ebtn secondary sm" onclick="navigate('ads')" style="margin-top:var(--space-3)" data-i18n="portal.actions.viewAll">View all →</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.dashboard.insights">Recommendations</h3></div>
+            <div class="insight-item up">
+              <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+              <div class="body">
+                <div class="h" data-i18n="portal.dashboard.insight.ctrUp">CTR up 12% week-over-week</div>
+                <div class="s" data-i18n="portal.dashboard.insight.ctrUpBody">Scale top creatives across audiences.</div>
+              </div>
+            </div>
+            <div class="insight-item warn">
+              <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+              <div class="body">
+                <div class="h" data-i18n="portal.dashboard.insight.lowVoucher">3 voucher pools running low</div>
+                <div class="s" data-i18n="portal.dashboard.insight.lowVoucherBody">Top up before weekend traffic.</div>
+              </div>
+            </div>
+            <div class="insight-item info">
+              <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg></div>
+              <div class="body">
+                <div class="h" data-i18n="portal.dashboard.insight.pixelOk">Pixel firing OK across all locations</div>
+                <div class="s" data-i18n="portal.dashboard.insight.pixelOkBody">0 errors in last 24 hours.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.dashboard.quickActions">Quick actions</h3></div>
+            <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+              <button class="ebtn secondary" onclick="navigate('vouchers')" style="justify-content:flex-start">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V7a2 2 0 00-2-2z"/><path d="M9 5v14M15 5v14"/></svg>
+                <span data-i18n="portal.dashboard.action.importVouchers">Import vouchers</span>
+              </button>
+              <button class="ebtn secondary" onclick="navigate('qr')" style="justify-content:flex-start">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                <span data-i18n="portal.dashboard.action.generateQr">Generate QR code</span>
+              </button>
+              <button class="ebtn secondary" onclick="navigate('primitives')" style="justify-content:flex-start">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+                <span data-i18n="portal.dashboard.action.createAudience">Create audience</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2471,11 +2559,212 @@ textarea.form-input{
       </div>
     </div>
 
-    <!-- ─── Rules / 规则引擎 ────────────────────────────────────── -->
-    <div id="view-rules" class="view"></div>
+    <!-- ─── Automations (was Rules) ───────────────────────────────────── -->
+    <div id="view-rules" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.automations.title">Automations</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.automations.subtitle">Rules that pause, scale, or notify based on campaign performance.</p>
+        </div>
+        <div class="ent-page-actions">
+          <button class="ebtn secondary" type="button" data-i18n="portal.automations.viewLog">Audit log</button>
+          <button class="ebtn primary" type="button" onclick="openRuleBuilder()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="portal.actions.createRule">Create rule</span>
+          </button>
+        </div>
+      </div>
 
-    <!-- ─── Primitives / 原语管理 ──────────────────────────────── -->
-    <div id="view-primitives" class="view"></div>
+      <div class="etable-wrap">
+        <table class="etable" aria-label="Automation rules">
+          <thead>
+            <tr>
+              <th data-i18n="portal.automations.col.enabled">Enabled</th>
+              <th data-i18n="portal.automations.col.name">Rule name</th>
+              <th data-i18n="portal.automations.col.condition">Condition</th>
+              <th data-i18n="portal.automations.col.action">Action</th>
+              <th data-i18n="portal.automations.col.scope">Scope</th>
+              <th data-i18n="portal.automations.col.lastTriggered">Last triggered</th>
+              <th aria-label="Row actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:var(--brand);border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
+              <td class="col-name">Pause low-CTR campaigns</td>
+              <td><code style="font-size:12px;font-family:ui-monospace,monospace">spend &gt; S$50 AND ctr &lt; 0.5%</code></td>
+              <td><span class="ebadge paused"><span class="dot"></span>Pause</span></td>
+              <td>All campaigns</td>
+              <td>2h ago</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:var(--brand);border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
+              <td class="col-name">Scale up winning creatives</td>
+              <td><code style="font-size:12px;font-family:ui-monospace,monospace">roas &gt; 5x for 24h</code></td>
+              <td><span class="ebadge active"><span class="dot"></span>Increase budget +25%</span></td>
+              <td>Active campaigns</td>
+              <td>Yesterday</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:#CBD5E1;border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
+              <td class="col-name">Low voucher inventory alert</td>
+              <td><code style="font-size:12px;font-family:ui-monospace,monospace">voucher_pool_remaining &lt; 100</code></td>
+              <td><span class="ebadge info"><span class="dot"></span>Notify owner</span></td>
+              <td>All locations</td>
+              <td>3 days ago</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:var(--brand);border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
+              <td class="col-name">Cap daily spend per campaign</td>
+              <td><code style="font-size:12px;font-family:ui-monospace,monospace">daily_spend &gt; daily_budget × 1.1</code></td>
+              <td><span class="ebadge paused"><span class="dot"></span>Pause campaign</span></td>
+              <td>All campaigns</td>
+              <td>Never</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ecard">
+        <div class="ecard-head">
+          <h3 class="ecard-title" data-i18n="portal.automations.recent.title">Recent triggers</h3>
+        </div>
+        <div class="stream-item"><span class="t">14:32</span><span class="e">"Pause low-CTR campaigns" fired on <strong>Toast Box · Off-peak push</strong></span><span class="v">Paused</span></div>
+        <div class="stream-item"><span class="t">12:08</span><span class="e">"Scale up winning creatives" fired on <strong>Ya Kun · Weekend Spin</strong></span><span class="v">+25%</span></div>
+        <div class="stream-item"><span class="t">10:50</span><span class="e">"Low voucher inventory" fired on <strong>Bean Brothers · Main St</strong></span><span class="v">Notified</span></div>
+      </div>
+    </div>
+
+    <!-- ─── Audiences (was Primitives) ────────────────────────────────── -->
+    <div id="view-primitives" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.audiences.title">Audiences</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.audiences.subtitle">Define and reuse customer segments across campaigns.</p>
+        </div>
+        <div class="ent-page-actions">
+          <button class="ebtn secondary" type="button" onclick="openAudienceImport()" data-i18n="portal.actions.importList">Import list</button>
+          <button class="ebtn primary" type="button" onclick="openAudienceDrawer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="portal.actions.createAudience">Create audience</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="etabs" role="tablist">
+        <button class="etab active" role="tab" data-i18n="portal.audiences.tab.saved">Saved audiences</button>
+        <button class="etab" role="tab" data-i18n="portal.audiences.tab.lookalikes">Lookalikes</button>
+        <button class="etab" role="tab" data-i18n="portal.audiences.tab.custom">Custom</button>
+      </div>
+
+      <div class="etable-wrap">
+        <table class="etable" aria-label="Audiences list">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" aria-label="Select all audiences"></th>
+              <th data-i18n="portal.table.name">Name</th>
+              <th data-i18n="portal.audiences.col.source">Source</th>
+              <th data-i18n="portal.audiences.col.size">Size estimate</th>
+              <th data-i18n="portal.audiences.col.type">Type</th>
+              <th data-i18n="portal.audiences.col.usedIn">Used in</th>
+              <th data-i18n="portal.audiences.col.updated">Last updated</th>
+              <th aria-label="Row actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="col-name">Coffee drinkers · SG <div class="meta">Auto-built from pixel events</div></td>
+              <td><span class="ebadge info"><span class="dot"></span>Pixel events</span></td>
+              <td class="numeric tnum">48,200</td>
+              <td>Custom</td>
+              <td class="numeric tnum">3</td>
+              <td>2 hours ago</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="col-name">Repeat visitors (30d) <div class="meta">Loyalty cohort, ≥3 visits</div></td>
+              <td><span class="ebadge info"><span class="dot"></span>Behavioral</span></td>
+              <td class="numeric tnum">12,860</td>
+              <td>Saved</td>
+              <td class="numeric tnum">5</td>
+              <td>Yesterday</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="col-name">High-spenders lookalike · SG <div class="meta">Source: customer list (CSV)</div></td>
+              <td><span class="ebadge info"><span class="dot"></span>Lookalike</span></td>
+              <td class="numeric tnum">~180,000</td>
+              <td>Lookalike</td>
+              <td class="numeric tnum">2</td>
+              <td>3 days ago</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="col-name">Lapsed customers (60d) <div class="meta">For win-back campaigns</div></td>
+              <td><span class="ebadge info"><span class="dot"></span>Behavioral</span></td>
+              <td class="numeric tnum">7,420</td>
+              <td>Saved</td>
+              <td class="numeric tnum">1</td>
+              <td>1 week ago</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="col-name">Office-hours visitors (CBD) <div class="meta">Geofence: Raffles Place + Tanjong Pagar</div></td>
+              <td><span class="ebadge info"><span class="dot"></span>Geofence</span></td>
+              <td class="numeric tnum">24,100</td>
+              <td>Custom</td>
+              <td class="numeric tnum">2</td>
+              <td>1 week ago</td>
+              <td><button class="ebtn tertiary sm">⋯</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="etable-foot">
+          <span>1–5 <span data-i18n="portal.pagination.of">of</span> 5</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audience create drawer -->
+    <div class="scrim" id="audience-drawer-scrim" onclick="closeAudienceDrawer()"></div>
+    <aside class="drawer" id="audience-drawer" aria-label="Create audience">
+      <div class="drawer-head">
+        <h3 data-i18n="portal.audiences.drawer.title">Create audience</h3>
+        <button class="ent-iconbtn" onclick="closeAudienceDrawer()" aria-label="Close">✕</button>
+      </div>
+      <div class="drawer-body">
+        <div class="efield">
+          <label data-i18n="portal.audiences.drawer.name">Audience name</label>
+          <input class="einput" type="text" placeholder="e.g. Weekend brunch crowd">
+        </div>
+        <div class="efield">
+          <label data-i18n="portal.audiences.drawer.source">Source</label>
+          <select class="einput">
+            <option data-i18n="portal.audiences.source.pixel">Pixel events</option>
+            <option data-i18n="portal.audiences.source.csv">Customer list (CSV upload)</option>
+            <option data-i18n="portal.audiences.source.lookalike">Lookalike from existing</option>
+            <option data-i18n="portal.audiences.source.geofence">Geofence (store proximity)</option>
+          </select>
+        </div>
+        <div class="efield">
+          <label data-i18n="portal.audiences.drawer.rules">Inclusion rules</label>
+          <textarea class="einput" rows="4" placeholder="e.g. Visited &gt; 3 times in last 30d AND spend &gt; S$25" style="height:auto;padding:var(--space-3)"></textarea>
+        </div>
+      </div>
+      <div class="drawer-foot">
+        <button class="ebtn tertiary" onclick="closeAudienceDrawer()" data-i18n="portal.actions.cancel">Cancel</button>
+        <button class="ebtn primary" onclick="closeAudienceDrawer()" data-i18n="portal.actions.save">Save audience</button>
+      </div>
+    </aside>
 
     <!-- ─── Redeem Center / 核销中心 ──────────────────────────── -->
     <div id="view-redeem" class="view">
@@ -2650,11 +2939,187 @@ textarea.form-input{
       </div>
     </div>
 
-    <!-- Operations View -->
-    <div id="view-operations" class="view"></div>
+    <!-- ─── Operations (merchant ops hub) ─────────────────────────────── -->
+    <div id="view-operations" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.operations.title">Operations</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.operations.subtitle">Store locations, QR codes, voucher inventory, and staff accounts.</p>
+        </div>
+      </div>
 
-    <!-- Monitoring View -->
-    <div id="view-monitoring" class="view"></div>
+      <div class="etabs" role="tablist" id="operations-tabs">
+        <button class="etab active" role="tab" data-tab="locations" data-i18n="portal.operations.tab.locations">Store locations</button>
+        <button class="etab" role="tab" data-tab="qr" data-i18n="portal.operations.tab.qr">QR codes</button>
+        <button class="etab" role="tab" data-tab="vouchers" data-i18n="portal.operations.tab.vouchers">Voucher inventory</button>
+        <button class="etab" role="tab" data-tab="staff" data-i18n="portal.operations.tab.staff">Staff accounts</button>
+      </div>
+
+      <div id="operations-tab-locations">
+        <div class="grid-2">
+          <div class="ecard">
+            <div class="ecard-head">
+              <h3 class="ecard-title" data-i18n="portal.operations.locations.title">All stores</h3>
+              <button class="ebtn primary sm" type="button" onclick="navigate('locations')" data-i18n="portal.operations.locations.addLocation">+ Add location</button>
+            </div>
+            <table class="etable">
+              <thead><tr><th data-i18n="portal.table.name">Name</th><th data-i18n="portal.operations.col.address">Address</th><th data-i18n="portal.operations.col.geofence">Geofence</th><th data-i18n="portal.operations.col.staff">Staff</th><th aria-label="Actions"></th></tr></thead>
+              <tbody>
+                <tr><td class="col-name">Toast Box · Tampines Mall</td><td>4 Tampines Central 5, SG</td><td><span class="ebadge active"><span class="dot"></span>200m</span></td><td class="numeric tnum">6</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">Ya Kun · Raffles Place</td><td>1 Raffles Place, SG 048616</td><td><span class="ebadge active"><span class="dot"></span>150m</span></td><td class="numeric tnum">4</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">CHIR CHIR · Bugis Junction</td><td>200 Victoria St, SG 188021</td><td><span class="ebadge active"><span class="dot"></span>250m</span></td><td class="numeric tnum">8</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">Bean Brothers · Main St</td><td>123 Telok Ayer St, SG</td><td><span class="ebadge pending"><span class="dot"></span>Setup pending</span></td><td class="numeric tnum">2</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.operations.geofencePreview">Geofence preview</h3></div>
+            <div style="background:var(--surface-subdued);border-radius:var(--r-3);height:240px;display:flex;align-items:center;justify-content:center;color:var(--text-subdued);position:relative;overflow:hidden">
+              <svg viewBox="0 0 240 240" width="240" height="240" aria-hidden="true">
+                <rect width="240" height="240" fill="#E5E7EB"/>
+                <path d="M 0 80 L 240 60" stroke="#9CA3AF" stroke-width="2" fill="none"/>
+                <path d="M 0 140 L 240 160" stroke="#9CA3AF" stroke-width="2" fill="none"/>
+                <circle cx="80" cy="100" r="32" fill="rgba(0,179,65,0.18)" stroke="var(--brand)" stroke-width="2"/>
+                <circle cx="80" cy="100" r="4" fill="var(--brand)"/>
+                <circle cx="160" cy="150" r="28" fill="rgba(11,87,208,0.18)" stroke="var(--primary)" stroke-width="2"/>
+                <circle cx="160" cy="150" r="4" fill="var(--primary)"/>
+              </svg>
+              <span style="position:absolute;bottom:8px;left:12px;font-size:11px" data-i18n="portal.operations.geofenceNote">Map preview · uses /api/v1/geofence</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="operations-tab-qr" style="display:none">
+        <div class="ecard">
+          <div class="ecard-head">
+            <h3 class="ecard-title" data-i18n="portal.operations.qr.title">Download printable QR posters</h3>
+            <button class="ebtn primary sm" type="button" onclick="navigate('qr')" data-i18n="portal.operations.qr.manage">Manage QR codes</button>
+          </div>
+          <p style="color:var(--text-subdued);margin-bottom:var(--space-4)" data-i18n="portal.operations.qr.help">Generate A4-ready PDF posters per location. QR codes rotate automatically every 5 minutes.</p>
+          <div class="grid-3">
+            <div class="ecard" style="text-align:center;padding:var(--space-4)">
+              <div style="width:96px;height:96px;background:#000;margin:0 auto var(--space-3);border-radius:var(--r-2)"></div>
+              <div style="font-weight:500;color:var(--text-strong)">Tampines Mall</div>
+              <button class="ebtn secondary sm" style="margin-top:var(--space-2)" data-i18n="portal.operations.qr.download">Download PDF</button>
+            </div>
+            <div class="ecard" style="text-align:center;padding:var(--space-4)">
+              <div style="width:96px;height:96px;background:#000;margin:0 auto var(--space-3);border-radius:var(--r-2)"></div>
+              <div style="font-weight:500;color:var(--text-strong)">Raffles Place</div>
+              <button class="ebtn secondary sm" style="margin-top:var(--space-2)" data-i18n="portal.operations.qr.download">Download PDF</button>
+            </div>
+            <div class="ecard" style="text-align:center;padding:var(--space-4)">
+              <div style="width:96px;height:96px;background:#000;margin:0 auto var(--space-3);border-radius:var(--r-2)"></div>
+              <div style="font-weight:500;color:var(--text-strong)">Bugis Junction</div>
+              <button class="ebtn secondary sm" style="margin-top:var(--space-2)" data-i18n="portal.operations.qr.download">Download PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="operations-tab-vouchers" style="display:none">
+        <div class="metric-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="metric-card"><div class="label" data-i18n="portal.operations.vouchers.total">Total in pool</div><div class="value tnum">4,820</div></div>
+          <div class="metric-card"><div class="label" data-i18n="portal.operations.vouchers.assigned">Assigned</div><div class="value tnum">2,164</div></div>
+          <div class="metric-card"><div class="label" data-i18n="portal.operations.vouchers.redeemed">Redeemed (7d)</div><div class="value tnum">812</div></div>
+        </div>
+        <p style="color:var(--text-subdued)"><button class="ebtn primary" onclick="navigate('vouchers')" data-i18n="portal.operations.vouchers.openManager">Open Vouchers manager →</button></p>
+      </div>
+
+      <div id="operations-tab-staff" style="display:none">
+        <div class="empty-state">
+          <div class="illus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="4"/><path d="M17 11a3 3 0 100-6"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div>
+          <h3 data-i18n="portal.operations.staff.emptyTitle">Invite your team</h3>
+          <p data-i18n="portal.operations.staff.emptyBody">Add cashiers, store managers, or marketing teammates with scoped roles (Redeem-only, Read-only, Admin).</p>
+          <button class="ebtn primary" type="button" data-i18n="portal.operations.staff.invite">+ Invite staff member</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Live monitoring ───────────────────────────────────────────── -->
+    <div id="view-monitoring" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.monitoring.title">Live monitoring</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.monitoring.subtitle">Real-time campaign activity and anomaly alerts.</p>
+        </div>
+        <div class="ent-page-actions">
+          <span class="ebadge active"><span class="dot"></span><span data-i18n="portal.monitoring.live">Live</span></span>
+        </div>
+      </div>
+
+      <div class="metric-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="metric-card">
+          <div class="label" data-i18n="portal.monitoring.activeCampaigns">Active campaigns</div>
+          <div class="value tnum">7</div>
+          <div class="delta up">▲ 1 <span class="vs" data-i18n="portal.monitoring.sinceHour">since last hour</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label" data-i18n="portal.monitoring.spendRate">Live spend rate</div>
+          <div class="value tnum">S$3.42<span style="font-size:14px;color:var(--text-subdued);font-weight:400"> / min</span></div>
+          <div class="delta up">▲ 8% <span class="vs" data-i18n="portal.monitoring.sinceHour">since last hour</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label" data-i18n="portal.monitoring.impPerMin">Impressions / min</div>
+          <div class="value tnum">186</div>
+          <div class="delta down">▼ 4% <span class="vs" data-i18n="portal.monitoring.sinceHour">since last hour</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="ecard" style="padding:0">
+          <div class="ecard-head" style="padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-subdued);margin-bottom:0">
+            <h3 class="ecard-title" data-i18n="portal.monitoring.streamTitle">Impressions stream</h3>
+            <span style="font-size:12px;color:var(--text-subdued)" data-i18n="portal.monitoring.last100">Last 100 events</span>
+          </div>
+          <div style="max-height:360px;overflow-y:auto">
+            <div class="stream-item"><span class="t">14:32:18</span><span class="e">impression · <strong>Toast Box · Morning Combo</strong> · SG · iOS</span><span class="v">$0.04</span></div>
+            <div class="stream-item"><span class="t">14:32:16</span><span class="e">click · <strong>Ya Kun · Weekend Spin</strong> · SG · Android</span><span class="v">$0.18</span></div>
+            <div class="stream-item"><span class="t">14:32:15</span><span class="e">conversion · <strong>CHIR CHIR · K-Drama Trivia</strong> · voucher redeemed</span><span class="v">$2.40</span></div>
+            <div class="stream-item"><span class="t">14:32:13</span><span class="e">impression · <strong>Bean Brothers · Loyalty Ladder</strong> · SG · iOS</span><span class="v">$0.03</span></div>
+            <div class="stream-item"><span class="t">14:32:12</span><span class="e">impression · <strong>Toast Box · Morning Combo</strong> · SG · Web</span><span class="v">$0.04</span></div>
+            <div class="stream-item"><span class="t">14:32:10</span><span class="e">click · <strong>Killiney · Lunch Hour Roulette</strong> · SG · iOS</span><span class="v">$0.21</span></div>
+            <div class="stream-item"><span class="t">14:32:09</span><span class="e">impression · <strong>Ya Kun · Weekend Spin</strong> · SG · Android</span><span class="v">$0.04</span></div>
+            <div class="stream-item"><span class="t">14:32:07</span><span class="e">conversion · <strong>Toast Box · Morning Combo</strong> · voucher redeemed</span><span class="v">$1.80</span></div>
+            <div class="stream-item"><span class="t">14:32:05</span><span class="e">impression · <strong>CHIR CHIR · K-Drama Trivia</strong> · SG · iOS</span><span class="v">$0.05</span></div>
+            <div class="stream-item"><span class="t">14:32:03</span><span class="e">impression · <strong>Bean Brothers · Loyalty Ladder</strong> · SG · Android</span><span class="v">$0.03</span></div>
+          </div>
+        </div>
+
+        <div class="ecard">
+          <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.monitoring.alertsTitle">Anomaly alerts</h3></div>
+          <div class="insight-item warn">
+            <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div class="body">
+              <div class="h" data-i18n="portal.monitoring.alert.ctrDrop">Campaign CTR dropped 52% in last hour</div>
+              <div class="s">Toast Box · Off-peak push · auto-paused by rule</div>
+            </div>
+          </div>
+          <div class="insight-item warn">
+            <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+            <div class="body">
+              <div class="h" data-i18n="portal.monitoring.alert.lowInventory">Voucher inventory low</div>
+              <div class="s">Bean Brothers · Main St · 38 vouchers remaining (threshold: 100)</div>
+            </div>
+          </div>
+          <div class="insight-item info">
+            <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+            <div class="body">
+              <div class="h" data-i18n="portal.monitoring.alert.pixelFiring">Pixel firing normally</div>
+              <div class="s">All locations · 0 errors in last 60 min</div>
+            </div>
+          </div>
+          <div class="insight-item up">
+            <div class="icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="body">
+              <div class="h" data-i18n="portal.monitoring.alert.roasUp">ROAS up 38% on weekend campaign</div>
+              <div class="s">Ya Kun · Weekend Spin · auto-scaled budget +25%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ─── Campaigns (Ads Manager) ───────────────────────────────────── -->
     <div id="view-ads" class="view">
@@ -3564,12 +4029,14 @@ function navigate(view){
     case'settings':loadSettings();break;
     case'engagement':renderEngagement();break;
     case'recipes':renderRecipes();break;
-    case'analytics':if(window.AnalyticsView)AnalyticsView.render();break;
-    case'operations':if(window.OperationsView)OperationsView.render();break;
-    case'rules':if(window.RulesEditorView)RulesEditorView.render();break;
-    case'monitoring':if(window.MonitoringView)MonitoringView.render();break;
-    case'primitives':if(window.PrimitivesAdminView)PrimitivesAdminView.render();break;
-    case'ads':if(window.AdsView)AdsView.render();break;
+    // NOTE: Legacy sdk view modules (AdsView/AnalyticsView/etc.) disabled —
+    // these 6 views now own their HTML inline (Trinity portal redesign).
+    // case'analytics':if(window.AnalyticsView)AnalyticsView.render();break;
+    // case'operations':if(window.OperationsView)OperationsView.render();break;
+    // case'rules':if(window.RulesEditorView)RulesEditorView.render();break;
+    // case'monitoring':if(window.MonitoringView)MonitoringView.render();break;
+    // case'primitives':if(window.PrimitivesAdminView)PrimitivesAdminView.render();break;
+    // case'ads':if(window.AdsView)AdsView.render();break;
     case'redeem':onRedeemViewShown();break;
   }
 }
@@ -3581,7 +4048,247 @@ function showApp(){
   const hash=location.hash.replace('#','');
   const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem'];
   navigate(validViews.includes(hash)?hash:'dashboard');
+  // Initial render of enterprise views (mock data)
+  if(window.CampaignsView)CampaignsView.render();
+  // Avatar initial from email/brand
+  try{
+    const av=document.getElementById('ent-avatar-initial');
+    const name=document.getElementById('ent-avatar-name');
+    const bn=(state && state.brandName) || 'Demo';
+    if(av) av.textContent=(bn[0]||'K').toUpperCase();
+    if(name) name.textContent=bn.length>14?bn.slice(0,12)+'…':bn;
+    const ebn=document.getElementById('ent-brand-name');
+    if(ebn) ebn.textContent=bn;
+  }catch(_){}
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// CAMPAIGNS VIEW (enterprise table) — mock data, F&B Singapore brands
+// ═══════════════════════════════════════════════════════════════════════
+window.CampaignsView = (function(){
+  const MOCK = [
+    {id:'c01',name:'Toast Box · Morning Combo',  objective:'Acquisition', status:'active',  budget:200, spend:148.20, impressions:48200,clicks:1420,conversions:312,cpa:0.48},
+    {id:'c02',name:'Ya Kun Kaya · Weekend Spin', objective:'Retention',   status:'active',  budget:180, spend:162.00, impressions:39800,clicks:1180,conversions:288,cpa:0.56},
+    {id:'c03',name:'CHIR CHIR · K-Drama Trivia', objective:'Viral',       status:'active',  budget:300, spend:215.00, impressions:62400,clicks:1860,conversions:320,cpa:0.67},
+    {id:'c04',name:'Bean Brothers · Loyalty Ladder',objective:'Retention',status:'active',  budget:150, spend:121.00, impressions:31200,clicks: 942,conversions:196,cpa:0.62},
+    {id:'c05',name:'Killiney · Lunch Hour Roulette',objective:'Acquisition',status:'active',budget:120, spend: 94.50, impressions:27800,clicks: 820,conversions:148,cpa:0.64},
+    {id:'c06',name:'Toast Box · Off-peak push',  objective:'Awareness',   status:'paused',  budget:100, spend: 52.10, impressions:14600,clicks: 195,conversions: 22,cpa:2.37},
+    {id:'c07',name:'Ya Kun · Civic District',    objective:'Awareness',   status:'paused',  budget: 80, spend: 38.00, impressions:11200,clicks: 168,conversions: 18,cpa:2.11},
+    {id:'c08',name:'CHIR CHIR · Bugis Late Night',objective:'Acquisition',status:'pending',budget:160, spend:  0.00, impressions:    0,clicks:   0,conversions:  0,cpa:0   },
+    {id:'c09',name:'Bean Brothers · CBD Lunch',  objective:'Acquisition',status:'pending', budget:140, spend:  0.00, impressions:    0,clicks:   0,conversions:  0,cpa:0   },
+    {id:'c10',name:'Old Chang Kee · CNY 2026',   objective:'Viral',       status:'ended',   budget:250, spend:248.40, impressions:71200,clicks:2210,conversions:420,cpa:0.59},
+  ];
+  let filterStatus='all';
+  let sortKey='spend';
+  let sortDir='desc';
+  let selected=new Set();
+
+  function fmtMoney(n){ return 'S$' + (n||0).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtInt(n){ return (n||0).toLocaleString('en-SG'); }
+  function fmtPct(n){ return (n*100).toFixed(2)+'%'; }
+  function ctr(r){ return r.impressions ? r.clicks/r.impressions : 0; }
+  function badge(s){
+    const map={active:'Active',paused:'Paused',pending:'Pending',ended:'Ended'};
+    return '<span class="ebadge '+s+'"><span class="dot"></span>'+(map[s]||s)+'</span>';
+  }
+  function filtered(){
+    let rows=MOCK.slice();
+    if(filterStatus!=='all') rows=rows.filter(r=>r.status===filterStatus);
+    const term=(document.getElementById('campaigns-search')||{}).value||'';
+    if(term) rows=rows.filter(r=>r.name.toLowerCase().includes(term.toLowerCase()));
+    rows.sort((a,b)=>{
+      let av=a[sortKey], bv=b[sortKey];
+      if(sortKey==='ctr'){ av=ctr(a); bv=ctr(b); }
+      if(typeof av==='string') return sortDir==='asc'? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortDir==='asc'? av-bv : bv-av;
+    });
+    return rows;
+  }
+  function render(){
+    const tbody=document.getElementById('campaigns-tbody'); if(!tbody) return;
+    const rows=filtered();
+    tbody.innerHTML = rows.length===0
+      ? '<tr><td colspan="12"><div class="empty-state" style="margin:0;border:none"><div class="illus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l18-8v18l-18-8z"/></svg></div><h3>Create your first campaign</h3><p>Launch a gamified marketing campaign in minutes. Pick from 1,012 templates or describe what you want.</p><button class="ebtn primary" onclick="openCampaignDrawer()">+ Create campaign</button></div></td></tr>'
+      : rows.map(r=>`
+        <tr data-id="${r.id}" class="${selected.has(r.id)?'selected':''}">
+          <td class="col-check"><input type="checkbox" ${selected.has(r.id)?'checked':''} onchange="CampaignsView.toggleRow('${r.id}',this.checked)" aria-label="Select ${r.name}"></td>
+          <td>${badge(r.status)}</td>
+          <td class="col-name">${r.name}<div class="meta">${r.id.toUpperCase()}</div></td>
+          <td>${r.objective}</td>
+          <td class="numeric tnum">
+            <span class="budget-cell" data-id="${r.id}" onclick="CampaignsView.editBudget('${r.id}', this)">${fmtMoney(r.budget)}</span>
+          </td>
+          <td class="numeric tnum">${fmtMoney(r.spend)}</td>
+          <td class="numeric tnum">${fmtInt(r.impressions)}</td>
+          <td class="numeric tnum">${fmtInt(r.clicks)}</td>
+          <td class="numeric tnum">${fmtPct(ctr(r))}</td>
+          <td class="numeric tnum">${fmtInt(r.conversions)}</td>
+          <td class="numeric tnum">${r.cpa? fmtMoney(r.cpa) : '—'}</td>
+          <td><button class="ebtn tertiary sm" aria-label="Row actions">⋯</button></td>
+        </tr>`).join('');
+    const total=document.getElementById('campaigns-total');
+    if(total) total.textContent=rows.length;
+    const range=document.getElementById('campaigns-range');
+    if(range) range.textContent=rows.length? '1–'+rows.length : '0';
+    // Re-apply i18n to dynamically rendered content
+    if(window.KiXi18n && window.KiXi18n.apply) window.KiXi18n.apply();
+  }
+  function toggleRow(id,on){
+    if(on) selected.add(id); else selected.delete(id);
+    updateBulkBar();
+    const tr=document.querySelector('#campaigns-tbody tr[data-id="'+id+'"]');
+    if(tr) tr.classList.toggle('selected', on);
+  }
+  function updateBulkBar(){
+    const bar=document.getElementById('campaigns-bulk-bar');
+    const ct=document.getElementById('campaigns-bulk-count');
+    if(!bar||!ct) return;
+    ct.textContent=selected.size;
+    bar.classList.toggle('visible', selected.size>0);
+  }
+  function editBudget(id, cellEl){
+    const r=MOCK.find(x=>x.id===id); if(!r) return;
+    const oldVal=r.budget;
+    const input=document.createElement('input');
+    input.type='number'; input.value=oldVal; input.className='einput numeric';
+    input.style.width='90px'; input.style.height='28px'; input.style.display='inline-block';
+    cellEl.replaceWith(input);
+    input.focus(); input.select();
+    function commit(save){
+      const newVal=parseFloat(input.value)||oldVal;
+      if(save) r.budget=newVal;
+      render();
+      if(save && window.kixToast) kixToast('Budget updated: '+r.name);
+    }
+    input.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){ commit(true); }
+      else if(e.key==='Escape'){ commit(false); }
+    });
+    input.addEventListener('blur',()=>commit(true));
+  }
+  function clearSel(){ selected.clear(); updateBulkBar(); render(); }
+  // Filter chip wiring
+  document.addEventListener('click',e=>{
+    const chip=e.target.closest('#view-ads .filter-chip[data-filter]');
+    if(!chip) return;
+    document.querySelectorAll('#view-ads .filter-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    filterStatus=chip.dataset.filter.split(':')[1];
+    render();
+  });
+  // Sort header wiring
+  document.addEventListener('click',e=>{
+    const th=e.target.closest('#view-ads .etable th.sortable');
+    if(!th) return;
+    const k=th.dataset.sort;
+    if(sortKey===k){ sortDir = sortDir==='asc' ? 'desc' : 'asc'; }
+    else { sortKey=k; sortDir='desc'; }
+    render();
+  });
+  // Search wiring
+  document.addEventListener('input',e=>{
+    if(e.target && e.target.id==='campaigns-search') render();
+  });
+  return { render, toggleRow, editBudget, clearSel };
+})();
+
+function toggleAllCampaigns(cb){
+  document.querySelectorAll('#campaigns-tbody input[type="checkbox"]').forEach(x=>{
+    x.checked=cb.checked;
+    CampaignsView.toggleRow(x.closest('tr').dataset.id, cb.checked);
+  });
+}
+function clearCampaignSelection(){ CampaignsView.clearSel(); }
+function openCampaignDrawer(){ navigate('games'); }
+function exportCampaignsCsv(){ if(window.kixToast) kixToast('CSV export queued — check email in 2 minutes'); }
+function exportReportsCsv(){ if(window.kixToast) kixToast('Report CSV queued'); }
+
+// Drawer toggles for Audiences
+function openAudienceDrawer(){
+  document.getElementById('audience-drawer').classList.add('open');
+  document.getElementById('audience-drawer-scrim').classList.add('visible');
+}
+function closeAudienceDrawer(){
+  document.getElementById('audience-drawer').classList.remove('open');
+  document.getElementById('audience-drawer-scrim').classList.remove('visible');
+}
+function openAudienceImport(){ alert('Import audience — CSV upload (mock)'); }
+function openRuleBuilder(){ alert('Rule builder — When/If/Then (mock)'); }
+function toggleNotifications(){
+  const dot=document.getElementById('notif-dot');
+  if(dot) dot.style.display='none';
+  if(window.kixToast) kixToast('3 new alerts cleared');
+}
+
+// Operations tabs
+document.addEventListener('click',e=>{
+  const tab=e.target.closest('#operations-tabs .etab');
+  if(!tab) return;
+  document.querySelectorAll('#operations-tabs .etab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  const which=tab.dataset.tab;
+  ['locations','qr','vouchers','staff'].forEach(t=>{
+    const div=document.getElementById('operations-tab-'+t);
+    if(div) div.style.display = (t===which)?'':'none';
+  });
+});
+
+// Lightweight toast wrapper (uses existing #toast if available)
+function kixToast(msg, kind){
+  const t=document.getElementById('toast');
+  if(!t){ console.log('[toast]', msg); return; }
+  t.textContent=msg;
+  t.className='toast '+(kind||'success')+' show';
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+window.kixToast=kixToast;
+
+// ⌘K / / shortcut → focus search
+document.addEventListener('keydown',e=>{
+  const input=document.getElementById('ent-search-input');
+  if(!input) return;
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); input.focus(); input.select(); }
+  if(e.key==='/' && document.activeElement && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){
+    e.preventDefault(); input.focus();
+  }
+  if(e.key==='Escape'){
+    closeAudienceDrawer();
+  }
+});
+
+// Apply i18n if available after DOM updates
+window.KiXi18n = window.KiXi18n || {
+  apply(){ if(window.i18next && window.i18next.t){
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const k=el.dataset.i18n; const t=window.i18next.t(k);
+      if(t && t!==k) el.textContent=t;
+    });
+    document.querySelectorAll('[data-i18n-attr]').forEach(el=>{
+      const spec=el.dataset.i18nAttr;
+      spec.split(';').forEach(p=>{
+        const [a,k]=p.split(':').map(s=>(s||'').trim());
+        if(!a||!k) return;
+        const t=window.i18next.t(k);
+        if(t && t!==k) el.setAttribute(a,t);
+      });
+    });
+  } }
+};
+document.addEventListener('kix:locale-changed',()=>window.KiXi18n.apply());
+
+// Simple two-locale toggle (en-SG ↔ zh-Hans-SG) for the sidebar button.
+function kixToggleLocale(){
+  const cur=(window.KixI18n && window.KixI18n.getLocale && window.KixI18n.getLocale()) || 'en-SG';
+  const next=cur.startsWith('zh') ? 'en-SG' : 'zh-Hans-SG';
+  if(window.KixI18n && window.KixI18n.changeLocale){
+    window.KixI18n.changeLocale(next);
+  } else {
+    const url=new URL(window.location.href);
+    url.searchParams.set('lang', next);
+    window.location.href=url.toString();
+  }
+}
+window.kixToggleLocale=kixToggleLocale;
 
 // ═══════════════════════════════════════════════════════════════════════
 // DASHBOARD
@@ -3595,8 +4302,15 @@ async function loadDashboard(){
       state.brandConfig=data;
       state.brandName=data.brand_name;
       document.getElementById('header-brand-name').textContent=data.brand_name;
-      document.getElementById('dash-welcome').textContent=
-        'Welcome back! / 欢迎回来! — '+data.brand_name;
+      // Write brand name into the new h1 span and avatar/topbar refs.
+      const dwn=document.getElementById('dash-welcome-name');
+      if(dwn) dwn.textContent=', '+data.brand_name;
+      const ebn=document.getElementById('ent-brand-name');
+      if(ebn) ebn.textContent=data.brand_name;
+      const eav=document.getElementById('ent-avatar-initial');
+      if(eav) eav.textContent=(data.brand_name[0]||'K').toUpperCase();
+      const ean=document.getElementById('ent-avatar-name');
+      if(ean) ean.textContent=data.brand_name.length>14?data.brand_name.slice(0,12)+'…':data.brand_name;
 
       // Players from leaderboard config
       const lb=data.config_json.leaderboard||{};
