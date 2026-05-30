@@ -179,7 +179,7 @@ AUCTION_V2_ENABLED = (
 # Minimum guaranteed wins per active brand, as a fraction of the trailing
 # window. 0.5% means each of 100 brands gets at least 5 wins per 1000 auctions.
 PER_BRAND_MIN_WINS_PCT = float(
-    os.environ.get("AUCTION_PER_BRAND_MIN_WINS_PCT", "0.5")
+    os.environ.get("AUCTION_PER_BRAND_MIN_WINS_PCT", "0.15")
 )
 
 # Per-region quota: every region with at least one active brand is
