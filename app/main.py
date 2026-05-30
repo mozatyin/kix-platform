@@ -244,6 +244,16 @@ and the shim helpers in `app.api_standards`.
     )
     app.include_router(health.router, tags=["health"])
 
+    # ── i18n format validators (phone E.164 + per-country address) ────
+    # Standard internationalization helpers (libphonenumber + per-country
+    # postal specs). Pure format library — no DB, no LLM, no PII.
+    from app.routers import i18n_validators as _i18n_val_router
+    app.include_router(
+        _i18n_val_router.router,
+        prefix="/api/v1",
+        tags=["i18n-validators"],
+    )
+
     # ── Internal: ELTM callback ────────────────────────────────────────
     from app.routers import eltm_callback
     app.include_router(

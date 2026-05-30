@@ -86,6 +86,10 @@ from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 
 from app.api_standards import error_response
+from app.i18n_validators.phone import (
+    PhoneValidationError,
+    parse_phone,
+)
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -562,8 +566,26 @@ async def register(
     deposit-promo abuse (老田 fraud bug): >3 new kids in 60s from the
     same device → 429; >10 kids ever from one device → 403 + fraud log.
     Returning users that resolve to an existing kid are NOT counted.
+
+    Phone normalisation (additive, non-breaking): if ``body.phone`` is
+    present and parses to a valid E.164 number, we rewrite the field
+    in-place. Unparseable phones are left as-is — older clients that
+    relied on free-form storage continue to work; new callers benefit
+    from canonical reverse-lookups.
     """
     _validate_language(body.primary_language)
+
+    if body.phone:
+        try:
+            body.phone = parse_phone(body.phone, country_code=body.country)
+        except PhoneValidationError as exc:
+            # Soft sanitation: log and pass through. Response shape is
+            # preserved per task constraints; callers who want hard
+            # validation should hit /api/v1/validate/phone first.
+            logger.info(
+                "kix_id.register phone_unparseable code=%s msg=%s",
+                exc.error_code, exc.message,
+            )
 
     device_fp = body.device_fingerprint
     velocity_key = f"kid:device_velocity:{device_fp}" if device_fp else None

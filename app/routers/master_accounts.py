@@ -82,6 +82,8 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.i18n_validators.address import validate_address
+from app.i18n_validators.storage import address_to_jsonb
 from app.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -260,6 +262,11 @@ class CreateMasterBody(BaseModel):
     company_name: str = Field(..., min_length=1, max_length=200)
     primary_email: EmailStr
     owner_user_id: str = Field(..., min_length=1, max_length=128)
+    # Optional postal address. Validated and normalised through
+    # app.i18n_validators.address; persisted as JSONB under the
+    # "address" field of the master hash. Response shape is unchanged.
+    country: str | None = Field(None, max_length=64)
+    address: dict[str, Any] | None = None
 
 
 class AttachBrandBody(BaseModel):
@@ -444,19 +451,39 @@ async def create_master(
     member_id = f"mb_{uuid4().hex[:16]}"
     now = _now_iso()
 
+    # Address sanitation — additive. Stored as JSONB string under
+    # "address_json" when both `country` and `address` are supplied
+    # and pass per-country validation. Invalid addresses are logged
+    # but do not fail the create call (response shape unchanged).
+    address_json = ""
+    if body.country and body.address:
+        ok, errors = validate_address(body.country, body.address)
+        if ok:
+            packed = address_to_jsonb(body.country, body.address)
+            address_json = json.dumps(packed, ensure_ascii=False)
+        else:
+            logger.info(
+                "master.create address_invalid country=%s errors=%s",
+                body.country, errors,
+            )
+
+    master_mapping = {
+        "master_id": master_id,
+        "company_name": body.company_name,
+        "primary_email": body.primary_email,
+        "owner_user_id": body.owner_user_id,
+        "created_at": now,
+        "monthly_budget_cents": 0,
+        "budget_allocation_json": "{}",
+        "budget_updated_at": "",
+    }
+    if address_json:
+        master_mapping["address_json"] = address_json
+
     pipe = r.pipeline()
     pipe.hset(
         _k_master(master_id),
-        mapping={
-            "master_id": master_id,
-            "company_name": body.company_name,
-            "primary_email": body.primary_email,
-            "owner_user_id": body.owner_user_id,
-            "created_at": now,
-            "monthly_budget_cents": 0,
-            "budget_allocation_json": "{}",
-            "budget_updated_at": "",
-        },
+        mapping=master_mapping,
     )
     # Owner is auto-enrolled as hq_admin / scope=all.
     pipe.hset(

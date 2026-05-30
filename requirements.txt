@@ -24,3 +24,8 @@ cryptography>=41.0.0
 # i18n runtime
 fluent.runtime>=0.4.0
 babel>=2.14
+
+# i18n validators — Google libphonenumber Python port (Apache 2.0).
+# Same de-facto standard used by Stripe / Shopify / Twilio for E.164
+# parsing & country-aware phone validation.
+phonenumbers>=8.13

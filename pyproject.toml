@@ -29,6 +29,11 @@ dependencies = [
     # Email/push template rendering (Jinja2 fragments per locale).
     # See app/email_templates/ + app/services/email_template_service.py.
     "jinja2>=3.1.0",
+    # i18n format validators — Google libphonenumber Python port
+    # (Apache 2.0). Drives app/i18n_validators/phone.py for E.164
+    # parsing, country detection, and format conversions. Same library
+    # Stripe / Shopify / Twilio ship.
+    "phonenumbers>=8.13",
 ]
 
 [project.optional-dependencies]
