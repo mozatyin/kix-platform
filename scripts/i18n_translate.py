@@ -359,12 +359,23 @@ async def _llm_translate_batch(
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        logger.warning("ANTHROPIC_API_KEY missing — returning mock translations")
+        # Mock-mode policy (Wave B P1): do NOT emit `[locale] English ...`
+        # placeholder strings — those leak into the UI as broken copy. We
+        # instead echo the English source verbatim (so the rendered UI
+        # is at worst English) and tag the result with confidence
+        # `needs_translation` so the review queue + sidecar can flag the
+        # batch for a real LLM pass once an API key is available.
+        logger.warning(
+            "ANTHROPIC_API_KEY missing — returning source as TRANSLATION_NEEDED "
+            "stubs (locale=%s, n=%d)",
+            target_locale, len(items),
+        )
         return [
             {
                 "key": it.key,
-                "translation": f"[{target_locale}] {it.text}",
-                "confidence": "low",
+                "translation": it.text,
+                "confidence": "needs_translation",
+                "needs_translation": True,
             }
             for it in items
         ]
@@ -569,9 +580,11 @@ async def translate_catalog(
             row = by_key.get(s.key) or {}
             tr = str(row.get("translation") or s.text)
             conf = str(row.get("confidence") or "medium").lower()
-            if conf not in ("high", "medium", "low"):
+            if conf not in ("high", "medium", "low", "needs_translation"):
                 conf = "medium"
-            await tm.set(s.text, target_locale, tr)
+            # Never cache mock-mode stubs — they'd poison the next real LLM run.
+            if conf != "needs_translation":
+                await tm.set(s.text, target_locale, tr)
             results.append(
                 TranslationResult(
                     key=s.key,
@@ -598,7 +611,12 @@ async def translate_catalog(
 def persist_catalog(
     bundle: dict[str, Any], catalog_dir: Path | None = None
 ) -> Path:
-    """Write the translated FTL to ``catalogs/<locale>/main.ftl``."""
+    """Write the translated FTL to ``catalogs/<locale>/main.ftl``.
+
+    Also emits a ``_translation_status.json`` sidecar listing every key
+    whose confidence is ``needs_translation`` (mock-mode stub) so the
+    review queue can prioritise the first real LLM pass.
+    """
     out_dir = (catalog_dir or CATALOG_DIR) / bundle["locale"]
     out_dir.mkdir(parents=True, exist_ok=True)
     translations = {r.key: r.translation for r in bundle["results"]}
@@ -607,7 +625,44 @@ def persist_catalog(
     )
     out_path = out_dir / "main.ftl"
     out_path.write_text(ftl, encoding="utf-8")
+    write_status_sidecar(bundle, out_dir)
     return out_path
+
+
+def write_status_sidecar(bundle: dict[str, Any], out_dir: Path) -> Path:
+    """Emit ``_translation_status.json`` so the review queue can target
+    stub-translated keys first.
+
+    Schema::
+
+        {
+          "locale": "id-ID",
+          "total": 132,
+          "needs_translation": 132,
+          "auto_translated": 0,
+          "reviewed": false,
+          "stub_keys": ["welcome-message", ...]
+        }
+    """
+    needs = [
+        r.key for r in bundle["results"] if r.confidence == "needs_translation"
+    ]
+    auto = [
+        r.key
+        for r in bundle["results"]
+        if r.confidence in ("high", "medium", "low")
+    ]
+    status = {
+        "locale": bundle["locale"],
+        "total": len(bundle["results"]),
+        "needs_translation": len(needs),
+        "auto_translated": len(auto),
+        "reviewed": False,
+        "stub_keys": needs[:200],  # cap for readability
+    }
+    p = out_dir / "_translation_status.json"
+    p.write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return p
 
 
 # ── Cost estimation ─────────────────────────────────────────────────────

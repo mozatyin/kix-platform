@@ -73,7 +73,13 @@ async def _translate_dict(
     glossary_terms,
     batch_size: int = BATCH_SIZE,
     dry_run: bool = False,
-) -> dict[str, str]:
+) -> tuple[dict[str, str], list[str]]:
+    """Translate a flat ``{key: source_text}`` dict.
+
+    Returns ``(translations, needs_translation_keys)`` so the caller can
+    write a per-namespace sidecar tracking which keys still want a real
+    LLM pass (mock-mode stubs).
+    """
     from scripts.i18n_glossary import format_for_prompt, terms_appearing_in
 
     items: list[FluentString] = [
@@ -81,6 +87,7 @@ async def _translate_dict(
         for k, v in data.items()
     ]
     out: dict[str, str] = {}
+    needs: list[str] = []
     pending: list[FluentString] = []
     for it in items:
         cached = await tm.get(it.text, target_locale)
@@ -107,9 +114,12 @@ async def _translate_dict(
         for b in batch:
             row = by_key.get(b.key) or {}
             tr = str(row.get("translation") or b.text)
-            await tm.set(b.text, target_locale, tr)
+            if row.get("needs_translation") or row.get("confidence") == "needs_translation":
+                needs.append(b.key)
+            else:
+                await tm.set(b.text, target_locale, tr)
             out[b.key] = tr
-    return out
+    return out, needs
 
 
 async def translate_namespace_dir(
@@ -133,8 +143,9 @@ async def translate_namespace_dir(
     out_dir = out_root / target_locale
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    status: dict[str, dict[str, int | list[str]]] = {}
     for ns in _load_namespaces(source_dir):
-        translated = await _translate_dict(
+        translated, needs = await _translate_dict(
             ns.data,
             target_locale,
             model=model,
@@ -148,9 +159,31 @@ async def translate_namespace_dir(
             encoding="utf-8",
         )
         summary[ns.name] = len(translated)
+        status[ns.name] = {
+            "total": len(translated),
+            "needs_translation": len(needs),
+            "auto_translated": len(translated) - len(needs),
+            "stub_keys": needs[:200],
+        }
         logger.info(
-            "[%s] %s → %d keys → %s", target_locale, ns.name, len(translated), out_path
+            "[%s] %s → %d keys (%d need translation) → %s",
+            target_locale, ns.name, len(translated), len(needs), out_path
         )
+    # Per-locale sidecar covering every namespace.
+    sidecar = out_dir / "_translation_status.json"
+    sidecar.write_text(
+        json.dumps(
+            {
+                "locale": target_locale,
+                "reviewed": False,
+                "namespaces": status,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return summary
 
 

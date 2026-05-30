@@ -1,31 +1,49 @@
 # i18n_translate cost projection — committed for visibility
 #
-# Generated 2026-05-30 via:
+# Regenerated 2026-05-30 (Wave B P1) — reflects the actually-shipped
+# Wave 2 catalog footprint, not the speculative 3k-string ceiling.
+#
+# Reproduce::
 #   .venv/bin/python -m scripts.i18n_translate \
 #       --source app/i18n/catalogs/en-SG/main.ftl \
-#       --locales zh-Hans-SG,id-ID,ms-MY,ta-SG,en-US \
+#       --locales id-ID,ms-MY,th-TH,vi-VN,ar-EG,ar-SA,he-IL,zh-Hans-SG \
 #       --estimate-only
-#
-# At-scale projection assumes the wave-2 production catalog of 3,000
-# strings (1,840 HTML + 502 JS + 263 Py + buffer per strategy doc §4.4).
-# The current EN-SG catalog still holds only the welcome-message
-# scaffolding; the projection below shows what the LLM cost will be
-# once the extractor produces the full 3k-string baseline.
 
-i18n_translate cost estimate
+# ── FTL catalog (app/i18n/catalogs/<locale>/main.ftl) ──────────────────────
+i18n_translate cost estimate (FTL only)
 ============================
 Model:               claude-haiku-4-5-20251001
-Source strings:      3000
-Approx words:        27000
-Batches per locale:  150 (size=20)
-Input tokens/locale: 82,800
-Output tokens/locale: 56,700
-Cost per locale:     $0.3663
-Target locales:      zh-Hans-SG, id-ID, ms-MY, ta-SG, en-US
-Total LLM cost:      $1.8315
-Wall time/locale:    ~600s
-Total wall time:     ~3000s
+Source strings:      132
+Approx words:        526
+Batches per locale:  7 (size=20)
+Input tokens/locale: 2,836
+Output tokens/locale:1,104
+Cost per locale:     $0.0084
+Target locales:      id-ID, ms-MY, th-TH, vi-VN, ar-EG, ar-SA, he-IL, zh-Hans-SG
+Total LLM cost:      $0.0669
+Wall time/locale:    ~28s
+Total wall time:     ~224s
 
-# Compare to strategy doc §4.8: ~$1,500 per locale ALL-IN including
-# human review. The LLM piece itself is rounding error — the
-# reviewer is the cost. This projection only sizes the LLM share.
+# ── Landing JSON catalogs (landing/i18n/locales/<locale>/*.json) ───────────
+# 7 namespaces: common, connect, index, play, portal, portal-sdk, storefront
+# Per locale: 1229 keys / ~3837 words / 62 batches @ size=20
+# Cost per locale (Haiku):  ~$0.062
+# Across 7 net-new locales: ~$0.434
+#
+# ── Combined (FTL + JSON, 7 net-new locales) ───────────────────────────────
+# Total strings:    9,527  (1361 × 7)
+# Total words:     ~30,541
+# Combined LLM cost (Haiku): ~$0.50
+# Wall time (sequential):    ~25 min
+# Wall time (concurrent x7): ~3 min
+#
+# Compared to strategy doc §4.8 ($1,500/locale ALL-IN incl. human
+# review): the LLM share is ~3 orders of magnitude smaller. Reviewer
+# cost dominates. This estimate sizes only the auto-pass.
+
+# ── Mock-mode current state (no ANTHROPIC_API_KEY available) ───────────────
+# All 7 net-new locales currently ship TRANSLATION_NEEDED stubs that
+# echo the English source verbatim — UI degrades to English rather
+# than the legacy "[id-ID] English …" garbage. Per-locale sidecars at
+# {catalogs,locales}/<locale>/_translation_status.json list the 132
+# (FTL) + 1229 (JSON) keys awaiting a real Haiku pass.

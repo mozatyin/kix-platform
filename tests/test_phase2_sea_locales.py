@@ -13,9 +13,15 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
+
+# Make ``scripts.*`` importable from the repo root (mirrors test_i18n_translate.py).
+REPO_ROOT_FOR_SCRIPTS = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT_FOR_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT_FOR_SCRIPTS))
 
 from app import i18n as kix_i18n
 from app.i18n.currency import currency_decimals
@@ -189,7 +195,11 @@ def test_locale_switcher_includes_sea_locales() -> None:
 def test_landing_json_namespaces_present(locale: str) -> None:
     """Every en-SG namespace must have a counterpart in the new locale."""
     en_ns = {p.name for p in (LANDING_LOCALES_DIR / "en-SG").glob("*.json")}
-    new_ns = {p.name for p in (LANDING_LOCALES_DIR / locale).glob("*.json")}
+    new_ns = {
+        p.name
+        for p in (LANDING_LOCALES_DIR / locale).glob("*.json")
+        if p.stem != "_translation_status"
+    }
     missing = en_ns - new_ns
     assert not missing, f"{locale} missing namespaces: {missing}"
     # Spot-check that one namespace round-trips as a flat dict.
@@ -197,3 +207,130 @@ def test_landing_json_namespaces_present(locale: str) -> None:
         (LANDING_LOCALES_DIR / locale / "common.json").read_text(encoding="utf-8")
     )
     assert isinstance(common, dict) and common, f"{locale} common.json empty"
+
+
+# ---- 8. Wave-B P1 real-translation pass (mock-mode hardening) -----------
+
+
+WAVE_B_LOCALES = ["id-ID", "ms-MY", "th-TH", "vi-VN", "ar-EG", "ar-SA", "he-IL"]
+
+
+@pytest.mark.parametrize("locale", WAVE_B_LOCALES)
+def test_no_broken_locale_prefix_in_outputs(locale: str) -> None:
+    """The old `[locale] English ...` placeholder pattern must not appear.
+
+    Mock-mode previously emitted ``[id-ID] Welcome`` style strings that
+    leaked into the UI; the Wave-B fallback echoes the English source
+    verbatim instead, so this regex must find nothing.
+    """
+    prefix = f"[{locale}]"
+    ftl = (CATALOG_DIR / locale / "main.ftl").read_text(encoding="utf-8")
+    assert prefix not in ftl, f"FTL still has '{prefix}' placeholder"
+    for ns in (LANDING_LOCALES_DIR / locale).glob("*.json"):
+        if ns.stem == "_translation_status":
+            continue
+        body = ns.read_text(encoding="utf-8")
+        assert prefix not in body, f"{ns.name} still has '{prefix}' placeholder"
+
+
+def _load_translate_module():
+    """Hand-load ``scripts/i18n_translate.py`` past sibling-repo collisions.
+
+    Other repos on ``sys.path`` ship their own ``scripts`` package, so we
+    mirror the trick used by ``tests/test_i18n_translate.py``.
+    """
+    import importlib.util as _ilu
+    import types as _types
+
+    pkg = _types.ModuleType("scripts")
+    pkg.__path__ = [str(REPO_ROOT_FOR_SCRIPTS / "scripts")]
+    sys.modules.setdefault("scripts", pkg)
+
+    for sub in ("i18n_glossary", "i18n_translate"):
+        spec = _ilu.spec_from_file_location(
+            f"scripts.{sub}", REPO_ROOT_FOR_SCRIPTS / "scripts" / f"{sub}.py"
+        )
+        assert spec and spec.loader
+        mod = _ilu.module_from_spec(spec)
+        sys.modules[f"scripts.{sub}"] = mod
+        spec.loader.exec_module(mod)
+    return sys.modules["scripts.i18n_translate"]
+
+
+def test_mock_mode_returns_source_when_no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``_llm_translate_batch`` must echo the source (not garble it) when
+    ``ANTHROPIC_API_KEY`` is absent, and tag the result so the review
+    queue can detect it.
+    """
+    import asyncio
+
+    mod = _load_translate_module()
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    items = [mod.FluentString(key="welcome-message", text="Welcome { $name }!", pattern=None)]
+    rows = asyncio.run(
+        mod._llm_translate_batch(items, "id-ID", "", model="claude-haiku-4-5-20251001")
+    )
+    assert rows[0]["translation"] == "Welcome { $name }!"
+    assert rows[0]["confidence"] == "needs_translation"
+    assert rows[0].get("needs_translation") is True
+
+
+@pytest.mark.parametrize("locale", WAVE_B_LOCALES)
+def test_glossary_dnt_terms_preserved(locale: str) -> None:
+    """KiX / Soul / ELTM / Toast Box must remain verbatim in every catalog."""
+    _load_translate_module()  # also registers scripts.i18n_glossary
+    from scripts.i18n_glossary import load_glossary  # type: ignore
+
+    dnt = [t for t in load_glossary(locale) if t.do_not_translate]
+    assert dnt, "Glossary appears empty — fixture regression"
+
+    en = (CATALOG_DIR / "en-SG" / "main.ftl").read_text(encoding="utf-8")
+    tgt = (CATALOG_DIR / locale / "main.ftl").read_text(encoding="utf-8")
+    for term in dnt:
+        if term.source_term in en:
+            assert term.source_term in tgt, (
+                f"{locale}: DNT term {term.source_term!r} dropped"
+            )
+
+
+@pytest.mark.parametrize("locale", WAVE_B_LOCALES)
+def test_icu_placeholders_intact(locale: str) -> None:
+    """Every `{name}` / `{count, plural, …}` in en-SG survives translation."""
+    icu = re.compile(r"\{[^}]+\}")
+    for ns in (LANDING_LOCALES_DIR / "en-SG").glob("*.json"):
+        en = json.loads(ns.read_text(encoding="utf-8"))
+        tgt_path = LANDING_LOCALES_DIR / locale / ns.name
+        tgt = json.loads(tgt_path.read_text(encoding="utf-8"))
+        for k, v in en.items():
+            if not isinstance(v, str):
+                continue
+            en_phs = sorted(icu.findall(v))
+            tgt_v = tgt.get(k, "")
+            tgt_phs = sorted(icu.findall(tgt_v if isinstance(tgt_v, str) else ""))
+            assert en_phs == tgt_phs, (
+                f"{locale}/{ns.name}:{k}  en={en_phs}  tgt={tgt_phs}"
+            )
+
+
+@pytest.mark.parametrize("locale", WAVE_B_LOCALES)
+def test_translation_status_sidecar(locale: str) -> None:
+    """Stubbed locales must ship a `_translation_status.json` sidecar so
+    the review queue can prioritise the first real LLM pass.
+
+    Covers both the FTL catalog and the landing JSON catalog.
+    """
+    ftl_side = CATALOG_DIR / locale / "_translation_status.json"
+    assert ftl_side.is_file(), f"Missing FTL sidecar for {locale}"
+    data = json.loads(ftl_side.read_text(encoding="utf-8"))
+    assert data["locale"] == locale
+    assert data["total"] > 0
+    assert data["needs_translation"] + data["auto_translated"] == data["total"]
+
+    json_side = LANDING_LOCALES_DIR / locale / "_translation_status.json"
+    assert json_side.is_file(), f"Missing JSON sidecar for {locale}"
+    j = json.loads(json_side.read_text(encoding="utf-8"))
+    assert j["locale"] == locale
+    assert "namespaces" in j and j["namespaces"], j
+    # Every en-SG namespace tracked.
+    en_ns = {p.stem for p in (LANDING_LOCALES_DIR / "en-SG").glob("*.json")}
+    assert en_ns.issubset(set(j["namespaces"].keys()))
