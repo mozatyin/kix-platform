@@ -94,10 +94,15 @@ async def test_auction_skips_existing_customer_when_default():
 
 async def test_audit_skip_counter_increments_when_filter_fires():
     """Direct test of _record_existing_customer_skip — proves audit hook works."""
-    from app.routers.auction import _record_existing_customer_skip
+    from app.routers.auction import (
+        _record_existing_customer_skip,
+        AUCTION_SKIPPED_EXISTING_KEY,
+        _today_utc,
+    )
     r = await get_redis()
-    date = datetime.now().strftime("%Y-%m-%d")
-    key = f"brand:adr4-brand-direct:auction_skipped:existing_customer:{date}"
+    key = AUCTION_SKIPPED_EXISTING_KEY.format(
+        brand_id="adr4-brand-direct", date=_today_utc()
+    )
     await r.delete(key)
     await _record_existing_customer_skip(r, "adr4-brand-direct")
     count = int(await r.get(key) or 0)
