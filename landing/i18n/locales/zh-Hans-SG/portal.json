@@ -320,6 +320,9 @@
   "portal.wizard.next": "下一步 →",
   "portal.wizard.back": "← 返回",
   "portal.wizard.launch": "启动广告活动",
+  "portal.wizard.saveDraft": "保存草稿",
+  "portal.wizard.walletBalance": "钱包余额：",
+  "portal.wizard.runtime": "预计可投放：",
 
   "portal.vouchers.title": "优惠券",
   "portal.vouchers.subtitle": "上传和管理优惠券码。",

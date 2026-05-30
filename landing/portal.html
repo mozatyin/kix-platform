@@ -3517,11 +3517,16 @@ kix('track','PageView');
       <div class="ent-page-head">
         <div>
           <h1 class="ent-page-title" data-i18n="portal.wizard.title">Create campaign</h1>
-          <p class="ent-page-subtitle" data-i18n="portal.wizard.subtitle">3 steps · 5 minutes</p>
+          <p class="ent-page-subtitle"><span id="wiz-step-indicator">Step 1 of 3</span> · <span data-i18n="portal.wizard.subtitle">3 steps · 5 minutes</span></p>
         </div>
         <div class="ent-page-actions">
+          <button class="ebtn secondary" onclick="saveWizardDraft()" data-i18n="portal.wizard.saveDraft">Save draft</button>
           <button class="ebtn secondary" onclick="navigate('dashboard')" data-i18n="portal.actions.cancel">Cancel</button>
         </div>
+      </div>
+      <!-- Progress bar -->
+      <div style="height:4px;background:var(--surface-subdued);border-radius:2px;overflow:hidden;margin-bottom:16px">
+        <div id="wiz-progress-bar" style="height:100%;width:33.33%;background:var(--brand);transition:width .25s ease"></div>
       </div>
       <!-- Steps -->
       <div style="display:flex;gap:10px;margin-bottom:24px">
@@ -3563,28 +3568,35 @@ kix('track','PageView');
           <div class="ecard">
             <h3 class="ecard-title" data-i18n="portal.wizard.audienceTitle">Audience</h3>
             <div class="form-group"><label data-i18n="portal.wizard.audienceName">Audience</label>
-              <select class="form-input" style="background:#fff;border-color:#CBD5E1;color:#0F172A">
-                <option>All visitors (Pixel · last 30 days)</option>
-                <option>Cart abandoners (last 7 days)</option>
-                <option>VIP customers (≥ 5 orders)</option>
-                <option>Lookalike of VIP</option>
-                <option>Tampines geofence (1 km)</option>
-                <option>+ Create new audience</option>
+              <select id="wiz-audience" class="form-input" style="background:#fff;border-color:#CBD5E1;color:#0F172A">
+                <option value="all_visitors_30d">All visitors (Pixel · last 30 days)</option>
+                <option value="cart_abandoners_7d">Cart abandoners (last 7 days)</option>
+                <option value="vip_5plus">VIP customers (≥ 5 orders)</option>
+                <option value="lookalike_vip">Lookalike of VIP</option>
+                <option value="tampines_geofence_1km">Tampines geofence (1 km)</option>
+                <option value="__create_new__">+ Create new audience</option>
               </select>
             </div>
             <div class="form-group"><label data-i18n="portal.wizard.locations">Store locations</label>
-              <div style="display:flex;gap:8px;flex-wrap:wrap"><label><input type="checkbox" checked> Tampines Mall</label><label><input type="checkbox" checked> Bedok Point</label></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <label><input type="checkbox" class="wiz-loc" value="tampines_mall" checked> Tampines Mall</label>
+                <label><input type="checkbox" class="wiz-loc" value="bedok_point" checked> Bedok Point</label>
+              </div>
             </div>
           </div>
           <div class="ecard">
             <h3 class="ecard-title" data-i18n="portal.wizard.budgetTitle">Budget &amp; schedule</h3>
             <div class="form-group"><label data-i18n="portal.wizard.dailyBudget">Daily budget</label>
-              <div style="display:flex;align-items:center;gap:8px"><span>S$</span><input class="form-input" type="number" value="50" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+              <div style="display:flex;align-items:center;gap:8px"><span>S$</span><input id="wiz-daily-budget" class="form-input" type="number" min="10" step="5" value="50" style="background:#fff;border-color:#CBD5E1;color:#0F172A" oninput="updateWizRuntimeEstimate()"></div>
             </div>
-            <div class="form-group"><label data-i18n="portal.wizard.startDate">Start date</label><input class="form-input" type="date" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
-            <div class="form-group"><label data-i18n="portal.wizard.endDate">End date (optional)</label><input class="form-input" type="date" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
-            <div style="padding:10px;background:var(--brand-soft);border-radius:8px;font-size:12px;color:var(--text-strong)">
+            <div class="form-group"><label data-i18n="portal.wizard.startDate">Start date</label><input id="wiz-start-date" class="form-input" type="date" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+            <div class="form-group"><label data-i18n="portal.wizard.endDate">End date (optional)</label><input id="wiz-end-date" class="form-input" type="date" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+            <div style="padding:10px;background:var(--brand-soft);border-radius:8px;font-size:12px;color:var(--text-strong);margin-bottom:8px">
               <strong data-i18n="portal.wizard.estimate">Estimated reach:</strong> 8,400 – 12,200 customers/week
+            </div>
+            <div id="wiz-wallet-info" style="padding:10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;font-size:12px;color:var(--text-strong)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span data-i18n="portal.wizard.walletBalance">Wallet balance:</span><strong id="wiz-wallet-balance">—</strong></div>
+              <div style="display:flex;justify-content:space-between"><span data-i18n="portal.wizard.runtime">Estimated runtime:</span><strong id="wiz-runtime-estimate">—</strong></div>
             </div>
           </div>
         </div>
@@ -3604,15 +3616,15 @@ kix('track','PageView');
           </div>
           <button class="ebtn secondary" onclick="navigate('games')" data-i18n="portal.wizard.browseTemplates">Browse all 1,012 game templates</button>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:14px">
-            <div class="goal-card"><div class="ico">🎰</div><h4>Spin to win</h4><p>Wheel of fortune voucher reveal</p></div>
-            <div class="goal-card"><div class="ico">🎴</div><h4>Scratch card</h4><p>Tap to reveal hidden discount</p></div>
-            <div class="goal-card"><div class="ico">🧩</div><h4>Tap puzzle</h4><p>15-second skill challenge</p></div>
-            <div class="goal-card"><div class="ico">🎁</div><h4>Mystery box</h4><p>Pick 1 of 3 surprise gifts</p></div>
+            <button type="button" class="goal-card wiz-template" data-template="spin_to_win" onclick="pickTemplate(this,'spin_to_win')"><div class="ico">🎰</div><h4>Spin to win</h4><p>Wheel of fortune voucher reveal</p></button>
+            <button type="button" class="goal-card wiz-template" data-template="scratch_card" onclick="pickTemplate(this,'scratch_card')"><div class="ico">🎴</div><h4>Scratch card</h4><p>Tap to reveal hidden discount</p></button>
+            <button type="button" class="goal-card wiz-template" data-template="tap_puzzle" onclick="pickTemplate(this,'tap_puzzle')"><div class="ico">🧩</div><h4>Tap puzzle</h4><p>15-second skill challenge</p></button>
+            <button type="button" class="goal-card wiz-template" data-template="mystery_box" onclick="pickTemplate(this,'mystery_box')"><div class="ico">🎁</div><h4>Mystery box</h4><p>Pick 1 of 3 surprise gifts</p></button>
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:20px">
           <button class="ebtn secondary" onclick="wizGo(2)" data-i18n="portal.wizard.back">← Back</button>
-          <button class="ebtn primary" onclick="finishWizard()" data-i18n="portal.wizard.launch">Launch campaign</button>
+          <button class="ebtn primary" id="wiz-launch-btn" onclick="finishWizard()" data-i18n="portal.wizard.launch">Launch campaign</button>
         </div>
       </div>
     </div>
@@ -5561,22 +5573,308 @@ function setSettingsTab(tab){
 
 // ── Campaign wizard ───────────────────────────────────────────
 let _wizGoal=null;
-function openCampaignWizard(){ navigate('campaign-wizard'); }
+let _wizTemplate=null;
+let _wizIdempotencyKey=null;
+let _wizSubmitInflight=false;
+const WIZ_DRAFT_KEY='kix_wiz_draft';
+
+function _genIdempotencyKey(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'wiz-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+}
+function openCampaignWizard(){
+  // Fresh idempotency key per wizard session
+  _wizIdempotencyKey=_genIdempotencyKey();
+  _wizSubmitInflight=false;
+  // Try to restore draft
+  try{
+    const raw=localStorage.getItem(WIZ_DRAFT_KEY);
+    if(raw){
+      const d=JSON.parse(raw);
+      if(d && d.brand_id===(state.brandId||'')){
+        setTimeout(()=>{ try{ _applyWizDraft(d); }catch(_){ } },50);
+      }
+    }
+  }catch(_){ }
+  navigate('campaign-wizard');
+  // Hydrate wallet info on entry
+  setTimeout(()=>{ try{ updateWizRuntimeEstimate(); }catch(_){ } },80);
+}
 function pickGoal(el,goal){
-  document.querySelectorAll('.goal-card').forEach(c=>c.classList.remove('selected'));
+  // Scope to goal cards in panel 1 only
+  document.querySelectorAll('#wiz-panel-1 .goal-card').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');
   _wizGoal=goal;
   const next=document.getElementById('wiz-next-1'); if(next) next.disabled=false;
+}
+function pickTemplate(el,tpl){
+  document.querySelectorAll('#wiz-panel-3 .wiz-template').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  _wizTemplate=tpl;
 }
 function wizGo(step){
   for(let i=1;i<=3;i++){
     const p=document.getElementById('wiz-panel-'+i); if(p) p.style.display=(i===step?'':'none');
     const s=document.querySelector('.wiz-step[data-step="'+i+'"]'); if(s){ s.classList.toggle('active',i===step); s.classList.toggle('done',i<step); }
   }
+  const bar=document.getElementById('wiz-progress-bar'); if(bar) bar.style.width=(step*33.34)+'%';
+  const ind=document.getElementById('wiz-step-indicator'); if(ind) ind.textContent='Step '+step+' of 3';
+  if(step===2){ try{ updateWizRuntimeEstimate(); }catch(_){ } }
 }
-function finishWizard(){
-  if(window.showToast) showToast('Campaign launched — pending review','success');
+function updateWizRuntimeEstimate(){
+  const budgetEl=document.getElementById('wiz-daily-budget');
+  const budget=parseFloat(budgetEl&&budgetEl.value)||0;
+  const balEl=document.getElementById('wallet-balance');
+  let balText=balEl?balEl.textContent:'';
+  // Extract numeric from "S$1,234.56"
+  const m=(balText||'').match(/([\d,]+\.?\d*)/);
+  const balance=m?parseFloat(m[1].replace(/,/g,'')):0;
+  const wbEl=document.getElementById('wiz-wallet-balance');
+  if(wbEl) wbEl.textContent= balText || 'S$0.00';
+  const rtEl=document.getElementById('wiz-runtime-estimate');
+  if(rtEl){
+    if(budget>0 && balance>0){
+      const days=Math.floor(balance/budget);
+      rtEl.textContent='~'+days+' day'+(days===1?'':'s')+' at S$'+budget.toFixed(0)+'/day';
+      rtEl.style.color = days<3 ? '#b91c1c' : (days<7 ? '#b45309' : 'var(--text-strong)');
+    } else {
+      rtEl.textContent='—';
+      rtEl.style.color='var(--text-strong)';
+    }
+  }
+}
+function _collectWizPayload(){
+  const auds=document.getElementById('wiz-audience');
+  const audience=auds?auds.value:'all_visitors_30d';
+  const locs=Array.from(document.querySelectorAll('.wiz-loc:checked')).map(x=>x.value);
+  const budgetEl=document.getElementById('wiz-daily-budget');
+  const daily=parseFloat(budgetEl&&budgetEl.value)||0;
+  const startEl=document.getElementById('wiz-start-date');
+  const endEl=document.getElementById('wiz-end-date');
+  const descEl=document.getElementById('wiz-business-desc');
+  const objective=_wizGoal||'awareness';
+  // Auto-generated name: <Objective> · <Template> · <YYYYMMDD>
+  const d=new Date();
+  const datePart=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  const cap=s=>s? s[0].toUpperCase()+s.slice(1).replace(/_/g,' '):'';
+  const name=cap(objective)+' · '+(cap(_wizTemplate)||'Custom')+' · '+datePart;
+  return {
+    brand_id: state.brandId||'',
+    name: name,
+    objective: objective,
+    audience: { id: audience, locations: locs },
+    budget_cents: Math.round(daily*100),
+    schedule: { start: (startEl&&startEl.value)||null, end: (endEl&&endEl.value)||null },
+    creative_template: _wizTemplate||'spin_to_win',
+    business_desc: (descEl&&descEl.value)||'',
+    idempotency_key: _wizIdempotencyKey
+  };
+}
+function _validateWizPayload(p){
+  const errors=[];
+  if(!p.brand_id) errors.push({field:null, msg:'No brand selected — please re-login'});
+  if(!p.objective) errors.push({field:'wiz-panel-1', msg:'Pick a goal'});
+  if(!p.creative_template) errors.push({field:'wiz-panel-3', msg:'Pick a game template'});
+  if(!p.budget_cents || p.budget_cents<1000) errors.push({field:'wiz-daily-budget', msg:'Daily budget must be ≥ S$10'});
+  if(!p.audience || !p.audience.id || p.audience.id==='__create_new__') errors.push({field:'wiz-audience', msg:'Select an audience'});
+  return errors;
+}
+function _highlightWizField(id){
+  const el=document.getElementById(id); if(!el) return;
+  el.style.borderColor='#b91c1c';
+  el.style.boxShadow='0 0 0 3px rgba(185,28,28,.15)';
+  try{ el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); }catch(_){ }
+  setTimeout(()=>{ el.style.borderColor=''; el.style.boxShadow=''; },2500);
+}
+function saveWizardDraft(){
+  try{
+    const draft=_collectWizPayload();
+    localStorage.setItem(WIZ_DRAFT_KEY, JSON.stringify(draft));
+    if(window.showToast) showToast('Draft saved — resume any time','success');
+  }catch(e){
+    if(window.showToast) showToast('Could not save draft: '+e.message,'error');
+  }
+}
+function _applyWizDraft(d){
+  if(!d) return;
+  if(d.objective){
+    const card=document.querySelector('#wiz-panel-1 .goal-card[onclick*="\''+d.objective+'\'"]');
+    if(card){ pickGoal(card, d.objective); }
+  }
+  if(d.audience && d.audience.id){
+    const sel=document.getElementById('wiz-audience'); if(sel) sel.value=d.audience.id;
+    if(Array.isArray(d.audience.locations)){
+      document.querySelectorAll('.wiz-loc').forEach(cb=>{ cb.checked=d.audience.locations.includes(cb.value); });
+    }
+  }
+  if(d.budget_cents){
+    const b=document.getElementById('wiz-daily-budget'); if(b) b.value=(d.budget_cents/100).toFixed(0);
+  }
+  if(d.schedule){
+    const s=document.getElementById('wiz-start-date'); if(s && d.schedule.start) s.value=d.schedule.start;
+    const e=document.getElementById('wiz-end-date'); if(e && d.schedule.end) e.value=d.schedule.end;
+  }
+  if(d.creative_template){
+    const t=document.querySelector('#wiz-panel-3 .wiz-template[data-template="'+d.creative_template+'"]');
+    if(t) pickTemplate(t, d.creative_template);
+  }
+  if(d.business_desc){
+    const ta=document.getElementById('wiz-business-desc'); if(ta) ta.value=d.business_desc;
+  }
+}
+function _clearWizDraft(){ try{ localStorage.removeItem(WIZ_DRAFT_KEY); }catch(_){ } }
+function _resetWizFormState(){
+  _wizGoal=null; _wizTemplate=null;
+  document.querySelectorAll('#wiz-panel-1 .goal-card, #wiz-panel-3 .wiz-template').forEach(c=>c.classList.remove('selected'));
+  const next=document.getElementById('wiz-next-1'); if(next) next.disabled=true;
+  const desc=document.getElementById('wiz-business-desc'); if(desc) desc.value='';
+  wizGo(1);
+}
+async function _checkWalletSufficient(daily_cents){
+  // Pull fresh wallet balance; reject if balance < 1 day budget
+  const bid=state.brandId||''; if(!bid) return {ok:true, balance_cents:0}; // skip when no brand
+  try{
+    const res=await apiFetch('/api/v1/wallet/'+encodeURIComponent(bid)+'/balance',{method:'GET'});
+    if(!res.ok) return {ok:true, balance_cents:0}; // backend unavailable, allow
+    const data=await res.json();
+    const bal=data.balance_cents||0;
+    return {ok: bal>=daily_cents, balance_cents:bal};
+  }catch(_){ return {ok:true, balance_cents:0}; }
+}
+function _setLaunchLocked(locked){
+  _wizSubmitInflight=locked;
+  const btn=document.getElementById('wiz-launch-btn'); if(!btn) return;
+  if(locked){
+    btn.disabled=true;
+    btn.dataset.origLabel = btn.dataset.origLabel || btn.textContent;
+    btn.innerHTML='<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle"></span>Launching…';
+  } else {
+    btn.disabled=false;
+    if(btn.dataset.origLabel){ btn.textContent=btn.dataset.origLabel; }
+  }
+}
+async function finishWizard(){
+  if(_wizSubmitInflight){ return; } // ignore double-clicks
+  const payload=_collectWizPayload();
+  const errors=_validateWizPayload(payload);
+  console.log('[KiX] Campaign launch:', {idempotency_key:_wizIdempotencyKey, payload, errors});
+  if(errors.length){
+    const first=errors[0];
+    if(first.field) _highlightWizField(first.field);
+    if(window.showToast) showToast(first.msg,'error');
+    return;
+  }
+  _setLaunchLocked(true);
+  // 1) Wallet sufficiency check (BEFORE the create POST)
+  const wallet=await _checkWalletSufficient(payload.budget_cents);
+  if(!wallet.ok){
+    _setLaunchLocked(false);
+    const needed=((payload.budget_cents-wallet.balance_cents)/100).toFixed(2);
+    openConfirmModal({
+      title:'Insufficient wallet balance',
+      body:'You need <strong>S$'+needed+'</strong> more to cover one day of budget. Top up to continue.',
+      confirmLabel:'Top up now',
+      cancelLabel:'Cancel',
+      onConfirm:()=>{ navigate('settings'); setTimeout(()=>{ const w=document.getElementById('wallet-balance-detail'); if(w&&w.scrollIntoView) w.scrollIntoView({behavior:'smooth'}); },150); }
+    });
+    return;
+  }
+  // 2) POST /campaigns/create
+  let createdId=null, createdStatus='pending', createdRow=null;
+  try{
+    const res=await apiFetch('/api/v1/campaigns/create',{ method:'POST', json: payload, headers:{'Idempotency-Key': _wizIdempotencyKey} });
+    if(res.status===400){
+      const data=await res.json().catch(()=>({detail:'Validation failed'}));
+      _setLaunchLocked(false);
+      // Field-level error if backend gave us a hint
+      const detail=data.detail||data.message||'Validation failed';
+      if(data.field){ _highlightWizField(data.field); }
+      if(window.showToast) showToast(detail,'error');
+      return;
+    }
+    if(res.status===402){
+      _setLaunchLocked(false);
+      openConfirmModal({title:'Insufficient balance', body:'Wallet declined the reservation. Please top up to continue.', confirmLabel:'Top up', onConfirm:()=>navigate('settings')});
+      return;
+    }
+    if(!res.ok){
+      throw new Error('HTTP '+res.status);
+    }
+    const data=await res.json();
+    createdId=data.campaign_id||data.id||('c'+Date.now());
+    createdStatus=data.status||'pending';
+    createdRow=data.campaign||null;
+    console.log('[KiX] Campaign created:', {campaign_id: createdId, status: createdStatus});
+  }catch(e){
+    _setLaunchLocked(false);
+    console.warn('[KiX] Campaign create failed:', e);
+    // Network/backend error → retry Toast
+    const t=document.getElementById('toast');
+    if(t){
+      t.innerHTML='Network error · <a href="#" onclick="event.preventDefault();finishWizard()" style="color:#fff;text-decoration:underline;font-weight:600;margin-left:6px">Retry</a>';
+      t.className='toast error';
+      requestAnimationFrame(()=>t.classList.add('show'));
+      setTimeout(()=>t.classList.remove('show'),6000);
+    } else if(window.showToast){
+      showToast('Network error — please retry','error');
+    }
+    return;
+  }
+  // 3) Auto-approve (best-effort; ignore failures in dev)
+  try{
+    await apiFetch('/api/v1/campaigns/'+encodeURIComponent(createdId)+'/approve',{method:'POST', json:{}});
+    if(createdStatus==='pending') createdStatus='active';
+  }catch(_){ /* leave pending */ }
+  // 4) Wallet reservation (best-effort)
+  try{
+    await apiFetch('/api/v1/wallet/'+encodeURIComponent(payload.brand_id)+'/reserve',{
+      method:'POST',
+      json:{ campaign_id: createdId, amount_cents: payload.budget_cents, idempotency_key: _wizIdempotencyKey }
+    });
+  }catch(_){ /* non-fatal */ }
+  // 5) Refresh portal campaigns list (best-effort) and prepend to CampaignsView
+  let freshCampaigns=null;
+  try{
+    const r=await apiFetch('/api/v1/portal/campaigns/'+encodeURIComponent(payload.brand_id),{method:'GET'});
+    if(r.ok) freshCampaigns=await r.json();
+  }catch(_){ }
+  // Push the new row to CampaignsView optimistically
+  if(window.CampaignsView && CampaignsView.addRow){
+    const localRow = createdRow || {
+      id: createdId,
+      name: payload.name,
+      objective: (payload.objective||'').replace(/_/g,' ').replace(/^\w/, c=>c.toUpperCase()),
+      status: createdStatus,
+      budget: payload.budget_cents/100,
+      spend: 0, impressions:0, clicks:0, conversions:0, cpa:0
+    };
+    CampaignsView.addRow(localRow, {highlight:true});
+  }
+  // 6) Refresh wallet + KPI counts
+  try{ if(window.refreshWalletBalance) refreshWalletBalance(); }catch(_){ }
+  try{ _bumpActiveCampaignKpi(createdStatus); }catch(_){ }
+  // 7) Onboarding: mark "Created first campaign", hide first-campaign empty state
+  try{
+    localStorage.setItem('kix_onboard_first_campaign','1');
+    document.querySelectorAll('#view-dashboard .empty-state.non-demo').forEach(el=>{ el.style.display='none'; });
+    document.querySelectorAll('#view-ads .empty-state').forEach(el=>{ el.style.display='none'; });
+  }catch(_){ }
+  // 8) Clean up
+  _clearWizDraft();
+  _setLaunchLocked(false);
+  const msg = createdStatus==='active' ? 'Campaign live — first impressions within minutes' : 'Campaign created — awaiting review';
+  if(window.showToast) showToast(msg,'success');
+  _resetWizFormState();
   navigate('ads');
+}
+function _bumpActiveCampaignKpi(status){
+  // Soft increment of the active-campaigns counter if we can find one
+  if(status!=='active') return;
+  const candidates=document.querySelectorAll('[data-kpi="active-campaigns"], #kpi-active');
+  candidates.forEach(el=>{
+    const n=parseInt((el.textContent||'').replace(/[^\d]/g,''),10);
+    if(!isNaN(n)) el.textContent=String(n+1);
+  });
 }
 function copyPixelSnippet(){
   const code=document.querySelector('#pixel-snippet code');
@@ -5727,6 +6025,32 @@ window.CampaignsView = (function(){
     input.addEventListener('blur',()=>commit(true));
   }
   function clearSel(){ selected.clear(); updateBulkBar(); render(); }
+  function addRow(row, opts){
+    if(!row || !row.id) return;
+    // De-dupe (idempotent create may return existing campaign)
+    const idx=MOCK.findIndex(r=>r.id===row.id);
+    if(idx>=0){ MOCK[idx]=Object.assign({}, MOCK[idx], row); }
+    else { MOCK.unshift(row); }
+    // Reset filter so the new row is visible even if user was on "active"
+    if(filterStatus!=='all' && filterStatus!==row.status){
+      filterStatus='all';
+      document.querySelectorAll('#view-ads .filter-chip').forEach(c=>c.classList.remove('active'));
+      const allChip=document.querySelector('#view-ads .filter-chip[data-filter="status:all"]');
+      if(allChip) allChip.classList.add('active');
+    }
+    render();
+    if(opts && opts.highlight){
+      requestAnimationFrame(()=>{
+        const tr=document.querySelector('#campaigns-tbody tr[data-id="'+row.id+'"]');
+        if(tr){
+          tr.style.background='rgba(0,179,65,.10)';
+          tr.style.transition='background 1.6s ease';
+          try{ tr.scrollIntoView({behavior:'smooth', block:'center'}); }catch(_){ }
+          setTimeout(()=>{ tr.style.background=''; },2400);
+        }
+      });
+    }
+  }
   // Filter chip wiring
   document.addEventListener('click',e=>{
     const chip=e.target.closest('#view-ads .filter-chip[data-filter]');
@@ -5749,7 +6073,7 @@ window.CampaignsView = (function(){
   document.addEventListener('input',e=>{
     if(e.target && e.target.id==='campaigns-search') render();
   });
-  return { render, toggleRow, editBudget, clearSel };
+  return { render, toggleRow, editBudget, clearSel, addRow };
 })();
 
 function toggleAllCampaigns(cb){

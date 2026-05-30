@@ -320,6 +320,9 @@
   "portal.wizard.next": "Next →",
   "portal.wizard.back": "← Back",
   "portal.wizard.launch": "Launch campaign",
+  "portal.wizard.saveDraft": "Save draft",
+  "portal.wizard.walletBalance": "Wallet balance:",
+  "portal.wizard.runtime": "Estimated runtime:",
 
   "portal.vouchers.title": "Vouchers",
   "portal.vouchers.subtitle": "Upload and manage voucher codes.",
