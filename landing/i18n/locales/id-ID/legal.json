@@ -1,0 +1,38 @@
+{
+  "index.meta.title": "Legal Center — KiX",
+  "index.title": "Legal Center",
+  "index.lede": "Everything we publish about how KiX operates: the contracts you enter when you sign up, how we handle data, when refunds apply, what is allowed on the platform, and how we co-operate with enterprise compliance teams. KiX is a Singapore-anchored merchant gamification platform serving nine jurisdictions: Singapore, Indonesia, Thailand, Vietnam, Philippines, the European Union, the United States, Brazil and India.",
+
+  "terms.meta.title": "Terms of Service — KiX",
+  "terms.title": "Terms of Service",
+  "terms.lede": "These Terms govern your access to and use of the KiX platform — including the merchant portal, consumer app, public APIs, game templates and advertising inventory. Read them carefully. By creating an account, integrating with our APIs or using any KiX service, you agree to be bound by these Terms.",
+
+  "privacy.meta.title": "Privacy Policy — KiX",
+  "privacy.title": "Privacy Policy",
+  "privacy.lede": "This Privacy Policy explains what personal data KiX collects, why we collect it, how long we keep it, who we share it with, and the rights you have over it. We operate in nine jurisdictions and apply the strictest applicable rule where laws differ.",
+
+  "refund.meta.title": "Refund Policy — KiX",
+  "refund.title": "Refund Policy",
+  "refund.lede": "This policy explains when you can get money back from KiX. It applies to wallet top-ups, subscription fees and chargebacks, and supplements (does not replace) any mandatory consumer-protection rights you have under local law.",
+
+  "aup.meta.title": "Acceptable Use Policy — KiX",
+  "aup.title": "Acceptable Use Policy",
+  "aup.lede": "KiX is a gamified merchant marketing platform. This policy describes what may and may not be uploaded, advertised or played on KiX, with extra rules for sensitive categories that vary by region.",
+
+  "cookies.meta.title": "Cookie Policy — KiX",
+  "cookies.title": "Cookie Policy",
+  "cookies.lede": "This Cookie Policy explains which cookies and similar technologies KiX uses, what they do and how to control them.",
+
+  "dpa.meta.title": "Data Processing Addendum (DPA) — KiX",
+  "dpa.title": "Data Processing Addendum (DPA)",
+  "dpa.lede": "This Addendum supplements the master agreement between an enterprise customer (the controller) and KiX (Singapore) Pte. Ltd. (the processor), and applies whenever KiX processes personal data on behalf of the Customer.",
+
+  "footer.legal_center": "Legal Center",
+  "footer.terms": "Terms",
+  "footer.privacy": "Privacy",
+  "footer.refund": "Refund",
+  "footer.aup": "Acceptable use",
+  "footer.cookies": "Cookies",
+  "footer.dpa": "DPA",
+  "footer.draft_notice": "DRAFT — review by legal counsel required before binding use."
+}

@@ -417,6 +417,10 @@ def test_router_requires_admin_token():
     """The audit_log router 403s without a valid admin token."""
     import os
 
+    # Save & restore — the autouse ``_env_isolation`` fixture in
+    # conftest.py already snapshots os.environ, but we belt-and-brace
+    # here so this test stays explicit about the env mutation it makes.
+    _prev = os.environ.get("KIX_ADMIN_TOKEN")
     os.environ["KIX_ADMIN_TOKEN"] = "test-token-xyz"
 
     from fastapi import FastAPI
@@ -439,7 +443,13 @@ def test_router_requires_admin_token():
             )
             assert r2.status_code == 403
 
-    _run(go())
+    try:
+        _run(go())
+    finally:
+        if _prev is None:
+            os.environ.pop("KIX_ADMIN_TOKEN", None)
+        else:
+            os.environ["KIX_ADMIN_TOKEN"] = _prev
 
 
 # ── 11. Migration-script legacy parser ───────────────────────────────────

@@ -826,6 +826,42 @@
         "storefront.footer.copyright",
         "storefront.footer.location"
       ]
+    },
+    "legal": {
+      "total": 29,
+      "needs_translation": 29,
+      "auto_translated": 0,
+      "stub_keys": [
+        "index.meta.title",
+        "index.title",
+        "index.lede",
+        "terms.meta.title",
+        "terms.title",
+        "terms.lede",
+        "privacy.meta.title",
+        "privacy.title",
+        "privacy.lede",
+        "refund.meta.title",
+        "refund.title",
+        "refund.lede",
+        "aup.meta.title",
+        "aup.title",
+        "aup.lede",
+        "cookies.meta.title",
+        "cookies.title",
+        "cookies.lede",
+        "dpa.meta.title",
+        "dpa.title",
+        "dpa.lede",
+        "footer.legal_center",
+        "footer.terms",
+        "footer.privacy",
+        "footer.refund",
+        "footer.aup",
+        "footer.cookies",
+        "footer.dpa",
+        "footer.draft_notice"
+      ]
     }
   }
 }
