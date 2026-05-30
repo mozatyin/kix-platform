@@ -22,6 +22,7 @@ from app.models._core import (
     UserProfile,
     VoucherPool,
 )
+from app.models.audit_log import AuditLog
 from app.models.brand_translation import BrandTranslation
 from app.models.geofence import Geofence
 from app.models.subscription import (
@@ -30,6 +31,7 @@ from app.models.subscription import (
 )
 
 __all__ = [
+    "AuditLog",
     "Base",
     "BrandConfig",
     "BrandLocation",

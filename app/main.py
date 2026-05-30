@@ -586,6 +586,24 @@ and the shim helpers in `app.api_standards`.
         tags=["push"],
     )
 
+    # ── TriSoul Integration: adaptive routing by user attention vector ─
+    # Feature-flag gated; default OFF. Additive hooks into push_engine /
+    # auction / recipe_generator score TriSoul × campaign affinity.
+    from app.routers import trisoul_integration
+    app.include_router(
+        trisoul_integration.router,
+        prefix="/api/v1/trisoul",
+        tags=["trisoul"],
+    )
+
+    # ── Push Topics + FCM token registration + push health ─────────────
+    from app.routers import push_topics
+    app.include_router(
+        push_topics.router,
+        prefix="/api/v1/push",
+        tags=["push-topics"],
+    )
+
     # ── Email + push template admin (locale-aware) ─────────────────────
     from app.routers import email_admin
     app.include_router(
@@ -717,6 +735,25 @@ and the shim helpers in `app.api_standards`.
         tags=["webhooks_outbound"],
     )
 
+    # ── PSP Webhooks: PayNow / GrabPay / Alipay / WeChat / OVO ─────────
+    try:
+        from app.routers import psp_webhooks
+        app.include_router(
+            psp_webhooks.router,
+            prefix="/api/v1/webhooks",
+            tags=["psp_webhooks"],
+        )
+        app.include_router(
+            psp_webhooks.health_router,
+            prefix="/api/v1/health",
+            tags=["psp_health"],
+        )
+    except Exception as _exc:  # pragma: no cover — never fail boot
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "psp webhook router not mounted: %s", _exc
+        )
+
     # ── Merchant Dashboards: today / cumulative / leaderboard / insights ─
     from app.routers import dashboards
     app.include_router(
@@ -819,6 +856,24 @@ and the shim helpers in `app.api_standards`.
         prefix="/api/v1/alpha",
         tags=["alpha-program"],
     )
+
+    # ── Trinity 3T iteration engine (meta-tooling, admin-only) ────────
+    # Institutionalises the manual Trinity Protocol cycle (Industry ×
+    # Academic × Reality) as a callable engine. See
+    # docs/trinity-3t-handbook.md for usage and case studies.
+    from app.routers import trinity_admin
+    app.include_router(
+        trinity_admin.router,
+        prefix="/api/v1/trinity",
+        tags=["trinity"],
+    )
+
+    # ── Wave-C Observability: ML & viral telemetry (no prefix — routes
+    # under the router carry their own /api/v1/... prefixes so the health
+    # endpoint can mount at /api/v1/health/observability alongside the
+    # other health probes).
+    from app.routers import observability as _obs_router
+    app.include_router(_obs_router.router, tags=["observability"])
 
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
