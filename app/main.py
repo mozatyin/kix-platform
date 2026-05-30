@@ -740,6 +740,17 @@ and the shim helpers in `app.api_standards`.
         tags=["ab_testing"],
     )
 
+    # ── Enterprise Portal meta-endpoints (read-only convenience layer) ──
+    # Composes campaigns / audiences / dashboards / wallet / reporting
+    # into a small set of locale-aware payloads the new portal UI consumes
+    # in one round-trip. See app/routers/portal_api.py for design notes.
+    from app.routers import portal_api
+    app.include_router(
+        portal_api.router,
+        prefix="/api/v1/portal",
+        tags=["portal"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
