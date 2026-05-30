@@ -528,8 +528,37 @@ async def retention_status(
     return out
 
 
+# ── Fire-and-forget convenience for router hooks ─────────────────────────
+
+
+async def record_event_fire_and_forget(
+    **kwargs: Any,
+) -> str | None:
+    """Open our own AsyncSession, record an event, swallow any error.
+
+    Routers wiring audit calls into hot paths (wallet charge, campaign
+    create, …) need a one-liner that NEVER breaks the request even if
+    the audit DB is unreachable. This helper opens a fresh session
+    from ``async_session_factory``, calls ``record_event``, and traps
+    every exception with a WARNING log.
+
+    Returns the minted ``event_id`` on success, ``None`` on failure.
+    """
+    try:
+        # Local import: keeps module import-time cheap + avoids cycles
+        # for tests that build their own session factories.
+        from app.database import async_session_factory
+
+        async with async_session_factory() as db:
+            return await record_event(db, **kwargs)
+    except Exception as exc:  # pragma: no cover — hook-side resilience
+        logger.warning("audit_log fire-and-forget failed: %s", exc)
+        return None
+
+
 __all__ = [
     "record_event",
+    "record_event_fire_and_forget",
     "query",
     "get_event",
     "export_csv",
