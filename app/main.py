@@ -1143,6 +1143,19 @@ and the shim helpers in `app.api_standards`.
             "wavef-spec-04 scratch skipped: %s", _exc
         )
 
+    try:
+        from app.routers import wavef_memory as _wfr05
+        app.include_router(
+            _wfr05.router,
+            prefix="/api/v1/wavef/memory",
+            tags=["wavef", "memory"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-05 memory skipped: %s", _exc
+        )
+
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os
     _landing_dir = _os.path.join(_os.path.dirname(__file__), "..", "landing")
