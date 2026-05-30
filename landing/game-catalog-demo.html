@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>KiX Game Catalog — 15 Templates</title>
+<title>KiX Game Catalog — 50 Templates</title>
 <style>
 :root { --bg:#0b0d12; --fg:#fff; --muted:#9ca3af; --brand:#ff4081; --card:#161922; }
 * { box-sizing:border-box; }
@@ -13,8 +13,9 @@ header { padding: 24px 20px 8px; border-bottom: 1px solid #232631; }
 h1 { margin:0; font-size: 22px; }
 .sub { color:var(--muted); margin-top:4px; font-size:13px; }
 .filters { display:flex; flex-wrap:wrap; gap:8px; padding:14px 20px; border-bottom:1px solid #232631; }
-.filter { background:#232631; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-size:13px; cursor:pointer; }
+.filter { background:#232631; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-size:13px; cursor:pointer; min-height:36px; }
 .filter.on { background: var(--brand); }
+.filter:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:14px; padding:18px; }
 .card { background:var(--card); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; box-shadow: 0 6px 14px rgba(0,0,0,.35); }
 .card iframe { width:100%; height:260px; border:none; background:#000; }
@@ -23,18 +24,24 @@ h1 { margin:0; font-size: 22px; }
 .meta .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
 .tag { background:#262a36; color:#cbd5e1; padding: 3px 8px; border-radius:6px; font-size:11px; }
 .tag.brand { background: var(--brand); color:#fff; }
+.tag.cat { background:#1d4ed8; color:#fff; }
 .desc { color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.4; }
-.btn { background: var(--brand); color:#fff; border:none; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-top: 8px; cursor: pointer; }
+.btn { background: var(--brand); color:#fff; border:none; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-top: 8px; cursor: pointer; min-height:36px; }
+.btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.count { color: var(--muted); font-size:12px; padding: 4px 20px 12px; }
 </style>
 </head>
 <body>
 <header>
   <h1>KiX Game Catalog Demo</h1>
-  <div class="sub">15 brand-ready game templates (5 legacy + 10 new). Live previews, brand-injectable, mobile-first.</div>
+  <div class="sub">50 brand-ready game templates — 5 legacy + 10 Wave D9 + 35 Wave E2 (F&amp;B, engagement, skill). Live previews, brand-injectable, mobile-first, WCAG AA, RTL-aware.</div>
 </header>
 
 <div class="filters">
   <button class="filter on" data-key="all">All</button>
+  <button class="filter" data-key="cat:fnb_pack">F&amp;B Pack (15)</button>
+  <button class="filter" data-key="cat:engagement_pack">Engagement Pack (10)</button>
+  <button class="filter" data-key="cat:skill_pack">Skill Pack (10)</button>
   <button class="filter" data-key="industry:fnb">F&amp;B</button>
   <button class="filter" data-key="industry:beauty">Beauty</button>
   <button class="filter" data-key="industry:retail">Retail</button>
@@ -45,30 +52,72 @@ h1 { margin:0; font-size: 22px; }
   <button class="filter" data-key="time:long">Long (31-60s)</button>
 </div>
 
+<div id="count" class="count"></div>
 <div id="grid" class="grid"></div>
 
 <script>
 const TYPES = [
-  { type:"spin", name:"Spin the Wheel", desc:"Single-prize prize wheel; instant outcome.", industries:["fnb","retail","beauty"], t:8 },
-  { type:"scratch", name:"Scratch Card", desc:"Single scratch-off reveal.", industries:["fnb","retail"], t:10 },
-  { type:"match", name:"Match 3", desc:"Swap adjacent symbols to make 3+ in a row.", industries:["fnb","beauty"], t:35 },
-  { type:"quiz", name:"Brand Quiz", desc:"Multi-choice trivia about the brand.", industries:["education","fnb","retail"], t:30 },
-  { type:"shake", name:"Shake to Win", desc:"Shake the phone to score.", industries:["fnb","retail","fitness"], t:12 },
-  { type:"slot_machine", name:"Slot Machine", desc:"3-reel slot machine; win on three matching symbols.", industries:["retail","fnb"], t:10 },
-  { type:"wheel_of_fortune", name:"Wheel of Fortune", desc:"Multi-segment weighted prize wheel.", industries:["fnb","retail","beauty"], t:12 },
-  { type:"memory_match", name:"Memory Match", desc:"Flip cards to find matching pairs.", industries:["fnb","beauty","education"], t:40 },
-  { type:"whack_a_mole", name:"Whack-a-Mole", desc:"Tap moles, avoid bombs, in 20 seconds.", industries:["fnb","fitness","retail"], t:22 },
-  { type:"catch_falling", name:"Catch & Win", desc:"Catch falling items in a basket, avoid bombs.", industries:["beauty","retail","fnb"], t:30 },
-  { type:"bubble_pop", name:"Bubble Pop", desc:"Tap floating bubbles for points.", industries:["beauty","fnb"], t:28 },
-  { type:"target_shoot", name:"Target Shoot", desc:"Aim and tap targets within the time limit.", industries:["fitness","retail"], t:22 },
-  { type:"stack_tower", name:"Stack Tower", desc:"Stack blocks accurately to build the tallest tower.", industries:["retail","fitness"], t:30 },
-  { type:"lucky_dice", name:"Lucky Dice", desc:"Roll three dice for combinations; triples = jackpot.", industries:["retail","fnb"], t:8 },
-  { type:"scratch_galaxy", name:"Scratch Galaxy", desc:"Scratch three cards in succession; matching trio = jackpot.", industries:["fnb","retail"], t:45 },
+  // legacy (5)
+  { type:"spin", name:"Spin the Wheel", desc:"Single-prize prize wheel; instant outcome.", industries:["fnb","retail","beauty"], t:8, cat:"legacy" },
+  { type:"scratch", name:"Scratch Card", desc:"Single scratch-off reveal.", industries:["fnb","retail"], t:10, cat:"legacy" },
+  { type:"match", name:"Match 3", desc:"Swap adjacent symbols to make 3+ in a row.", industries:["fnb","beauty"], t:35, cat:"legacy" },
+  { type:"quiz", name:"Brand Quiz", desc:"Multi-choice trivia about the brand.", industries:["education","fnb","retail"], t:30, cat:"legacy" },
+  { type:"shake", name:"Shake to Win", desc:"Shake the phone to score.", industries:["fnb","retail","fitness"], t:12, cat:"legacy" },
+  // Wave D9 (10)
+  { type:"slot_machine", name:"Slot Machine", desc:"3-reel slot machine; win on three matching symbols.", industries:["retail","fnb"], t:10, cat:"d9" },
+  { type:"wheel_of_fortune", name:"Wheel of Fortune", desc:"Multi-segment weighted prize wheel.", industries:["fnb","retail","beauty"], t:12, cat:"d9" },
+  { type:"memory_match", name:"Memory Match", desc:"Flip cards to find matching pairs.", industries:["fnb","beauty","education"], t:40, cat:"d9" },
+  { type:"whack_a_mole", name:"Whack-a-Mole", desc:"Tap moles, avoid bombs, in 20 seconds.", industries:["fnb","fitness","retail"], t:22, cat:"d9" },
+  { type:"catch_falling", name:"Catch & Win", desc:"Catch falling items in a basket, avoid bombs.", industries:["beauty","retail","fnb"], t:30, cat:"d9" },
+  { type:"bubble_pop", name:"Bubble Pop", desc:"Tap floating bubbles for points.", industries:["beauty","fnb"], t:28, cat:"d9" },
+  { type:"target_shoot", name:"Target Shoot", desc:"Aim and tap targets within the time limit.", industries:["fitness","retail"], t:22, cat:"d9" },
+  { type:"stack_tower", name:"Stack Tower", desc:"Stack blocks accurately to build the tallest tower.", industries:["retail","fitness"], t:30, cat:"d9" },
+  { type:"lucky_dice", name:"Lucky Dice", desc:"Roll three dice for combinations; triples = jackpot.", industries:["retail","fnb"], t:8, cat:"d9" },
+  { type:"scratch_galaxy", name:"Scratch Galaxy", desc:"Scratch three cards in succession; matching trio = jackpot.", industries:["fnb","retail"], t:45, cat:"d9" },
+  // Wave E2 — F&B (15)
+  { type:"coffee_brewing", name:"Coffee Brewing", desc:"Tap when the marker hits the perfect-brew zone.", industries:["fnb","retail"], t:18, cat:"fnb_pack" },
+  { type:"burger_builder", name:"Burger Builder", desc:"Stack ingredients in the right order.", industries:["fnb","retail"], t:25, cat:"fnb_pack" },
+  { type:"pizza_topping", name:"Pizza Topping", desc:"Pile on toppings before time runs out.", industries:["fnb"], t:20, cat:"fnb_pack" },
+  { type:"dim_sum_match", name:"Dim Sum Match", desc:"Find matching dim sum pairs.", industries:["fnb"], t:35, cat:"fnb_pack" },
+  { type:"bubble_tea_mixer", name:"Bubble Tea Mixer", desc:"Mix the target bubble tea recipe.", industries:["fnb"], t:18, cat:"fnb_pack" },
+  { type:"kopi_orders", name:"Kopi Orders", desc:"Memorize and replay the kopi order.", industries:["fnb"], t:30, cat:"fnb_pack" },
+  { type:"food_delivery_dash", name:"Delivery Dash", desc:"Dodge traffic, collect food drops.", industries:["fnb","retail"], t:30, cat:"fnb_pack" },
+  { type:"cake_decorating", name:"Cake Decorating", desc:"Paint and decorate the cake.", industries:["fnb","beauty"], t:35, cat:"fnb_pack" },
+  { type:"menu_quiz", name:"Menu Quiz", desc:"Guess the dish from its ingredient.", industries:["fnb","education"], t:30, cat:"fnb_pack" },
+  { type:"wok_tossing", name:"Wok Tossing", desc:"Tap on the beat to toss food.", industries:["fnb"], t:15, cat:"fnb_pack" },
+  { type:"queue_jumper", name:"Queue Jumper", desc:"Serve queue customers fast.", industries:["fnb","retail"], t:18, cat:"fnb_pack" },
+  { type:"recipe_unlocker", name:"Recipe Unlocker", desc:"Solve riddles to reveal a recipe.", industries:["fnb","education"], t:40, cat:"fnb_pack" },
+  { type:"ingredient_sort", name:"Ingredient Sort", desc:"Categorize ingredients quickly.", industries:["fnb","education"], t:22, cat:"fnb_pack" },
+  { type:"dessert_combo", name:"Dessert Combo", desc:"3-dessert combo; triples = jackpot.", industries:["fnb"], t:15, cat:"fnb_pack" },
+  { type:"spice_meter", name:"Spice Meter", desc:"Stop the spice meter at the target level.", industries:["fnb"], t:15, cat:"fnb_pack" },
+  // Wave E2 — Engagement (10)
+  { type:"trivia_avalanche", name:"Trivia Avalanche", desc:"Fast-fire trivia with a per-question timer.", industries:["education","fnb","retail"], t:30, cat:"engagement_pack" },
+  { type:"word_search_brand", name:"Word Search", desc:"Find brand-themed words in the grid.", industries:["retail","education"], t:45, cat:"engagement_pack" },
+  { type:"crossword_mini", name:"Mini Crossword", desc:"Solve a 3-clue mini crossword.", industries:["education","retail"], t:45, cat:"engagement_pack" },
+  { type:"picture_puzzle", name:"Picture Puzzle", desc:"3x3 slide puzzle of brand image.", industries:["retail","education","beauty"], t:50, cat:"engagement_pack" },
+  { type:"spot_difference", name:"Spot the Difference", desc:"Find the differences between two images.", industries:["retail","beauty","education"], t:35, cat:"engagement_pack" },
+  { type:"word_anagram", name:"Anagram", desc:"Unscramble brand-themed words.", industries:["education","retail"], t:40, cat:"engagement_pack" },
+  { type:"odd_one_out", name:"Odd One Out", desc:"Pick the different item from each group.", industries:["education","retail","beauty"], t:25, cat:"engagement_pack" },
+  { type:"emoji_decoder", name:"Emoji Decoder", desc:"Guess the phrase from emojis.", industries:["fnb","retail","education"], t:40, cat:"engagement_pack" },
+  { type:"word_chain", name:"Word Chain", desc:"Chain words by last letter.", industries:["education"], t:45, cat:"engagement_pack" },
+  { type:"sequence_predictor", name:"Predict the Next", desc:"Guess the next item in the sequence.", industries:["education","retail"], t:30, cat:"engagement_pack" },
+  // Wave E2 — Skill (10)
+  { type:"flappy_brand", name:"Flappy Brand", desc:"Flap through gaps, brand mascot edition.", industries:["retail","fitness","fnb"], t:40, cat:"skill_pack" },
+  { type:"tap_speed", name:"Tap Speed", desc:"Most taps in 10 seconds wins.", industries:["fitness","retail","fnb"], t:12, cat:"skill_pack" },
+  { type:"swipe_direction", name:"Swipe Direction", desc:"Swipe matching the arrow direction.", industries:["fitness","retail"], t:18, cat:"skill_pack" },
+  { type:"balance_balance", name:"Balance!", desc:"Keep the ball centered using tilt or buttons.", industries:["fitness","retail"], t:20, cat:"skill_pack" },
+  { type:"precision_target", name:"Precision Target", desc:"Tap exact bullseye for max points.", industries:["fitness","retail"], t:18, cat:"skill_pack" },
+  { type:"reaction_time", name:"Reaction Time", desc:"Tap as soon as the screen turns green.", industries:["fitness","retail"], t:20, cat:"skill_pack" },
+  { type:"drag_path", name:"Trace the Path", desc:"Trace the shape with your finger.", industries:["beauty","fitness","education"], t:25, cat:"skill_pack" },
+  { type:"timing_jump", name:"Timing Jump", desc:"Jump over obstacles, perfect timing.", industries:["fitness","retail"], t:30, cat:"skill_pack" },
+  { type:"shake_to_win", name:"Shake to Win", desc:"Shake harder for bigger prizes.", industries:["fnb","retail","fitness"], t:12, cat:"skill_pack" },
+  { type:"voice_shout", name:"Shout to Win", desc:"Shout loud (or tap) to win.", industries:["fnb","retail"], t:15, cat:"skill_pack" },
 ];
 
-const PREVIEW_BASE = "/api/v1/game-library/preview"; // requires backend endpoint; falls back to placeholder
+const PREVIEW_BASE = "/api/v1/game-library/preview"; // backend renders HTML
 
 const grid = document.getElementById("grid");
+const countEl = document.getElementById("count");
 
 function timeBucket(t) {
   if (t <= 15) return "quick";
@@ -83,8 +132,10 @@ function render(filter) {
     const [k, v] = filter.split(":");
     if (k === "industry") return t.industries.includes(v);
     if (k === "time") return timeBucket(t.t) === v;
+    if (k === "cat") return t.cat === v;
     return true;
   });
+  countEl.textContent = `${filtered.length} of ${TYPES.length} templates`;
   for (const t of filtered) {
     const card = document.createElement("div"); card.className = "card";
     card.innerHTML = `
@@ -94,6 +145,7 @@ function render(filter) {
         <h3>${t.name}</h3>
         <div class="row">
           <span class="tag brand">${t.type}</span>
+          <span class="tag cat">${t.cat}</span>
           <span class="tag">${t.t}s</span>
           ${t.industries.map(i => `<span class="tag">${i}</span>`).join("")}
         </div>

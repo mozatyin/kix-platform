@@ -39,7 +39,8 @@ ALL_TYPES = LEGACY_TYPES + NEW_TYPES
 # 1. catalog size
 # ---------------------------------------------------------------------------
 def test_catalog_size_is_15():
-    assert len(GAME_LIBRARY) == 15
+    # Wave E2 expands library; original 15 must remain present.
+    assert len(GAME_LIBRARY) >= 15
     for t in ALL_TYPES:
         assert t in GAME_LIBRARY
 
@@ -223,7 +224,7 @@ def test_calculate_win_empty_pool():
 # ---------------------------------------------------------------------------
 def test_list_templates_shape():
     meta = list_templates()
-    assert len(meta) == 15
+    assert len(meta) >= 15
     for m in meta:
         assert {"type_name", "display_name", "description",
                 "asset_requirements", "scoring", "recommended_industries",
