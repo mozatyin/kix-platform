@@ -56,6 +56,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Wave C: TriSoul-biased template picker (flag-gated, 30% selection
+# probability so merchants still see legacy library matches most of the
+# time). Identity no-op when the integration module is missing.
+try:  # pragma: no cover — best-effort
+    from app.routers.trisoul_integration import (  # type: ignore
+        maybe_pick_recipe_by_affinity as _trisoul_pick_recipe,
+    )
+except ImportError:  # pragma: no cover
+    async def _trisoul_pick_recipe(  # type: ignore[misc]
+        uid: str | None,
+        candidate_recipes: list[dict[str, Any]],
+        r: aioredis.Redis,
+        *,
+        selection_probability: float = 0.30,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        return None, {"trisoul": "unavailable"}
+
 
 # ── Module Catalog ─────────────────────────────────────────────────────────
 
@@ -199,6 +216,10 @@ class FromDescriptionRequest(BaseModel):
     description: str = Field(..., min_length=3, max_length=4000)
     style: Style | None = None
     industry: Industry | None = None
+    # Wave C: optional user_id enables TriSoul-biased template selection
+    # when the per-user flag is on. Backwards-compatible: when omitted,
+    # the legacy library-first → LLM fallback path is unchanged.
+    user_id: str | None = Field(default=None, min_length=1)
 
 
 class RefineRequest(BaseModel):
@@ -873,9 +894,27 @@ async def from_description(
     # 1) Library hit?
     industry_for_match = body.industry or _infer_industry(body.description)
     if industry_for_match:
+        # Wave C: when a user_id is supplied and TriSoul is enabled, fetch
+        # up to 5 library candidates so the TriSoul picker can re-rank
+        # them by user affinity. Otherwise keep legacy limit=1 behavior.
+        _hit_limit = 5 if body.user_id else 1
         hits = await find_matching_recipes(
-            industry_for_match, body.description, r, limit=1
+            industry_for_match, body.description, r, limit=_hit_limit
         )
+        # TriSoul-biased selection (30% of users when flag on, identity
+        # otherwise). Returns None when the legacy path should win.
+        if body.user_id and hits:
+            cand_recipes = [h["recipe"] for h in hits if h.get("score", 0) >= 6]
+            picked, _ts_meta = await _trisoul_pick_recipe(
+                body.user_id, cand_recipes, r,
+            )
+            if picked is not None:
+                # Re-order hits so the TriSoul pick is first.
+                picked_id = picked.get("id")
+                hits.sort(
+                    key=lambda h: (0 if h["recipe"].get("id") == picked_id else 1,
+                                   -h.get("score", 0)),
+                )
         if hits and hits[0]["score"] >= 6:
             chosen = hits[0]["recipe"]
             modules_used = [m["id"] for m in chosen.get("modules", [])]
