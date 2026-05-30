@@ -2776,7 +2776,7 @@ textarea.form-input{
           <div class="upload-zone" id="upload-zone">
             <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <p>Drop CSV file here or tap to select</p>
-            <p><small>拖放CSV文件到这里或点击选择</small></p>
+            <p><small data-i18n="portal.vouchers.dropCsv">Drop CSV file here or click to choose</small></p>
             <input type="file" id="voucher-file" accept=".csv,.txt,text/csv">
           </div>
           <div id="upload-result" class="upload-result"></div>
@@ -3153,7 +3153,7 @@ textarea.form-input{
             </tr>
             <tr>
               <td class="col-check"><input type="checkbox"></td>
-              <td class="col-name">Office-hours visitors (CBD) <div class="meta">Geofence: Raffles Place + Tanjong Pagar</div></td>
+              <td class="col-name">Office-hours visitors (CBD) <div class="meta">Geofence: city-center outlets (auto-detected)</div></td>
               <td><span class="ebadge info"><span class="dot"></span>Geofence</span></td>
               <td class="numeric tnum">24,100</td>
               <td>Custom</td>
@@ -3859,10 +3859,10 @@ kix('track','PageView');
             <table class="etable demo-only">
               <thead><tr><th data-i18n="portal.table.name">Name</th><th data-i18n="portal.operations.col.address">Address</th><th data-i18n="portal.operations.col.geofence">Geofence</th><th data-i18n="portal.operations.col.staff">Staff</th><th aria-label="Actions"></th></tr></thead>
               <tbody>
-                <tr><td class="col-name">Toast Box · Tampines Mall</td><td>4 Tampines Central 5, SG</td><td><span class="ebadge active"><span class="dot"></span>200m</span></td><td class="numeric tnum">6</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
-                <tr><td class="col-name">Ya Kun · Raffles Place</td><td>1 Raffles Place, SG 048616</td><td><span class="ebadge active"><span class="dot"></span>150m</span></td><td class="numeric tnum">4</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
-                <tr><td class="col-name">CHIR CHIR · Bugis Junction</td><td>200 Victoria St, SG 188021</td><td><span class="ebadge active"><span class="dot"></span>250m</span></td><td class="numeric tnum">8</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
-                <tr><td class="col-name">Bean Brothers · Main St</td><td>123 Telok Ayer St, SG</td><td><span class="ebadge pending"><span class="dot"></span>Setup pending</span></td><td class="numeric tnum">2</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">Toast Box · Tampines Mall (SG)</td><td>4 Tampines Central 5, Singapore</td><td><span class="ebadge active"><span class="dot"></span>200m</span></td><td class="numeric tnum">6</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">Kopi Senandung · KLCC (MY)</td><td>Suria KLCC, Kuala Lumpur</td><td><span class="ebadge active"><span class="dot"></span>150m</span></td><td class="numeric tnum">4</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">Kopi O · Penang Gurney (MY)</td><td>Gurney Plaza, George Town</td><td><span class="ebadge active"><span class="dot"></span>250m</span></td><td class="numeric tnum">8</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
+                <tr><td class="col-name">Bean Brothers · Main St (HK)</td><td>Central, Hong Kong</td><td><span class="ebadge pending"><span class="dot"></span>Setup pending</span></td><td class="numeric tnum">2</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
               </tbody>
             </table>
             <div class="empty-state non-demo" style="display:none;padding:32px 16px;text-align:center">
@@ -3906,7 +3906,7 @@ kix('track','PageView');
             </div>
             <div class="ecard" style="text-align:center;padding:var(--space-4)">
               <div style="width:96px;height:96px;background:#000;margin:0 auto var(--space-3);border-radius:var(--r-2)"></div>
-              <div style="font-weight:500;color:var(--text-strong)">Raffles Place</div>
+              <div style="font-weight:500;color:var(--text-strong)">KLCC Branch</div>
               <button class="ebtn secondary sm" style="margin-top:var(--space-2)" data-i18n="portal.operations.qr.download">Download PDF</button>
             </div>
             <div class="ecard" style="text-align:center;padding:var(--space-4)">
@@ -4940,9 +4940,12 @@ document.getElementById('register-form').addEventListener('submit',async(e)=>{
     state.refreshToken=data.refresh_token;
     state.brandId=data.brand_id;
     state.brandName=data.brand_name||'';
+    state.country=(document.getElementById('reg-country')||{}).value||'SG';
     localStorage.setItem('kix_portal_token',data.access_token);
     localStorage.setItem('kix_portal_refresh',data.refresh_token);
     localStorage.setItem('kix_brand_id',data.brand_id);
+    localStorage.setItem('kix_country',state.country);
+    try{ updateWalletDisplayCountry(); }catch(_){}
 
     showToast('Account created — welcome to KiX','success');
     showApp();
@@ -5194,7 +5197,7 @@ async function submitTopup(){
     const newBal=(typeof cdata.balance==='number')?cdata.balance:null;
     // Update wallet pill optimistically
     if(newBal!==null){
-      const fmt=new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD'}).format(newBal);
+      const fmt=(typeof formatMoneyByCountry==='function')?formatMoneyByCountry(newBal):('S$'+newBal.toFixed(2));
       const pill=document.getElementById('wallet-balance'); if(pill) pill.textContent=fmt;
       const det=document.getElementById('wallet-balance-detail'); if(det) det.textContent=fmt;
     }
@@ -5542,6 +5545,32 @@ function renderWalletTransactions(){
     </div>`;
   }).join('');
 }
+// Country → currency mapping (single source of truth)
+const KIX_CURRENCY = {
+  SG: { code:'SGD', symbol:'S$', locale:'en-SG', fxFromSGD:1.00 },
+  MY: { code:'MYR', symbol:'RM',  locale:'ms-MY', fxFromSGD:3.50 },
+  ID: { code:'IDR', symbol:'Rp',  locale:'id-ID', fxFromSGD:11800 },
+  TH: { code:'THB', symbol:'฿',   locale:'th-TH', fxFromSGD:27.0 },
+  HK: { code:'HKD', symbol:'HK$', locale:'en-HK', fxFromSGD:5.85 },
+  VN: { code:'VND', symbol:'₫',   locale:'vi-VN', fxFromSGD:18800 },
+};
+function kixCurrencyFor(country){
+  return KIX_CURRENCY[(country||state.country||localStorage.getItem('kix_country')||'SG').toUpperCase()] || KIX_CURRENCY.SG;
+}
+function formatMoneyByCountry(amountSGD, country){
+  const c = kixCurrencyFor(country);
+  const local = amountSGD * c.fxFromSGD;
+  try { return new Intl.NumberFormat(c.locale,{style:'currency',currency:c.code,minimumFractionDigits:c.code==='IDR'||c.code==='VND'?0:2,maximumFractionDigits:c.code==='IDR'||c.code==='VND'?0:2}).format(local); }
+  catch(_) { return c.symbol + local.toFixed(2); }
+}
+function updateWalletDisplayCountry(){
+  // Re-render placeholder demo wallet according to country
+  const c = kixCurrencyFor();
+  const demoAmt = 1234.56 * c.fxFromSGD;
+  const fmt = formatMoneyByCountry(1234.56);
+  const el = document.getElementById('wallet-balance'); if(el && /S\$|RM|HK\$|Rp|฿|₫/.test(el.textContent||'')) el.textContent = fmt;
+  const elD = document.getElementById('wallet-balance-detail'); if(elD && /S\$|RM|HK\$|Rp|฿|₫/.test(elD.textContent||'')) elD.textContent = fmt;
+}
 async function refreshWalletBalance(){
   try{
     const bid = state.brandId; if(!bid) return;
@@ -5549,12 +5578,20 @@ async function refreshWalletBalance(){
     if(!res.ok) return;
     const data = await res.json();
     const cents = data.balance_cents || 0;
-    const sgd = (cents/100).toFixed(2);
-    const formatted = 'S$' + Number(sgd).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const sgdAmount = cents/100;
+    const formatted = formatMoneyByCountry(sgdAmount);
     const el = document.getElementById('wallet-balance'); if(el) el.textContent = formatted;
     const elD = document.getElementById('wallet-balance-detail'); if(elD) elD.textContent = formatted;
   }catch(_){}
 }
+// Run once on boot so demo wallet matches saved country
+(function(){
+  try{
+    const saved = localStorage.getItem('kix_country');
+    if(saved) state.country = saved;
+    updateWalletDisplayCountry();
+  }catch(_){}
+})();
 // Boot: poll wallet every 30s while app shell active
 setInterval(()=>{ if(document.getElementById('app-shell')&&document.getElementById('app-shell').classList.contains('active')) refreshWalletBalance(); }, 30000);
 

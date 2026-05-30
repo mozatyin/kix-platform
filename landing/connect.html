@@ -377,15 +377,30 @@
     };
 
     // ─── Integration catalogue ───────────────────────────────────────
+    // Wave I.A-2: explicit Pixel / Conversions API entries so ad-savvy
+    // merchants (TikTok / Meta / Google) see we round-trip events back.
     const INTEGRATIONS = [
+      // Ads attribution (most important for performance-marketing-savvy merchants)
+      { id:"tiktok_pixel",   name:"TikTok Pixel",         group:"Ads attribution", status:"available", initial:"T" },
+      { id:"tiktok_events",  name:"TikTok Events API",    group:"Ads attribution", status:"available", initial:"T" },
+      { id:"meta_pixel",     name:"Meta Pixel",           group:"Ads attribution", status:"available", initial:"M" },
+      { id:"meta_capi",      name:"Meta Conversions API", group:"Ads attribution", status:"available", initial:"M" },
+      { id:"ga4",            name:"Google Analytics 4",   group:"Ads attribution", status:"available", initial:"G" },
+      { id:"google_ads",     name:"Google Ads CAPI",      group:"Ads attribution", status:"available", initial:"G" },
+      // Payments
       { id:"stripe",   name:"Stripe",   group:"Payments",  status:"available", initial:"S" },
       { id:"square",   name:"Square",   group:"Payments",  status:"available", initial:"⬛" },
-      { id:"shopify",  name:"Shopify",  group:"Commerce",  status:"available", initial:"S" },
       { id:"grabpay",  name:"GrabPay",  group:"Payments",  status:"available", initial:"G" },
+      { id:"paynow",   name:"PayNow",   group:"Payments",  status:"available", initial:"P" },
+      { id:"fpx",      name:"FPX (MY)", group:"Payments",  status:"available", initial:"F" },
       { id:"ovo",      name:"OVO",      group:"Payments",  status:"coming",    initial:"O" },
-      { id:"meta",     name:"Meta",     group:"Social",    status:"available", initial:"M" },
-      { id:"google",   name:"Google",   group:"Social",    status:"available", initial:"G" },
-      { id:"tiktok",   name:"TikTok",   group:"Social",    status:"available", initial:"T" },
+      // Commerce
+      { id:"shopify",  name:"Shopify",  group:"Commerce",  status:"available", initial:"S" },
+      { id:"storehub", name:"StoreHub", group:"Commerce",  status:"coming",    initial:"S" },
+      // Social organic
+      { id:"meta",     name:"Meta (organic)",   group:"Social",    status:"available", initial:"M" },
+      { id:"google",   name:"Google Business",  group:"Social",    status:"available", initial:"G" },
+      { id:"tiktok",   name:"TikTok (organic)", group:"Social",    status:"available", initial:"T" },
     ];
 
     function t(key, fallback) {

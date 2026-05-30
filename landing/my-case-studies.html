@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en-MY">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="mycases:meta.title">Malaysia F&B — KiX Case Studies (Early Access)</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<script src="i18n/i18next-runtime.js" defer></script>
+<script src="i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+       background:#FFFFFF;color:#0F172A;line-height:1.6;-webkit-font-smoothing:antialiased;
+       overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--blue:#1A73E8;--surface:#F7F8FA;
+        --border:#E2E8F0;--text-muted:#64748B}
+  .container{max-width:1200px;margin:0 auto;padding:0 24px}
+  header{background:#FFFFFF;border-bottom:1px solid var(--border);
+         position:sticky;top:0;z-index:100;padding:14px 0}
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:24px;align-items:center}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  .hero{padding:64px 0 32px;text-align:center}
+  .pill{display:inline-block;background:#E6F7EB;color:var(--brand-dk);
+        padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;
+        letter-spacing:.5px;margin-bottom:20px;text-transform:uppercase}
+  h1{font-size:44px;line-height:1.1;font-weight:800;letter-spacing:-1.2px;
+     margin-bottom:14px;color:#0F172A}
+  .sub{font-size:17px;color:var(--text-muted);max-width:680px;margin:0 auto}
+  .honesty{background:#FFFBEB;border:1px solid #F59E0B;border-radius:10px;
+           padding:18px 22px;max-width:780px;margin:24px auto 0;font-size:14px;
+           color:#92400E;line-height:1.5}
+  .honesty strong{color:#78350F}
+  .cases{padding:48px 0 40px}
+  .case{background:#FFFFFF;border:1px solid var(--border);border-radius:14px;
+        padding:36px;margin-bottom:24px;display:grid;
+        grid-template-columns:minmax(0,1fr) 320px;gap:32px;align-items:start}
+  @media(max-width:920px){.case{grid-template-columns:1fr}}
+  .case-header{margin-bottom:18px}
+  .case-vertical{font-size:11px;color:var(--brand-dk);font-weight:700;
+                 text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+  .case-name{font-size:24px;font-weight:800;color:#0F172A;display:flex;
+             align-items:center;gap:10px;flex-wrap:wrap}
+  .stage-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;
+             letter-spacing:.6px;text-transform:uppercase}
+  .stage-projected{background:#EFF6FF;color:#1E40AF;border:1px solid #93C5FD}
+  .stage-pilot{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D}
+  .stage-early-access{background:#F5F3FF;color:#5B21B6;border:1px solid #C4B5FD}
+  .case-loc{font-size:13px;color:var(--text-muted);margin-top:4px}
+  .case-quote{font-size:15px;color:#1E293B;background:var(--surface);padding:18px 22px;
+              border-left:3px solid var(--brand);border-radius:8px;margin:20px 0;
+              font-style:italic;line-height:1.55}
+  .case-attr{display:block;margin-top:10px;font-style:normal;font-size:12px;
+             color:var(--text-muted);font-weight:600}
+  .case-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  @media(max-width:600px){.case-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .case-stat{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;
+             padding:14px 12px;text-align:center}
+  .case-stat-num{font-size:22px;font-weight:800;color:var(--brand-dk);line-height:1.1}
+  .case-stat-label{font-size:11px;color:#16A34A;font-weight:600;margin-top:4px;
+                   text-transform:uppercase;letter-spacing:.4px}
+  .case-side{background:var(--surface);border-radius:10px;padding:22px}
+  .case-side h4{font-size:13px;font-weight:700;color:#0F172A;margin-bottom:12px;
+                text-transform:uppercase;letter-spacing:.5px}
+  .case-side ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+  .case-side li{font-size:13px;color:var(--text-muted);padding-left:18px;position:relative;line-height:1.45}
+  .case-side li::before{content:"→";color:var(--brand);position:absolute;left:0;font-weight:700}
+  .cta-section{background:var(--brand);color:#FFFFFF;padding:48px 0;text-align:center;margin-top:32px}
+  .cta-section h2{font-size:28px;font-weight:800;margin-bottom:10px;color:#FFFFFF}
+  .cta-section p{margin-bottom:20px;opacity:.92}
+  .cta-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;
+           background:#FFFFFF;color:var(--brand-dk);border-radius:8px;
+           font-weight:700;text-decoration:none;font-size:15px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;
+         border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/" data-i18n="mycases:nav.home">Home</a>
+        <a href="/pricing.html" data-i18n="mycases:nav.pricing">Pricing</a>
+        <a href="/sg-case-studies.html" data-i18n="mycases:nav.sg_cases">SG Cases</a>
+        <a href="/portal.html" data-i18n="mycases:nav.portal">Portal</a>
+        <a href="mailto:michael@mozat.com" data-i18n="mycases:nav.contact">Contact</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill" data-i18n="mycases:hero.pill">MALAYSIA · F&amp;B Early Access</span>
+    <h1 data-i18n="mycases:hero.title">5 Malaysian F&amp;B brands. Real personas. Honest projections.</h1>
+    <p class="sub" data-i18n="mycases:hero.sub">Malaysia launches Q3 2026. These are the operator archetypes we're building for — with projections grounded in our SG pilot numbers and TikTok Ads Manager benchmarks.</p>
+    <div class="honesty">
+      <strong data-i18n="mycases:hero.disclaimer.title">Honesty disclaimer:</strong>
+      <span data-i18n="mycases:hero.disclaimer.body">No Malaysian merchant has been live for 90 days on KiX yet. The cases below are operator-archetype profiles, with CPA/CAC numbers derived from (a) our 5 Singapore F&amp;B pilots over similar verticals and (b) TikTok Ads Manager benchmarks for MY F&amp;B 2024–2026. Real Malaysian merchant cases will replace these by Q4 2026.</span>
+    </div>
+  </div>
+</section>
+
+<section class="cases">
+  <div class="container">
+
+    <!-- Case 1: KL 100-outlet kopi chain (Ahmad's archetype) -->
+    <div class="case">
+      <div>
+        <div class="case-header">
+          <div class="case-vertical">Kopi chain · 100 outlets (national)</div>
+          <div class="case-name">Kopi Senandung-archetype <span class="stage-tag stage-projected">Projected</span></div>
+          <div class="case-loc">13 Malaysian states · founded mid-2000s</div>
+        </div>
+        <div class="case-quote">
+          "We were paying RM 47 per acquired customer on TikTok Ads — up from RM 18
+          two years ago. The pitch I want to test: 'free SaaS, only pay for delivered
+          customers, integrate with my existing TikTok Pixel.' If that works at 5
+          outlets in KL, we scale to all 100 in one quarter."
+          <span class="case-attr">— Ahmad bin Hashim-archetype (composite of 3 MY chain CEOs interviewed 2026-04 to 2026-05)</span>
+        </div>
+        <div class="case-stats">
+          <div class="case-stat">
+            <div class="case-stat-num">RM 47→RM 18</div>
+            <div class="case-stat-label">CAC target (TikTok→KiX)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">100</div>
+            <div class="case-stat-label">outlets (national rollout)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">RM 200K/mo</div>
+            <div class="case-stat-label">current TikTok ad spend</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">5 → 100</div>
+            <div class="case-stat-label">pilot → full rollout (Q3)</div>
+          </div>
+        </div>
+      </div>
+      <div class="case-side">
+        <h4>Pilot blueprint</h4>
+        <ul>
+          <li>Phase 1: 5 KL outlets, 30 days</li>
+          <li>TikTok Pixel + Events API connected</li>
+          <li>BM-first UI for store staff</li>
+          <li>RM-denominated wallet + reporting</li>
+          <li>PDPA-MY consent flow on every game</li>
+          <li>Halal-aware game library (no spin-to-win lottery)</li>
+          <li>Founding-100-MY slot claimed: 0% take rate forever</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Case 2: Penang Mamak -->
+    <div class="case">
+      <div>
+        <div class="case-header">
+          <div class="case-vertical">Mamak · 3 outlets</div>
+          <div class="case-name">Penang Roti Canai-archetype <span class="stage-tag stage-early-access">Early access</span></div>
+          <div class="case-loc">George Town + Bayan Lepas + Bukit Mertajam</div>
+        </div>
+        <div class="case-quote">
+          "TikTok Ads work for awareness but Penang tourists don't convert — they're
+          not coming back. We want a tool that makes <em>repeat visits</em> the win,
+          not just clicks. The voucher game where they earn energy by walking in
+          twice — that's interesting."
+          <span class="case-attr">— Mamak chain operator archetype (composite, 2 owners interviewed)</span>
+        </div>
+        <div class="case-stats">
+          <div class="case-stat">
+            <div class="case-stat-num">RM 12</div>
+            <div class="case-stat-label">target CPA</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">3.2x</div>
+            <div class="case-stat-label">repeat-visit lift (proj)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">38%</div>
+            <div class="case-stat-label">14-day return (SG benchmark)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">3</div>
+            <div class="case-stat-label">outlets (cross-pool)</div>
+          </div>
+        </div>
+      </div>
+      <div class="case-side">
+        <h4>Setup notes</h4>
+        <ul>
+          <li>BM + EN UI for tourists + locals</li>
+          <li>Cross-brand pool with nearby kedai kopi</li>
+          <li>FPX + GrabPay scan-to-redeem</li>
+          <li>QR table tents per outlet</li>
+          <li>No pork/non-halal imagery in any game</li>
+          <li>Founding-100-MY slot eligible</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Case 3: KL Café -->
+    <div class="case">
+      <div>
+        <div class="case-header">
+          <div class="case-vertical">Specialty Café · 4 outlets</div>
+          <div class="case-name">KL Café-archetype <span class="stage-tag stage-projected">Projected</span></div>
+          <div class="case-loc">Mont Kiara · Bangsar · TTDI · KLCC</div>
+        </div>
+        <div class="case-quote">
+          "We over-rely on Instagram and our IG followers don't convert any more.
+          The 'first-100 free + own your customer data' angle matters because we
+          can re-target them later via our own CRM, not just rent audience from Meta."
+          <span class="case-attr">— Café founder archetype</span>
+        </div>
+        <div class="case-stats">
+          <div class="case-stat">
+            <div class="case-stat-num">RM 21</div>
+            <div class="case-stat-label">target CPA</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">+18%</div>
+            <div class="case-stat-label">new-customer ratio (proj)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">4</div>
+            <div class="case-stat-label">outlets in pool</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">RM 0</div>
+            <div class="case-stat-label">founding slot (if claim)</div>
+          </div>
+        </div>
+      </div>
+      <div class="case-side">
+        <h4>Setup notes</h4>
+        <ul>
+          <li>BM + EN + Mandarin (multi-ethnic KL base)</li>
+          <li>Latte-art mini-game (vertical-specific)</li>
+          <li>CSV upload of IG followers as warm seed</li>
+          <li>Stripe + GrabPay redemption</li>
+          <li>Meta Pixel + Meta CAPI for retarget</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Case 4: Nasi Padang -->
+    <div class="case">
+      <div>
+        <div class="case-header">
+          <div class="case-vertical">Nasi Padang · 1 stall</div>
+          <div class="case-name">Kampung Nasi-archetype <span class="stage-tag stage-projected">Projected</span></div>
+          <div class="case-loc">Petaling Jaya hawker centre · family-run</div>
+        </div>
+        <div class="case-quote">
+          "I never used SaaS before. WhatsApp and Instagram only. If the setup
+          really is 10 minutes and someone helps me, I'll try. The 'pay only
+          for delivered customers' part is what hooked me — I cannot afford
+          subscription fees with my margin."
+          <span class="case-attr">— First-time merchant archetype</span>
+        </div>
+        <div class="case-stats">
+          <div class="case-stat">
+            <div class="case-stat-num">RM 5–8</div>
+            <div class="case-stat-label">target CPA</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">10 min</div>
+            <div class="case-stat-label">setup (founder-assisted)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">0%</div>
+            <div class="case-stat-label">take rate (founding 100)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">1</div>
+            <div class="case-stat-label">stall (proof-of-concept)</div>
+          </div>
+        </div>
+      </div>
+      <div class="case-side">
+        <h4>Setup notes</h4>
+        <ul>
+          <li>BM-only UI (no English needed)</li>
+          <li>Founder-assisted onboarding (in-person)</li>
+          <li>Tap-and-redeem via FPX or cash</li>
+          <li>Halal-aware library only</li>
+          <li>Founding-100-MY slot pre-reserved</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Case 5: JB Bubble Tea -->
+    <div class="case">
+      <div>
+        <div class="case-header">
+          <div class="case-vertical">Bubble Tea · 8 outlets</div>
+          <div class="case-name">JB Bubble Tea-archetype <span class="stage-tag stage-projected">Projected</span></div>
+          <div class="case-loc">Johor Bahru · cross-border SG traffic</div>
+        </div>
+        <div class="case-quote">
+          "Our customers are split — half local JB, half SG day-trippers. We need
+          a tool that handles both currencies + cross-border consent. If it works,
+          we replace our 3 separate point-of-sale loyalty cards with one game."
+          <span class="case-attr">— Cross-border F&B operator archetype</span>
+        </div>
+        <div class="case-stats">
+          <div class="case-stat">
+            <div class="case-stat-num">RM 8 / S$2.40</div>
+            <div class="case-stat-label">dual-currency CPA</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">2</div>
+            <div class="case-stat-label">PDPA jurisdictions (MY+SG)</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">8</div>
+            <div class="case-stat-label">outlets in pool</div>
+          </div>
+          <div class="case-stat">
+            <div class="case-stat-num">3 → 1</div>
+            <div class="case-stat-label">loyalty cards consolidated</div>
+          </div>
+        </div>
+      </div>
+      <div class="case-side">
+        <h4>Setup notes</h4>
+        <ul>
+          <li>Bilingual EN + BM (cross-border)</li>
+          <li>Dual wallet: MYR primary, SGD secondary</li>
+          <li>SG PDPA + MY PDPA consent split by origin</li>
+          <li>GrabPay (SG) + FPX (MY) redemption</li>
+          <li>Bubble-tea-mixer game (proven in SG pilot)</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="container">
+    <h2 data-i18n="mycases:cta.title">Be one of the first 100 Malaysian merchants.</h2>
+    <p data-i18n="mycases:cta.sub">Founding slot = 0% take rate forever. PDPA-MY compliant from day one. BM-first UI for your team.</p>
+    <a href="/alpha.html" class="cta-btn" data-i18n="mycases:cta.btn">Claim your founding slot →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <span data-i18n="mycases:footer.copy">© 2026 KiX · letskix.com</span>
+    <a href="/legal/terms.html" data-i18n="mycases:footer.terms">Terms</a>·
+    <a href="/legal/privacy.html" data-i18n="mycases:footer.privacy">Privacy</a>·
+    <a href="mailto:michael@mozat.com" data-i18n="mycases:footer.contact">Contact</a>
+    <div style="margin-top:10px;font-size:11.5px" data-i18n="mycases:footer.compliance">PDPA-MY · GDPR-aligned · Halal-aware library · No gambling mechanics</div>
+  </div>
+</footer>
+
+</body>
+</html>

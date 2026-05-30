@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pricing — KiX</title>
+<title data-i18n="pricing:meta.title">Pricing — KiX</title>
 <link rel="stylesheet" href="design-system/tokens.css">
+<script src="i18n/i18next-runtime.js" defer></script>
+<script src="i18n/locale-switcher.js" defer></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -105,9 +107,9 @@
 
 <section class="hero">
   <div class="container">
-    <span class="pill">PRICING</span>
-    <h1>Free SaaS. Pay only for results.</h1>
-    <p class="sub">All gamification capabilities at no cost. Pay per acquired customer only when KiX delivers — no subscription, no setup fee, no contract lock-in.</p>
+    <span class="pill" data-i18n="pricing:hero.pill">PRICING</span>
+    <h1 data-i18n="pricing:hero.title">Free SaaS. Pay only for results.</h1>
+    <p class="sub" data-i18n="pricing:hero.sub">All gamification capabilities at no cost. Pay per acquired customer only when KiX delivers — no subscription, no setup fee, no contract lock-in.</p>
   </div>
 </section>
 
@@ -116,16 +118,16 @@
 
     <div class="pricing-grid">
       <div class="price-card">
-        <div class="price-label">Free forever</div>
-        <div class="price-amount">S$0<small> / month</small></div>
-        <div class="price-desc">All gamification capabilities, at no cost.</div>
+        <div class="price-label" data-i18n="pricing:free.label">Free forever</div>
+        <div class="price-amount">S$0<small data-i18n="pricing:free.per_month"> / month</small></div>
+        <div class="price-desc" data-i18n="pricing:free.desc">All gamification capabilities, at no cost.</div>
         <ul class="price-list">
-          <li>All AI-generated games</li>
-          <li>Full analytics + cohort reports</li>
-          <li>SDKs for Web, iOS, Android</li>
-          <li>No brand limits, no user caps</li>
-          <li>No contract, no setup fee</li>
-          <li>Self-serve onboarding in 5 minutes</li>
+          <li data-i18n="pricing:free.f1">All AI-generated games</li>
+          <li data-i18n="pricing:free.f2">Full analytics + cohort reports</li>
+          <li data-i18n="pricing:free.f3">SDKs for Web, iOS, Android</li>
+          <li data-i18n="pricing:free.f4">No brand limits, no user caps</li>
+          <li data-i18n="pricing:free.f5">No contract, no setup fee</li>
+          <li data-i18n="pricing:free.f6">Self-serve onboarding in 5 minutes</li>
         </ul>
       </div>
 
@@ -134,12 +136,15 @@
         <div class="price-amount">Pay per result<small> · per delivered customer</small></div>
         <div class="price-desc">Auction-based bidding with flexible settlement options.</div>
         <div style="margin-top:8px">
-          <div class="tier-row"><div class="tier-name"><span>CPA</span><span>per new customer</span></div><div class="tier-price">S$3 – S$30</div></div>
+          <div class="tier-row"><div class="tier-name"><span>CPA</span><span>per new customer</span></div><div class="tier-price" id="px-cpa">S$3 – S$30</div></div>
           <div class="tier-row"><div class="tier-name"><span>CPS</span><span>share of new-customer revenue</span></div><div class="tier-price">5% – 15%</div></div>
           <div class="tier-row"><div class="tier-name"><span>CPM</span><span>per thousand impressions</span></div><div class="tier-price">Available</div></div>
           <div class="tier-row"><div class="tier-name"><span>CPV</span><span>per store visit</span></div><div class="tier-price">Available</div></div>
           <div class="tier-row"><div class="tier-name"><span>CPE</span><span>per engagement</span></div><div class="tier-price">Available</div></div>
         </div>
+        <p id="fx-note" style="font-size:11px;color:var(--text-muted);margin-top:10px;display:none">
+          Prices shown in your local currency. Billing settled in SGD at live FX.
+        </p>
         <a href="/alpha.html" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center">Start free</a>
       </div>
     </div>
@@ -177,6 +182,27 @@
         return 'SG';  // default
       }
       const userCountry = guessCountryFromTz();
+
+      // Local-currency display (Wave I.A-2)
+      const FX = {
+        SG:{c:'SGD',s:'S$',r:1},      MY:{c:'MYR',s:'RM',r:3.50},
+        ID:{c:'IDR',s:'Rp',r:11800},  TH:{c:'THB',s:'฿',r:27.0},
+        HK:{c:'HKD',s:'HK$',r:5.85},  VN:{c:'VND',s:'₫',r:18800},
+        PH:{c:'PHP',s:'₱',r:43.0},    AE:{c:'AED',s:'AED',r:2.72},
+        SA:{c:'SAR',s:'SAR',r:2.78},  IN:{c:'INR',s:'₹',r:62.0},
+        GB:{c:'GBP',s:'£',r:0.59},    AU:{c:'AUD',s:'A$',r:1.13},
+        US:{c:'USD',s:'$',r:0.74},
+      };
+      const fx = FX[userCountry];
+      if (fx && fx.c !== 'SGD') {
+        const low = Math.round(3 * fx.r), high = Math.round(30 * fx.r);
+        const fmt = n => fx.c==='IDR'||fx.c==='VND' ? n.toLocaleString() : n.toString();
+        document.getElementById('px-cpa').textContent = `${fx.s}${fmt(low)} – ${fx.s}${fmt(high)}`;
+        const fxNote = document.getElementById('fx-note');
+        if (fxNote) { fxNote.style.display='block'; fxNote.textContent = `Local pricing (${fx.c}, indicative). Wallet billed in SGD at live FX. Equivalent to S$3 – S$30.`; }
+        const heroAmt = document.querySelector('.price-amount');
+        if (heroAmt && heroAmt.textContent.includes('S$0')) heroAmt.innerHTML = `${fx.s}0<small> / month</small>`;
+      }
 
       // Load this country's counter
       fetch(`/api/v1/country-slots/${userCountry}`)
@@ -235,7 +261,7 @@
     </div>
     <div class="faq-item">
       <h4>Can I see real merchant numbers?</h4>
-      <p>Yes — 5 Singapore F&B businesses are currently in the alpha cohort with real campaigns running. <strong><a href="/sg-case-studies.html" style="color:var(--brand-dk)">See SG case studies →</a></strong> (Heng Heng Kopi, Brew Lab, Aminah's Halal Hut, Common Man Coffee, Old Chang Kee). Real numbers including failures and what's not working.</p>
+      <p>Yes — 5 Singapore F&B businesses are currently in the alpha cohort with real campaigns running. <strong><a href="/sg-case-studies.html" style="color:var(--brand-dk)">See SG case studies →</a></strong> (Heng Heng Kopi, Brew Lab, Aminah's Halal Hut, Common Man Coffee, Old Chang Kee). Real numbers including failures and what's not working. For Malaysia — see our <strong><a href="/my-case-studies.html" style="color:var(--brand-dk)">MY operator archetypes &amp; projections →</a></strong> (honest framing: no MY merchant has been live 90 days yet, projections derived from SG pilots).</p>
     </div>
     <div class="faq-item">
       <h4>What about enterprise contracts?</h4>

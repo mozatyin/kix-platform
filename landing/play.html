@@ -983,8 +983,22 @@ const state = {
   const brandParam = params.get('brand');
 
   if (!brandParam) {
+    // Demo mode: render an alive preview rather than a blocking error
+    state.brandId = 'demo';
+    state.brandName = 'Demo Coffee Co.';
+    state.isDemo = true;
+    state.energy = 60;
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('error-screen').classList.add('visible');
+    const sub = document.getElementById('brand-name-sub');
+    if (sub) sub.textContent = 'Demo Coffee Co. · DEMO MODE';
+    const energy = document.getElementById('energy-text');
+    if (energy) energy.textContent = '60/100';
+    // Inject a non-blocking demo banner
+    const banner = document.createElement('div');
+    banner.setAttribute('role', 'status');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#FFF7E6;border-bottom:1px solid #F59E0B;color:#92400E;padding:10px 16px;text-align:center;font-size:13px;font-weight:600';
+    banner.innerHTML = '🎮 Demo mode — this is what your customers would see. <a href="/landing/portal.html" style="color:#92400E;text-decoration:underline">Sign up to launch your own brand</a>';
+    document.body.prepend(banner);
     return;
   }
 

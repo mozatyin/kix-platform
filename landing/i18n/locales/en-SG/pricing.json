@@ -1,0 +1,15 @@
+{
+  "meta.title": "Pricing — KiX",
+  "hero.pill": "PRICING",
+  "hero.title": "Free SaaS. Pay only for results.",
+  "hero.sub": "All gamification capabilities at no cost. Pay per acquired customer only when KiX delivers — no subscription, no setup fee, no contract lock-in.",
+  "free.label": "Free forever",
+  "free.per_month": " / month",
+  "free.desc": "All gamification capabilities, at no cost.",
+  "free.f1": "All AI-generated games",
+  "free.f2": "Full analytics + cohort reports",
+  "free.f3": "SDKs for Web, iOS, Android",
+  "free.f4": "No brand limits, no user caps",
+  "free.f5": "No contract, no setup fee",
+  "free.f6": "Self-serve onboarding in 5 minutes"
+}
