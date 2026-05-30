@@ -3,5 +3,23 @@
   "logout.cta": "退出登录",
   "welcome.message": "欢迎,{name}!",
   "messages.count": "{count, plural, =0 {没有新消息} other {# 条新消息}}",
-  "loading": "加载中…"
+  "loading": "加载中…",
+
+  "common.cta.cancel": "取消",
+  "common.cta.save": "保存",
+  "common.cta.confirm": "确认",
+  "common.cta.back": "返回",
+  "common.cta.next": "下一步",
+
+  "landing.nav.problem": "问题",
+  "landing.nav.solution": "方案",
+  "landing.nav.how": "流程",
+  "landing.nav.pricing": "价格",
+  "landing.nav.get_started": "立即开始",
+
+  "landing.hero.badge": "游戏化获客新范式",
+  "landing.hero.title": "KiX = 游戏化版的 <em>TikTok Ads</em>",
+  "landing.hero.sub": "所有游戏化功能<strong style=\"color:var(--green)\">完全免费</strong>。只在我们为你交付一个新用户时，你才付费。",
+  "landing.hero.cta_primary": "立即开始 →",
+  "landing.hero.cta_secondary": "了解流程"
 }
