@@ -878,6 +878,32 @@ async def create_topup(
     await r.hset(_k_topup(topup_id), mapping=mapping)
 
     balance = int(await r.get(_k_balance(brand_id)) or 0)
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # Additive fire-and-forget — never breaks the topup path.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=brand_id,
+            actor_type="merchant",
+            action="wallet.topup",
+            target_type="topup",
+            target_id=topup_id,
+            brand_id=brand_id,
+            result="pending",
+            payload={
+                "amount_cents": credited_amount,
+                "currency": wallet_currency,
+                "payment_method": body.payment_method,
+                "payment_amount": body.amount_cents,
+                "payment_currency": payment_currency,
+            },
+        )
+    except Exception as exc:
+        logger.warning("audit_log (topup) skipped: %s", exc)
+
     return TopupResponse(
         topup_id=topup_id,
         status="pending",
@@ -1238,6 +1264,34 @@ async def charge(
                         )
                 except Exception as exc:  # never break the charge path
                     logger.warning("webhook fan-out (charge) failed: %s", exc)
+
+                # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────
+                # Additive fire-and-forget — never breaks the charge
+                # path. Migrates from the cap-evicted Redis LIST to
+                # the PG audit_log table.
+                try:
+                    from app.services.audit_log_service import (
+                        record_event_fire_and_forget,
+                    )
+                    await record_event_fire_and_forget(
+                        actor_id=brand_id,
+                        actor_type="merchant",
+                        action="wallet.charge",
+                        target_type="charge",
+                        target_id=charge_id,
+                        brand_id=brand_id,
+                        result="success",
+                        payload={
+                            "amount_cents": charge_amount,
+                            "currency": wallet_currency,
+                            "reason": body.reason,
+                            "campaign_id": body.campaign_id or None,
+                            "reference_id": ref_id,
+                            "new_balance_cents": new_balance,
+                        },
+                    )
+                except Exception as exc:
+                    logger.warning("audit_log (charge) skipped: %s", exc)
 
                 return ChargeResponse(
                     ok=True,
