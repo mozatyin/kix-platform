@@ -684,10 +684,12 @@ async def _generate(
 
     if recipe is None:
         recipe = _heuristic_recipe(description, industry, style)
+        # i18n: ``recipe_generator-heuristic-fallback`` (en-SG / zh-Hans-SG)
+        from app.i18n import t as _t
         if not cn:
-            cn = "（启发式模板）根据关键词匹配选择了相关模块和默认规则。"
+            cn = _t("recipe_generator-heuristic-fallback", locale="zh-Hans-SG")
         if not en:
-            en = "(Heuristic template) Modules were selected by keyword match."
+            en = _t("recipe_generator-heuristic-fallback", locale="en-SG")
 
     recipe, warnings = _validate_and_repair(recipe)
 
@@ -877,13 +879,18 @@ async def from_description(
         if hits and hits[0]["score"] >= 6:
             chosen = hits[0]["recipe"]
             modules_used = [m["id"] for m in chosen.get("modules", [])]
+            # i18n keys: ``recipe_generator-match-found`` + ``-match-score``
+            from app.i18n import t as _t
+            reasons_text = ", ".join(hits[0]["reasons"])
+            cn_name = chosen.get("name_cn") or chosen.get("name")
             cn = (
-                f"已从配方库匹配现成方案 '{chosen.get('name_cn') or chosen.get('name')}'。"
-                f"匹配分数 {hits[0]['score']}，原因：{', '.join(hits[0]['reasons'])}。"
+                _t("recipe_generator-match-found", locale="zh-Hans-SG", recipe_name=cn_name)
+                + _t("recipe_generator-match-score", locale="zh-Hans-SG", score=hits[0]["score"], reasons=reasons_text)
             )
             en = (
-                f"Matched seeded recipe '{chosen.get('name')}' from library "
-                f"(score={hits[0]['score']}). Reasons: {', '.join(hits[0]['reasons'])}."
+                _t("recipe_generator-match-found", locale="en-SG", recipe_name=chosen.get("name"))
+                + " "
+                + _t("recipe_generator-match-score", locale="en-SG", score=hits[0]["score"], reasons=reasons_text)
             )
             payload = {
                 "recipe": chosen,
@@ -1007,15 +1014,29 @@ async def explain(
     pretty_mods = [MODULE_CATALOG.get(m, {}).get("name", m) for m in mods]
     n_rules = len(recipe.get("rules", []))
 
-    en = (
-        f"Recipe '{recipe.get('name', 'Untitled')}' uses "
-        f"{len(mods)} module(s): {', '.join(pretty_mods) or 'none'}, "
-        f"wired together by {n_rules} rule(s)."
+    # i18n key: ``recipe_generator-summary-recipe-includes``
+    from app.i18n import t as _t
+    module_list_en = ", ".join(pretty_mods) or _t(
+        "recipe_generator-summary-empty-modules", locale="en-SG")
+    module_list_cn = ", ".join(pretty_mods) or _t(
+        "recipe_generator-summary-empty-modules", locale="zh-Hans-SG")
+    untitled_en = _t("recipe_generator-summary-untitled", locale="en-SG")
+    untitled_cn = _t("recipe_generator-summary-untitled", locale="zh-Hans-SG")
+    en = _t(
+        "recipe_generator-summary-recipe-includes",
+        locale="en-SG",
+        recipe_name=recipe.get("name") or untitled_en,
+        module_count=len(mods),
+        module_list=module_list_en,
+        rule_count=n_rules,
     )
-    cn = (
-        f"配方 '{recipe.get('name', '未命名')}' 包含 "
-        f"{len(mods)} 个模块：{', '.join(pretty_mods) or '无'}，"
-        f"通过 {n_rules} 条规则连接。"
+    cn = _t(
+        "recipe_generator-summary-recipe-includes",
+        locale="zh-Hans-SG",
+        recipe_name=recipe.get("name") or untitled_cn,
+        module_count=len(mods),
+        module_list=module_list_cn,
+        rule_count=n_rules,
     )
     flow = _user_flow_from_recipe(recipe)
     return {"plain_english": en, "plain_chinese": cn, "user_flow_steps": flow}

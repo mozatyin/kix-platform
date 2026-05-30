@@ -60,6 +60,24 @@ _KITS_DIR = _PROJECT_ROOT / "landing" / "welcome-kits"
 _KIT_CACHE_TTL = 30 * 24 * 60 * 60  # 30 days
 
 
+def _item_text(slug: str, field: str) -> str:
+    """Return the localised label for ``_ITEMS[slug][field]``.
+
+    Consults the i18n catalog (``welcome_kit-item-<slug>-<field>``) using
+    the current request locale. Falls back to the in-source Chinese
+    text in ``_ITEMS`` when the catalog is silent (offline, locale
+    unsupported, etc).
+    """
+    from app.i18n import t, get_current_locale
+
+    field_key = "title" if field == "title" else "desc"
+    key = f"welcome_kit-item-{slug}-{field_key}"
+    translated = t(key, locale=get_current_locale())
+    if translated != key:
+        return translated
+    return _ITEMS.get(slug, {}).get(field, slug)
+
+
 _ITEMS: dict[str, dict[str, str]] = {
     "table_stand": {
         "title": "桌牌 (A5 双面)",
@@ -281,8 +299,8 @@ def _render_handover_index(
 ) -> str:
     name = escape(brand["brand_name"])
     rows = "".join(
-        f'<li><a href="./{file}">{escape(_ITEMS[slug]["title"])}</a> — '
-        f'{escape(_ITEMS[slug]["description"])}</li>'
+        f'<li><a href="./{file}">{escape(_item_text(slug, "title"))}</a> — '
+        f'{escape(_item_text(slug, "description"))}</li>'
         for slug, file in items.items()
     )
     return f"""<!DOCTYPE html>
@@ -381,8 +399,8 @@ async def generate_welcome_kit(
         "items": [
             {
                 "slug": slug,
-                "title": _ITEMS[slug]["title"],
-                "description": _ITEMS[slug]["description"],
+                "title": _item_text(slug, "title"),
+                "description": _item_text(slug, "description"),
                 "url": urls[slug],
             }
             for slug in urls

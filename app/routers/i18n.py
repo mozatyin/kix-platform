@@ -16,6 +16,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from app.i18n import t
 from app.i18n.context import get_current_locale
 from app.i18n.currency import (
     currency_decimals,
@@ -87,4 +88,24 @@ async def preview_locale(
             "datetime":         format_datetime(now, active_locale),
             "percent":          format_percent(0.456, active_locale),
         },
+    }
+
+
+@router.get("/translate")
+async def translate_debug(
+    key: str = Query(..., description="Fluent message id, e.g. tutorials-module-progression"),
+    locale: str | None = Query(None, description="BCP 47 tag override"),
+) -> dict[str, Any]:
+    """Resolve a single i18n key against the active or supplied locale.
+
+    Used by the SG bilingual E2E verifier in
+    ``scripts/verify_sg_bilingual.py`` and the Wave 2 test suite.
+    """
+    active_locale = locale or get_current_locale()
+    rendered = t(key, locale=active_locale)
+    return {
+        "key": key,
+        "locale": active_locale,
+        "rendered": rendered,
+        "translated": rendered != key,
     }

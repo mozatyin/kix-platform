@@ -193,12 +193,27 @@ FIX_HINTS: dict[str, dict[str, str]] = {
 
 
 def _hints_for(blockers: list[str]) -> dict[str, str]:
-    """Return a flat ``{blocker_code: "中文 / English"}`` map for response."""
+    """Return a flat ``{blocker_code: <localised hint>}`` map for response.
+
+    Uses the active request locale (set by ``LanguageMiddleware``) via the
+    ``app.i18n`` catalog. Falls back to the in-source bilingual
+    "<zh> / <en>" template if a locale can't be resolved — preserves the
+    pre-i18n response shape.
+    """
+    from app.i18n import t, get_current_locale
+
     out: dict[str, str] = {}
+    locale = get_current_locale()
     for code in blockers:
+        key = f"conditions-blocker-{code}"
+        translated = t(key, locale=locale)
+        if translated != key:
+            out[code] = translated
+            continue
+        # Catalog miss — fall back to the legacy in-source bilingual blob.
         entry = FIX_HINTS.get(code)
         if entry is None:
-            out[code] = code  # opaque fallback
+            out[code] = code
         else:
             out[code] = f"{entry['zh']} / {entry['en']}"
     return out

@@ -120,6 +120,22 @@ def _module_selector(module_id: str) -> str:
 
 
 def _module_name(module_id: str, language: str) -> str:
+    """Return the display name for ``module_id``.
+
+    Prefers the i18n catalog (``tutorials-module-<id>``); falls back to
+    the legacy in-source ``MODULE_META`` dict when the catalog is silent.
+    The legacy ``language`` parameter is mapped to a BCP 47 tag:
+    ``"cn"`` → ``zh-Hans-SG``, ``"en"`` → ``en-SG``. Callers using the
+    new locale tags directly are passed through.
+    """
+    from app.i18n import t
+
+    locale = {"cn": "zh-Hans-SG", "en": "en-SG"}.get(language, language)
+    key = f"tutorials-module-{module_id}"
+    translated = t(key, locale=locale)
+    if translated != key:
+        return translated
+
     meta = MODULE_META.get(module_id)
     if not meta:
         return module_id
@@ -175,6 +191,20 @@ INSTRUCTION_TEMPLATES: dict[str, dict[str, str]] = {
 
 
 def _t(key: str, language: str, **fmt: Any) -> str:
+    """Render a tutorial step template in the requested language.
+
+    Prefers the i18n Fluent catalog (``tutorials-step-<slug>``); falls
+    back to ``INSTRUCTION_TEMPLATES`` for keys not yet migrated.
+    """
+    from app.i18n import t as _i18n_t
+
+    locale = {"cn": "zh-Hans-SG", "en": "en-SG"}.get(language, language)
+    fluent_slug = key.replace("_", "-")
+    fluent_key = f"tutorials-step-{fluent_slug}"
+    translated = _i18n_t(fluent_key, locale=locale, **fmt)
+    if translated != fluent_key:
+        return translated
+
     tpl = INSTRUCTION_TEMPLATES.get(key, {})
     raw = tpl.get(language) or tpl.get("cn") or key
     try:
