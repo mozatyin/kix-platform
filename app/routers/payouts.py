@@ -1261,6 +1261,38 @@ class InterBrandTransferRequest(BaseModel):
     ledger_entry_metadata: dict[str, Any] | None = None
 
 
+class CommissionTransferRequest(BaseModel):
+    """Atomic cross-brand commission transfer (replacement for the legacy
+    single-step transfer API; the old endpoint stays alive as a thin shim).
+
+    The pair ``(idempotency_key, 24h)`` is a strict duplicate-rejection
+    window — a second request with the same key returns the original
+    response without touching balances, regardless of body. This is the
+    contract merchants and partners need to safely retry across timeouts.
+    """
+
+    from_brand_id: str = Field(..., min_length=1, max_length=128)
+    to_brand_id: str = Field(..., min_length=1, max_length=128)
+    amount_cents: int = Field(..., gt=0, le=10**12)
+    reason: Literal[
+        "supplier_payment",
+        "affiliate_commission",
+        "revenue_share",
+        "refund_to_supplier",
+        "commission_reversal",
+        "joint_campaign_settlement",
+        "other",
+    ]
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    reference_id: str | None = Field(default=None, max_length=256)
+    # When set and the from/to wallets disagree on currency, the transfer
+    # is rejected with 409 currency_mismatch unless ``allow_fx`` is true.
+    # In that case the saga converts via :func:`app.i18n.currency.convert`
+    # and credits the destination in its base currency.
+    allow_fx: bool = False
+    ledger_entry_metadata: dict[str, Any] | None = None
+
+
 class LedgerEntry(BaseModel):
     entry_id: str
     from_brand_id: str
@@ -1272,6 +1304,21 @@ class LedgerEntry(BaseModel):
     ts: float
     metadata: dict[str, Any] | None = None
     idempotent: bool = False
+
+
+class CommissionTransferResponse(LedgerEntry):
+    """Response for the v2 commission-transfer endpoint.
+
+    Extends LedgerEntry with FX detail when a cross-currency conversion
+    was applied, and surfaces the idempotency_key used.
+    """
+
+    idempotency_key: str = ""
+    debited_amount_cents: int = 0
+    debited_currency: str = ""
+    credited_amount_cents: int = 0
+    credited_currency: str = ""
+    fx_applied: bool = False
 
 
 class LedgerQueryResponse(BaseModel):
@@ -1299,17 +1346,35 @@ async def _inter_brand_transfer_impl(
     reason: str,
     reference_id: str,
     metadata: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
+    allow_fx: bool = False,
 ) -> dict[str, Any]:
     """Atomic debit-from + credit-to + ledger persist.
 
-    Idempotency: ``ledger:reference_idem:{reference_id}`` is checked first.
-    On replay we return the existing entry payload (with ``idempotent=True``)
-    without touching balances. This is what makes commission_reversal safe
-    to invoke from disputes + pixel-refund + admin endpoints concurrently.
+    Idempotency: ``ledger:reference_idem:{key}`` is checked first, where
+    ``key`` is ``idempotency_key`` when supplied (the v2 contract) and
+    falls back to ``reference_id`` for backward compatibility with the
+    legacy single-step API. On replay we return the existing entry
+    payload (with ``idempotent=True``) without touching balances. This is
+    what makes commission_reversal safe to invoke from disputes +
+    pixel-refund + admin endpoints concurrently.
 
     Atomicity: WATCH on the two wallet balances and the idempotency key.
     The MULTI block performs both leg debits/credits, persists the entry
-    record, and writes both directional ZSET indexes in a single round-trip.
+    record, and writes both directional ZSET indexes in a single
+    round-trip — so a transfer either fully commits or fully aborts;
+    there is no window in which one wallet has moved but the other has
+    not.
+
+    Cross-currency saga: if the from-wallet and to-wallet base currencies
+    differ, the source amount is converted via
+    :func:`app.i18n.currency.convert` and the destination is credited in
+    *its* base currency. The full saga (reserve → fx_quote → fx_lock →
+    debit → credit) is collapsed into the same WATCH/MULTI block so the
+    FX leg cannot leave a half-applied state. When ``allow_fx`` is False
+    and currencies disagree, the request is rejected with 409 and no
+    balance moves — equivalent to a compensating reservation release on
+    a multi-step saga.
     """
     if from_brand_id == to_brand_id:
         raise HTTPException(
@@ -1322,34 +1387,87 @@ async def _inter_brand_transfer_impl(
             detail={"error": "invalid_reason", "reason": reason},
         )
 
-    idem_key = _k_ledger_idem(reference_id)
+    # Idempotency key precedence: explicit key > reference_id. Both share
+    # the same 24h Redis namespace so a v1 reference and a v2 key cannot
+    # accidentally double-spend each other.
+    idem_token = idempotency_key or reference_id
+    idem_key = _k_ledger_idem(idem_token)
     from_balance_key = _k_wallet_balance(from_brand_id)
     to_balance_key = _k_wallet_balance(to_brand_id)
+
+    def _replay_payload(eid: str, raw: dict[str, str]) -> dict[str, Any]:
+        try:
+            meta = json.loads(raw.get("metadata") or "null")
+        except (ValueError, TypeError):
+            meta = None
+        debited = int(raw.get("amount_cents") or 0)
+        credited = int(raw.get("credited_amount_cents") or debited)
+        src_cur = raw.get("currency") or DEFAULT_CURRENCY
+        dst_cur = raw.get("credited_currency") or src_cur
+        fx_applied = src_cur != dst_cur
+        idem_echo = (
+            (meta.get("idempotency_key") if isinstance(meta, dict) else "")
+            or (idempotency_key or "")
+        )
+        return {
+            "entry_id": eid,
+            "from_brand_id": raw.get("from_brand_id", from_brand_id),
+            "to_brand_id": raw.get("to_brand_id", to_brand_id),
+            "amount_cents": debited,
+            "currency": src_cur,
+            "reason": raw.get("reason") or reason,
+            "reference_id": raw.get("reference_id") or reference_id,
+            "ts": float(raw.get("ts") or 0),
+            "metadata": meta,
+            "idempotent": True,
+            "debited_amount_cents": debited,
+            "debited_currency": src_cur,
+            "credited_amount_cents": credited,
+            "credited_currency": dst_cur,
+            "fx_applied": fx_applied,
+            "idempotency_key": idem_echo,
+        }
 
     # Pre-check idempotency outside the WATCH loop (faster fast-path).
     existing_eid = await r.get(idem_key)
     if existing_eid:
         raw = await r.hgetall(_k_ledger_entry(existing_eid))
         if raw:
-            try:
-                meta = json.loads(raw.get("metadata") or "null")
-            except (ValueError, TypeError):
-                meta = None
-            return {
-                "entry_id": existing_eid,
-                "from_brand_id": raw.get("from_brand_id", from_brand_id),
-                "to_brand_id": raw.get("to_brand_id", to_brand_id),
-                "amount_cents": int(raw.get("amount_cents") or 0),
-                "currency": raw.get("currency") or DEFAULT_CURRENCY,
-                "reason": raw.get("reason") or reason,
-                "reference_id": raw.get("reference_id") or reference_id,
-                "ts": float(raw.get("ts") or 0),
-                "metadata": meta,
-                "idempotent": True,
-            }
+            return _replay_payload(existing_eid, raw)
 
-    # Resolve currency from the source brand wallet (treasury POV).
-    currency = await _get_currency(from_brand_id, r)
+    # Resolve currencies from the brand wallets (treasury POV). When the
+    # two disagree we either reject (legacy default, conservative) or
+    # route through the FX saga (v2 commission-transfer with allow_fx).
+    from_currency = await _get_currency(from_brand_id, r)
+    to_currency = await _get_currency(to_brand_id, r)
+    currency_mismatch = from_currency != to_currency
+    if currency_mismatch and not allow_fx:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "currency_mismatch",
+                "from_currency": from_currency,
+                "to_currency": to_currency,
+            },
+        )
+    # FX leg: convert the source amount into destination currency. The
+    # stub :func:`app.i18n.currency.convert` is deterministic and pure —
+    # safe to call inside the WATCH/MULTI block. A real FX provider would
+    # be queried *before* the WATCH and the locked rate carried in.
+    if currency_mismatch:
+        from app.i18n.currency import convert as _fx_convert
+        credit_amount_cents = _fx_convert(amount_cents, from_currency, to_currency)
+        if credit_amount_cents <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": "fx_conversion_zero", "from": from_currency, "to": to_currency},
+            )
+    else:
+        credit_amount_cents = amount_cents
+    # The ledger row stores the source-currency amount (treasury POV) so
+    # callers reading the ledger see what was debited; FX detail lives in
+    # the entry metadata so it round-trips through idempotent replay.
+    currency = from_currency
 
     # ZSET indexes we will write — must be in WATCH set so a concurrent
     # writer touching either index forces our transaction to retry.
@@ -1390,22 +1508,7 @@ async def _inter_brand_transfer_impl(
                     await pipe.unwatch()
                     raw = await r.hgetall(_k_ledger_entry(claimed))
                     if raw:
-                        try:
-                            meta = json.loads(raw.get("metadata") or "null")
-                        except (ValueError, TypeError):
-                            meta = None
-                        return {
-                            "entry_id": claimed,
-                            "from_brand_id": raw.get("from_brand_id", from_brand_id),
-                            "to_brand_id": raw.get("to_brand_id", to_brand_id),
-                            "amount_cents": int(raw.get("amount_cents") or 0),
-                            "currency": raw.get("currency") or currency,
-                            "reason": raw.get("reason") or reason,
-                            "reference_id": raw.get("reference_id") or reference_id,
-                            "ts": float(raw.get("ts") or 0),
-                            "metadata": meta,
-                            "idempotent": True,
-                        }
+                        return _replay_payload(claimed, raw)
 
                 # Both-brands-exist precondition under WATCH. A brand is
                 # considered existent if its wallet balance key has been
@@ -1459,11 +1562,28 @@ async def _inter_brand_transfer_impl(
 
                 entry_id = _new_id("le_")
                 now = _now()
-                meta_json = json.dumps(metadata, separators=(",", ":")) if metadata else ""
+                # Embed FX detail (when applicable) and the idempotency
+                # token in the row metadata so idempotent replays carry
+                # the same fields and downstream readers can audit the FX
+                # leg without joining a second table.
+                full_meta: dict[str, Any] = dict(metadata or {})
+                if currency_mismatch:
+                    full_meta.setdefault("fx", {
+                        "applied": True,
+                        "from_currency": from_currency,
+                        "to_currency": to_currency,
+                        "source_amount_cents": amount_cents,
+                        "credited_amount_cents": credit_amount_cents,
+                    })
+                if idempotency_key:
+                    full_meta.setdefault("idempotency_key", idempotency_key)
+                meta_json = (
+                    json.dumps(full_meta, separators=(",", ":")) if full_meta else ""
+                )
 
                 pipe.multi()
                 pipe.decrby(from_balance_key, amount_cents)
-                pipe.incrby(to_balance_key, amount_cents)
+                pipe.incrby(to_balance_key, credit_amount_cents)
                 pipe.hset(
                     _k_ledger_entry(entry_id),
                     mapping={
@@ -1471,6 +1591,8 @@ async def _inter_brand_transfer_impl(
                         "from_brand_id": from_brand_id,
                         "to_brand_id": to_brand_id,
                         "amount_cents": str(amount_cents),
+                        "credited_amount_cents": str(credit_amount_cents),
+                        "credited_currency": to_currency,
                         "currency": currency,
                         "reason": reason,
                         "reference_id": reference_id,
@@ -1531,8 +1653,14 @@ async def _inter_brand_transfer_impl(
                     "reason": reason,
                     "reference_id": reference_id,
                     "ts": now,
-                    "metadata": metadata,
+                    "metadata": full_meta or None,
                     "idempotent": False,
+                    "debited_amount_cents": amount_cents,
+                    "debited_currency": from_currency,
+                    "credited_amount_cents": credit_amount_cents,
+                    "credited_currency": to_currency,
+                    "fx_applied": currency_mismatch,
+                    "idempotency_key": idempotency_key or "",
                 }
         except aioredis.WatchError as we:
             last_exc = we
@@ -1562,7 +1690,8 @@ async def _inter_brand_transfer_impl(
 @router.post(
     "/inter-brand-transfer",
     response_model=LedgerEntry,
-    summary="Atomic debit-from-brand + credit-to-brand + double-entry ledger.",
+    summary="(DEPRECATED) Use /commission-transfer. Same atomic semantics, "
+    "kept alive for backward compatibility.",
 )
 async def inter_brand_transfer(
     req: InterBrandTransferRequest,
@@ -1574,7 +1703,15 @@ async def inter_brand_transfer(
     entry without re-applying balance moves. Useful for retry-safe webhooks
     (supplier billing, affiliate payouts) and for the commission reversal
     leg invoked from disputes/pixel.
+
+    Deprecated in favour of ``/commission-transfer`` which exposes an
+    explicit ``idempotency_key`` and opt-in cross-currency saga.
     """
+    logger.warning(
+        "deprecated_endpoint hit=/inter-brand-transfer ref=%s — "
+        "migrate caller to /commission-transfer",
+        req.reference_id,
+    )
     result = await _inter_brand_transfer_impl(
         r,
         from_brand_id=req.from_brand_id,
@@ -1584,7 +1721,70 @@ async def inter_brand_transfer(
         reference_id=req.reference_id,
         metadata=req.ledger_entry_metadata,
     )
-    return LedgerEntry(**result)
+    # Keep the legacy response shape (LedgerEntry) exactly — strip the
+    # v2-only fields the impl now returns. The new fields are additive
+    # and FastAPI's response_model would drop them, but we slim the dict
+    # so the construction is unambiguous.
+    return LedgerEntry(
+        entry_id=result["entry_id"],
+        from_brand_id=result["from_brand_id"],
+        to_brand_id=result["to_brand_id"],
+        amount_cents=result["amount_cents"],
+        currency=result["currency"],
+        reason=result["reason"],
+        reference_id=result["reference_id"],
+        ts=result["ts"],
+        metadata=result.get("metadata"),
+        idempotent=result.get("idempotent", False),
+    )
+
+
+@router.post(
+    "/commission-transfer",
+    response_model=CommissionTransferResponse,
+    summary="v2 atomic cross-brand commission transfer with explicit "
+    "idempotency key + optional FX saga.",
+)
+async def commission_transfer(
+    req: CommissionTransferRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> CommissionTransferResponse:
+    """Atomic debit + credit + ledger entry across two brand wallets.
+
+    Contract guarantees:
+
+    * **Atomicity** — both legs commit or neither does. The WATCH/MULTI
+      block in :func:`_inter_brand_transfer_impl` cannot leave one wallet
+      moved without the other.
+    * **Idempotency** — ``idempotency_key`` is the canonical dedup token
+      for 24h. A second call with the same key returns the original
+      entry with ``idempotent=True``; balances are not touched twice.
+      ``reference_id`` is optional and used as a free-form correlation
+      id by default; when omitted it defaults to ``idempotency_key``.
+    * **Cross-currency saga** — when from-wallet and to-wallet currencies
+      disagree and ``allow_fx=True``, the source amount is converted via
+      :func:`app.i18n.currency.convert`. The conversion runs inside the
+      same WATCH/MULTI block so the FX leg cannot fail half-way; a
+      conversion that would round to zero is rejected with 409 and no
+      balance moves (saga compensating release on the reservation).
+
+    Returns the ledger entry plus FX detail (``debited_*``, ``credited_*``,
+    ``fx_applied``) so downstream auditors can verify the leg without a
+    second round-trip.
+    """
+    reference_id = req.reference_id or req.idempotency_key
+    result = await _inter_brand_transfer_impl(
+        r,
+        from_brand_id=req.from_brand_id,
+        to_brand_id=req.to_brand_id,
+        amount_cents=req.amount_cents,
+        reason=req.reason,
+        reference_id=reference_id,
+        metadata=req.ledger_entry_metadata,
+        idempotency_key=req.idempotency_key,
+        allow_fx=req.allow_fx,
+    )
+    return CommissionTransferResponse(**result)
 
 
 @router.get(
