@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiX POS Checkout — voucher redemption</title>
+<style>
+:root {
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --ink: #1a1d29;
+  --muted: #6b7280;
+  --accent: #5b67ff;
+  --accent-ink: #ffffff;
+  --ok: #16a34a;
+  --warn: #d97706;
+  --err: #dc2626;
+  --shadow: 0 10px 40px rgba(20, 23, 50, .08);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+}
+header {
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 12px;
+  background: white; border-bottom: 1px solid #eef0f5;
+}
+header .logo {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #5b67ff, #8b5cf6);
+  color: white; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px;
+}
+header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+header .sub { color: var(--muted); font-size: 12px; }
+main {
+  flex: 1;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 28px 18px;
+}
+.card {
+  width: 100%; max-width: 460px;
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+input, select {
+  width: 100%; padding: 12px 14px;
+  border: 1px solid #dde1ec; border-radius: 10px;
+  font-size: 16px; outline: none; background: white;
+}
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,103,255,.15); }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+button.primary {
+  width: 100%; margin-top: 18px;
+  padding: 14px 16px; border-radius: 10px;
+  background: var(--accent); color: var(--accent-ink);
+  border: none; font-size: 16px; font-weight: 600; cursor: pointer;
+  transition: transform .05s ease;
+}
+button.primary:hover { filter: brightness(1.05); }
+button.primary:active { transform: scale(.99); }
+button.secondary {
+  margin-top: 8px;
+  background: transparent; color: var(--accent);
+  border: 1px solid #dde1ec; padding: 10px 14px; border-radius: 10px;
+  width: 100%; font-size: 14px; cursor: pointer;
+}
+.banner {
+  border-radius: 10px; padding: 12px 14px; margin-top: 14px; font-size: 14px;
+  display: none;
+}
+.banner.ok  { background: #ecfdf5; color: var(--ok);  border: 1px solid #bbf7d0; }
+.banner.warn{ background: #fffbeb; color: var(--warn); border: 1px solid #fde68a; }
+.banner.err { background: #fef2f2; color: var(--err); border: 1px solid #fecaca; }
+.kv { display: flex; justify-content: space-between; padding: 6px 0; }
+.kv span:first-child { color: var(--muted); }
+footer {
+  text-align: center; padding: 18px;
+  color: var(--muted); font-size: 12px;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">K</div>
+  <div>
+    <h1>KiX POS Checkout</h1>
+    <div class="sub">Voucher redemption · cashier interface</div>
+  </div>
+</header>
+<main>
+  <div class="card">
+    <label>POS adapter</label>
+    <select id="pos_code">
+      <option value="toast">Toast (US F&amp;B)</option>
+      <option value="square">Square (US small biz)</option>
+      <option value="loyverse" selected>Loyverse (SG SMB)</option>
+      <option value="foodzaps">Foodzaps (SEA SMB)</option>
+    </select>
+
+    <label>Voucher code</label>
+    <input id="voucher_id" placeholder="e.g. ab12cd34ef56" autofocus
+           autocomplete="off" autocapitalize="off" spellcheck="false">
+
+    <div class="row">
+      <div>
+        <label>Order #</label>
+        <input id="order_id" placeholder="POS order ref">
+      </div>
+      <div>
+        <label>Cashier</label>
+        <input id="cashier_id" placeholder="optional">
+      </div>
+    </div>
+
+    <label>Discount amount (in cents)</label>
+    <input id="amount_cents" type="number" min="1" placeholder="e.g. 500 = $5.00">
+
+    <button class="primary" id="verifyBtn">Verify voucher</button>
+    <button class="secondary hidden" id="redeemBtn">Apply &amp; redeem</button>
+
+    <div id="banner" class="banner"></div>
+
+    <div id="voucherInfo" class="hidden" style="margin-top:14px; font-size:14px;">
+      <div class="kv"><span>Valid</span><span id="vValid"></span></div>
+      <div class="kv"><span>Value</span><span id="vValue"></span></div>
+      <div class="kv"><span>Brand</span><span id="vBrand"></span></div>
+      <div class="kv"><span>Expires</span><span id="vExpires"></span></div>
+    </div>
+  </div>
+</main>
+<footer>Audit-logged. Cross-brand pools honoured. Mock mode in CI.</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const API_BASE = "/api/v1/pos";
+
+function showBanner(kind, msg) {
+  const b = $("banner");
+  b.className = "banner " + kind;
+  b.textContent = msg;
+  b.style.display = "block";
+}
+function hideBanner() { $("banner").style.display = "none"; }
+
+async function verifyVoucher() {
+  hideBanner();
+  $("voucherInfo").classList.add("hidden");
+  $("redeemBtn").classList.add("hidden");
+  const vid = $("voucher_id").value.trim();
+  const code = $("pos_code").value;
+  if (!vid) { showBanner("err", "Enter a voucher code first."); return; }
+  try {
+    const r = await fetch(`${API_BASE}/voucher/${encodeURIComponent(vid)}/verify?pos_code=${code}`);
+    const j = await r.json();
+    $("vValid").textContent  = j.valid ? "yes" : "no";
+    $("vValue").textContent  = ((j.value_cents || 0) / 100).toFixed(2) + " " + (j.currency || "");
+    $("vBrand").textContent  = j.brand_id || "-";
+    $("vExpires").textContent= j.expires_at ? new Date(j.expires_at * 1000).toLocaleString() : "no expiry";
+    $("voucherInfo").classList.remove("hidden");
+    if (j.valid) {
+      showBanner("ok", "Voucher is valid — apply discount when ready.");
+      $("redeemBtn").classList.remove("hidden");
+    } else {
+      showBanner("err", "Voucher rejected: " + (j.reason || "unknown"));
+    }
+  } catch (e) {
+    showBanner("err", "Network error: " + e.message);
+  }
+}
+
+async function redeemVoucher() {
+  hideBanner();
+  const vid = $("voucher_id").value.trim();
+  const body = {
+    pos_code: $("pos_code").value,
+    order_id: $("order_id").value.trim() || ("WEB-" + Date.now()),
+    amount_cents: parseInt($("amount_cents").value, 10),
+    cashier_id: $("cashier_id").value.trim() || null,
+  };
+  if (!body.amount_cents || body.amount_cents <= 0) {
+    showBanner("err", "Enter a positive discount amount."); return;
+  }
+  try {
+    const r = await fetch(`${API_BASE}/voucher/${encodeURIComponent(vid)}/redeem`, {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      showBanner("err", "Redemption failed: " + (j.detail?.error || r.status));
+      return;
+    }
+    showBanner("ok", "Redeemed. Opening receipt…");
+    window.open(j.receipt_url, "_blank");
+  } catch (e) {
+    showBanner("err", "Network error: " + e.message);
+  }
+}
+
+$("verifyBtn").addEventListener("click", verifyVoucher);
+$("redeemBtn").addEventListener("click", redeemVoucher);
+$("voucher_id").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") verifyVoucher();
+});
+</script>
+</body>
+</html>
