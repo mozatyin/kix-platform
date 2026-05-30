@@ -104,6 +104,19 @@ except ImportError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Best-effort TriSoul boost (Wave C). Additive ±20% multiplier on the
+# composite score, behind the per-user TriSoul flag. Identity no-op
+# when the integration module is missing or the flag is off.
+try:  # pragma: no cover — best-effort
+    from app.routers.trisoul_integration import (  # type: ignore
+        maybe_boost_push as _trisoul_boost_push,
+    )
+except ImportError:  # pragma: no cover
+    async def _trisoul_boost_push(  # type: ignore[misc]
+        uid: str | None, bid: str, base_score: float, r: aioredis.Redis,
+    ) -> tuple[float, dict[str, Any]]:
+        return base_score, {"trisoul": "unavailable"}
+
 
 # ── Constants ────────────────────────────────────────────────────────────
 
@@ -664,6 +677,14 @@ async def _evaluate_candidates(
 
         # Composite: bid × quality × relevance × freshness.
         composite = float(max_bid_cents) * qs * rel * (0.5 + 0.5 * freshness)
+
+        # Wave C: TriSoul affinity boost (additive, flag-gated, bounded
+        # ±20%). Falls back to identity when the flag is off, the user
+        # is missing, the integration module is unavailable, or any
+        # internal error occurs.
+        composite, _trisoul_meta = await _trisoul_boost_push(
+            kid, bid, composite, r,
+        )
 
         # Build push payload from template.
         tpl = cfg.get("push_template") or {}
