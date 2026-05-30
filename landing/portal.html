@@ -1883,6 +1883,95 @@ textarea.form-input{
 }
 #app-shell .scrim.visible{ display:block; }
 
+/* ── Wallet pill + topbar extras ───────────────────────────────────── */
+#app-shell .ent-wallet{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:7px 12px;background:var(--brand-soft);color:var(--brand);
+  border:1px solid rgba(0,179,65,.2);border-radius:999px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  transition:background .15s ease;
+}
+#app-shell .ent-wallet:hover{ background:#d6f1e0; }
+#app-shell .ent-wallet svg{ width:14px;height:14px; }
+#app-shell .ent-wallet .topup{
+  padding:3px 8px;background:var(--brand);color:#fff;
+  border-radius:999px;font-size:11px;font-weight:700;
+}
+#app-shell .ent-lang{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 10px;background:transparent;color:var(--text-default);
+  border:1px solid var(--border-subdued);border-radius:8px;
+  font-size:12px;font-weight:600;cursor:pointer;
+}
+#app-shell .ent-lang:hover{ background:var(--surface-hover); }
+#app-shell .ent-lang svg{ width:14px;height:14px; }
+
+/* Account switcher in breadcrumb area */
+#app-shell .ent-account{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 10px;background:transparent;border:1px solid var(--border-subdued);
+  border-radius:8px;font-size:13px;font-weight:600;color:var(--text-strong);
+  cursor:pointer;transition:background .15s ease;
+}
+#app-shell .ent-account:hover{ background:var(--surface-hover); }
+#app-shell .ent-account .av{
+  width:22px;height:22px;border-radius:6px;background:var(--brand);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+}
+#app-shell .ent-account svg{ width:14px;height:14px;color:var(--text-subdued); }
+
+/* Dropdown menu shared */
+.ent-menu{
+  position:absolute;min-width:220px;background:#fff;
+  border:1px solid var(--border-subdued);border-radius:10px;
+  box-shadow:0 12px 32px rgba(15,23,42,.12);
+  padding:6px;z-index:300;display:none;
+}
+.ent-menu.open{display:block}
+.ent-menu-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:6px;font-size:13px;color:var(--text-default);
+  cursor:pointer;transition:background .12s;
+}
+.ent-menu-item:hover{ background:var(--surface-hover); }
+.ent-menu-item svg{ width:16px;height:16px;color:var(--text-subdued); }
+.ent-menu-divider{ height:1px;background:var(--border-subdued);margin:6px 4px; }
+.ent-menu-head{
+  padding:8px 10px;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--text-subdued);
+}
+
+/* Mobile hamburger */
+#app-shell .ent-hamburger{
+  display:none;background:transparent;border:none;
+  width:36px;height:36px;border-radius:8px;cursor:pointer;
+  align-items:center;justify-content:center;color:var(--text-default);
+}
+#app-shell .ent-hamburger:hover{ background:var(--surface-hover); }
+#app-shell .ent-hamburger svg{ width:20px;height:20px; }
+
+/* Wallet drawer */
+.ent-drawer{
+  position:fixed;top:0;right:0;height:100vh;width:380px;max-width:90vw;
+  background:#fff;border-left:1px solid var(--border-subdued);
+  box-shadow:-12px 0 32px rgba(15,23,42,.08);
+  z-index:400;transform:translateX(100%);transition:transform .25s ease;
+  display:flex;flex-direction:column;
+}
+.ent-drawer.open{ transform:translateX(0); }
+.ent-drawer-head{
+  padding:16px 20px;border-bottom:1px solid var(--border-subdued);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ent-drawer-head h3{ font-size:16px;font-weight:600;color:var(--text-strong);margin:0; }
+.ent-drawer-body{ flex:1;overflow-y:auto;padding:16px 20px; }
+.ent-drawer-close{
+  background:transparent;border:none;cursor:pointer;color:var(--text-subdued);
+  width:28px;height:28px;border-radius:6px;
+}
+.ent-drawer-close:hover{ background:var(--surface-hover);color:var(--text-default); }
+
 /* ── Responsive collapse ───────────────────────────────────────────── */
 @media (max-width:1280px){
   #app-shell{ --sidebar-w:64px; }
@@ -1897,6 +1986,56 @@ textarea.form-input{
   #app-shell .metric-grid{ grid-template-columns:repeat(2, 1fr); }
   #app-shell .grid-2{ grid-template-columns:1fr; }
   #app-shell .ent-search{ max-width:none; }
+  #app-shell .ent-account .name-detail{ display:none; }
+}
+@media (max-width:768px){
+  /* Sidebar becomes off-canvas drawer */
+  #app-shell{ --sidebar-w:0; }
+  #app-shell .ent-sidebar{
+    transform:translateX(-100%);transition:transform .25s ease;
+    width:260px;z-index:500;
+  }
+  #app-shell .ent-sidebar.mobile-open{ transform:translateX(0); }
+  /* Restore labels inside mobile open drawer */
+  #app-shell .ent-sidebar.mobile-open .ent-nav-item{
+    justify-content:flex-start;padding:0 var(--space-3);width:auto;margin:1px var(--space-2);
+  }
+  #app-shell .ent-sidebar.mobile-open .ent-nav-item span,
+  #app-shell .ent-sidebar.mobile-open .ent-nav-section,
+  #app-shell .ent-sidebar.mobile-open .ent-sidebar-head .label,
+  #app-shell .ent-sidebar.mobile-open .ent-nav-item .nav-count{ display:inline; }
+  #app-shell .ent-sidebar.mobile-open .ent-sidebar-foot{ display:flex; }
+
+  #app-shell .ent-hamburger{ display:inline-flex; }
+  #app-shell .ent-topbar{ padding-left:12px;padding-right:12px;gap:8px; }
+  #app-shell .ent-search{ display:none; }
+  #app-shell .ent-breadcrumb .sep,
+  #app-shell .ent-breadcrumb .curr,
+  #app-shell .ent-daterange,
+  #app-shell .ent-iconbtn[aria-label="Help"],
+  #app-shell .ent-avatar .name{ display:none; }
+  #app-shell .ent-wallet .topup{ display:none; }
+  #app-shell .ent-wallet{ padding:6px 10px;font-size:12px; }
+  #app-shell .ent-lang span:not(.code){ display:none; }
+  /* Tables become card stacks on small screens */
+  #app-shell .etable{ display:block; }
+  #app-shell .etable thead{ display:none; }
+  #app-shell .etable tbody, #app-shell .etable tr{ display:block; }
+  #app-shell .etable td{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:6px 8px;border:none;
+  }
+  #app-shell .etable td::before{
+    content:attr(data-label);font-size:11px;font-weight:600;
+    color:var(--text-subdued);text-transform:uppercase;letter-spacing:.04em;
+  }
+  #app-shell .etable tr{
+    border:1px solid var(--border-subdued);border-radius:10px;
+    padding:8px;margin-bottom:8px;background:var(--surface-canvas);
+  }
+}
+@media (max-width:480px){
+  #app-shell .metric-grid{ grid-template-columns:1fr; }
 }
 
 /* Make sure legacy stat-card / cards inside enterprise views inherit light style */
@@ -2134,8 +2273,31 @@ textarea.form-input{
 
   <!-- ═══ Enterprise Top Bar ════════════════════════════════════════ -->
   <header class="ent-topbar" role="banner">
+    <button class="ent-hamburger" id="ent-hamburger" aria-label="Open menu" type="button" onclick="toggleMobileSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="ent-breadcrumb">
-      <span class="ent-brand"><span class="dot"></span><span id="ent-brand-name">KiX</span></span>
+      <button class="ent-account" type="button" onclick="toggleAccountMenu(event)" aria-label="Account switcher">
+        <span class="av" id="ent-account-initial">K</span>
+        <span class="name-detail" id="ent-brand-name">KiX</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="ent-menu" id="ent-account-menu" style="top:48px;left:16px">
+        <div class="ent-menu-head" data-i18n="portal.account.switch">Switch account</div>
+        <div class="ent-menu-item" onclick="switchAccount('toast-box')">
+          <span style="width:22px;height:22px;border-radius:5px;background:#f97316;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">T</span>
+          <span style="flex:1">Toast Box</span><span style="font-size:11px;color:var(--text-subdued)">2 stores</span>
+        </div>
+        <div class="ent-menu-item" onclick="switchAccount('ya-kun')">
+          <span style="width:22px;height:22px;border-radius:5px;background:#ea580c;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">Y</span>
+          <span style="flex:1">Ya Kun Kaya</span><span style="font-size:11px;color:var(--text-subdued)">1 store</span>
+        </div>
+        <div class="ent-menu-divider"></div>
+        <div class="ent-menu-item" onclick="navigate('settings');closeAllMenus()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span data-i18n="portal.account.createNew">Create new brand</span>
+        </div>
+      </div>
       <span class="sep">/</span>
       <span class="curr" id="ent-breadcrumb-curr" data-i18n="portal.nav.overview">Overview</span>
     </div>
@@ -2145,25 +2307,114 @@ textarea.form-input{
       <span class="kbd">⌘K</span>
     </div>
     <div class="ent-topbar-right">
-      <button class="ent-daterange" id="ent-daterange-btn" aria-label="Date range" type="button">
+      <button class="ent-daterange" id="ent-daterange-btn" aria-label="Date range" type="button" onclick="toggleDateRange(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span data-i18n="portal.topbar.daterange.last7">Last 7 days</span>
-        <span style="color:var(--text-subdued)">·</span>
-        <span data-i18n="portal.topbar.daterange.compare">vs Previous</span>
+        <span id="daterange-label" data-i18n="portal.topbar.daterange.last7">Last 7 days</span>
+      </button>
+      <button class="ent-wallet" type="button" onclick="openWalletDrawer()" aria-label="Wallet balance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M16 12h2"/><path d="M2 10h20"/></svg>
+        <span data-i18n="portal.wallet.label">Wallet:</span>
+        <span class="tnum" id="wallet-balance">S$1,234.56</span>
+        <span class="topup" data-i18n="portal.wallet.topup">Top up</span>
+      </button>
+      <button class="ent-lang" type="button" onclick="kixToggleLocale()" aria-label="Language">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>
+        <span class="code" id="ent-lang-code">EN</span>
+        <span data-i18n="portal.lang.short">/ 中</span>
       </button>
       <button class="ent-iconbtn" aria-label="Notifications" type="button" onclick="toggleNotifications()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span class="dot-notif" id="notif-dot"></span>
       </button>
-      <button class="ent-iconbtn" aria-label="Help" type="button" onclick="window.open('https://docs.kix.app','_blank')">
+      <button class="ent-iconbtn" aria-label="Help" type="button" onclick="toggleHelpMenu(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </button>
-      <button class="ent-avatar" onclick="doLogout()" aria-label="Account menu" type="button" title="Sign out">
+      <div class="ent-menu" id="ent-help-menu" style="top:48px;right:60px">
+        <div class="ent-menu-item" onclick="window.open('https://docs.kix.app','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          <span data-i18n="portal.help.docs">Documentation</span>
+        </div>
+        <div class="ent-menu-item" onclick="openLiveChat()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span data-i18n="portal.help.chat">Live chat</span>
+        </div>
+        <div class="ent-menu-item" onclick="window.open('https://wa.me/6588888888','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.37 1.9.72 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0122 16.92z"/></svg>
+          <span data-i18n="portal.help.whatsapp">WhatsApp support</span>
+        </div>
+        <div class="ent-menu-divider"></div>
+        <div class="ent-menu-item" onclick="window.open('https://status.kix.app','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span data-i18n="portal.help.status">Status page</span>
+        </div>
+      </div>
+      <button class="ent-avatar" onclick="toggleAvatarMenu(event)" aria-label="Account menu" type="button">
         <span class="av" id="ent-avatar-initial">K</span>
         <span class="name" id="ent-avatar-name">Demo</span>
       </button>
+      <div class="ent-menu" id="ent-avatar-menu" style="top:48px;right:8px">
+        <div class="ent-menu-head" id="avatar-menu-email">demo@kix.app</div>
+        <div class="ent-menu-item" onclick="navigate('settings');closeAllMenus()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="portal.account.profile">View profile</span>
+        </div>
+        <div class="ent-menu-item" onclick="toggleAccountMenu(event);closeAllMenus();setTimeout(()=>document.getElementById('ent-account-menu').classList.add('open'),0)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <span data-i18n="portal.account.switch">Switch account</span>
+        </div>
+        <div class="ent-menu-item" onclick="navigate('settings');closeAllMenus()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6m11-11h-6M7 12H1"/></svg>
+          <span data-i18n="portal.account.settings">Settings</span>
+        </div>
+        <div class="ent-menu-item" onclick="toggleHelpMenu(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/></svg>
+          <span data-i18n="portal.account.help">Help &amp; support</span>
+        </div>
+        <div class="ent-menu-divider"></div>
+        <div class="ent-menu-item" onclick="confirmLogout()" style="color:#b91c1c">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span data-i18n="portal.account.signout">Sign out</span>
+        </div>
+      </div>
+      <!-- Date range menu -->
+      <div class="ent-menu" id="ent-daterange-menu" style="top:48px;right:200px;min-width:240px">
+        <div class="ent-menu-head" data-i18n="portal.daterange.title">Compare period</div>
+        <div class="ent-menu-item" onclick="setDateRange('today','Today')" data-range="today"><span data-i18n="portal.daterange.today">Today</span></div>
+        <div class="ent-menu-item" onclick="setDateRange('yesterday','Yesterday')"><span data-i18n="portal.daterange.yesterday">Yesterday</span></div>
+        <div class="ent-menu-item" onclick="setDateRange('7d','Last 7 days')"><span data-i18n="portal.daterange.last7">Last 7 days</span></div>
+        <div class="ent-menu-item" onclick="setDateRange('30d','Last 30 days')"><span data-i18n="portal.daterange.last30">Last 30 days</span></div>
+        <div class="ent-menu-item" onclick="setDateRange('mtd','Month to date')"><span data-i18n="portal.daterange.mtd">Month to date</span></div>
+        <div class="ent-menu-divider"></div>
+        <label class="ent-menu-item" style="cursor:pointer">
+          <input type="checkbox" id="compare-prev" checked onchange="updateCompareToggle()" style="margin-right:4px">
+          <span data-i18n="portal.daterange.compare">Compare to previous period</span>
+        </label>
+      </div>
     </div>
   </header>
+
+  <!-- Mobile sidebar scrim -->
+  <div class="scrim" id="mobile-scrim" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Wallet Drawer -->
+  <div class="ent-drawer" id="wallet-drawer" aria-hidden="true">
+    <div class="ent-drawer-head">
+      <h3 data-i18n="portal.wallet.drawer.title">Wallet</h3>
+      <button class="ent-drawer-close" onclick="closeWalletDrawer()" aria-label="Close">✕</button>
+    </div>
+    <div class="ent-drawer-body">
+      <div style="background:var(--brand-soft);border:1px solid rgba(0,179,65,.2);border-radius:12px;padding:18px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text-subdued);font-weight:600;text-transform:uppercase;letter-spacing:.04em" data-i18n="portal.wallet.balance">Current balance</div>
+        <div style="font-size:32px;font-weight:700;color:var(--text-strong);margin:4px 0" id="wallet-balance-detail">S$1,234.56</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="ebtn primary" onclick="openTopupModal()" data-i18n="portal.wallet.topup">Top up</button>
+          <button class="ebtn secondary" onclick="navigate('settings');closeWalletDrawer()" data-i18n="portal.wallet.autoRecharge">Auto-recharge</button>
+        </div>
+      </div>
+      <h4 style="font-size:13px;font-weight:600;color:var(--text-strong);margin-bottom:8px" data-i18n="portal.wallet.recent">Recent transactions</h4>
+      <div id="wallet-tx-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
 
   <!-- Content -->
   <div class="app-content">
@@ -4053,6 +4304,131 @@ function doLogout(){
   // Redirect back to landing page
   window.location.href = 'index.html';
 }
+function confirmLogout(){
+  if(confirm('Sign out of KiX Ads Manager?')) doLogout();
+}
+
+// ── Dropdown menus & topbar interactivity ─────────────────────────
+function closeAllMenus(){
+  document.querySelectorAll('.ent-menu').forEach(m=>m.classList.remove('open'));
+}
+function toggleMenu(id,ev){
+  if(ev){ ev.stopPropagation(); }
+  const m=document.getElementById(id); if(!m) return;
+  const wasOpen=m.classList.contains('open');
+  closeAllMenus();
+  if(!wasOpen) m.classList.add('open');
+}
+function toggleAvatarMenu(ev){ toggleMenu('ent-avatar-menu',ev); }
+function toggleAccountMenu(ev){ toggleMenu('ent-account-menu',ev); }
+function toggleHelpMenu(ev){ toggleMenu('ent-help-menu',ev); }
+function toggleDateRange(ev){ toggleMenu('ent-daterange-menu',ev); }
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('.ent-menu') && !e.target.closest('.ent-avatar') &&
+     !e.target.closest('.ent-account') && !e.target.closest('.ent-iconbtn[aria-label="Help"]') &&
+     !e.target.closest('.ent-daterange')) closeAllMenus();
+});
+
+function switchAccount(slug){
+  if(window.showToast) showToast('Switching to '+slug+'...','info');
+  closeAllMenus();
+  // Real impl would re-issue JWT
+}
+function openLiveChat(){
+  if(window.showToast) showToast('Opening live chat…','info');
+  // Stub: real wiring is Intercom/Crisp boot
+}
+
+// Mobile hamburger
+function toggleMobileSidebar(){
+  const sb=document.querySelector('.ent-sidebar');
+  const sc=document.getElementById('mobile-scrim');
+  if(!sb||!sc) return;
+  const open=sb.classList.toggle('mobile-open');
+  sc.classList.toggle('visible', open);
+}
+
+// Date range with compare toggle
+let _dateRange={preset:'7d',compare:true,label:'Last 7 days'};
+function setDateRange(preset,label){
+  _dateRange.preset=preset; _dateRange.label=label;
+  const lbl=document.getElementById('daterange-label');
+  if(lbl) lbl.textContent=label+(_dateRange.compare?' · vs Previous':'');
+  closeAllMenus();
+  // Update period segmented if exists
+  document.querySelectorAll('[data-period-seg]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.periodSeg===preset);
+  });
+  // Trigger dashboard refresh hook
+  if(typeof loadDashboard==='function') try{ loadDashboard(); }catch(_){}
+}
+function updateCompareToggle(){
+  const cb=document.getElementById('compare-prev');
+  _dateRange.compare=!!(cb&&cb.checked);
+  setDateRange(_dateRange.preset,_dateRange.label);
+}
+
+// Wallet
+function openWalletDrawer(){
+  const d=document.getElementById('wallet-drawer');
+  if(d){ d.classList.add('open'); d.setAttribute('aria-hidden','false'); }
+  renderWalletTransactions();
+}
+function closeWalletDrawer(){
+  const d=document.getElementById('wallet-drawer');
+  if(d){ d.classList.remove('open'); d.setAttribute('aria-hidden','true'); }
+}
+function openTopupModal(){
+  if(window.showToast) showToast('Top-up flow — wires to /api/v1/wallet/topup','info');
+}
+function renderWalletTransactions(){
+  const list=document.getElementById('wallet-tx-list'); if(!list) return;
+  const txs=[
+    {when:'Today · 09:14', kind:'Top up', amount:+500.00, balance:1234.56},
+    {when:'Yesterday · 22:30', kind:'Campaign spend · Toast Box', amount:-42.18, balance:734.56},
+    {when:'2 days ago', kind:'Campaign spend · Ya Kun Weekend Spin', amount:-58.40, balance:776.74},
+    {when:'4 days ago', kind:'Top up', amount:+500.00, balance:835.14},
+    {when:'5 days ago', kind:'Refund · Killiney lunch test', amount:+12.40, balance:335.14},
+  ];
+  list.innerHTML = txs.map(t=>{
+    const sign=t.amount>0?'+':'';
+    const color=t.amount>0?'#00B341':'#0F172A';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F8FAFC;border-radius:8px;font-size:13px">
+      <div><div style="font-weight:500">${t.kind}</div><div style="font-size:11px;color:#64748B">${t.when}</div></div>
+      <div style="text-align:right"><div style="font-weight:600;color:${color};font-variant-numeric:tabular-nums">${sign}S$${Math.abs(t.amount).toFixed(2)}</div><div style="font-size:11px;color:#64748B">Bal S$${t.balance.toFixed(2)}</div></div>
+    </div>`;
+  }).join('');
+}
+async function refreshWalletBalance(){
+  try{
+    const bid = state.brandId; if(!bid) return;
+    const res = await fetch(API_BASE+'/api/v1/wallet/'+bid+'/balance',{headers:{Authorization:'Bearer '+(state.token||'')}});
+    if(!res.ok) return;
+    const data = await res.json();
+    const cents = data.balance_cents || 0;
+    const sgd = (cents/100).toFixed(2);
+    const formatted = 'S$' + Number(sgd).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const el = document.getElementById('wallet-balance'); if(el) el.textContent = formatted;
+    const elD = document.getElementById('wallet-balance-detail'); if(elD) elD.textContent = formatted;
+  }catch(_){}
+}
+// Boot: poll wallet every 30s while app shell active
+setInterval(()=>{ if(document.getElementById('app-shell')&&document.getElementById('app-shell').classList.contains('active')) refreshWalletBalance(); }, 30000);
+
+// Update language code on toggle
+(function patchLocale(){
+  if(typeof window.kixToggleLocale==='function'){
+    const orig=window.kixToggleLocale;
+    window.kixToggleLocale=function(){
+      orig.apply(this,arguments);
+      try{
+        const cur = (window.i18next && window.i18next.language) || (localStorage.getItem('kix_locale')||'en-SG');
+        const code = cur.startsWith('zh')?'中':'EN';
+        const el=document.getElementById('ent-lang-code'); if(el) el.textContent=code;
+      }catch(_){}
+    };
+  }
+})();
 
 // ═══════════════════════════════════════════════════════════════════════
 // NAVIGATION
