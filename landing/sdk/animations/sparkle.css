@@ -1,0 +1,25 @@
+/* KiXFx sparkle — twinkling trail overlay (CSS-only). */
+@keyframes kixfx-sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1)   rotate(180deg); }
+}
+
+.kixfx-sparkle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, #fff 0%, rgba(255,255,255,0.6) 30%,
+                    transparent 70%);
+  border-radius: 50%;
+  animation: kixfx-sparkle-twinkle 1.2s ease-in-out infinite;
+  z-index: 9998;
+}
+
+.kixfx-sparkle.kixfx-d2 { width: 8px;  height: 8px;  animation-duration: 0.9s; }
+.kixfx-sparkle.kixfx-d3 { width: 20px; height: 20px; animation-duration: 1.6s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kixfx-sparkle { display: none !important; }
+}

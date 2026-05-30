@@ -1,0 +1,24 @@
+/* KiXFx confetti — Wave F spec 09.
+ * Canvas-driven burst, palette-tunable, respects reduced-motion. */
+.kixfx-confetti-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+}
+
+@keyframes kixfx-fade-out {
+  0%   { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.kixfx-confetti-canvas.kixfx-fading {
+  animation: kixfx-fade-out 0.6s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kixfx-confetti-canvas { display: none !important; }
+}

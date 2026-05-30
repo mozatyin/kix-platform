@@ -1,0 +1,26 @@
+/* KiXFx jackpot — zoom-in + golden flash on a reward element. */
+@keyframes kixfx-jackpot-zoom {
+  0%   { transform: scale(0.6); opacity: 0; filter: brightness(1); }
+  40%  { transform: scale(1.15); opacity: 1; filter: brightness(1.8); }
+  70%  { transform: scale(0.98); filter: brightness(1.2); }
+  100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+}
+
+@keyframes kixfx-jackpot-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(255,215,0,0); }
+  50%      { box-shadow: 0 0 40px 12px rgba(255,215,0,0.85); }
+}
+
+.kixfx-jackpot {
+  animation:
+    kixfx-jackpot-zoom 0.9s cubic-bezier(0.2, 1.4, 0.4, 1) forwards,
+    kixfx-jackpot-glow 1.5s ease-in-out 0.2s 1;
+  will-change: transform, filter, box-shadow;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kixfx-jackpot {
+    animation: none !important;
+    box-shadow: 0 0 20px 4px rgba(255,215,0,0.5);
+  }
+}
