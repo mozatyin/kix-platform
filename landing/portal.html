@@ -2192,7 +2192,7 @@ textarea.form-input{
       <div class="logo">Ki<span>X</span></div>
       <span class="brand-label" id="header-brand-name"></span>
     </div>
-    <button class="btn-logout" onclick="doLogout()">Logout / 登出</button>
+    <button class="btn-logout" onclick="doLogout()" data-i18n="portal.actions.signOut">Sign out</button>
   </div>
 
   <!-- ═══ Enterprise Sidebar ════════════════════════════════════════ -->
@@ -2210,7 +2210,7 @@ textarea.form-input{
       <div class="ent-nav-item" data-view="ads" onclick="navigate('ads')" role="link" tabindex="0" aria-label="Campaigns">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8v18l-18-8z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>
         <span data-i18n="portal.nav.campaigns">Campaigns</span>
-        <span class="nav-count" id="nav-count-campaigns">10</span>
+        <span class="nav-count" id="nav-count-campaigns" style="display:none"></span>
       </div>
       <div class="ent-nav-item" data-view="primitives" onclick="navigate('primitives')" role="link" tabindex="0" aria-label="Audiences">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M17 11a3 3 0 100-6"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
@@ -2228,11 +2228,16 @@ textarea.form-input{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h6a4 4 0 014 4v6"/></svg>
         <span data-i18n="portal.nav.automations">Automations</span>
       </div>
-      <div class="ent-nav-item" data-view="operations" onclick="navigate('operations')" role="link" tabindex="0" aria-label="Operations">
+      <div class="ent-nav-item" data-view="pixels" onclick="navigate('pixels')" role="link" tabindex="0" aria-label="Pixels &amp; tracking">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6m11-11h-6M7 12H1"/></svg>
+        <span data-i18n="portal.nav.pixels">Pixels &amp; tracking</span>
+      </div>
+      <!-- Advanced (Operations + Live monitoring) — admin role only; hidden from merchants -->
+      <div class="ent-nav-item adv-only" data-view="operations" onclick="navigate('operations')" role="link" tabindex="0" aria-label="Operations" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
         <span data-i18n="portal.nav.operations">Operations</span>
       </div>
-      <div class="ent-nav-item" data-view="monitoring" onclick="navigate('monitoring')" role="link" tabindex="0" aria-label="Live monitoring">
+      <div class="ent-nav-item adv-only" data-view="monitoring" onclick="navigate('monitoring')" role="link" tabindex="0" aria-label="Live monitoring" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <span data-i18n="portal.nav.monitoring">Live monitoring</span>
       </div>
@@ -2426,34 +2431,69 @@ textarea.form-input{
           <p class="ent-page-subtitle" data-i18n="portal.dashboard.subtitle">Here's how your campaigns performed in the last 7 days vs the previous 7 days.</p>
         </div>
         <div class="ent-page-actions">
-          <button class="ebtn primary" type="button" onclick="navigate('ads')">
+          <button class="ebtn primary" type="button" onclick="openCampaignWizard()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             <span data-i18n="portal.actions.createCampaign">Create campaign</span>
           </button>
         </div>
       </div>
 
-      <!-- KPI metrics -->
+      <!-- Period segmented control (P0-3) -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <div role="tablist" aria-label="Time period" style="display:inline-flex;background:var(--surface-subdued);border:1px solid var(--border-subdued);border-radius:10px;padding:3px;gap:2px">
+          <button class="period-seg active" data-period-seg="today" onclick="setDateRange('today','Today')" data-i18n="portal.daterange.today">Today</button>
+          <button class="period-seg" data-period-seg="yesterday" onclick="setDateRange('yesterday','Yesterday')" data-i18n="portal.daterange.yesterday">Yesterday</button>
+          <button class="period-seg" data-period-seg="7d" onclick="setDateRange('7d','Last 7 days')" data-i18n="portal.daterange.last7">Last 7d</button>
+          <button class="period-seg" data-period-seg="30d" onclick="setDateRange('30d','Last 30 days')" data-i18n="portal.daterange.last30">Last 30d</button>
+          <button class="period-seg" data-period-seg="custom" onclick="toggleDateRange(event)" data-i18n="portal.daterange.custom">Custom</button>
+        </div>
+        <span id="last-updated-pill" style="font-size:11px;color:var(--text-subdued);display:inline-flex;align-items:center;gap:6px">
+          <span style="width:6px;height:6px;background:var(--brand);border-radius:50%;display:inline-block;animation:pulse 2s ease infinite"></span>
+          <span data-i18n="portal.dashboard.lastUpdated">Last updated just now</span>
+        </span>
+      </div>
+      <style>
+        .period-seg{padding:6px 12px;border:none;background:transparent;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-subdued);cursor:pointer;transition:all .12s ease}
+        .period-seg.active{background:#fff;color:var(--text-strong);box-shadow:0 1px 3px rgba(15,23,42,.06)}
+        .period-seg:hover:not(.active){background:rgba(255,255,255,.5)}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        .kpi-tooltip{position:relative;cursor:help;border-bottom:1px dashed var(--text-subdued)}
+        .kpi-tooltip:hover::after{
+          content:attr(data-tooltip);position:absolute;left:0;bottom:calc(100% + 6px);
+          background:#0F172A;color:#fff;font-size:11px;padding:6px 10px;border-radius:6px;
+          white-space:nowrap;z-index:50;font-weight:400;line-height:1.4;
+        }
+      </style>
+
+      <!-- KPI metrics (plain English / 通俗指标 P1-3) -->
       <div class="metric-grid">
         <div class="metric-card">
-          <div class="label"><span data-i18n="portal.kpi.totalSpend">Total spend</span></div>
-          <div class="value">S$12,486</div>
-          <div class="delta up">▲ 12.3% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <div class="label">
+            <span class="kpi-tooltip" data-tooltip="Total ad spend across all campaigns / 所有广告活动总花费" data-i18n="portal.kpi.totalSpend">Total spend</span>
+          </div>
+          <div class="value" id="kpi-spend">S$12,486</div>
+          <div class="delta up">▲ 12.3% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
         </div>
         <div class="metric-card">
-          <div class="label"><span data-i18n="portal.kpi.reach">Reach</span></div>
-          <div class="value">245,800</div>
-          <div class="delta up">▲ 3.1% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <div class="label">
+            <span class="kpi-tooltip" data-tooltip="Unique people who saw your campaigns / 看过广告的独立顾客" data-i18n="portal.kpi.customersReached">Customers reached</span>
+          </div>
+          <div class="value" id="kpi-reach">245,800</div>
+          <div class="delta up">▲ 3.1% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
         </div>
         <div class="metric-card">
-          <div class="label"><span data-i18n="portal.kpi.conversions">Conversions</span></div>
-          <div class="value">1,420</div>
-          <div class="delta up">▲ 28.4% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <div class="label">
+            <span class="kpi-tooltip" data-tooltip="Customers who claimed a voucher / 领取优惠券的顾客数" data-i18n="portal.kpi.customersGained">Customers gained</span>
+          </div>
+          <div class="value" id="kpi-conv">1,420</div>
+          <div class="delta up">▲ 28.4% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
         </div>
         <div class="metric-card">
-          <div class="label"><span data-i18n="portal.kpi.voucherCr">Voucher CR</span></div>
-          <div class="value">34%</div>
-          <div class="delta down">▼ 2.1% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <div class="label">
+            <span class="kpi-tooltip" data-tooltip="Avg cost per customer gained (CPA) / 每个新客成本" data-i18n="portal.kpi.costPerCustomer">Cost per customer</span>
+          </div>
+          <div class="value" id="kpi-cpa">S$8.79</div>
+          <div class="delta down">▼ 6.2% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
         </div>
       </div>
 
@@ -2469,21 +2509,35 @@ textarea.form-input{
             </div>
           </div>
 
-          <div class="ecard">
+          <div class="ecard" id="dash-top-campaigns">
             <div class="ecard-head">
               <h3 class="ecard-title" data-i18n="portal.dashboard.topCampaigns">Top campaigns this week</h3>
               <button class="ebtn tertiary sm" onclick="navigate('ads')" data-i18n="portal.actions.viewAll">View all →</button>
             </div>
-            <table class="etable">
-              <thead><tr><th data-i18n="portal.table.name">Name</th><th class="numeric" data-i18n="portal.table.spend">Spend</th><th class="numeric" data-i18n="portal.table.conversions">Conv</th><th class="numeric">ROAS</th></tr></thead>
+            <!-- Demo data (visible only when ?demo=true, otherwise replaced with empty state) -->
+            <table class="etable demo-only">
+              <thead><tr>
+                <th data-i18n="portal.table.name">Name</th>
+                <th class="numeric" data-i18n="portal.table.spend">Spend</th>
+                <th class="numeric" data-i18n="portal.table.ctr">CTR</th>
+                <th class="numeric" data-i18n="portal.table.customers">Customers</th>
+                <th class="numeric" data-i18n="portal.table.costPerConv">Cost/Conv</th>
+              </tr></thead>
               <tbody>
-                <tr><td class="col-name">Toast Box · Morning Combo</td><td class="numeric tnum">S$1,840</td><td class="numeric tnum">312</td><td class="numeric tnum">6.4×</td></tr>
-                <tr><td class="col-name">Ya Kun Kaya · Weekend Spin</td><td class="numeric tnum">S$1,620</td><td class="numeric tnum">288</td><td class="numeric tnum">5.9×</td></tr>
-                <tr><td class="col-name">CHIR CHIR · K-Drama Trivia</td><td class="numeric tnum">S$2,150</td><td class="numeric tnum">320</td><td class="numeric tnum">5.2×</td></tr>
-                <tr><td class="col-name">Bean Brothers · Loyalty Ladder</td><td class="numeric tnum">S$1,210</td><td class="numeric tnum">196</td><td class="numeric tnum">4.6×</td></tr>
-                <tr><td class="col-name">Killiney · Lunch Hour Roulette</td><td class="numeric tnum">S$945</td><td class="numeric tnum">148</td><td class="numeric tnum">4.1×</td></tr>
+                <tr><td class="col-name" data-label="Name">Toast Box · Morning Combo</td><td class="numeric tnum" data-label="Spend">S$1,840</td><td class="numeric tnum" data-label="CTR" style="color:#00B341">2.94%</td><td class="numeric tnum" data-label="Customers">312</td><td class="numeric tnum" data-label="Cost/Conv">S$5.90</td></tr>
+                <tr><td class="col-name" data-label="Name">Ya Kun Kaya · Weekend Spin</td><td class="numeric tnum" data-label="Spend">S$1,620</td><td class="numeric tnum" data-label="CTR" style="color:#00B341">2.96%</td><td class="numeric tnum" data-label="Customers">288</td><td class="numeric tnum" data-label="Cost/Conv">S$5.62</td></tr>
+                <tr><td class="col-name" data-label="Name">CHIR CHIR · K-Drama Trivia</td><td class="numeric tnum" data-label="Spend">S$2,150</td><td class="numeric tnum" data-label="CTR" style="color:#00B341">2.98%</td><td class="numeric tnum" data-label="Customers">320</td><td class="numeric tnum" data-label="Cost/Conv">S$6.72</td></tr>
+                <tr><td class="col-name" data-label="Name">Bean Brothers · Loyalty Ladder</td><td class="numeric tnum" data-label="Spend">S$1,210</td><td class="numeric tnum" data-label="CTR" style="color:#f59e0b">1.45%</td><td class="numeric tnum" data-label="Customers">196</td><td class="numeric tnum" data-label="Cost/Conv">S$6.17</td></tr>
+                <tr><td class="col-name" data-label="Name">Killiney · Lunch Hour Roulette</td><td class="numeric tnum" data-label="Spend">S$945</td><td class="numeric tnum" data-label="CTR" style="color:#f59e0b">0.92%</td><td class="numeric tnum" data-label="Customers">148</td><td class="numeric tnum" data-label="Cost/Conv">S$6.38</td></tr>
               </tbody>
             </table>
+            <!-- Empty state for fresh merchants -->
+            <div class="empty-state non-demo" style="display:none;padding:32px 16px;text-align:center">
+              <div style="font-size:32px;margin-bottom:8px">📊</div>
+              <h4 style="font-size:14px;font-weight:600;color:var(--text-strong);margin-bottom:6px" data-i18n="portal.empty.noCampaignsTitle">You don't have any campaigns yet</h4>
+              <p style="font-size:13px;color:var(--text-subdued);margin-bottom:14px" data-i18n="portal.empty.noCampaignsBody">Launch your first campaign in 3 steps — pick a goal, set audience &amp; budget, choose a game template.</p>
+              <button class="ebtn primary" onclick="openCampaignWizard()" data-i18n="portal.empty.createFirst">Create your first campaign</button>
+            </div>
           </div>
 
           <div class="section" id="dash-games-section" style="display:none">
@@ -2544,8 +2598,8 @@ textarea.form-input{
 
     <!-- ─── Games ─────────────────────────────────────────────── -->
     <div id="view-games" class="view">
-      <h2 class="page-title">Game Store / 游戏市场</h2>
-      <p class="page-subtitle">描述您的业务，系统从1012款游戏库中智能推荐</p>
+      <h2 class="page-title" data-i18n="portal.games.title">Game template library</h2>
+      <p class="page-subtitle" data-i18n="portal.games.subtitle">Describe your business — we'll match from 1,012 ready-made templates.</p>
 
       <!-- My Games Section -->
       <div class="section" id="my-games-section" style="display:none">
@@ -2652,8 +2706,8 @@ textarea.form-input{
 
     <!-- ─── Vouchers ──────────────────────────────────────────── -->
     <div id="view-vouchers" class="view">
-      <h2 class="page-title">Vouchers / 优惠券管理</h2>
-      <p class="page-subtitle">Upload and manage voucher codes / 上传和管理优惠券码</p>
+      <h2 class="page-title" data-i18n="portal.vouchers.title">Vouchers</h2>
+      <p class="page-subtitle" data-i18n="portal.vouchers.subtitle">Upload and manage voucher codes.</p>
 
       <div class="section">
         <div class="section-title">Upload CSV / 上传CSV文件</div>
@@ -2696,7 +2750,7 @@ textarea.form-input{
 
     <!-- ─── QR Codes ──────────────────────────────────────────── -->
     <div id="view-qr" class="view">
-      <h2 class="page-title">QR Codes / 二维码管理</h2>
+      <h2 class="page-title" data-i18n="portal.qr.title">QR codes</h2>
       <p class="page-subtitle">Generate and display QR codes for locations / 为门店生成和展示二维码</p>
 
       <div id="qr-locations-list">
@@ -2727,7 +2781,7 @@ textarea.form-input{
 
     <!-- ─── Locations ─────────────────────────────────────────── -->
     <div id="view-locations" class="view">
-      <h2 class="page-title">Locations / 门店管理</h2>
+      <h2 class="page-title" data-i18n="portal.locations.title">Locations</h2>
       <p class="page-subtitle">Manage cafe locations / 管理咖啡门店</p>
 
       <div class="section">
@@ -3100,7 +3154,7 @@ textarea.form-input{
 
     <!-- ─── Redeem Center / 核销中心 ──────────────────────────── -->
     <div id="view-redeem" class="view">
-      <h1>核销中心 / Redeem Center</h1>
+      <h1 data-i18n="portal.redeem.title">Redeem Center</h1>
 
       <!-- Scan / input -->
       <div class="redeem-input-card">
@@ -3123,7 +3177,7 @@ textarea.form-input{
       <!-- Voucher preview -->
       <div id="voucher-preview" class="voucher-card" style="display:none;">
         <h2 id="voucher-title">&mdash;</h2>
-        <p id="voucher-value">&yen;&mdash; 价值</p>
+        <p id="voucher-value">S$&mdash; value</p>
         <p id="voucher-holder">持有人: &mdash;</p>
         <p id="voucher-expires">有效期至: &mdash;</p>
         <p id="voucher-status">状态: &mdash;</p>
@@ -3140,7 +3194,7 @@ textarea.form-input{
             <div class="stat-label">核销次数 / Count</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number" id="redeem-value-today">&yen;0</div>
+            <div class="stat-number" id="redeem-value-today">S$0.00</div>
             <div class="stat-label">核销总额 / Value</div>
           </div>
         </div>
@@ -3162,18 +3216,376 @@ textarea.form-input{
 
     <!-- ─── Settings ──────────────────────────────────────────── -->
     <div id="view-settings" class="view">
-      <h2 class="page-title">Settings / 设置</h2>
-      <p class="page-subtitle">Brand configuration (read-only) / 品牌配置（只读）</p>
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.settings.title">Settings</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.settings.subtitle">Manage your account, billing, team and integrations.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:6px;border-bottom:1px solid var(--border-subdued);margin-bottom:20px;overflow-x:auto;flex-wrap:wrap" role="tablist" aria-label="Settings sections">
+        <button class="settings-tab active" data-tab="profile" onclick="setSettingsTab('profile')" data-i18n="portal.settings.tab.profile">Profile</button>
+        <button class="settings-tab" data-tab="billing" onclick="setSettingsTab('billing')" data-i18n="portal.settings.tab.billing">Billing</button>
+        <button class="settings-tab" data-tab="payment" onclick="setSettingsTab('payment')" data-i18n="portal.settings.tab.payment">Payment methods</button>
+        <button class="settings-tab" data-tab="stores" onclick="setSettingsTab('stores')" data-i18n="portal.settings.tab.stores">Stores</button>
+        <button class="settings-tab" data-tab="team" onclick="setSettingsTab('team')" data-i18n="portal.settings.tab.team">Team</button>
+        <button class="settings-tab" data-tab="integrations" onclick="setSettingsTab('integrations')" data-i18n="portal.settings.tab.integrations">Integrations</button>
+        <button class="settings-tab" data-tab="notifications" onclick="setSettingsTab('notifications')" data-i18n="portal.settings.tab.notifications">Notifications</button>
+        <button class="settings-tab" data-tab="security" onclick="setSettingsTab('security')" data-i18n="portal.settings.tab.security">Security</button>
+      </div>
+      <style>
+        .settings-tab{padding:10px 14px;background:transparent;border:none;border-bottom:2px solid transparent;font-size:13px;font-weight:500;color:var(--text-subdued);cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+        .settings-tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+        .settings-tab:hover:not(.active){color:var(--text-default)}
+        .settings-panel{display:none}
+        .settings-panel.active{display:block}
+        .set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border-subdued)}
+        .set-row:last-child{border-bottom:none}
+        .set-row .lbl{font-weight:500;color:var(--text-strong);font-size:13px}
+        .set-row .desc{font-size:12px;color:var(--text-subdued);margin-top:2px}
+      </style>
 
       <div id="settings-content">
-        <div class="loading-center"><div class="spinner"></div></div>
+        <!-- Profile tab -->
+        <div class="settings-panel active" data-panel="profile">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.profile.brand">Brand profile</h3></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+              <div class="form-group"><label data-i18n="portal.settings.profile.name">Brand name</label><input class="form-input" type="text" value="Toast Box" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+              <div class="form-group"><label data-i18n="portal.settings.profile.legalName">Legal entity</label><input class="form-input" type="text" value="Toast Box Pte Ltd" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+              <div class="form-group"><label data-i18n="portal.settings.profile.email">Contact email</label><input class="form-input" type="email" value="merchant@toastbox.sg" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+              <div class="form-group"><label data-i18n="portal.settings.profile.phone">Contact phone</label><input class="form-input" type="tel" value="+65 6555 0001" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+              <div class="form-group"><label data-i18n="portal.settings.profile.tax">Tax ID / UEN</label><input class="form-input" type="text" value="201912345R" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+              <div class="form-group"><label data-i18n="portal.settings.profile.currency">Currency</label><select class="form-input" style="background:#fff;border-color:#CBD5E1;color:#0F172A"><option>SGD · S$</option><option>MYR · RM</option><option>HKD · HK$</option></select></div>
+            </div>
+            <div class="form-group" style="margin-top:8px">
+              <label data-i18n="portal.settings.profile.logo">Brand logo</label>
+              <div style="display:flex;align-items:center;gap:14px">
+                <div style="width:64px;height:64px;border-radius:12px;background:#f97316;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700">T</div>
+                <button class="ebtn secondary" type="button" data-i18n="portal.settings.profile.upload">Upload logo (PNG/SVG ≤ 2MB)</button>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+              <button class="ebtn secondary" data-i18n="portal.actions.cancel">Cancel</button>
+              <button class="ebtn primary" onclick="if(window.showToast)showToast('Profile saved','success')" data-i18n="portal.actions.save">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Billing tab -->
+        <div class="settings-panel" data-panel="billing">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.billing.invoices">Invoices</h3>
+              <button class="ebtn secondary sm" onclick="if(window.showToast)showToast('CSV export queued — check email','success')" data-i18n="portal.actions.export">Export CSV</button>
+            </div>
+            <table class="etable">
+              <thead><tr><th data-i18n="portal.settings.billing.date">Date</th><th data-i18n="portal.settings.billing.number">Invoice #</th><th class="numeric" data-i18n="portal.settings.billing.amount">Amount</th><th data-i18n="portal.settings.billing.status">Status</th><th></th></tr></thead>
+              <tbody>
+                <tr><td data-label="Date">2026-05-01</td><td data-label="Invoice #">INV-2026-0512</td><td class="numeric tnum" data-label="Amount">S$2,340.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
+                <tr><td data-label="Date">2026-04-01</td><td data-label="Invoice #">INV-2026-0411</td><td class="numeric tnum" data-label="Amount">S$1,985.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
+                <tr><td data-label="Date">2026-03-01</td><td data-label="Invoice #">INV-2026-0309</td><td class="numeric tnum" data-label="Amount">S$1,720.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
+                <tr><td data-label="Date">2026-02-01</td><td data-label="Invoice #">INV-2026-0208</td><td class="numeric tnum" data-label="Amount">S$1,450.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Payment methods tab -->
+        <div class="settings-panel" data-panel="payment">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.payment.title">Payment methods</h3>
+              <button class="ebtn primary sm" onclick="if(window.showToast)showToast('Stripe checkout opening...','info')" data-i18n="portal.settings.payment.add">+ Add payment method</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+              <div class="set-row" style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:44px;height:30px;background:#1a1f71;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">VISA</div>
+                  <div><div class="lbl">•••• •••• •••• 4242</div><div class="desc">Expires 12/27 · Default</div></div>
+                </div>
+                <div style="display:flex;gap:6px"><span class="ebadge active"><span class="dot"></span>Default</span><button class="ebtn tertiary sm">Remove</button></div>
+              </div>
+              <div class="set-row" style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:44px;height:30px;background:#eb001b;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">MC</div>
+                  <div><div class="lbl">•••• •••• •••• 5544</div><div class="desc">Expires 08/26</div></div>
+                </div>
+                <div style="display:flex;gap:6px"><button class="ebtn tertiary sm">Set default</button><button class="ebtn tertiary sm">Remove</button></div>
+              </div>
+            </div>
+            <div class="set-row" style="margin-top:14px;border-top:1px solid var(--border-subdued);padding-top:14px">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.payment.autoRecharge">Auto-recharge wallet</div>
+                <div class="desc" data-i18n="portal.settings.payment.autoRechargeDesc">When balance drops below S$100, charge S$500 to default card.</div>
+              </div>
+              <label class="switch" style="position:relative;display:inline-block;width:42px;height:24px">
+                <input type="checkbox" checked style="opacity:0;width:0;height:0">
+                <span style="position:absolute;cursor:pointer;inset:0;background:var(--brand);border-radius:24px;transition:.2s">
+                  <span style="position:absolute;height:18px;width:18px;left:21px;top:3px;background:#fff;border-radius:50%;transition:.2s"></span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stores tab -->
+        <div class="settings-panel" data-panel="stores">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.stores.title">Stores</h3>
+              <button class="ebtn primary sm" onclick="navigate('locations')" data-i18n="portal.settings.stores.add">+ Add store</button>
+            </div>
+            <table class="etable">
+              <thead><tr><th>Name</th><th>Address</th><th>Staff</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td data-label="Name">Toast Box · Tampines Mall</td><td data-label="Address">4 Tampines Central 5</td><td data-label="Staff">3</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Active</span></td></tr>
+                <tr><td data-label="Name">Toast Box · Bedok Point</td><td data-label="Address">799 New Upper Changi Rd</td><td data-label="Staff">2</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Active</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Team tab -->
+        <div class="settings-panel" data-panel="team">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.team.title">Team members</h3>
+              <button class="ebtn primary sm" onclick="if(window.showToast)showToast('Invitation email sent','success')" data-i18n="portal.settings.team.invite">+ Invite member</button>
+            </div>
+            <table class="etable">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last active</th><th></th></tr></thead>
+              <tbody>
+                <tr><td data-label="Name">小王 (you)</td><td data-label="Email">merchant@toastbox.sg</td><td data-label="Role"><span class="ebadge active">Admin</span></td><td data-label="Last active">Just now</td><td></td></tr>
+                <tr><td data-label="Name">May Lim</td><td data-label="Email">may@toastbox.sg</td><td data-label="Role"><span class="ebadge">Editor</span></td><td data-label="Last active">2 hours ago</td><td><button class="ebtn tertiary sm">Edit</button></td></tr>
+                <tr><td data-label="Name">Devi K</td><td data-label="Email">devi@toastbox.sg</td><td data-label="Role"><span class="ebadge">Viewer</span></td><td data-label="Last active">Yesterday</td><td><button class="ebtn tertiary sm">Edit</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Integrations tab -->
+        <div class="settings-panel" data-panel="integrations">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.integrations.title">Integrations</h3></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px">
+              <div style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px"><div style="font-weight:600">Shopify</div><div style="font-size:12px;color:var(--text-subdued);margin:4px 0 10px">Sync orders &amp; pixel events</div><button class="ebtn secondary sm">Connect</button></div>
+              <div style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px"><div style="font-weight:600">WordPress / WooCommerce</div><div style="font-size:12px;color:var(--text-subdued);margin:4px 0 10px">Auto-install pixel snippet</div><button class="ebtn secondary sm">Connect</button></div>
+              <div style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px"><div style="font-weight:600">Meta / Facebook Pixel</div><div style="font-size:12px;color:var(--text-subdued);margin:4px 0 10px">Mirror conversions to Meta Ads</div><button class="ebtn secondary sm">Connect</button></div>
+              <div style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px"><div style="font-weight:600">Google Analytics</div><div style="font-size:12px;color:var(--text-subdued);margin:4px 0 10px">Pipe events to GA4</div><button class="ebtn secondary sm">Connect</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications tab -->
+        <div class="settings-panel" data-panel="notifications">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.notifications.title">Notifications</h3></div>
+            <div class="set-row"><div><div class="lbl">Campaign performance alerts</div><div class="desc">When CTR drops &gt;30% in 1 hour</div></div><label><input type="checkbox" checked></label></div>
+            <div class="set-row"><div><div class="lbl">Voucher inventory low</div><div class="desc">When pool falls below 20%</div></div><label><input type="checkbox" checked></label></div>
+            <div class="set-row"><div><div class="lbl">Daily summary email</div><div class="desc">Yesterday's spend &amp; conversions</div></div><label><input type="checkbox" checked></label></div>
+            <div class="set-row"><div><div class="lbl">Wallet low balance</div><div class="desc">When wallet drops below S$100</div></div><label><input type="checkbox" checked></label></div>
+          </div>
+        </div>
+
+        <!-- Security tab -->
+        <div class="settings-panel" data-panel="security">
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.security.title">Security</h3></div>
+            <div class="set-row"><div><div class="lbl" data-i18n="portal.settings.security.2fa">Two-factor authentication</div><div class="desc" data-i18n="portal.settings.security.2faDesc">Require an OTP on every sign-in.</div></div><button class="ebtn primary sm">Enable</button></div>
+            <div class="set-row"><div><div class="lbl">Active sessions</div><div class="desc">Sign out of all other devices</div></div><button class="ebtn secondary sm">Sign out all</button></div>
+            <div class="set-row"><div><div class="lbl">Password</div><div class="desc">Last changed 3 months ago</div></div><button class="ebtn secondary sm">Change</button></div>
+            <div class="set-row"><div><div class="lbl">API access tokens</div><div class="desc">For programmatic access</div></div><button class="ebtn secondary sm">Manage tokens</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Pixels & Tracking (P0-5) ─────────────────────────────── -->
+    <div id="view-pixels" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.pixels.title">Pixels &amp; Tracking</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.pixels.subtitle">Install KiX Pixel on your website to track conversions and build remarketing audiences.</p>
+        </div>
+        <div class="ent-page-actions">
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-default)">
+            <input type="checkbox" id="pixel-test-mode"> <span data-i18n="portal.pixels.testMode">Test mode</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.pixels.idTitle">Your Pixel ID</h3></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface-subdued);border-radius:8px;font-family:monospace;font-size:14px">
+              <span style="flex:1" id="pixel-id">kix_px_4b3c2a1d8e9f</span>
+              <button class="ebtn tertiary sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('pixel-id').textContent);if(window.showToast)showToast('Pixel ID copied','success')">Copy</button>
+            </div>
+          </div>
+
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.pixels.snippetTitle">Install snippet</h3>
+              <button class="ebtn tertiary sm" onclick="copyPixelSnippet()" data-i18n="portal.pixels.copy">Copy code</button>
+            </div>
+            <p style="font-size:13px;color:var(--text-subdued);margin-bottom:8px" data-i18n="portal.pixels.snippetHelp">Paste this before &lt;/head&gt; on every page of your website.</p>
+            <pre id="pixel-snippet" style="background:#0F172A;color:#E2E8F0;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5"><code>&lt;!-- KiX Pixel --&gt;
+&lt;script&gt;
+(function(k,i,x){k[i]=k[i]||function(){(k[i].q=k[i].q||[]).push(arguments)};
+var s=x.createElement('script');s.async=1;s.src='https://cdn.kix.app/px.js';
+x.head.appendChild(s);})(window,'kix',document);
+kix('init','kix_px_4b3c2a1d8e9f');
+kix('track','PageView');
+&lt;/script&gt;
+&lt;!-- End KiX Pixel --&gt;</code></pre>
+          </div>
+
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.pixels.guides">Integration guides</h3></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+              <button class="ebtn secondary sm">Shopify</button>
+              <button class="ebtn secondary sm">WordPress</button>
+              <button class="ebtn secondary sm">Wix</button>
+              <button class="ebtn secondary sm">Squarespace</button>
+              <button class="ebtn secondary sm">Custom HTML</button>
+              <button class="ebtn secondary sm">Google Tag Manager</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.pixels.events">Recent events</h3>
+              <span class="ebadge active" style="font-size:11px"><span class="dot"></span><span data-i18n="portal.pixels.firing">Pixel firing OK</span></span>
+            </div>
+            <table class="etable">
+              <thead><tr><th>Event</th><th>Page</th><th>When</th></tr></thead>
+              <tbody>
+                <tr><td data-label="Event">PageView</td><td data-label="Page">/menu</td><td data-label="When">just now</td></tr>
+                <tr><td data-label="Event">ViewContent</td><td data-label="Page">/menu/morning-set</td><td data-label="When">12s ago</td></tr>
+                <tr><td data-label="Event">AddToCart</td><td data-label="Page">/cart</td><td data-label="When">38s ago</td></tr>
+                <tr><td data-label="Event">Purchase</td><td data-label="Page">/checkout/success</td><td data-label="When">1m ago</td></tr>
+                <tr><td data-label="Event">Lead</td><td data-label="Page">/voucher-claim</td><td data-label="When">3m ago</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.pixels.health">Health (last 24h)</h3></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">
+              <div><div style="font-size:11px;color:var(--text-subdued);text-transform:uppercase;letter-spacing:.04em">Events</div><div style="font-size:20px;font-weight:600">28,412</div></div>
+              <div><div style="font-size:11px;color:var(--text-subdued);text-transform:uppercase;letter-spacing:.04em">Errors</div><div style="font-size:20px;font-weight:600;color:#00B341">0</div></div>
+              <div><div style="font-size:11px;color:var(--text-subdued);text-transform:uppercase;letter-spacing:.04em">Match rate</div><div style="font-size:20px;font-weight:600">94%</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Create Campaign Wizard (P0-6) ────────────────────────── -->
+    <div id="view-campaign-wizard" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.wizard.title">Create campaign</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.wizard.subtitle">3 steps · 5 minutes</p>
+        </div>
+        <div class="ent-page-actions">
+          <button class="ebtn secondary" onclick="navigate('dashboard')" data-i18n="portal.actions.cancel">Cancel</button>
+        </div>
+      </div>
+      <!-- Steps -->
+      <div style="display:flex;gap:10px;margin-bottom:24px">
+        <div class="wiz-step active" data-step="1"><span class="num">1</span><span data-i18n="portal.wizard.step1">Goal</span></div>
+        <div class="wiz-step" data-step="2"><span class="num">2</span><span data-i18n="portal.wizard.step2">Audience &amp; budget</span></div>
+        <div class="wiz-step" data-step="3"><span class="num">3</span><span data-i18n="portal.wizard.step3">Creative</span></div>
+      </div>
+      <style>
+        .wiz-step{flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border:1px solid var(--border-subdued);border-radius:10px;font-size:13px;font-weight:500;color:var(--text-subdued)}
+        .wiz-step.active{border-color:var(--brand);color:var(--text-strong)}
+        .wiz-step.done{color:var(--brand)}
+        .wiz-step .num{width:24px;height:24px;border-radius:50%;background:var(--surface-subdued);color:var(--text-subdued);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+        .wiz-step.active .num{background:var(--brand);color:#fff}
+        .goal-card{padding:18px;background:#fff;border:1px solid var(--border-subdued);border-radius:12px;cursor:pointer;transition:all .15s ease;text-align:left}
+        .goal-card:hover{border-color:var(--brand);transform:translateY(-1px)}
+        .goal-card.selected{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+        .goal-card .ico{font-size:24px;margin-bottom:8px}
+        .goal-card h4{font-size:14px;font-weight:600;color:var(--text-strong);margin-bottom:4px}
+        .goal-card p{font-size:12px;color:var(--text-subdued);line-height:1.5}
+      </style>
+
+      <!-- Step 1: Goal -->
+      <div id="wiz-panel-1">
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:14px" data-i18n="portal.wizard.goalTitle">What's your goal?</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+          <button class="goal-card" onclick="pickGoal(this,'awareness')"><div class="ico">📢</div><h4 data-i18n="portal.wizard.goal.awareness">Brand awareness</h4><p>Reach as many people as possible with my brand and offers.</p></button>
+          <button class="goal-card" onclick="pickGoal(this,'traffic')"><div class="ico">🚶</div><h4 data-i18n="portal.wizard.goal.traffic">Foot traffic / Visits</h4><p>Drive customers to my store or website.</p></button>
+          <button class="goal-card" onclick="pickGoal(this,'conversions')"><div class="ico">🎯</div><h4 data-i18n="portal.wizard.goal.conversions">Conversions</h4><p>Get customers to claim a voucher or make a purchase.</p></button>
+          <button class="goal-card" onclick="pickGoal(this,'app_installs')"><div class="ico">📲</div><h4 data-i18n="portal.wizard.goal.appInstalls">App installs</h4><p>Get more people to install my mobile app.</p></button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:20px">
+          <button class="ebtn primary" id="wiz-next-1" onclick="wizGo(2)" disabled data-i18n="portal.wizard.next">Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Audience + budget + schedule -->
+      <div id="wiz-panel-2" style="display:none">
+        <div class="grid-2">
+          <div class="ecard">
+            <h3 class="ecard-title" data-i18n="portal.wizard.audienceTitle">Audience</h3>
+            <div class="form-group"><label data-i18n="portal.wizard.audienceName">Audience</label>
+              <select class="form-input" style="background:#fff;border-color:#CBD5E1;color:#0F172A">
+                <option>All visitors (Pixel · last 30 days)</option>
+                <option>Cart abandoners (last 7 days)</option>
+                <option>VIP customers (≥ 5 orders)</option>
+                <option>Lookalike of VIP</option>
+                <option>Tampines geofence (1 km)</option>
+                <option>+ Create new audience</option>
+              </select>
+            </div>
+            <div class="form-group"><label data-i18n="portal.wizard.locations">Store locations</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap"><label><input type="checkbox" checked> Tampines Mall</label><label><input type="checkbox" checked> Bedok Point</label></div>
+            </div>
+          </div>
+          <div class="ecard">
+            <h3 class="ecard-title" data-i18n="portal.wizard.budgetTitle">Budget &amp; schedule</h3>
+            <div class="form-group"><label data-i18n="portal.wizard.dailyBudget">Daily budget</label>
+              <div style="display:flex;align-items:center;gap:8px"><span>S$</span><input class="form-input" type="number" value="50" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+            </div>
+            <div class="form-group"><label data-i18n="portal.wizard.startDate">Start date</label><input class="form-input" type="date" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+            <div class="form-group"><label data-i18n="portal.wizard.endDate">End date (optional)</label><input class="form-input" type="date" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+            <div style="padding:10px;background:var(--brand-soft);border-radius:8px;font-size:12px;color:var(--text-strong)">
+              <strong data-i18n="portal.wizard.estimate">Estimated reach:</strong> 8,400 – 12,200 customers/week
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:20px">
+          <button class="ebtn secondary" onclick="wizGo(1)" data-i18n="portal.wizard.back">← Back</button>
+          <button class="ebtn primary" onclick="wizGo(3)" data-i18n="portal.wizard.next">Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Creative (game template chooser) -->
+      <div id="wiz-panel-3" style="display:none">
+        <div class="ecard">
+          <h3 class="ecard-title" data-i18n="portal.wizard.creativeTitle">Choose a game template</h3>
+          <p style="font-size:13px;color:var(--text-subdued);margin-bottom:14px" data-i18n="portal.wizard.creativeBody">Pick a gamified format. Browse all 1,012 templates or describe what you want.</p>
+          <div class="form-group">
+            <textarea id="wiz-business-desc" class="form-input" rows="2" placeholder="Describe your offer — e.g. 'Buy any kaya toast set, spin to win a free kopi'" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></textarea>
+          </div>
+          <button class="ebtn secondary" onclick="navigate('games')" data-i18n="portal.wizard.browseTemplates">Browse all 1,012 game templates</button>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:14px">
+            <div class="goal-card"><div class="ico">🎰</div><h4>Spin to win</h4><p>Wheel of fortune voucher reveal</p></div>
+            <div class="goal-card"><div class="ico">🎴</div><h4>Scratch card</h4><p>Tap to reveal hidden discount</p></div>
+            <div class="goal-card"><div class="ico">🧩</div><h4>Tap puzzle</h4><p>15-second skill challenge</p></div>
+            <div class="goal-card"><div class="ico">🎁</div><h4>Mystery box</h4><p>Pick 1 of 3 surprise gifts</p></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:20px">
+          <button class="ebtn secondary" onclick="wizGo(2)" data-i18n="portal.wizard.back">← Back</button>
+          <button class="ebtn primary" onclick="finishWizard()" data-i18n="portal.wizard.launch">Launch campaign</button>
+        </div>
       </div>
     </div>
 
     <!-- ─── Recipes / 配方市场 ─────────────────────────────────────── -->
     <div id="view-recipes" class="view">
-      <h2 class="page-title">Recipes / 配方市场</h2>
-      <p class="page-subtitle">业界最佳 gamification 模板，一键应用 / Best-in-class templates, 1-click apply</p>
+      <h2 class="page-title" data-i18n="portal.recipes.title">Creative library</h2>
+      <p class="page-subtitle" data-i18n="portal.recipes.subtitle">Best-in-class gamification templates — 1-click apply.</p>
 
       <!-- NL Input -->
       <div class="section">
@@ -3249,8 +3661,8 @@ textarea.form-input{
 
     <!-- ─── Engagement / 互动配置 ──────────────────────────────────── -->
     <div id="view-engagement" class="view">
-      <h2 class="page-title">Engagement / 互动配置</h2>
-      <p class="page-subtitle">Select and configure gamification modules / 选择并配置 gamification 模块</p>
+      <h2 class="page-title" data-i18n="portal.engagement.title">Engagement</h2>
+      <p class="page-subtitle" data-i18n="portal.engagement.subtitle">Select and configure gamification modules.</p>
 
       <div class="section">
         <div class="section-title">Active Modules / 已启用</div>
@@ -4456,14 +4868,17 @@ function navigate(view){
   try{
     const labels={
       dashboard:'Overview', games:'Campaigns', ads:'Campaigns',
+      'campaign-wizard':'Create campaign',
       primitives:'Audiences', recipes:'Creative library',
       analytics:'Reports & Analytics', rules:'Automations',
       operations:'Operations', monitoring:'Live monitoring',
       vouchers:'Vouchers', redeem:'Redemptions', qr:'QR codes',
-      locations:'Locations', settings:'Settings & billing',
+      locations:'Locations', settings:'Settings',
+      pixels:'Pixels & Tracking',
       engagement:'Engagement'
     };
     const i18nKey='portal.nav.'+({dashboard:'overview', games:'campaigns', ads:'campaigns',
+      'campaign-wizard':'wizard', pixels:'pixels',
       primitives:'audiences', recipes:'creative', analytics:'reports',
       rules:'automations', operations:'operations', monitoring:'monitoring',
       vouchers:'vouchers', redeem:'redemptions', qr:'qr', locations:'locations',
@@ -4510,12 +4925,56 @@ function navigate(view){
   }
 }
 
+// ── Settings tabs ────────────────────────────────────────────
+function setSettingsTab(tab){
+  document.querySelectorAll('.settings-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.querySelectorAll('.settings-panel').forEach(p=>p.classList.toggle('active',p.dataset.panel===tab));
+}
+
+// ── Campaign wizard ───────────────────────────────────────────
+let _wizGoal=null;
+function openCampaignWizard(){ navigate('campaign-wizard'); }
+function pickGoal(el,goal){
+  document.querySelectorAll('.goal-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  _wizGoal=goal;
+  const next=document.getElementById('wiz-next-1'); if(next) next.disabled=false;
+}
+function wizGo(step){
+  for(let i=1;i<=3;i++){
+    const p=document.getElementById('wiz-panel-'+i); if(p) p.style.display=(i===step?'':'none');
+    const s=document.querySelector('.wiz-step[data-step="'+i+'"]'); if(s){ s.classList.toggle('active',i===step); s.classList.toggle('done',i<step); }
+  }
+}
+function finishWizard(){
+  if(window.showToast) showToast('Campaign launched — pending review','success');
+  navigate('ads');
+}
+function copyPixelSnippet(){
+  const code=document.querySelector('#pixel-snippet code');
+  if(code && navigator.clipboard){ navigator.clipboard.writeText(code.textContent); if(window.showToast) showToast('Pixel snippet copied','success'); }
+}
+
+function isDemoMode(){
+  try{
+    const sp=new URLSearchParams(location.search);
+    if(sp.get('demo')==='true') return true;
+    return localStorage.getItem('kix_demo_mode')==='true';
+  }catch(_){ return false; }
+}
+function applyDemoMode(){
+  const demo=isDemoMode();
+  document.querySelectorAll('.demo-only').forEach(el=>{ el.style.display = demo ? '' : 'none'; });
+  document.querySelectorAll('.non-demo').forEach(el=>{ el.style.display = demo ? 'none' : ''; });
+}
+
 function showApp(){
   document.getElementById('login-page').classList.remove('active');
   document.getElementById('app-shell').className='active';
+  applyDemoMode();
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem','pixels','campaign-wizard'];
   navigate(validViews.includes(hash)?hash:'dashboard');
   // Initial render of enterprise views (mock data)
   if(window.CampaignsView)CampaignsView.render();
@@ -6594,7 +7053,7 @@ async function applyGeneratedAsTutorial() {
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem','pixels','campaign-wizard'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }
@@ -6908,7 +7367,7 @@ window.ConditionsBuilder = (function(){
   function _updateSummary(root, c){
     const parts = [];
     if (c.supply && c.supply.total_supply) parts.push(`限量${c.supply.total_supply}份 / limit ${c.supply.total_supply}`);
-    if (c.supply && c.supply.budget_cents) parts.push(`预算¥${(c.supply.budget_cents/100).toFixed(0)}`);
+    if (c.supply && c.supply.budget_cents) parts.push(`Budget S$${(c.supply.budget_cents/100).toFixed(0)}`);
     if (c.eligibility && c.eligibility.tier_required) parts.push(`${c.eligibility.tier_required}+`);
     if (c.eligibility && c.eligibility.first_time_user_only) parts.push('仅首次 / first-time');
     if (c.frequency && c.frequency.per_user_per_day) parts.push(`每日${c.frequency.per_user_per_day}次`);
@@ -7031,7 +7490,7 @@ async function lookupVoucher(){
     }
     const v=await res.json();
     document.getElementById('voucher-title').textContent=v.template_name||v.template_id||'Voucher';
-    document.getElementById('voucher-value').textContent='¥'+((v.value_cents||0)/100)+' 价值';
+    document.getElementById('voucher-value').textContent='S$'+((v.value_cents||0)/100).toFixed(2)+' value';
     document.getElementById('voucher-holder').textContent='持有人: '+(v.holder_user_id||v.holder_device_fp||'匿名');
     document.getElementById('voucher-expires').textContent='有效期至: '+_fmtDate(v.expires_at);
     document.getElementById('voucher-status').textContent='状态: '+_statusBadge(v.status);
@@ -7088,7 +7547,7 @@ async function refreshTodayStats(){
     const m=data.metrics||{};
     document.getElementById('redeem-count-today').textContent=m.vouchers_redeemed||0;
     const cents=m.vouchers_redeemed_value_cents||0;
-    document.getElementById('redeem-value-today').textContent='¥'+(cents/100).toFixed(2);
+    document.getElementById('redeem-value-today').textContent=(new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD'})).format(cents/100);
   } catch(e){
     console.warn('refreshTodayStats',e);
   }
@@ -7113,7 +7572,7 @@ async function refreshRecentRedemptions(){
       '<tr>'+
       '<td>'+_fmtTime(e.timestamp||e.redeemed_at||e.created_at)+'</td>'+
       '<td>'+((e.user_id||e.holder_user_id||'').slice(0,8)||'-')+'</td>'+
-      '<td>¥'+((e.value_cents||0)/100)+'</td>'+
+      '<td>S$'+((e.value_cents||0)/100).toFixed(2)+'</td>'+
       '<td>'+((e.redeemer_staff_id||'').slice(0,8)||'-')+'</td>'+
       '</tr>'
     )).join('');
