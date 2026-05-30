@@ -994,6 +994,93 @@ async def redeem(
 # ── Viral stats ────────────────────────────────────────────────────────────
 
 
+# ── Wave G #3: Viral Amplifier surface (additive — no behaviour change to
+# existing 6 triggers; just exposes the 7 amplifier triggers through the
+# same router prefix). The amplifier counters live in a different Redis
+# namespace (``va:*``) so we never collide with the network_effect ones.
+
+
+@router.post("/amplifier/emit")
+async def amplifier_emit(
+    body: dict[str, Any],
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Fire one of the 7 Wave G amplifier triggers via the orchestrator.
+
+    Body keys: ``user_id``, ``brand_id``, ``candidate_triggers``
+    (list of trigger names), optional ``context``.
+    """
+    from app.services import viral_orchestrator as vo
+
+    user_id = body.get("user_id")
+    brand_id = body.get("brand_id")
+    candidates = body.get("candidate_triggers") or []
+    if not user_id or not brand_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_id and brand_id are required",
+        )
+    if not isinstance(candidates, list) or not candidates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="candidate_triggers (non-empty list) is required",
+        )
+    return await vo.decide_and_emit(
+        r,
+        user_id=user_id,
+        brand_id=brand_id,
+        candidate_triggers=candidates,
+        context=body.get("context") or {},
+    )
+
+
+@router.post("/amplifier/redeem")
+async def amplifier_redeem(
+    body: dict[str, Any],
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Mark a Wave G amplifier invite as redeemed."""
+    from app.services import viral_amplifier as va
+
+    token = body.get("invite_token")
+    new_uid = body.get("new_user_id")
+    brand_id = body.get("brand_id")
+    if not token or not new_uid or not brand_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invite_token, new_user_id, brand_id are required",
+        )
+    return await va.record_redemption(
+        r,
+        invite_token=token,
+        redeemer_user_id=new_uid,
+        brand_id=brand_id,
+    )
+
+
+@router.get("/amplifier/kfactor/{brand_id}")
+async def amplifier_kfactor(
+    brand_id: str,
+    window_days: int = DEFAULT_K_WINDOW_DAYS,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Per-trigger K-factor breakdown for the Wave G amplifier."""
+    from app.services import viral_amplifier as va
+
+    if window_days < 1 or window_days > 35:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="window_days must be in [1,35]",
+        )
+    primary = await va.kfactor_breakdown(r, brand_id, window_days=window_days)
+    trailing = await va.kfactor_trailing_per_trigger(r, brand_id)
+    return {**primary, "trailing": {
+        w: {"cumulative_k": v["cumulative_k"], "total_sent": v["total_sent"],
+            "total_redeemed": v["total_redeemed"]}
+        for w, v in trailing.items()
+    }}
+
+
 @router.get("/{brand_id}/viral-stats")
 async def viral_stats(
     brand_id: str,
