@@ -2304,10 +2304,14 @@ textarea.form-input{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span data-i18n="portal.nav.help">Help &amp; docs</span>
       </div>
+      <a class="ent-nav-item" href="/pricing.html" target="_blank" role="link" aria-label="View pricing" style="text-decoration:none;color:inherit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span data-i18n="portal.nav.pricing">Pricing</span>
+      </a>
     </nav>
     <div class="ent-sidebar-foot">
       <span id="sidebar-version">v2026.5</span>
-      <button class="lang-toggle" onclick="kixToggleLocale()" data-i18n="portal.sidebar.lang">EN / 中文</button>
+      <button class="lang-toggle" onclick="kixToggleLocale()" title="Switch language" aria-label="Switch language" data-i18n="portal.sidebar.lang">🌐 Language</button>
     </div>
   </aside>
 
@@ -4990,8 +4994,11 @@ function switchAccount(slug){
   // Real impl would re-issue JWT
 }
 function openLiveChat(){
-  if(window.showToast) showToast('Opening live chat…','info');
-  // Stub: real wiring is Intercom/Crisp boot
+  // Real wiring: open email to support (Intercom/Crisp deferred to Q3).
+  const subj = encodeURIComponent('KiX support request');
+  const body = encodeURIComponent('Hi KiX team,\n\nI need help with: \n\n--\nBrand ID: ' + (localStorage.kix_bid || '(not signed in)') + '\nPage: ' + (location.hash || '#dashboard') + '\nTime: ' + new Date().toISOString());
+  window.location.href = 'mailto:support@kix.app?subject=' + subj + '&body=' + body;
+  if(window.showToast) showToast('Opening email — typical reply within 4 hours during SG business hours.','info');
 }
 
 // Mobile hamburger
