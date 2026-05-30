@@ -1,0 +1,13 @@
+id: qsr_lunch_rush
+vertical: qsr
+region: global
+mechanics:
+- spin_wheel
+- scratch_card
+reward_floor: 0.05
+duration_days: 14
+expected_kpis:
+  ctr: 0.18
+  redemption: 0.62
+default_terms_template: us_qsr_v1
+description: Lunch-hour QSR engagement boost.

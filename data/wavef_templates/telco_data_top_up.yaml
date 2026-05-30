@@ -1,0 +1,12 @@
+id: telco_data_top_up
+vertical: telco
+region: apac
+mechanics:
+- spin_wheel
+reward_floor: 0.08
+duration_days: 7
+expected_kpis:
+  ctr: 0.2
+  redemption: 0.55
+default_terms_template: apac_telco_v1
+description: Data top-up bonus spin.

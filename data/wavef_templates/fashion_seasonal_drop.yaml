@@ -1,0 +1,13 @@
+id: fashion_seasonal_drop
+vertical: fashion
+region: global
+mechanics:
+- memory_match
+- spin_wheel
+reward_floor: 0.1
+duration_days: 21
+expected_kpis:
+  ctr: 0.21
+  redemption: 0.45
+default_terms_template: us_fashion_v1
+description: Seasonal drop reveal + discount voucher.

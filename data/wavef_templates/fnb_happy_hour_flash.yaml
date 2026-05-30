@@ -1,0 +1,13 @@
+id: fnb_happy_hour_flash
+vertical: fnb
+region: global
+mechanics:
+- flash_promo
+- scratch_card
+reward_floor: 0.15
+duration_days: 3
+expected_kpis:
+  ctr: 0.28
+  redemption: 0.68
+default_terms_template: us_fnb_v1
+description: Happy-hour urgency flash with scratch reward.

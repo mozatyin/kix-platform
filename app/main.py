@@ -1092,6 +1092,17 @@ and the shim helpers in `app.api_standards`.
         _logging.getLogger(__name__).warning("wavef-07 skipped: %s", _exc)
 
     try:
+        from app.routers import wavef_template_gallery as _wf08
+        app.include_router(
+            _wf08.router,
+            prefix="/api/v1/wavef/templates",
+            tags=["wavef", "templates"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning("wavef-08 skipped: %s", _exc)
+
+    try:
         from app.routers import wavef_referral as _wfr01
         app.include_router(
             _wfr01.router,
@@ -1154,6 +1165,71 @@ and the shim helpers in `app.api_standards`.
         import logging as _logging
         _logging.getLogger(__name__).warning(
             "wavef-spec-05 memory skipped: %s", _exc
+        )
+
+    try:
+        from app.routers import wavef_capture as _wfr11
+        app.include_router(
+            _wfr11.router,
+            prefix="/api/v1/wavef/capture",
+            tags=["wavef", "capture"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-11 capture skipped: %s", _exc
+        )
+
+    try:
+        from app.routers import wavef_sets as _wfr12
+        app.include_router(
+            _wfr12.router,
+            prefix="/api/v1/wavef/sets",
+            tags=["wavef", "sets"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-12 sets skipped: %s", _exc
+        )
+
+    try:
+        from app.routers import wavef_mechanics as _wfr13
+        app.include_router(
+            _wfr13.router,
+            prefix="/api/v1/wavef/mechanics",
+            tags=["wavef", "mechanics"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-13 mechanics skipped: %s", _exc
+        )
+
+    try:
+        from app.routers import wavef_wizard as _wfr14
+        app.include_router(
+            _wfr14.router,
+            prefix="/api/v1/wavef/wizard",
+            tags=["wavef", "wizard"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-14 wizard skipped: %s", _exc
+        )
+
+    try:
+        from app.routers import wavef_splash as _wfr15
+        app.include_router(
+            _wfr15.router,
+            prefix="/api/v1/wavef/splash",
+            tags=["wavef", "splash"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-15 splash skipped: %s", _exc
         )
 
     # ── Static files: Portal + generated games ──────────────────────────

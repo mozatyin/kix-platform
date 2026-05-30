@@ -1,0 +1,12 @@
+id: saas_referral_both_win
+vertical: saas
+region: global
+mechanics:
+- referral
+reward_floor: 5.0
+duration_days: 60
+expected_kpis:
+  ctr: 0.11
+  redemption: 0.4
+default_terms_template: global_saas_v1
+description: Refer-a-friend dual reward.

@@ -1,0 +1,13 @@
+id: grocery_loyalty_weekly
+vertical: grocery
+region: global
+mechanics:
+- daily_checkin
+- scratch_card
+reward_floor: 0.03
+duration_days: 30
+expected_kpis:
+  ctr: 0.14
+  redemption: 0.72
+default_terms_template: us_grocery_v1
+description: Weekly basket-builder loyalty.
