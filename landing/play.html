@@ -1,190 +1,537 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-SG">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>KiX Play</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="play.title">Play on KiX</title>
+<meta name="description" content="Browse and play branded mini-games. Earn rewards from your favourite cafes and merchants." data-i18n-attr="content:play.meta.description">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* ════════════════════════════════════════════════════════════════
+ * KiX Play — Consumer gameplay portal
+ * Design grammar: Inter, light surface, restrained brand green
+ *                 (#00B341 used <8% pixel coverage), clean cards,
+ *                 enterprise-grade typography + spacing.
+ * ════════════════════════════════════════════════════════════════ */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --brand:#6F4E37;
-  --brand-light:#8B6914;
-  --green:#00FC00;
-  --green-dim:#00cc00;
-  --green-dark:#009900;
-  --dark:#111;
-  --gray-1:#888;
-  --gray-2:#666;
-  --gray-3:#f5f5f7;
-  --gray-4:#e5e5e5;
-  --white:#fff;
-  --font:'Inter',system-ui,-apple-system,sans-serif;
-  --radius:14px;
-  --nav-h:60px;
-  --top-h:100px;
-}
-html{-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
-body{
-  font-family:var(--font);color:var(--dark);background:var(--gray-3);
-  max-width:480px;margin:0 auto;min-height:100dvh;
-  display:flex;flex-direction:column;position:relative;
-  overflow-x:hidden;
-}
-button{font-family:var(--font);border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* Brand — muted, used for CTAs only */
+  --brand:#00B341;
+  --brand-hover:#009938;
+  --brand-soft:rgba(0,179,65,.08);
+  --brand-border:rgba(0,179,65,.22);
+  --brand-text:#007A2E;
 
-/* ── Loading Screen ── */
+  /* Surfaces */
+  --bg:#F6F7F9;
+  --surface:#FFFFFF;
+  --surface-2:#FAFBFC;
+  --surface-3:#F0F2F5;
+
+  /* Text */
+  --text:#1A1F2E;
+  --text-secondary:#4A5163;
+  --text-muted:#6B7280;
+  --text-faint:#9CA3AF;
+
+  /* Border */
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+
+  /* Semantic */
+  --danger:#DC2626;
+  --warning:#D97706;
+  --info:#2563EB;
+  --gold:#D4A017;
+  --silver:#9CA3AF;
+  --bronze:#B87333;
+
+  /* Typography */
+  --font:'Inter','PingFang SC','Hiragino Sans GB',system-ui,-apple-system,sans-serif;
+
+  /* Radii */
+  --radius-sm:6px;
+  --radius:10px;
+  --radius-lg:14px;
+
+  /* Shadow */
+  --shadow-1:0 1px 2px rgba(16,24,40,.04);
+  --shadow-2:0 4px 12px rgba(16,24,40,.06);
+  --shadow-3:0 12px 32px rgba(16,24,40,.10);
+
+  /* Header height */
+  --header-h:64px;
+}
+
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;scroll-behavior:smooth}
+body{
+  font-family:var(--font);
+  font-size:14px;
+  line-height:1.55;
+  color:var(--text);
+  background:var(--bg);
+  min-height:100vh;
+  display:flex;flex-direction:column;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img,svg{display:block;max-width:100%}
+input,select{font-family:inherit;font-size:inherit;color:inherit}
+
+/* Focus rings (WCAG AA) */
+*:focus{outline:none}
+*:focus-visible{
+  outline:2px solid var(--brand);
+  outline-offset:2px;
+  border-radius:4px;
+}
+button:focus-visible,a:focus-visible{
+  box-shadow:0 0 0 3px var(--brand-soft);
+}
+
+/* ── Loading screen ── */
 #loading-screen{
-  position:fixed;inset:0;z-index:9999;background:var(--white);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;transition:opacity .4s;
+  position:fixed;inset:0;z-index:9999;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  transition:opacity .4s;
 }
 #loading-screen.hidden{opacity:0;pointer-events:none}
 .loading-spinner{
-  width:40px;height:40px;border:3px solid var(--gray-4);
-  border-top-color:var(--green);border-radius:50%;
+  width:36px;height:36px;border:3px solid var(--border);
+  border-top-color:var(--brand);border-radius:50%;
   animation:spin .8s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{font-size:14px;color:var(--gray-1);font-weight:500}
+.loading-text{font-size:13px;color:var(--text-muted);font-weight:500}
 
-/* ── Error Screen (missing brand) ── */
+/* ── Error screen ── */
 #error-screen{
-  position:fixed;inset:0;z-index:9999;background:var(--white);
+  position:fixed;inset:0;z-index:9999;background:var(--surface);
   display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;padding:32px;text-align:center;
+  gap:14px;padding:32px;text-align:center;
 }
 #error-screen.visible{display:flex}
 .error-icon{
-  width:64px;height:64px;border-radius:50%;
-  background:rgba(0,252,0,.08);
+  width:56px;height:56px;border-radius:50%;
+  background:var(--brand-soft);color:var(--brand-text);
   display:flex;align-items:center;justify-content:center;
-  font-size:28px;margin-bottom:8px;
 }
-.error-title{font-size:20px;font-weight:800;color:var(--dark);letter-spacing:-.5px}
-.error-msg{font-size:15px;color:var(--gray-1);line-height:1.6;max-width:320px}
-.error-msg-zh{font-size:14px;color:var(--gray-2);line-height:1.6;max-width:320px;margin-top:4px}
+.error-title{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.error-msg{font-size:14px;color:var(--text-muted);line-height:1.6;max-width:380px}
 
-/* ── Top Bar ── */
-.top-bar{
-  background:var(--white);padding:12px 16px;
-  border-bottom:1px solid rgba(0,0,0,.06);
+/* ══════════════════════════════════════════════════════════════
+   HEADER  (top nav: logo + search + actions)
+   ══════════════════════════════════════════════════════════════ */
+header.site-header{
   position:sticky;top:0;z-index:50;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:saturate(180%) blur(12px);
+  -webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
 }
-.top-bar-inner{display:flex;align-items:center;justify-content:space-between}
-.brand-name{font-size:18px;font-weight:800;color:var(--brand);letter-spacing:-.5px}
-.energy-section{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.energy-bar-wrap{
-  display:flex;align-items:center;gap:6px;
-  background:rgba(0,252,0,.08);padding:4px 10px;border-radius:20px;
+.header-inner{
+  max-width:1280px;margin:0 auto;padding:0 24px;
+  height:var(--header-h);
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;
 }
-.energy-icon{font-size:14px}
-.energy-bar-track{width:80px;height:8px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden}
-.energy-bar-fill{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));border-radius:4px;transition:width .6s cubic-bezier(.16,1,.3,1)}
-.energy-text{font-size:12px;font-weight:700;color:var(--green-dark)}
-.energy-regen{font-size:10px;color:var(--gray-1);font-weight:500}
+.brand-mark{
+  display:inline-flex;align-items:center;gap:10px;
+  font-weight:700;font-size:18px;letter-spacing:-.3px;color:var(--text);
+}
+.brand-mark .brand-dot{
+  width:24px;height:24px;border-radius:6px;
+  background:var(--brand);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13px;letter-spacing:0;
+}
+.brand-name-sub{
+  font-size:12px;color:var(--text-muted);font-weight:500;
+  margin-left:10px;padding-left:10px;border-left:1px solid var(--border);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;
+}
 
-/* ── Content Area ── */
-.content{flex:1;padding:16px 16px calc(var(--nav-h) + 16px);overflow-y:auto}
-.section{display:none}
-.section.active{display:block;animation:fadeIn .3s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.search-wrap{position:relative;max-width:480px;width:100%;justify-self:center}
+.search-icon{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;color:var(--text-faint);pointer-events:none;
+}
+.search-input{
+  width:100%;height:38px;padding:0 12px 0 36px;
+  background:var(--surface-3);border:1px solid transparent;
+  border-radius:var(--radius);font-size:13px;
+  transition:background .15s,border-color .15s;
+}
+.search-input:hover{background:var(--surface-2);border-color:var(--border)}
+.search-input:focus{background:var(--surface);border-color:var(--brand)}
+.search-input::placeholder{color:var(--text-faint)}
 
-/* ── Game Cards ── */
-.section-title{font-size:20px;font-weight:800;margin-bottom:16px;letter-spacing:-.5px}
+.header-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{
+  width:38px;height:38px;border-radius:var(--radius);
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-secondary);
+  transition:background .15s,color .15s;
+  position:relative;
+}
+.icon-btn:hover{background:var(--surface-3);color:var(--text)}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn .badge{
+  position:absolute;top:6px;right:6px;
+  width:8px;height:8px;background:var(--brand);border-radius:50%;
+  border:2px solid var(--surface);
+}
+.energy-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 12px;background:var(--brand-soft);color:var(--brand-text);
+  border-radius:999px;font-size:13px;font-weight:600;
+  border:1px solid var(--brand-border);
+}
+.energy-pill svg{width:14px;height:14px}
+.energy-pill .energy-val{font-variant-numeric:tabular-nums}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN LAYOUT
+   ══════════════════════════════════════════════════════════════ */
+main{
+  flex:1;
+  max-width:1280px;width:100%;margin:0 auto;
+  padding:32px 24px 64px;
+}
+@media(max-width:720px){
+  main{padding:20px 16px 48px}
+  .header-inner{padding:0 16px;gap:12px}
+  .brand-name-sub{display:none}
+  .search-wrap{max-width:none}
+}
+
+/* ── Hero strip ── */
+.hero-strip{
+  background:linear-gradient(135deg,#FFFFFF 0%,#F0FAF4 100%);
+  border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:28px 32px;margin-bottom:28px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+}
+.hero-text h1{
+  font-size:24px;font-weight:700;letter-spacing:-.4px;
+  color:var(--text);margin-bottom:6px;
+}
+.hero-text p{font-size:14px;color:var(--text-secondary);max-width:560px}
+.hero-meta{
+  display:flex;gap:24px;align-items:center;flex-wrap:wrap;
+}
+.hero-meta-item{
+  display:flex;flex-direction:column;gap:2px;min-width:96px;
+}
+.hero-meta-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.hero-meta-value{font-size:18px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.hero-meta-sub{font-size:12px;color:var(--text-muted)}
+
+/* ── Section heading ── */
+.section{margin-bottom:32px}
+.section-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:16px;gap:16px;
+}
+.section-title{
+  font-size:18px;font-weight:700;letter-spacing:-.3px;color:var(--text);
+}
+.section-action{
+  font-size:13px;font-weight:600;color:var(--brand-text);
+  display:inline-flex;align-items:center;gap:4px;
+}
+.section-action:hover{color:var(--brand-hover)}
+
+/* ── Filters ── */
+.filters{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  margin-bottom:20px;
+  padding:12px 16px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);
+}
+.filter-group{display:flex;align-items:center;gap:6px}
+.filter-label{
+  font-size:11px;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.5px;font-weight:600;
+  margin-right:4px;
+}
+.chip{
+  padding:6px 12px;border-radius:999px;font-size:13px;font-weight:500;
+  background:var(--surface-3);color:var(--text-secondary);
+  border:1px solid transparent;
+  transition:all .15s;
+}
+.chip:hover{background:var(--border);color:var(--text)}
+.chip[aria-pressed="true"]{
+  background:var(--brand-soft);color:var(--brand-text);border-color:var(--brand-border);
+}
+.filter-divider{width:1px;height:20px;background:var(--border);margin:0 4px}
+.filter-clear{
+  margin-left:auto;font-size:12px;color:var(--text-muted);font-weight:500;
+}
+.filter-clear:hover{color:var(--text)}
+.filter-results{font-size:12px;color:var(--text-muted)}
+
+/* ══════════════════════════════════════════════════════════════
+   GAME GRID
+   ══════════════════════════════════════════════════════════════ */
+.game-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+}
+@media(max-width:1080px){.game-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.game-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:440px){.game-grid{grid-template-columns:1fr}}
+
 .game-card{
-  background:var(--white);border-radius:var(--radius);padding:20px;
-  margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.04);
-  display:flex;align-items:center;justify-content:space-between;
-  transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  transition:transform .18s,box-shadow .18s,border-color .18s;
+  position:relative;
 }
-.game-card:active{transform:scale(.98)}
-.game-info{flex:1}
-.game-name{font-size:16px;font-weight:700;margin-bottom:4px}
-.game-cost{font-size:13px;color:var(--gray-1)}
-.game-cost span{color:var(--green-dark);font-weight:600}
-.day1-badge{
-  position:absolute;top:8px;right:8px;
-  background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:var(--white);
-  font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;
-  text-transform:uppercase;letter-spacing:.5px;
+.game-card:hover,.game-card:focus-within{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-2);
+  border-color:var(--border-strong);
 }
-.play-btn{
-  background:linear-gradient(135deg,var(--green-dim),var(--green));
-  color:var(--dark);font-size:14px;font-weight:700;
-  padding:10px 24px;border-radius:100px;
-  transition:transform .15s,box-shadow .15s;
-  white-space:nowrap;
+.card-thumb{
+  aspect-ratio:16/10;
+  background:linear-gradient(135deg,var(--surface-3),var(--surface-2));
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
 }
-.play-btn:active{transform:scale(.95)}
-.play-btn:hover{box-shadow:0 4px 16px rgba(0,252,0,.3)}
-.play-btn:disabled{
-  background:#ccc;color:#999;cursor:not-allowed;
-  box-shadow:none;
+.card-thumb img{width:100%;height:100%;object-fit:cover}
+.card-thumb-fallback{
+  display:flex;align-items:center;justify-content:center;
+  width:64px;height:64px;border-radius:50%;
+  background:var(--surface);
+  color:var(--brand);
+  box-shadow:var(--shadow-1);
 }
-.play-btn:disabled:active{transform:none}
-.need-energy{font-size:11px;color:#e74c3c;margin-top:4px;font-weight:500}
+.card-thumb-fallback svg{width:32px;height:32px}
+.card-badge{
+  position:absolute;top:10px;left:10px;
+  padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.4px;
+  background:var(--text);color:#fff;
+}
+.card-badge.day1{background:var(--brand);color:#fff}
 
-/* ── Game Screen (overlay) ── */
+.card-body{
+  padding:14px 16px 16px;
+  display:flex;flex-direction:column;gap:8px;flex:1;
+}
+.card-meta-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.card-meta-row .dot{width:3px;height:3px;border-radius:50%;background:var(--text-faint)}
+.card-name{
+  font-size:15px;font-weight:700;color:var(--text);
+  letter-spacing:-.2px;line-height:1.3;
+}
+.card-brand{font-size:12px;color:var(--text-muted)}
+.card-stats{
+  display:flex;align-items:center;gap:10px;
+  font-size:12px;color:var(--text-secondary);
+  margin-top:auto;padding-top:8px;
+}
+.card-stat{display:inline-flex;align-items:center;gap:4px}
+.card-stat svg{width:12px;height:12px;color:var(--text-faint)}
+.card-difficulty{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:11px;font-weight:600;
+}
+.card-difficulty .dif-bar{
+  width:4px;height:8px;background:var(--border);border-radius:1px;
+}
+.card-difficulty.easy .dif-bar:nth-child(1){background:var(--brand)}
+.card-difficulty.medium .dif-bar:nth-child(-n+2){background:var(--warning)}
+.card-difficulty.hard .dif-bar{background:var(--danger)}
+
+.card-actions{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 16px;border-top:1px solid var(--border);
+  background:var(--surface-2);
+}
+.btn-play{
+  flex:1;
+  background:var(--brand);color:#fff;
+  font-size:13px;font-weight:600;
+  padding:9px 14px;border-radius:var(--radius-sm);
+  transition:background .15s,transform .1s;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+}
+.btn-play:hover{background:var(--brand-hover)}
+.btn-play:active{transform:scale(.98)}
+.btn-play:disabled{background:var(--surface-3);color:var(--text-faint);cursor:not-allowed}
+.btn-play svg{width:12px;height:12px}
+.btn-htp{
+  font-size:12px;color:var(--text-secondary);font-weight:500;
+  padding:8px 10px;border-radius:var(--radius-sm);
+  transition:background .15s,color .15s;
+}
+.btn-htp:hover{background:var(--surface-3);color:var(--text)}
+.energy-warn{
+  font-size:11px;color:var(--danger);font-weight:500;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SIDE PANELS — LEADERBOARD + STREAK
+   ══════════════════════════════════════════════════════════════ */
+.layout-2col{
+  display:grid;grid-template-columns:1fr 320px;gap:24px;
+}
+@media(max-width:960px){.layout-2col{grid-template-columns:1fr}}
+
+.panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:20px;
+}
+.panel-title{
+  font-size:14px;font-weight:700;color:var(--text);
+  margin-bottom:14px;letter-spacing:-.1px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+
+/* Leaderboard */
+.lb-tabs{
+  display:flex;gap:4px;margin-bottom:12px;
+  padding:3px;background:var(--surface-3);border-radius:var(--radius-sm);
+}
+.lb-tab{
+  flex:1;padding:6px 8px;font-size:12px;font-weight:600;
+  color:var(--text-secondary);border-radius:5px;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background .15s,color .15s;
+}
+.lb-tab[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow-1)}
+.lb-list{display:flex;flex-direction:column;gap:2px}
+.lb-row{
+  display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;
+  padding:8px 10px;border-radius:var(--radius-sm);
+  font-size:13px;
+}
+.lb-row.self{background:var(--brand-soft)}
+.lb-row:hover{background:var(--surface-3)}
+.lb-row.self:hover{background:var(--brand-soft)}
+.lb-rank{
+  font-weight:700;color:var(--text-secondary);font-size:12px;
+  font-variant-numeric:tabular-nums;text-align:center;
+}
+.lb-rank.medal{font-size:14px}
+.lb-rank.gold{color:var(--gold)}
+.lb-rank.silver{color:var(--silver)}
+.lb-rank.bronze{color:var(--bronze)}
+.lb-name{font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-name .you-tag{
+  font-size:10px;font-weight:700;color:var(--brand-text);
+  background:var(--brand-soft);padding:1px 5px;border-radius:4px;
+  margin-left:6px;text-transform:uppercase;letter-spacing:.4px;
+}
+.lb-score{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;font-size:13px}
+.lb-empty{text-align:center;padding:24px 8px;color:var(--text-muted);font-size:12px}
+
+/* Streak */
+.streak-display{
+  display:flex;align-items:center;gap:14px;
+  padding:14px;background:var(--surface-2);
+  border-radius:var(--radius);
+  margin-bottom:12px;
+}
+.streak-flame{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,#FFF5E1,#FFE4B5);
+  display:flex;align-items:center;justify-content:center;
+  color:#D97706;
+}
+.streak-flame svg{width:24px;height:24px}
+.streak-info{flex:1}
+.streak-count{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1;font-variant-numeric:tabular-nums}
+.streak-label{font-size:12px;color:var(--text-muted);font-weight:500;margin-top:2px}
+.streak-dots{display:flex;gap:4px;margin-top:8px}
+.streak-dot{
+  flex:1;height:6px;background:var(--surface-3);border-radius:2px;
+}
+.streak-dot.done{background:var(--brand)}
+.streak-dot.today{background:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+.streak-footnote{font-size:11px;color:var(--text-muted);text-align:center}
+
+/* ══════════════════════════════════════════════════════════════
+   GAME OVERLAY
+   ══════════════════════════════════════════════════════════════ */
 #game-screen{
-  position:fixed;inset:0;z-index:100;background:var(--white);
+  position:fixed;inset:0;z-index:200;background:var(--surface);
   display:none;flex-direction:column;
-  max-width:480px;margin:0 auto;
 }
 #game-screen.active{display:flex}
 .game-header{
-  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
-  background:var(--dark);color:var(--white);
+  height:56px;
+  padding:0 20px;display:flex;align-items:center;justify-content:space-between;
+  background:var(--text);color:#fff;flex-shrink:0;
 }
-.game-header-title{font-size:16px;font-weight:700}
-.game-stats{display:flex;gap:16px;font-size:13px;font-weight:600}
+.game-header-left{display:flex;align-items:center;gap:12px}
+.game-quit{
+  width:32px;height:32px;border-radius:var(--radius-sm);
+  display:inline-flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.8);
+  transition:background .15s;
+}
+.game-quit:hover{background:rgba(255,255,255,.1);color:#fff}
+.game-header-title{font-size:15px;font-weight:600}
+.game-stats{display:flex;gap:24px;font-size:13px;font-weight:600}
 .game-stats .stat-label{color:rgba(255,255,255,.5);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-.game-stats .stat-val{color:var(--green)}
-#game-canvas{flex:1;position:relative;overflow:hidden;background:#faf8f5}
+.game-stats .stat-val{color:var(--brand);font-variant-numeric:tabular-nums}
+#game-canvas{flex:1;position:relative;overflow:hidden;background:#FAF8F5}
 
-/* ── Countdown Overlay ── */
 .countdown-overlay{
-  position:absolute;inset:0;background:rgba(0,0,0,.8);
-  display:flex;align-items:center;justify-content:center;
-  z-index:10;
+  position:absolute;inset:0;background:rgba(0,0,0,.85);
+  display:flex;align-items:center;justify-content:center;z-index:10;
 }
 .countdown-num{
-  font-size:120px;font-weight:900;color:var(--green);
+  font-size:120px;font-weight:800;color:var(--brand);
   animation:countPop .6s cubic-bezier(.16,1,.3,1);
 }
 @keyframes countPop{from{transform:scale(2);opacity:0}to{transform:scale(1);opacity:1}}
 
-/* ── Game Results ── */
 .game-results{
-  position:absolute;inset:0;background:var(--white);
+  position:absolute;inset:0;background:var(--surface);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;z-index:10;padding:32px;text-align:center;
+  gap:14px;z-index:10;padding:32px;text-align:center;
 }
-.result-score{font-size:56px;font-weight:900;color:var(--dark);letter-spacing:-2px}
-.result-rank{font-size:18px;color:var(--gray-1);font-weight:600}
-.result-rank span{color:var(--green-dark);font-weight:800}
+.result-score{font-size:56px;font-weight:800;color:var(--text);letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.result-rank{font-size:15px;color:var(--text-muted);font-weight:500}
+.result-rank strong{color:var(--brand-text);font-weight:700}
 .voucher-won{
-  background:linear-gradient(135deg,#fff9e6,#fff3cc);
-  border:2px solid #f0c040;border-radius:var(--radius);
+  background:linear-gradient(135deg,#FFFBEB,#FEF3C7);
+  border:1px solid #FCD34D;border-radius:var(--radius-lg);
   padding:16px 24px;margin-top:8px;text-align:center;
 }
-.voucher-won .voucher-title{font-size:14px;font-weight:700;color:#886600;margin-bottom:4px}
-.voucher-won .voucher-code{font-size:20px;font-weight:900;color:var(--dark);letter-spacing:1px}
-.voucher-won .voucher-desc{font-size:12px;color:var(--gray-1);margin-top:4px}
+.voucher-won .voucher-title{font-size:12px;font-weight:600;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.voucher-won .voucher-code{font-size:20px;font-weight:800;color:var(--text);letter-spacing:.5px;font-variant-numeric:tabular-nums}
+.voucher-won .voucher-desc{font-size:12px;color:var(--text-muted);margin-top:4px}
+.result-actions{display:flex;gap:10px;margin-top:14px}
 .result-btn{
-  background:var(--dark);color:var(--white);
-  font-size:16px;font-weight:700;padding:14px 40px;border-radius:100px;
-  margin-top:16px;transition:transform .15s;
+  background:var(--text);color:#fff;
+  font-size:14px;font-weight:600;padding:11px 28px;border-radius:var(--radius);
+  transition:background .15s,transform .1s;
 }
-.result-btn:active{transform:scale(.95)}
+.result-btn:hover{background:#000}
+.result-btn:active{transform:scale(.98)}
+.result-btn.secondary{background:var(--surface-3);color:var(--text)}
+.result-btn.secondary:hover{background:var(--border)}
 
-/* ── Latte Art Game ── */
-.latte-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px}
-.latte-cup{
-  width:200px;height:180px;position:relative;margin:20px auto;
-}
+/* ══════════════════════════════════════════════════════════════
+   GAME 1 — LATTE ART  (kept consumer-playful but cleaner)
+   ══════════════════════════════════════════════════════════════ */
+.latte-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;gap:16px}
+.latte-round-text{font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.latte-cup{width:200px;height:180px;position:relative}
 .cup-body{
   width:180px;height:140px;background:linear-gradient(135deg,#8B6914,#6F4E37);
   border-radius:0 0 60px 60px;position:absolute;bottom:0;left:10px;
@@ -203,336 +550,412 @@ button{font-family:var(--font);border:none;cursor:pointer;-webkit-tap-highlight-
 .milk-stream{
   width:8px;height:0;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.6));
   position:absolute;top:-60px;left:50%;transform:translateX(-50%);
-  border-radius:4px;transition:height .3s;filter:blur(.5px);
+  border-radius:4px;transition:height .3s;
 }
 .milk-stream.pouring{height:60px;animation:pourWobble 1s ease-in-out infinite}
 @keyframes pourWobble{0%,100%{transform:translateX(-50%) skewX(0)}50%{transform:translateX(-50%) skewX(3deg)}}
 .latte-art-pattern{
   position:absolute;top:10px;left:50%;transform:translateX(-50%);
   width:100px;height:100px;opacity:0;transition:opacity .4s;
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:32px;
 }
 .latte-timing-bar{
-  width:80%;height:24px;background:rgba(0,0,0,.1);
-  border-radius:12px;overflow:hidden;margin-top:20px;position:relative;
-}
-.latte-timing-indicator{
-  width:4px;height:100%;background:var(--dark);border-radius:2px;
-  position:absolute;top:0;
+  width:80%;max-width:320px;height:28px;background:var(--surface-3);
+  border-radius:14px;overflow:hidden;position:relative;
 }
 .latte-sweetspot{
-  position:absolute;top:0;height:100%;background:rgba(0,252,0,.3);
-  border-left:2px solid var(--green);border-right:2px solid var(--green);
+  position:absolute;top:0;height:100%;
+  background:var(--brand-soft);
+  border-left:2px solid var(--brand);border-right:2px solid var(--brand);
 }
-.latte-round{font-size:14px;font-weight:700;color:var(--gray-1);margin-top:12px}
+.latte-timing-indicator{
+  width:4px;height:100%;background:var(--text);border-radius:2px;
+  position:absolute;top:0;
+}
 .latte-tap-hint{
-  font-size:16px;font-weight:700;color:var(--brand);
-  margin-top:12px;animation:hintPulse 1.5s ease-in-out infinite;
+  font-size:14px;font-weight:600;color:var(--brand-text);
+  animation:hintPulse 1.5s ease-in-out infinite;
 }
-@keyframes hintPulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes hintPulse{0%,100%{opacity:1}50%{opacity:.5}}
 .latte-score-popup{
-  position:absolute;font-size:24px;font-weight:900;
-  color:var(--green);pointer-events:none;
+  position:absolute;font-size:22px;font-weight:800;
+  color:var(--brand-text);pointer-events:none;
   animation:scoreFloat .8s ease-out forwards;
 }
-@keyframes scoreFloat{
-  from{opacity:1;transform:translateY(0) scale(1)}
-  to{opacity:0;transform:translateY(-40px) scale(1.3)}
-}
+@keyframes scoreFloat{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-40px) scale(1.3)}}
 
-/* ── Bean Match Game ── */
-.match-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:16px}
-.match-grid{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
-  width:100%;max-width:320px;
-}
+/* ══════════════════════════════════════════════════════════════
+   GAME 2 — BEAN MATCH (memory cards)
+   ══════════════════════════════════════════════════════════════ */
+.match-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:16px;gap:14px}
+.match-pairs{font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.match-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:360px}
 .match-card{
-  aspect-ratio:1;border-radius:12px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:32px;cursor:pointer;
-  transition:transform .3s cubic-bezier(.16,1,.3,1);
-  position:relative;perspective:600px;
+  aspect-ratio:1;border-radius:10px;
+  cursor:pointer;transition:transform .25s;
+  position:relative;perspective:600px;background:transparent;
 }
 .match-card-inner{
   width:100%;height:100%;position:relative;
-  transform-style:preserve-3d;transition:transform .4s cubic-bezier(.16,1,.3,1);
-  border-radius:12px;
+  transform-style:preserve-3d;
+  transition:transform .4s cubic-bezier(.16,1,.3,1);
+  border-radius:10px;
 }
 .match-card.flipped .match-card-inner{transform:rotateY(180deg)}
 .match-card.matched .match-card-inner{transform:rotateY(180deg)}
 .match-card.matched{animation:matchBounce .4s cubic-bezier(.16,1,.3,1)}
-@keyframes matchBounce{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+@keyframes matchBounce{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 .match-face,.match-back{
-  position:absolute;inset:0;border-radius:12px;
+  position:absolute;inset:0;border-radius:10px;
   display:flex;align-items:center;justify-content:center;
-  backface-visibility:hidden;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  font-size:30px;
 }
 .match-back{
-  background:linear-gradient(135deg,var(--brand),#8B6914);
-  color:var(--white);font-size:24px;
+  background:linear-gradient(135deg,#6F4E37,#8B6914);
+  color:#fff;
 }
 .match-face{
-  background:var(--white);border:2px solid var(--gray-4);
+  background:var(--surface);border:1px solid var(--border);
   transform:rotateY(180deg);
 }
-.match-card.matched .match-face{border-color:var(--green);background:rgba(0,252,0,.05)}
-.match-pairs{font-size:14px;font-weight:600;color:var(--gray-1);margin-top:12px}
+.match-card.matched .match-face{
+  border-color:var(--brand);background:var(--brand-soft);
+}
 
-/* ── Leaderboard ── */
-.lb-tabs{display:flex;gap:8px;margin-bottom:16px}
-.lb-tab{
-  padding:8px 16px;border-radius:100px;font-size:13px;font-weight:600;
-  background:var(--white);color:var(--gray-1);border:1px solid var(--gray-4);
-  transition:all .2s;
-}
-.lb-tab.active{background:var(--dark);color:var(--white);border-color:var(--dark)}
-.lb-table{width:100%;background:var(--white);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.lb-row{
-  display:flex;align-items:center;padding:12px 16px;
-  border-bottom:1px solid rgba(0,0,0,.04);
-  transition:background .2s;
-}
-.lb-row:last-child{border-bottom:none}
-.lb-row.self{background:rgba(0,252,0,.06)}
-.lb-rank{
-  width:32px;font-size:16px;font-weight:800;color:var(--dark);
-  flex-shrink:0;text-align:center;
-}
-.lb-rank.gold{color:#f0c040}
-.lb-rank.silver{color:#a0a0a0}
-.lb-rank.bronze{color:#cd7f32}
-.lb-name{flex:1;font-size:14px;font-weight:600;padding:0 12px}
-.lb-score{font-size:14px;font-weight:700;color:var(--green-dark)}
-.lb-empty{text-align:center;padding:40px;color:var(--gray-1);font-size:14px}
-
-/* ── Streak ── */
-.streak-card{
-  background:var(--white);border-radius:var(--radius);padding:24px;text-align:center;
-  box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:16px;
-}
-.streak-fire{font-size:48px;margin-bottom:8px}
-.streak-num{font-size:56px;font-weight:900;color:var(--dark);letter-spacing:-2px;line-height:1}
-.streak-label{font-size:14px;color:var(--gray-1);font-weight:500;margin-top:4px}
-.streak-calendar{display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap}
-.streak-dot{
-  width:32px;height:32px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:600;
-}
-.streak-dot.done{background:var(--green);color:var(--dark)}
-.streak-dot.today{background:rgba(0,252,0,.2);color:var(--green-dark);border:2px solid var(--green)}
-.streak-dot.future{background:var(--gray-4);color:var(--gray-1)}
-.streak-milestone{
-  background:var(--white);border-radius:var(--radius);padding:20px;
-  box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;align-items:center;gap:16px;
-}
-.milestone-icon{font-size:32px}
-.milestone-info{text-align:left}
-.milestone-title{font-size:14px;font-weight:700}
-.milestone-desc{font-size:12px;color:var(--gray-1);margin-top:2px}
-
-/* ── Rewards/Wallet ── */
-.voucher-card{
-  background:var(--white);border-radius:var(--radius);padding:16px;
-  margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.04);
-  display:flex;align-items:center;gap:12px;
-  border-left:4px solid var(--green);
-}
-.voucher-card.redeemed{border-left-color:var(--gray-4);opacity:.6}
-.voucher-card.expired{border-left-color:#e74c3c;opacity:.5}
-.voucher-emoji{font-size:28px;flex-shrink:0}
-.voucher-info{flex:1}
-.voucher-code-text{font-size:14px;font-weight:800;letter-spacing:.5px}
-.voucher-description{font-size:12px;color:var(--gray-1);margin-top:2px}
-.voucher-expiry{font-size:11px;color:var(--gray-1);margin-top:4px}
-.voucher-status{
-  font-size:11px;font-weight:700;text-transform:uppercase;
-  padding:4px 8px;border-radius:6px;
-}
-.voucher-status.assigned{background:rgba(0,252,0,.1);color:var(--green-dark)}
-.voucher-status.redeemed{background:rgba(0,0,0,.05);color:var(--gray-1)}
-.voucher-status.expired{background:rgba(231,76,60,.1);color:#e74c3c}
-.redeem-btn{
-  background:var(--dark);color:var(--white);
-  font-size:12px;font-weight:700;padding:8px 16px;
-  border-radius:100px;white-space:nowrap;
-  transition:transform .15s;margin-top:8px;
-}
-.redeem-btn:active{transform:scale(.95)}
-.rewards-empty{text-align:center;padding:40px;color:var(--gray-1)}
-
-/* ── Bottom Nav ── */
-.bottom-nav{
-  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-  width:100%;max-width:480px;height:var(--nav-h);
-  background:var(--white);border-top:1px solid rgba(0,0,0,.06);
-  display:flex;z-index:50;
-  padding-bottom:env(safe-area-inset-bottom,0);
-}
-.nav-item{
-  flex:1;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:2px;
-  background:none;color:var(--gray-1);font-size:10px;font-weight:600;
-  transition:color .2s;text-transform:uppercase;letter-spacing:.5px;
-}
-.nav-item.active{color:var(--green-dark)}
-.nav-item .nav-icon{font-size:20px;transition:transform .2s}
-.nav-item.active .nav-icon{transform:scale(1.15)}
-
-/* ── Toast ── */
-.toast{
-  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);
-  background:var(--dark);color:var(--white);
-  padding:12px 24px;border-radius:100px;
-  font-size:14px;font-weight:600;z-index:9999;
-  transition:transform .4s cubic-bezier(.16,1,.3,1);
-  box-shadow:0 8px 32px rgba(0,0,0,.2);
-  white-space:nowrap;max-width:90vw;text-align:center;
-}
-.toast.show{transform:translateX(-50%) translateY(0)}
-.toast.energy{background:linear-gradient(135deg,#004400,#006600)}
-.toast.error{background:#c0392b}
-.toast.reward{background:linear-gradient(135deg,#886600,#aa8800)}
-
-/* ── Confirm Dialog ── */
-.dialog-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.5);
+/* ══════════════════════════════════════════════════════════════
+   HOW-TO-PLAY MODAL
+   ══════════════════════════════════════════════════════════════ */
+.modal-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(15,23,42,.45);
   display:none;align-items:center;justify-content:center;
-  z-index:200;padding:24px;
+  padding:24px;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+.modal-overlay.show{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--surface);
+  border-radius:var(--radius-lg);
+  padding:24px;width:100%;max-width:440px;
+  box-shadow:var(--shadow-3);
+  animation:slideUp .25s cubic-bezier(.16,1,.3,1);
+}
+@keyframes slideUp{from{transform:translateY(20px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-size:18px;font-weight:700;letter-spacing:-.2px}
+.modal-close{
+  width:32px;height:32px;border-radius:var(--radius-sm);
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-muted);transition:background .15s,color .15s;
+}
+.modal-close:hover{background:var(--surface-3);color:var(--text)}
+.htp-section{margin-bottom:14px}
+.htp-section:last-child{margin-bottom:0}
+.htp-section h4{
+  font-size:11px;font-weight:700;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;
+}
+.htp-section p{font-size:14px;color:var(--text);line-height:1.55}
+
+/* ══════════════════════════════════════════════════════════════
+   DIALOG / TOAST
+   ══════════════════════════════════════════════════════════════ */
+.dialog-overlay{
+  position:fixed;inset:0;background:rgba(15,23,42,.5);
+  display:none;align-items:center;justify-content:center;
+  z-index:400;padding:24px;
 }
 .dialog-overlay.show{display:flex}
 .dialog-box{
-  background:var(--white);border-radius:20px;padding:28px;
-  width:100%;max-width:320px;text-align:center;
-  animation:dialogPop .3s cubic-bezier(.16,1,.3,1);
+  background:var(--surface);border-radius:var(--radius-lg);padding:24px;
+  width:100%;max-width:380px;
+  box-shadow:var(--shadow-3);
+  animation:slideUp .2s cubic-bezier(.16,1,.3,1);
 }
-@keyframes dialogPop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
-.dialog-title{font-size:18px;font-weight:800;margin-bottom:8px}
-.dialog-msg{font-size:14px;color:var(--gray-1);margin-bottom:20px;line-height:1.5}
-.dialog-btns{display:flex;gap:12px}
+.dialog-title{font-size:17px;font-weight:700;margin-bottom:8px}
+.dialog-msg{font-size:14px;color:var(--text-muted);margin-bottom:20px;line-height:1.55}
+.dialog-btns{display:flex;gap:10px;justify-content:flex-end}
 .dialog-btns button{
-  flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700;
-  transition:transform .15s;
+  padding:9px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;
+  transition:background .15s,transform .1s;
 }
-.dialog-btns button:active{transform:scale(.95)}
-.dialog-cancel{background:var(--gray-3);color:var(--dark)}
-.dialog-confirm{background:var(--dark);color:var(--white)}
+.dialog-btns button:active{transform:scale(.98)}
+.dialog-cancel{background:var(--surface-3);color:var(--text)}
+.dialog-cancel:hover{background:var(--border)}
+.dialog-confirm{background:var(--text);color:#fff}
+.dialog-confirm:hover{background:#000}
+
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);
+  background:var(--text);color:#fff;
+  padding:11px 22px;border-radius:999px;
+  font-size:13px;font-weight:600;z-index:9999;
+  transition:transform .35s cubic-bezier(.16,1,.3,1);
+  box-shadow:var(--shadow-3);
+  white-space:nowrap;max-width:calc(100vw - 32px);
+  display:inline-flex;align-items:center;gap:8px;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--brand)}
+.toast.error{background:var(--danger)}
+.toast.reward{background:linear-gradient(135deg,#B45309,#D97706)}
+
+/* ── Footer ── */
+footer.site-footer{
+  border-top:1px solid var(--border);
+  padding:20px 24px;background:var(--surface);
+  text-align:center;
+}
+.footer-links{display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+.footer-links a{font-size:12px;color:var(--text-muted)}
+.footer-links a:hover{color:var(--text)}
+
+/* ── Screen reader only ── */
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
 </style>
-<!-- KiX i18n infrastructure (Phase 1 — scaffolding; no visible strings replaced yet) -->
+<!-- KiX i18n infrastructure -->
 <script src="i18n/i18next-runtime.js" defer></script>
 <script src="i18n/locale-switcher.js" defer></script>
 </head>
 <body>
 
-<!-- Loading Screen -->
-<div id="loading-screen">
-  <div class="loading-spinner"></div>
-  <div class="loading-text">Loading...</div>
+<!-- Loading screen -->
+<div id="loading-screen" role="status" aria-live="polite">
+  <div class="loading-spinner" aria-hidden="true"></div>
+  <div class="loading-text" data-i18n="play.loading">Loading…</div>
 </div>
 
-<!-- Error Screen (missing brand) -->
-<div id="error-screen">
-  <div class="error-icon">&#9749;</div>
-  <div class="error-title">No brand specified</div>
-  <div class="error-msg">You need to access this page via your cafe's QR code or link.</div>
-  <div class="error-msg-zh">未指定品牌。请通过咖啡店的二维码或链接访问此页面。</div>
+<!-- Error screen (missing brand) -->
+<div id="error-screen" role="alert">
+  <div class="error-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M12 9v4M12 17h.01M4.93 19h14.14a2 2 0 0 0 1.74-3l-7.07-12a2 2 0 0 0-3.48 0l-7.07 12a2 2 0 0 0 1.74 3z"/></svg>
+  </div>
+  <div class="error-title" data-i18n="play.error.no_brand.title">No brand specified</div>
+  <div class="error-msg" data-i18n="play.error.no_brand.msg">Access this page through a merchant QR code or branded link.</div>
 </div>
 
-<!-- Top Bar -->
-<div class="top-bar">
-  <div class="top-bar-inner">
-    <div class="brand-name" id="brand-name">...</div>
-    <div class="energy-section">
-      <div class="energy-bar-wrap">
-        <span class="energy-icon">&#9889;</span>
-        <div class="energy-bar-track">
-          <div class="energy-bar-fill" id="energy-fill" style="width:0%"></div>
-        </div>
-        <span class="energy-text" id="energy-text">0/100</span>
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" role="banner">
+  <div class="header-inner">
+    <a href="#" class="brand-mark" aria-label="KiX home" data-i18n-attr="aria-label:play.nav.logo_alt">
+      <span class="brand-dot" aria-hidden="true">K</span>
+      <span>KiX</span>
+      <span class="brand-name-sub" id="brand-name-sub"></span>
+    </a>
+
+    <div class="search-wrap" role="search">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <label class="sr-only" for="game-search" data-i18n="play.nav.search_label">Search</label>
+      <input id="game-search" class="search-input" type="search"
+             placeholder="Search games, brands, categories"
+             data-i18n-attr="placeholder:play.nav.search_placeholder"
+             aria-label="Search games">
+    </div>
+
+    <div class="header-actions">
+      <div class="energy-pill" role="status" aria-live="polite">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4.09 12.97a1 1 0 0 0 .76 1.63H11l-1 7.4a.5.5 0 0 0 .9.36L20 11h-7l1-9z"/></svg>
+        <span class="energy-val" id="energy-text">0/100</span>
       </div>
-      <div class="energy-regen" id="energy-regen">Next +1 in --:--</div>
+      <button class="icon-btn" type="button" aria-label="Notifications" data-i18n-attr="aria-label:play.nav.notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="badge" id="notif-badge" hidden></span>
+      </button>
+      <button class="icon-btn" type="button" aria-label="Your profile" data-i18n-attr="aria-label:play.nav.profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      </button>
     </div>
   </div>
-</div>
+</header>
 
-<!-- Content -->
-<div class="content">
-  <!-- Play Section -->
-  <div class="section active" id="section-play">
-    <div class="section-title">&#127918; Games</div>
-    <div id="games-list"></div>
+<!-- ══════════════ MAIN ══════════════ -->
+<main id="main-content">
+
+  <!-- Hero strip -->
+  <section class="hero-strip" aria-labelledby="hero-title">
+    <div class="hero-text">
+      <h1 id="hero-title" data-i18n="play.hero.title">Pick a game. Play. Win rewards.</h1>
+      <p data-i18n="play.hero.sub">All games are free. Earn energy by visiting merchants, then spend it on the games you love.</p>
+    </div>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label" data-i18n="play.energy.label">Energy</span>
+        <span class="hero-meta-value" id="energy-text-hero">0/100</span>
+        <span class="hero-meta-sub" id="energy-regen">—</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label" data-i18n="play.streak.title">Daily streak</span>
+        <span class="hero-meta-value" id="streak-hero-count">0</span>
+        <span class="hero-meta-sub" id="streak-hero-label" data-i18n="play.streak.days" data-i18n-opt-count="0">No streak yet</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="filters" aria-labelledby="filters-title">
+    <span id="filters-title" class="sr-only" data-i18n="play.filters.title">Filters</span>
+
+    <div class="filter-group" role="group" aria-labelledby="cat-label">
+      <span class="filter-label" id="cat-label" data-i18n="play.filters.category">Category</span>
+      <button class="chip" data-filter="cat" data-value="" aria-pressed="true" data-i18n="play.filters.all">All</button>
+      <button class="chip" data-filter="cat" data-value="arcade" data-i18n="play.filters.category.arcade">Arcade</button>
+      <button class="chip" data-filter="cat" data-value="puzzle" data-i18n="play.filters.category.puzzle">Puzzle</button>
+      <button class="chip" data-filter="cat" data-value="skill" data-i18n="play.filters.category.skill">Skill</button>
+      <button class="chip" data-filter="cat" data-value="memory" data-i18n="play.filters.category.memory">Memory</button>
+    </div>
+
+    <span class="filter-divider" aria-hidden="true"></span>
+
+    <div class="filter-group" role="group" aria-labelledby="dur-label">
+      <span class="filter-label" id="dur-label" data-i18n="play.filters.duration">Time to play</span>
+      <button class="chip" data-filter="dur" data-value="" aria-pressed="true" data-i18n="play.filters.all">All</button>
+      <button class="chip" data-filter="dur" data-value="quick" data-i18n="play.filters.duration.quick">Under 1 min</button>
+      <button class="chip" data-filter="dur" data-value="medium" data-i18n="play.filters.duration.medium">1 – 3 min</button>
+      <button class="chip" data-filter="dur" data-value="long" data-i18n="play.filters.duration.long">Over 3 min</button>
+    </div>
+
+    <button class="filter-clear" id="filter-clear" data-i18n="play.filters.clear">Clear filters</button>
+    <span class="filter-results" id="filter-results" aria-live="polite"></span>
+  </section>
+
+  <!-- 2-column: games + side panels -->
+  <div class="layout-2col">
+
+    <!-- Games -->
+    <div>
+      <section class="section" aria-labelledby="all-games-title">
+        <div class="section-head">
+          <h2 class="section-title" id="all-games-title" data-i18n="play.section.all_games">All games</h2>
+        </div>
+        <div class="game-grid"
+             id="games-list"
+             role="grid"
+             aria-label="Available games"
+             tabindex="0">
+        </div>
+      </section>
+    </div>
+
+    <!-- Side -->
+    <aside>
+      <!-- Streak -->
+      <div class="panel" aria-labelledby="streak-panel-title">
+        <div class="panel-title" id="streak-panel-title" data-i18n="play.streak.title">Daily streak</div>
+        <div id="streak-content">
+          <div class="lb-empty" data-i18n="play.loading">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="panel" style="margin-top:16px" aria-labelledby="lb-panel-title">
+        <div class="panel-title" id="lb-panel-title">
+          <span data-i18n="play.section.leaderboard">Top players today</span>
+        </div>
+        <div class="lb-tabs" id="lb-tabs" role="tablist"></div>
+        <div id="lb-content" aria-live="polite">
+          <div class="lb-empty" data-i18n="play.loading">Loading…</div>
+        </div>
+      </div>
+    </aside>
   </div>
+</main>
 
-  <!-- Leaderboard Section -->
-  <div class="section" id="section-leaderboard">
-    <div class="section-title">&#127942; Leaderboard</div>
-    <div class="lb-tabs" id="lb-tabs"></div>
-    <div id="lb-content"><div class="lb-empty">Loading...</div></div>
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="#" data-i18n="play.footer.help">Help</a>
+    <a href="#" data-i18n="play.footer.terms">Terms</a>
+    <a href="#" data-i18n="play.footer.privacy">Privacy</a>
   </div>
+</footer>
 
-  <!-- Streak Section -->
-  <div class="section" id="section-streak">
-    <div class="section-title">&#128293; Streak</div>
-    <div id="streak-content"><div class="lb-empty">Loading...</div></div>
-  </div>
-
-  <!-- Rewards Section -->
-  <div class="section" id="section-rewards">
-    <div class="section-title">&#127873; My Rewards</div>
-    <div id="rewards-list"><div class="rewards-empty">Loading...</div></div>
-  </div>
-</div>
-
-<!-- Bottom Nav -->
-<nav class="bottom-nav">
-  <button class="nav-item active" data-tab="play">
-    <span class="nav-icon">&#127918;</span>Play
-  </button>
-  <button class="nav-item" data-tab="leaderboard">
-    <span class="nav-icon">&#127942;</span>Board
-  </button>
-  <button class="nav-item" data-tab="streak">
-    <span class="nav-icon">&#128293;</span>Streak
-  </button>
-  <button class="nav-item" data-tab="rewards">
-    <span class="nav-icon">&#127873;</span>Rewards
-  </button>
-</nav>
-
-<!-- Game Screen (fullscreen overlay) -->
-<div id="game-screen">
+<!-- Game overlay -->
+<div id="game-screen" role="dialog" aria-modal="true" aria-labelledby="game-title">
   <div class="game-header">
-    <div class="game-header-title" id="game-title">Game</div>
+    <div class="game-header-left">
+      <button class="game-quit" id="game-quit-btn" type="button" aria-label="Quit game" data-i18n-attr="aria-label:play.game.quit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="game-header-title" id="game-title">Game</div>
+    </div>
     <div class="game-stats">
-      <div><div class="stat-label">Score</div><div class="stat-val" id="game-score">0</div></div>
-      <div><div class="stat-label">Time</div><div class="stat-val" id="game-timer">0s</div></div>
+      <div><div class="stat-label" data-i18n="play.game.score">Score</div><div class="stat-val" id="game-score">0</div></div>
+      <div><div class="stat-label" data-i18n="play.game.time">Time</div><div class="stat-val" id="game-timer">0s</div></div>
     </div>
   </div>
   <div id="game-canvas"></div>
 </div>
 
-<!-- Confirm Dialog -->
-<div class="dialog-overlay" id="dialog-overlay">
+<!-- How-to-play modal -->
+<div class="modal-overlay" id="htp-overlay" role="dialog" aria-modal="true" aria-labelledby="htp-title" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="htp-title" data-i18n="play.htp.title">How to play</div>
+      <button class="modal-close" id="htp-close" type="button" aria-label="Close" data-i18n-attr="aria-label:play.htp.close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="htp-body"></div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="dialog-overlay" id="dialog-overlay" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
   <div class="dialog-box">
     <div class="dialog-title" id="dialog-title">Confirm</div>
     <div class="dialog-msg" id="dialog-msg">Are you sure?</div>
     <div class="dialog-btns">
-      <button class="dialog-cancel" id="dialog-cancel">Cancel</button>
-      <button class="dialog-confirm" id="dialog-confirm">Confirm</button>
+      <button class="dialog-cancel" id="dialog-cancel" data-i18n="play.dialog.cancel">Cancel</button>
+      <button class="dialog-confirm" id="dialog-confirm" data-i18n="play.dialog.confirm">Confirm</button>
     </div>
   </div>
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // ════════════════════════════════════════════════════════════════════════
-// KiX Play Page — Customer-facing game portal
+// KiX Play — Consumer gameplay portal (enterprise-grade UI)
 // ════════════════════════════════════════════════════════════════════════
-
 const API = 'http://localhost:8000';
 
-// ── State ──
+// i18n helper: returns translated string, or fallback if i18next isn't ready
+function t(key, opts) {
+  if (window.i18next && window.i18next.t) {
+    const out = window.i18next.t(key, opts || {});
+    if (out !== key) return out;
+  }
+  // Minimal in-source English fallbacks for dynamic strings
+  return FALLBACKS[key] || key;
+}
+const FALLBACKS = {
+  'play.loading': 'Loading…',
+  'play.section.empty': 'No games available right now.',
+  'play.filters.results': '{count} games',
+  'play.card.play': 'Play',
+  'play.card.how_to_play': 'How to play',
+  'play.card.need_energy': 'Not enough energy',
+  'play.card.day1_badge': 'Half price today',
+  'play.leaderboard.empty': 'No scores yet today. Be the first to play.',
+  'play.leaderboard.load_error': 'Could not load leaderboard.',
+  'play.streak.signin_prompt': 'Sign in to track your streak.',
+  'play.toast.start_failed': 'Could not start the game.',
+  'play.toast.no_energy': 'Not enough energy.',
+  'play.toast.qr_cooldown': 'Come back later for more energy.',
+  'play.toast.qr_expired': 'QR expired. Ask staff for a fresh code.',
+  'play.toast.qr_used': 'QR code already used.',
+  'play.toast.voucher_redeemed': 'Voucher marked as used.',
+  'play.toast.voucher_failed': 'Could not update voucher.',
+  'play.energy.full': 'Energy full',
+};
+
 const state = {
   brandId: null,
   qrToken: null,
@@ -543,14 +966,16 @@ const state = {
   maxEnergy: 100,
   isDay1: false,
   brandName: '',
-  brandColor: '#6F4E37',
+  brandColor: null,
   games: [],
   currentSessionId: null,
   currentGameId: null,
   gameStartTime: null,
+  filters: { cat: '', dur: '', search: '' },
+  streak: null,
 };
 
-// ── Init ──
+// ── Init ────────────────────────────────────────────────────────────
 (async function init() {
   const params = new URLSearchParams(window.location.search);
   const brandParam = params.get('brand');
@@ -566,8 +991,6 @@ const state = {
 
   try {
     const deviceSig = await getDeviceSig();
-
-    // 1. Get token
     const tokenRes = await api('POST', '/api/v1/auth/token', {
       brand_id: state.brandId,
       device_sig: deviceSig,
@@ -579,15 +1002,13 @@ const state = {
     state.isDay1 = tokenRes.is_day1;
     save();
 
-    // 2. Get brand config
     const brandRes = await api('GET', `/api/v1/brands/${state.brandId}`);
     state.brandName = brandRes.brand_name;
     const cfg = brandRes.config_json || {};
     state.games = cfg.games || [];
     state.maxEnergy = (cfg.energy && cfg.energy.max_balance) || 100;
-    if (cfg.brand_color) state.brandColor = cfg.brand_color;
 
-    // 3. QR energy grant
+    // QR energy grant
     if (state.qrToken) {
       try {
         const grantRes = await api('POST', '/api/v1/energy/grant', {
@@ -595,33 +1016,41 @@ const state = {
           qr_token: state.qrToken,
         });
         state.energy = grantRes.energy_balance;
-        showToast(`⚡ +${grantRes.energy_granted} Energy!`, 'energy');
+        showToast(t('play.toast.energy_granted', { count: grantRes.energy_granted }), 'success');
       } catch (e) {
         const msg = e.message || '';
         if (msg.includes('429') || msg.includes('Cooldown')) {
-          showToast('Come back later for more Energy', 'error');
+          showToast(t('play.toast.qr_cooldown'), 'error');
         } else if (msg.includes('expired') || msg.includes('Invalid')) {
-          showToast('QR expired — ask staff for current QR', 'error');
+          showToast(t('play.toast.qr_expired'), 'error');
         } else {
-          showToast('QR code already used', 'error');
+          showToast(t('play.toast.qr_used'), 'error');
         }
       }
     }
 
-    // 4. Render
-    applyBrandTheme();
     renderTopBar();
     renderGames();
     startEnergyRegen();
+    loadStreak();
+    loadLeaderboard();
 
     document.getElementById('loading-screen').classList.add('hidden');
     setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
 
   } catch (err) {
     console.error('Init failed:', err);
-    document.querySelector('.loading-text').textContent = 'Failed to load. Try refreshing.';
+    document.querySelector('.loading-text').textContent = t('play.error.load.msg');
   }
 })();
+
+// Re-render dynamic strings when locale switches
+document.addEventListener('kix:locale-changed', () => {
+  renderTopBar();
+  renderGames();
+  if (state.streak) renderStreak(state.streak);
+  loadLeaderboard();
+});
 
 // ── Device Signature ──
 async function getDeviceSig() {
@@ -633,17 +1062,11 @@ async function getDeviceSig() {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── API Helper ──
+// ── API ──
 async function api(method, path, body = null, auth = true) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
-  if (auth && state.token) {
-    opts.headers['Authorization'] = `Bearer ${state.token}`;
-  }
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (auth && state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
   if (body) opts.body = JSON.stringify(body);
-
   const res = await fetch(API + path, opts);
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
@@ -652,7 +1075,6 @@ async function api(method, path, body = null, auth = true) {
   return res.json();
 }
 
-// ── Persistence ──
 function save() {
   try {
     localStorage.setItem('kix_token', state.token || '');
@@ -661,24 +1083,19 @@ function save() {
   } catch {}
 }
 
-// ── Theme ──
-function applyBrandTheme() {
-  document.documentElement.style.setProperty('--brand', state.brandColor);
-  document.getElementById('brand-name').textContent = state.brandName || state.brandId;
-}
-
-// ── Top Bar ──
+// ── Top bar / energy ──
 function renderTopBar() {
-  const pct = Math.min(100, Math.round((state.energy / state.maxEnergy) * 100));
-  document.getElementById('energy-fill').style.width = pct + '%';
-  document.getElementById('energy-text').textContent = `${state.energy}/${state.maxEnergy}`;
+  const sub = document.getElementById('brand-name-sub');
+  if (sub) sub.textContent = state.brandName || state.brandId || '';
+  const eText = `${state.energy}/${state.maxEnergy}`;
+  document.getElementById('energy-text').textContent = eText;
+  const heroEl = document.getElementById('energy-text-hero');
+  if (heroEl) heroEl.textContent = eText;
 }
 
-// ── Energy Regen Timer ──
 let regenInterval = null;
 function startEnergyRegen() {
   if (regenInterval) clearInterval(regenInterval);
-  // Regen 1 energy per 15 seconds (demo mode)
   const regenSec = 15;
   let counter = regenSec;
   const el = document.getElementById('energy-regen');
@@ -694,59 +1111,235 @@ function startEnergyRegen() {
     }
     const m = Math.floor(counter / 60);
     const s = counter % 60;
-    el.textContent = state.energy >= state.maxEnergy
-      ? 'Energy full!'
-      : `Next +1 in ${m}:${String(s).padStart(2, '0')}`;
+    const timeStr = `${m}:${String(s).padStart(2, '0')}`;
+    if (el) {
+      el.textContent = state.energy >= state.maxEnergy
+        ? t('play.energy.full')
+        : t('play.energy.regen_in', { time: timeStr });
+    }
   }, 1000);
 }
 
-// ── Render Games ──
+// ── Game metadata (synthetic — real values would come from API) ──
+const GAME_META = {
+  'latte-art':  { cat:'skill',  dur:'medium', durMin:2, diff:'medium', plays:127 },
+  'bean-match': { cat:'memory', dur:'medium', durMin:2, diff:'easy',   plays:84  },
+};
+function metaFor(gameId) {
+  return GAME_META[gameId] || { cat:'arcade', dur:'medium', durMin:2, diff:'medium', plays:0 };
+}
+function gameIconSvg(gameId) {
+  // Clean SVG glyphs (no emoji)
+  if (gameId === 'latte-art') {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h13v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V8z"/><path d="M16 10h2a3 3 0 0 1 0 6h-2"/><path d="M7 4v2M11 3v3M15 4v2"/></svg>`;
+  }
+  if (gameId === 'bean-match') {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>`;
+  }
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h4M8 10v4M14 12h.01M17 13h.01M2 12a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5h-1.5l-2.5-3-2.5 3H7a5 5 0 0 1-5-5z"/></svg>`;
+}
+
+// ── Render games ──
 function renderGames() {
   const container = document.getElementById('games-list');
   if (!state.games.length) {
-    container.innerHTML = '<div class="lb-empty">No games available for this brand.</div>';
+    container.innerHTML = `<div class="lb-empty" style="grid-column:1/-1;padding:48px 16px;text-align:center">${escHtml(t('play.section.empty'))}</div>`;
+    document.getElementById('filter-results').textContent = '';
     return;
   }
-  container.innerHTML = state.games.map(g => {
+
+  const visible = state.games.filter(g => {
+    const meta = metaFor(g.game_id);
+    if (state.filters.cat && meta.cat !== state.filters.cat) return false;
+    if (state.filters.dur && meta.dur !== state.filters.dur) return false;
+    if (state.filters.search) {
+      const q = state.filters.search.toLowerCase();
+      const hay = ((g.name || '') + ' ' + (g.game_id || '') + ' ' + (state.brandName || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('filter-results').textContent =
+    t('play.filters.results', { count: visible.length });
+
+  if (!visible.length) {
+    container.innerHTML = `<div class="lb-empty" style="grid-column:1/-1;padding:48px 16px;text-align:center">${escHtml(t('play.filters.results', { count: 0 }))}</div>`;
+    return;
+  }
+
+  container.innerHTML = visible.map((g, idx) => {
+    const meta = metaFor(g.game_id);
     const cost = state.isDay1 ? Math.ceil((g.cost || 10) / 2) : (g.cost || 10);
     const canPlay = state.energy >= cost;
-    const icons = { 'latte-art': '&#9749;', 'bean-match': '&#129752;' };
-    const icon = icons[g.game_id] || '&#127918;';
+    const name = g.name || g.game_id;
+    const altText = t('play.card.thumbnail_alt', { name });
+    const difficultyKey = `play.card.difficulty.${meta.diff}`;
+    const playsText = t('play.card.plays_today', { count: meta.plays });
+    const durText = t('play.card.duration_short', { minutes: meta.durMin });
+    const energyText = t('play.card.energy_cost', { count: cost });
+
+    // Difficulty bars (3 bars; coloured per level)
+    const difClass = meta.diff;
+
     return `
-      <div class="game-card">
-        ${state.isDay1 ? '<div class="day1-badge">Day 1: Half Price!</div>' : ''}
-        <div class="game-info">
-          <div class="game-name">${icon} ${g.name || g.game_id}</div>
-          <div class="game-cost">Cost: <span>&#9889; ${cost}</span></div>
-          ${!canPlay ? '<div class="need-energy">Need more energy &mdash; scan QR!</div>' : ''}
+      <article class="game-card" data-game-id="${escAttr(g.game_id)}" tabindex="0"
+               role="gridcell" aria-label="${escAttr(name)}">
+        <div class="card-thumb" aria-hidden="false">
+          ${g.thumbnail
+            ? `<img src="${escAttr(g.thumbnail)}" alt="${escAttr(altText)}" loading="lazy">`
+            : `<div class="card-thumb-fallback" role="img" aria-label="${escAttr(altText)}">${gameIconSvg(g.game_id)}</div>`}
+          ${state.isDay1 ? `<span class="card-badge day1">${escHtml(t('play.card.day1_badge'))}</span>` : ''}
         </div>
-        <button class="play-btn" ${!canPlay ? 'disabled' : ''}
-          onclick="startGame('${g.game_id}')">
-          PLAY
-        </button>
-      </div>`;
+        <div class="card-body">
+          <div class="card-meta-row">
+            <span>${escHtml(t('play.filters.category.' + meta.cat))}</span>
+            <span class="dot" aria-hidden="true"></span>
+            <span>${escHtml(durText)}</span>
+          </div>
+          <div class="card-name">${escHtml(name)}</div>
+          <div class="card-brand">${escHtml(state.brandName || state.brandId)}</div>
+          <div class="card-stats">
+            <span class="card-stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              ${escHtml(playsText)}
+            </span>
+            <span class="card-difficulty ${difClass}" aria-label="${escAttr(t(difficultyKey))}">
+              <span class="dif-bar"></span><span class="dif-bar"></span><span class="dif-bar"></span>
+              ${escHtml(t(difficultyKey))}
+            </span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="btn-play" type="button"
+            ${!canPlay ? 'disabled aria-disabled="true"' : ''}
+            data-action="play" data-game-id="${escAttr(g.game_id)}"
+            aria-label="${escAttr(t('play.card.play') + ': ' + name)}">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <span>${escHtml(canPlay ? t('play.card.play') : t('play.card.need_energy'))}</span>
+            <span style="margin-left:6px;opacity:.85;font-weight:500">${escHtml(energyText)}</span>
+          </button>
+          <button class="btn-htp" type="button"
+            data-action="htp" data-game-id="${escAttr(g.game_id)}"
+            aria-label="${escAttr(t('play.card.how_to_play') + ': ' + name)}">
+            ${escHtml(t('play.card.how_to_play'))}
+          </button>
+        </div>
+      </article>`;
   }).join('');
 }
 
-// ── Navigation ──
-document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tab = btn.dataset.tab;
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById('section-' + tab).classList.add('active');
+// ── Game grid: event delegation + keyboard navigation ──
+document.getElementById('games-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const gameId = btn.dataset.gameId;
+  if (btn.dataset.action === 'play') startGame(gameId);
+  else if (btn.dataset.action === 'htp') openHowToPlay(gameId);
+});
 
-    if (tab === 'leaderboard') loadLeaderboard();
-    if (tab === 'streak') loadStreak();
-    if (tab === 'rewards') loadRewards();
+// Arrow-key navigation across game grid
+document.getElementById('games-list').addEventListener('keydown', (e) => {
+  const cards = Array.from(document.querySelectorAll('.game-card'));
+  if (!cards.length) return;
+  const active = document.activeElement;
+  const idx = cards.indexOf(active);
+  if (idx === -1) return;
+
+  // Detect columns
+  const firstTop = cards[0].getBoundingClientRect().top;
+  let cols = 0;
+  for (const c of cards) { if (Math.abs(c.getBoundingClientRect().top - firstTop) < 4) cols++; else break; }
+
+  let next = idx;
+  if (e.key === 'ArrowRight') next = Math.min(cards.length - 1, idx + 1);
+  else if (e.key === 'ArrowLeft') next = Math.max(0, idx - 1);
+  else if (e.key === 'ArrowDown') next = Math.min(cards.length - 1, idx + cols);
+  else if (e.key === 'ArrowUp') next = Math.max(0, idx - cols);
+  else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    const id = active.dataset.gameId;
+    if (id) startGame(id);
+    return;
+  } else return;
+
+  e.preventDefault();
+  cards[next].focus();
+});
+
+// ── Filters ──
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const f = chip.dataset.filter;
+    const v = chip.dataset.value;
+    state.filters[f] = v;
+    document.querySelectorAll(`.chip[data-filter="${f}"]`).forEach(c => {
+      c.setAttribute('aria-pressed', c === chip ? 'true' : 'false');
+    });
+    renderGames();
   });
+});
+document.getElementById('filter-clear').addEventListener('click', () => {
+  state.filters = { cat: '', dur: '', search: '' };
+  document.querySelectorAll('.chip').forEach(c => {
+    c.setAttribute('aria-pressed', c.dataset.value === '' ? 'true' : 'false');
+  });
+  document.getElementById('game-search').value = '';
+  renderGames();
+});
+
+// ── Search ──
+document.getElementById('game-search').addEventListener('input', (e) => {
+  state.filters.search = e.target.value;
+  renderGames();
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// HOW-TO-PLAY MODAL
+// ════════════════════════════════════════════════════════════════════════
+function openHowToPlay(gameId) {
+  const overlay = document.getElementById('htp-overlay');
+  const body = document.getElementById('htp-body');
+  const key = gameId === 'latte-art' ? 'latte_art'
+            : gameId === 'bean-match' ? 'bean_match'
+            : 'default';
+  body.innerHTML = `
+    <div class="htp-section">
+      <h4 data-i18n="play.htp.objective">Objective</h4>
+      <p data-i18n="play.htp.${key}.objective"></p>
+    </div>
+    <div class="htp-section">
+      <h4 data-i18n="play.htp.controls">Controls</h4>
+      <p data-i18n="play.htp.${key}.controls"></p>
+    </div>
+    <div class="htp-section">
+      <h4 data-i18n="play.htp.scoring">Scoring</h4>
+      <p data-i18n="play.htp.${key}.scoring"></p>
+    </div>`;
+  // Translate fresh nodes
+  if (window.KixI18n && window.KixI18n.applyI18n) window.KixI18n.applyI18n(body);
+  overlay.hidden = false;
+  overlay.classList.add('show');
+  document.getElementById('htp-close').focus();
+}
+function closeHowToPlay() {
+  const overlay = document.getElementById('htp-overlay');
+  overlay.classList.remove('show');
+  overlay.hidden = true;
+}
+document.getElementById('htp-close').addEventListener('click', closeHowToPlay);
+document.getElementById('htp-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeHowToPlay();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('htp-overlay').classList.contains('show')) {
+    closeHowToPlay();
+  }
 });
 
 // ════════════════════════════════════════════════════════════════════════
 // GAME ENGINE
 // ════════════════════════════════════════════════════════════════════════
-
 async function startGame(gameId) {
   try {
     const res = await api('POST', '/api/v1/game/start', {
@@ -756,47 +1349,38 @@ async function startGame(gameId) {
     state.currentSessionId = res.session_id;
     state.currentGameId = gameId;
     state.energy = res.energy_remaining;
-    // Session rotation: update token
     state.token = res.access_token;
     save();
     renderTopBar();
     renderGames();
 
-    // Show game screen
     const screen = document.getElementById('game-screen');
     screen.classList.add('active');
     const g = state.games.find(x => x.game_id === gameId);
     document.getElementById('game-title').textContent = g ? g.name : gameId;
     document.getElementById('game-score').textContent = '0';
     document.getElementById('game-timer').textContent = '0s';
-
     state.gameStartTime = Date.now();
 
-    // Countdown then launch
     await showCountdown();
-
     if (gameId === 'latte-art') launchLatteArt();
     else if (gameId === 'bean-match') launchBeanMatch();
     else launchIframeGame(gameId);
-
   } catch (e) {
     console.error('Start game failed:', e);
-    if (e.message.includes('402')) {
-      showToast('Not enough energy!', 'error');
-    } else {
-      showToast('Could not start game', 'error');
-    }
+    if ((e.message || '').includes('402')) showToast(t('play.toast.no_energy'), 'error');
+    else showToast(t('play.toast.start_failed'), 'error');
   }
 }
 
+document.getElementById('game-quit-btn').addEventListener('click', () => {
+  if (confirm('Quit current game?')) closeGame();
+});
+
 async function endGame(score) {
-  // Enforce min 16 seconds
   const elapsed = Date.now() - state.gameStartTime;
   const minMs = 16000;
-  if (elapsed < minMs) {
-    await new Promise(r => setTimeout(r, minMs - elapsed));
-  }
-
+  if (elapsed < minMs) await new Promise(r => setTimeout(r, minMs - elapsed));
   try {
     const res = await api('POST', '/api/v1/game/end', {
       session_id: state.currentSessionId,
@@ -815,20 +1399,24 @@ function showResults(score, rank, reward) {
   if (reward && reward.voucher_code) {
     rewardHtml = `
       <div class="voucher-won">
-        <div class="voucher-title">&#127873; You won a reward!</div>
-        <div class="voucher-code">${reward.voucher_code}</div>
-        <div class="voucher-desc">${reward.voucher_description || reward.type}</div>
+        <div class="voucher-title">${escHtml(t('play.game.result.reward_title'))}</div>
+        <div class="voucher-code">${escHtml(reward.voucher_code)}</div>
+        <div class="voucher-desc">${escHtml(reward.voucher_description || reward.type || '')}</div>
       </div>`;
   }
+  const rankHtml = rank
+    ? `<div class="result-rank">${escHtml(t('play.game.result.rank', { rank }))}</div>`
+    : '';
   canvas.innerHTML = `
     <div class="game-results">
-      <div style="font-size:48px">&#127881;</div>
       <div class="result-score">${score.toLocaleString()}</div>
-      ${rank ? `<div class="result-rank">Rank <span>#${rank}</span> today</div>` : ''}
+      ${rankHtml}
       ${rewardHtml}
-      <button class="result-btn" onclick="closeGame()">Done</button>
+      <div class="result-actions">
+        <button class="result-btn" id="result-done">${escHtml(t('play.game.result.done'))}</button>
+      </div>
     </div>`;
-  // Animate score counting up
+  document.getElementById('result-done').addEventListener('click', closeGame);
   animateScore(score);
 }
 
@@ -839,10 +1427,7 @@ function animateScore(finalScore) {
   const step = Math.max(1, Math.ceil(finalScore / 40));
   const timer = setInterval(() => {
     current += step;
-    if (current >= finalScore) {
-      current = finalScore;
-      clearInterval(timer);
-    }
+    if (current >= finalScore) { current = finalScore; clearInterval(timer); }
     el.textContent = current.toLocaleString();
   }, 25);
 }
@@ -852,16 +1437,16 @@ function closeGame() {
   document.getElementById('game-canvas').innerHTML = '';
   state.currentSessionId = null;
   state.currentGameId = null;
-  // Signal portal IF user explicitly clicks Done (not auto)
-  try { window.parent.postMessage({type:'kix_close_game'}, '*'); } catch(e) {}
+  loadLeaderboard();
+  try { window.parent.postMessage({ type:'kix_close_game' }, '*'); } catch(e) {}
 }
 
 function launchIframeGame(gameId) {
   const canvas = document.getElementById('game-canvas');
   const gamePath = `games/${state.brandId}/${gameId}.html`;
-  canvas.innerHTML = `<iframe src="${gamePath}" style="width:100%;height:100%;border:none" id="game-iframe"></iframe>`;
-  let timerEl = document.getElementById('game-timer');
-  let scoreEl = document.getElementById('game-score');
+  canvas.innerHTML = `<iframe src="${gamePath}" style="width:100%;height:100%;border:none" id="game-iframe" title="${escAttr(gameId)}"></iframe>`;
+  const timerEl = document.getElementById('game-timer');
+  const scoreEl = document.getElementById('game-score');
   let elapsed = 0;
   const timerInterval = setInterval(() => {
     elapsed++;
@@ -886,18 +1471,14 @@ function launchIframeGame(gameId) {
   }, 120000);
 }
 
-// ── Countdown ──
 function showCountdown() {
   return new Promise(resolve => {
     const canvas = document.getElementById('game-canvas');
     let count = 3;
     function tick() {
-      if (count === 0) {
-        canvas.innerHTML = '';
-        resolve();
-        return;
-      }
-      canvas.innerHTML = `<div class="countdown-overlay"><div class="countdown-num">${count}</div></div>`;
+      if (count === 0) { canvas.innerHTML = ''; resolve(); return; }
+      const aria = t('play.game.countdown_aria', { seconds: count });
+      canvas.innerHTML = `<div class="countdown-overlay" role="status" aria-label="${escAttr(aria)}"><div class="countdown-num">${count}</div></div>`;
       count--;
       setTimeout(tick, 700);
     }
@@ -905,7 +1486,6 @@ function showCountdown() {
   });
 }
 
-// ── Game Timer ──
 let gameTimerInterval = null;
 function startGameTimer() {
   if (gameTimerInterval) clearInterval(gameTimerInterval);
@@ -916,48 +1496,30 @@ function startGameTimer() {
     el.textContent = s + 's';
   }, 200);
 }
-function stopGameTimer() {
-  if (gameTimerInterval) clearInterval(gameTimerInterval);
-}
+function stopGameTimer() { if (gameTimerInterval) clearInterval(gameTimerInterval); }
 
-// ════════════════════════════════════════════════════════════════════════
-// GAME 1: LATTE ART — Timing / Reaction
-// ════════════════════════════════════════════════════════════════════════
-
+// ── Latte Art ──
 function launchLatteArt() {
   const canvas = document.getElementById('game-canvas');
   const totalRounds = 5;
-  let round = 0;
-  let totalScore = 0;
-  let animFrame = null;
-  let indicatorPos = 0;
-  let speed = 2.5;
-  let direction = 1;
-  let canTap = false;
-
-  const patterns = ['&#10048;', '&#9825;', '&#10053;', '&#9733;', '&#127808;'];
-  const sweetspotSize = 18; // percentage width
+  let round = 0, totalScore = 0, animFrame = null;
+  let indicatorPos = 0, speed = 2.5, direction = 1, canTap = false;
+  const patterns = ['✿', '♥', '✵', '★', '🌸'];
+  const sweetspotSize = 18;
   let sweetspotStart = 0;
-
   startGameTimer();
 
   function renderRound() {
     round++;
-    if (round > totalRounds) {
-      stopGameTimer();
-      endGame(totalScore);
-      return;
-    }
-
+    if (round > totalRounds) { stopGameTimer(); endGame(totalScore); return; }
     canTap = false;
     speed = 2 + round * 0.8;
     sweetspotStart = 25 + Math.random() * 40;
     indicatorPos = 0;
     direction = 1;
-
     canvas.innerHTML = `
       <div class="latte-game" id="latte-area">
-        <div class="latte-round">Round ${round} / ${totalRounds}</div>
+        <div class="latte-round-text">Round ${round} / ${totalRounds}</div>
         <div class="latte-cup">
           <div class="cup-body">
             <div class="cup-coffee" id="cup-coffee">
@@ -972,23 +1534,28 @@ function launchLatteArt() {
                style="left:${sweetspotStart}%;width:${sweetspotSize}%"></div>
           <div class="latte-timing-indicator" id="indicator" style="left:0%"></div>
         </div>
-        <div class="latte-tap-hint" id="tap-hint">TAP when the milk is perfect!</div>
+        <div class="latte-tap-hint" id="tap-hint">Tap or press Space at the sweet spot</div>
       </div>`;
-
     const milk = document.getElementById('milk-stream');
     setTimeout(() => {
       milk.classList.add('pouring');
       canTap = true;
       startIndicator();
     }, 600);
-
     document.getElementById('latte-area').addEventListener('click', handleTap, { once: true });
+    const keyHandler = (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        document.removeEventListener('keydown', keyHandler);
+        handleTap();
+      }
+    };
+    document.addEventListener('keydown', keyHandler, { once: false });
   }
 
   function startIndicator() {
     const indicator = document.getElementById('indicator');
     if (!indicator) return;
-
     function animate() {
       if (!canTap) return;
       indicatorPos += speed * direction;
@@ -1004,348 +1571,196 @@ function launchLatteArt() {
     if (!canTap) return;
     canTap = false;
     if (animFrame) cancelAnimationFrame(animFrame);
-
-    // Score: distance from sweetspot center
     const center = sweetspotStart + sweetspotSize / 2;
     const dist = Math.abs(indicatorPos - center);
-    const maxDist = 50;
-    const accuracy = Math.max(0, 1 - dist / maxDist);
+    const accuracy = Math.max(0, 1 - dist / 50);
     const roundScore = Math.round(accuracy * accuracy * 4000);
     totalScore += roundScore;
-
     document.getElementById('game-score').textContent = totalScore.toLocaleString();
-
-    // Visual feedback
     const art = document.getElementById('art-pattern');
-    const hint = document.getElementById('tap-hint');
     const milk = document.getElementById('milk-stream');
     if (milk) milk.classList.remove('pouring');
-
     if (art) {
       art.style.opacity = '1';
       art.style.fontSize = accuracy > 0.7 ? '60px' : accuracy > 0.3 ? '40px' : '24px';
     }
-
-    // Score popup
-    const area = document.getElementById('latte-area');
-    if (area) {
-      const popup = document.createElement('div');
-      popup.className = 'latte-score-popup';
-      popup.style.left = '50%';
-      popup.style.top = '30%';
-      popup.style.transform = 'translateX(-50%)';
-      popup.textContent = accuracy > 0.8 ? `PERFECT! +${roundScore}`
-        : accuracy > 0.5 ? `Great! +${roundScore}`
-        : accuracy > 0.2 ? `OK +${roundScore}`
-        : `Miss +${roundScore}`;
-      if (accuracy <= 0.2) popup.style.color = '#e74c3c';
-      area.appendChild(popup);
-    }
-
-    if (hint) {
-      hint.textContent = accuracy > 0.8 ? 'PERFECT!' : accuracy > 0.5 ? 'Great!' : accuracy > 0.2 ? 'OK' : 'Too far!';
-      hint.style.animation = 'none';
-      hint.style.color = accuracy > 0.5 ? 'var(--green-dark)' : '#e74c3c';
-    }
-
     setTimeout(renderRound, 1200);
   }
-
   renderRound();
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// GAME 2: BEAN MATCH — Memory Card Game
-// ════════════════════════════════════════════════════════════════════════
-
+// ── Bean Match ──
 function launchBeanMatch() {
   const canvas = document.getElementById('game-canvas');
-  const emojis = ['☕', '🫘', '🍰', '🧁', '🥐', '🍪', '🫖', '🥛'];
-  let cards = [];
-  let flipped = [];
-  let matched = 0;
-  let score = 0;
-  let locked = false;
-  let moves = 0;
+  const symbols = ['☕','🫘','🍰','🧁','🥐','🍪','🫖','🥛'];
+  let flipped = [], matched = 0, score = 0, locked = false, moves = 0;
   const matchStart = Date.now();
-
   startGameTimer();
-
-  // Shuffle 8 pairs
-  const deck = [...emojis, ...emojis];
+  const deck = [...symbols, ...symbols];
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-
   canvas.innerHTML = `
     <div class="match-game">
       <div class="match-pairs" id="match-pairs">Pairs: 0 / 8</div>
-      <div class="match-grid" id="match-grid">
+      <div class="match-grid" id="match-grid" role="grid">
         ${deck.map((emoji, i) => `
-          <div class="match-card" data-idx="${i}" data-emoji="${emoji}" onclick="matchFlip(${i})">
+          <button class="match-card" type="button" data-idx="${i}" data-emoji="${escAttr(emoji)}"
+                  aria-label="Card ${i+1}" role="gridcell">
             <div class="match-card-inner">
-              <div class="match-back">&#129752;</div>
-              <div class="match-face">${emoji}</div>
+              <div class="match-back" aria-hidden="true">?</div>
+              <div class="match-face" aria-hidden="true">${emoji}</div>
             </div>
-          </div>`).join('')}
+          </button>`).join('')}
       </div>
     </div>`;
-
-  // Brief reveal at start
   const allCards = document.querySelectorAll('.match-card');
   allCards.forEach(c => c.classList.add('flipped'));
   setTimeout(() => allCards.forEach(c => c.classList.remove('flipped')), 1200);
-
-  window.matchFlip = function(idx) {
+  document.getElementById('match-grid').addEventListener('click', (e) => {
+    const card = e.target.closest('.match-card');
+    if (card) matchFlip(parseInt(card.dataset.idx, 10));
+  });
+  function matchFlip(idx) {
     if (locked) return;
     const card = document.querySelector(`.match-card[data-idx="${idx}"]`);
     if (!card || card.classList.contains('flipped') || card.classList.contains('matched')) return;
-
     card.classList.add('flipped');
     flipped.push(card);
-
     if (flipped.length === 2) {
       locked = true;
       moves++;
       const [a, b] = flipped;
-
       if (a.dataset.emoji === b.dataset.emoji) {
-        // Match!
         matched++;
         const timeBonus = Math.max(0, 2000 - Math.floor((Date.now() - matchStart) / 100));
         const moveBonus = Math.max(0, 500 - moves * 30);
         const pairScore = 1000 + timeBonus + moveBonus;
         score += pairScore;
-
         document.getElementById('game-score').textContent = score.toLocaleString();
         document.getElementById('match-pairs').textContent = `Pairs: ${matched} / 8`;
-
         setTimeout(() => {
-          a.classList.add('matched');
-          b.classList.add('matched');
-          flipped = [];
-          locked = false;
-
+          a.classList.add('matched'); b.classList.add('matched');
+          flipped = []; locked = false;
           if (matched === 8) {
             stopGameTimer();
-            // Completion bonus
             const totalTime = (Date.now() - matchStart) / 1000;
-            const completionBonus = Math.max(0, Math.round(3000 - totalTime * 30));
-            score += completionBonus;
+            score += Math.max(0, Math.round(3000 - totalTime * 30));
             document.getElementById('game-score').textContent = score.toLocaleString();
             endGame(score);
           }
         }, 400);
       } else {
-        // No match
         setTimeout(() => {
-          a.classList.remove('flipped');
-          b.classList.remove('flipped');
-          flipped = [];
-          locked = false;
+          a.classList.remove('flipped'); b.classList.remove('flipped');
+          flipped = []; locked = false;
         }, 700);
       }
     }
-  };
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════
 // LEADERBOARD
 // ════════════════════════════════════════════════════════════════════════
-
 let currentLbGame = null;
-
 async function loadLeaderboard() {
   const tabsEl = document.getElementById('lb-tabs');
   const contentEl = document.getElementById('lb-content');
-
   if (!state.games.length) {
-    contentEl.innerHTML = '<div class="lb-empty">No games configured.</div>';
+    contentEl.innerHTML = `<div class="lb-empty">${escHtml(t('play.section.empty'))}</div>`;
     return;
   }
-
-  // Render game tabs
-  if (!currentLbGame) currentLbGame = state.games[0].game_id;
+  if (!currentLbGame || !state.games.find(g => g.game_id === currentLbGame)) {
+    currentLbGame = state.games[0].game_id;
+  }
   tabsEl.innerHTML = state.games.map(g =>
-    `<button class="lb-tab ${g.game_id === currentLbGame ? 'active' : ''}"
-       onclick="switchLbGame('${g.game_id}')">${g.name || g.game_id}</button>`
+    `<button class="lb-tab" type="button" role="tab"
+       aria-pressed="${g.game_id === currentLbGame ? 'true' : 'false'}"
+       data-game-id="${escAttr(g.game_id)}">${escHtml(g.name || g.game_id)}</button>`
   ).join('');
+  tabsEl.querySelectorAll('.lb-tab').forEach(t => {
+    t.addEventListener('click', () => { currentLbGame = t.dataset.gameId; loadLeaderboard(); });
+  });
 
-  contentEl.innerHTML = '<div class="lb-empty">Loading...</div>';
-
+  contentEl.innerHTML = `<div class="lb-empty">${escHtml(t('play.loading'))}</div>`;
   try {
     const res = await api('GET',
-      `/api/v1/leaderboard/?brand_id=${state.brandId}&game_id=${currentLbGame}`);
-
+      `/api/v1/leaderboard/?brand_id=${state.brandId}&game_id=${currentLbGame}&limit=10`);
     if (!res.entries || !res.entries.length) {
-      contentEl.innerHTML = '<div class="lb-empty">No scores yet today. Be the first!</div>';
+      contentEl.innerHTML = `<div class="lb-empty">${escHtml(t('play.leaderboard.empty'))}</div>`;
       return;
     }
-
-    contentEl.innerHTML = `<div class="lb-table">
-      ${res.entries.map(e => {
-        const rankClass = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
-        const medal = e.rank === 1 ? '&#129351;' : e.rank === 2 ? '&#129352;' : e.rank === 3 ? '&#129353;' : e.rank;
-        return `<div class="lb-row ${e.is_self ? 'self' : ''}">
-          <div class="lb-rank ${rankClass}">${medal}</div>
-          <div class="lb-name">${escHtml(e.display_name)}${e.is_self ? ' (You)' : ''}</div>
-          <div class="lb-score">${e.score.toLocaleString()}</div>
-        </div>`;
-      }).join('')}
-    </div>`;
+    const top10 = res.entries.slice(0, 10);
+    contentEl.innerHTML = `<div class="lb-list">${top10.map(e => {
+      const rankClass = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
+      const medalClass = e.rank <= 3 ? 'medal ' + rankClass : '';
+      const rankText = e.rank;
+      return `<div class="lb-row ${e.is_self ? 'self' : ''}" role="row">
+        <span class="lb-rank ${medalClass}">${rankText}</span>
+        <span class="lb-name">${escHtml(e.display_name)}${e.is_self ? `<span class="you-tag">${escHtml(t('play.leaderboard.you'))}</span>` : ''}</span>
+        <span class="lb-score">${e.score.toLocaleString()}</span>
+      </div>`;
+    }).join('')}</div>`;
   } catch (e) {
     console.error('Leaderboard error:', e);
-    contentEl.innerHTML = '<div class="lb-empty">Could not load leaderboard.</div>';
+    contentEl.innerHTML = `<div class="lb-empty">${escHtml(t('play.leaderboard.load_error'))}</div>`;
   }
 }
-
-window.switchLbGame = function(gameId) {
-  currentLbGame = gameId;
-  loadLeaderboard();
-};
 
 // ════════════════════════════════════════════════════════════════════════
 // STREAK
 // ════════════════════════════════════════════════════════════════════════
-
 async function loadStreak() {
+  try {
+    const res = await api('POST', '/api/v1/streak/check', { brand_id: state.brandId });
+    state.streak = res;
+    renderStreak(res);
+  } catch (e) {
+    document.getElementById('streak-content').innerHTML =
+      `<div class="lb-empty">${escHtml(t('play.streak.signin_prompt'))}</div>`;
+  }
+}
+
+function renderStreak(res) {
   const container = document.getElementById('streak-content');
-  container.innerHTML = '<div class="lb-empty">Loading...</div>';
-
-  try {
-    const res = await api('POST', '/api/v1/streak/check', {
-      brand_id: state.brandId,
-    });
-
-    const days = [];
-    const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dayNum = d.getDate();
-      const isPast = i > 0;
-      const isDone = i > 0 && i <= res.current_streak;
-      const isToday = i === 0;
-      days.push({ dayNum, isDone: isDone || (isToday && res.today_completed), isToday });
-    }
-
-    container.innerHTML = `
-      <div class="streak-card">
-        <div class="streak-fire">&#128293;</div>
-        <div class="streak-num">${res.current_streak}</div>
-        <div class="streak-label">${res.current_streak === 1 ? 'Day Streak' : 'Day Streak'}</div>
-        <div class="streak-calendar">
-          ${days.map(d => `
-            <div class="streak-dot ${d.isDone ? 'done' : d.isToday && !d.isDone ? 'today' : 'future'}">
-              ${d.dayNum}
-            </div>`).join('')}
-        </div>
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const isPast = i > 0;
+    const isDone = isPast && i <= res.current_streak;
+    const isToday = i === 0;
+    days.push({ isDone: isDone || (isToday && res.today_completed), isToday });
+  }
+  const nextMilestone = res.next_milestone
+    ? `<div class="streak-footnote">${escHtml(t('play.streak.next_milestone', { count: res.next_milestone - res.current_streak }))}</div>`
+    : '';
+  container.innerHTML = `
+    <div class="streak-display">
+      <div class="streak-flame" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 0c.6 4.5 4.5 6.4 4.5 11a6 6 0 0 1-12 0c0-3 1.5-4.5 3-6 .5 1.5 1.5 2.5 3 2.5C12 6 12 3 13.5 0z"/></svg>
       </div>
-      ${res.next_milestone ? `
-        <div class="streak-milestone">
-          <div class="milestone-icon">&#127942;</div>
-          <div class="milestone-info">
-            <div class="milestone-title">Next milestone: Day ${res.next_milestone}</div>
-            <div class="milestone-desc">${res.next_milestone - res.current_streak} day${res.next_milestone - res.current_streak !== 1 ? 's' : ''} to go!</div>
-          </div>
-        </div>` : ''}
-      ${res.milestone_reward ? `
-        <div class="streak-milestone" style="margin-top:12px">
-          <div class="milestone-icon">&#127873;</div>
-          <div class="milestone-info">
-            <div class="milestone-title">Milestone reached!</div>
-            <div class="milestone-desc">${res.milestone_reward.reward_type || 'Bonus'}: +${res.milestone_reward.reward_amount || '??'}</div>
-          </div>
-        </div>` : ''}
-      <div style="text-align:center;margin-top:16px;color:var(--gray-1);font-size:13px">
-        Longest streak: <strong>${res.longest_streak} days</strong>
-      </div>`;
-  } catch (e) {
-    console.error('Streak error:', e);
-    container.innerHTML = '<div class="lb-empty">Could not load streak.</div>';
-  }
+      <div class="streak-info">
+        <div class="streak-count">${res.current_streak}</div>
+        <div class="streak-label">${escHtml(t('play.streak.days', { count: res.current_streak }))}</div>
+      </div>
+    </div>
+    <div class="streak-dots" aria-hidden="true">
+      ${days.map(d => `<span class="streak-dot ${d.isDone ? 'done' : d.isToday ? 'today' : ''}"></span>`).join('')}
+    </div>
+    <div style="height:8px"></div>
+    ${nextMilestone}
+    <div class="streak-footnote">${escHtml(t('play.streak.longest', { count: res.longest_streak || 0 }))}</div>`;
+  // Update hero strip
+  const hCount = document.getElementById('streak-hero-count');
+  const hLabel = document.getElementById('streak-hero-label');
+  if (hCount) hCount.textContent = res.current_streak;
+  if (hLabel) hLabel.textContent = t('play.streak.days', { count: res.current_streak });
 }
-
-// ════════════════════════════════════════════════════════════════════════
-// REWARDS / WALLET
-// ════════════════════════════════════════════════════════════════════════
-
-async function loadRewards() {
-  const container = document.getElementById('rewards-list');
-  container.innerHTML = '<div class="rewards-empty">Loading...</div>';
-
-  try {
-    const vouchers = await api('GET', '/api/v1/users/me/vouchers');
-
-    if (!vouchers.length) {
-      container.innerHTML = `
-        <div class="rewards-empty">
-          <div style="font-size:40px;margin-bottom:12px">&#127873;</div>
-          <div style="font-size:14px;color:var(--gray-1)">No rewards yet.<br>Play games to win vouchers!</div>
-        </div>`;
-      return;
-    }
-
-    container.innerHTML = vouchers.map(v => {
-      const isAssigned = v.status === 'assigned';
-      const isRedeemed = v.status === 'redeemed';
-      const isExpired = v.status === 'expired' ||
-        (v.expires_at && new Date(v.expires_at) < new Date());
-      const statusClass = isRedeemed ? 'redeemed' : isExpired ? 'expired' : 'assigned';
-      const tierEmoji = v.tier === 'gold' ? '&#127942;' : v.tier === 'silver' ? '&#129352;' : '&#9749;';
-
-      return `
-        <div class="voucher-card ${statusClass}">
-          <div class="voucher-emoji">${tierEmoji}</div>
-          <div class="voucher-info">
-            <div class="voucher-code-text">${escHtml(v.code)}</div>
-            <div class="voucher-description">${escHtml(v.description || v.tier + ' tier reward')}</div>
-            ${v.expires_at ? `<div class="voucher-expiry">Expires: ${new Date(v.expires_at).toLocaleDateString()}</div>` : ''}
-            <span class="voucher-status ${statusClass}">${v.status}</span>
-            ${isAssigned ? `<button class="redeem-btn" onclick="confirmRedeem('${v.code}')">I've Used It</button>` : ''}
-          </div>
-        </div>`;
-    }).join('');
-  } catch (e) {
-    console.error('Rewards error:', e);
-    container.innerHTML = '<div class="rewards-empty">Could not load rewards.</div>';
-  }
-}
-
-window.confirmRedeem = function(code) {
-  const overlay = document.getElementById('dialog-overlay');
-  document.getElementById('dialog-title').textContent = 'Redeem Voucher';
-  document.getElementById('dialog-msg').textContent =
-    `Have you already used the voucher "${code}" at the store? This cannot be undone.`;
-  overlay.classList.add('show');
-
-  document.getElementById('dialog-cancel').onclick = () => overlay.classList.remove('show');
-  document.getElementById('dialog-confirm').onclick = async () => {
-    overlay.classList.remove('show');
-    try {
-      // Need voucher ID. Re-fetch vouchers to find it.
-      const vouchers = await api('GET', '/api/v1/users/me/vouchers');
-      const v = vouchers.find(x => x.code === code);
-      // The API uses voucher pool id, but our schema returns code.
-      // Use the code-based endpoint or construct the id.
-      // The router takes voucher_id (int). We'll try to match by code.
-      // Since we don't have the id directly, we call redeem with code as id.
-      // This is a limitation — the backend expects an int id.
-      // For now, attempt the call. If it fails gracefully, show toast.
-      await api('POST', `/api/v1/users/me/vouchers/${encodeURIComponent(code)}/redeem`);
-      showToast('Voucher redeemed!', 'energy');
-      loadRewards();
-    } catch (e) {
-      showToast('Could not redeem voucher', 'error');
-    }
-  };
-};
 
 // ════════════════════════════════════════════════════════════════════════
 // UTILITIES
 // ════════════════════════════════════════════════════════════════════════
-
 function showToast(msg, type = '') {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -1355,12 +1770,14 @@ function showToast(msg, type = '') {
     setTimeout(() => el.classList.remove('show'), 2500);
   });
 }
-
 function escHtml(str) {
-  if (!str) return '';
+  if (str === null || str === undefined) return '';
   const div = document.createElement('div');
-  div.textContent = str;
+  div.textContent = String(str);
   return div.innerHTML;
+}
+function escAttr(str) {
+  return escHtml(str).replace(/"/g, '&quot;');
 }
 </script>
 </body>
