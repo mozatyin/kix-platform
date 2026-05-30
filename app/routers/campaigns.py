@@ -968,6 +968,32 @@ async def create_campaign(
         campaign_id, body.brand_id, body.objective, body.bid_strategy,
         payload["status"], auto_ok,
     )
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # Fire-and-forget; never breaks the campaign-create path.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=body.brand_id,
+            actor_type="merchant",
+            action="campaign.create",
+            target_type="campaign",
+            target_id=campaign_id,
+            brand_id=body.brand_id,
+            result="success",
+            payload={
+                "objective": body.objective,
+                "bid_strategy": body.bid_strategy,
+                "daily_budget_cents": body.daily_budget_cents,
+                "total_budget_cents": body.total_budget_cents,
+                "status": payload["status"],
+            },
+        )
+    except Exception as exc:
+        logger.warning("audit_log (campaign.create) skipped: %s", exc)
+
     return CampaignCreateResponse(
         campaign_id=campaign_id, status=payload["status"]
     )
@@ -1138,6 +1164,32 @@ async def pause_campaign(
         mapping={"status": STATUS_PAUSED, "updated_at": str(_now())},
     )
     await _deindex_campaign_active(r, campaign_id)
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    try:
+        # brand_id is needed for compliance routing; pull from the
+        # campaign hash since it isn't on the request path.
+        brand_id_raw = await r.hget(_ck(campaign_id), "brand_id")
+        brand_id = (
+            brand_id_raw.decode()
+            if isinstance(brand_id_raw, bytes)
+            else (brand_id_raw or "")
+        )
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=brand_id or "system",
+            actor_type="merchant" if brand_id else "system",
+            action="campaign.pause",
+            target_type="campaign",
+            target_id=campaign_id,
+            brand_id=brand_id or None,
+            result="success",
+        )
+    except Exception as exc:
+        logger.warning("audit_log (campaign.pause) skipped: %s", exc)
+
     return {"ok": True, "status": STATUS_PAUSED}
 
 
