@@ -68,6 +68,12 @@ class UserProfile(Base):
     day1_expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    # Wave E item 6 — which login path created this row. Nullable so a
+    # pre-migration row read by the ORM doesn't blow up; new rows set it
+    # at insert time. See migrations/versions/0009_whatsapp_auth.py.
+    auth_method: Mapped[str | None] = mapped_column(
+        String, nullable=True, default=None
+    )
 
 
 # ── 3. Voucher Pool ──────────────────────────────────────────────────────
