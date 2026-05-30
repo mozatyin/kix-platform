@@ -694,7 +694,7 @@ async def request_payout(
     bank_masked = _mask_account(ba.get("bank_name", "bank"), ba.get("last4", "****"))
     currency = ba.get("currency") or await _get_currency(req.brand_id, r)
 
-    return await _create_payout_locked(
+    resp = await _create_payout_locked(
         r,
         brand_id=req.brand_id,
         amount_cents=req.amount_cents,
@@ -703,6 +703,34 @@ async def request_payout(
         bank_masked=bank_masked,
         currency=currency,
     )
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # Payouts are a regulator-priority surface (AML, sanctions). Fire-
+    # and-forget — never blocks the payout path.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=req.brand_id,
+            actor_type="merchant",
+            action="payout.request",
+            target_type="payout",
+            target_id=getattr(resp, "payout_id", None),
+            brand_id=req.brand_id,
+            result="success",
+            payload={
+                "amount_cents": req.amount_cents,
+                "currency": currency,
+                "source": req.source,
+                "bank_account_id": req.bank_account_id,
+                "bank_masked": bank_masked,
+            },
+        )
+    except Exception as exc:
+        logger.warning("audit_log (payout.request) skipped: %s", exc)
+
+    return resp
 
 
 # ── Status machine: process / fail ─────────────────────────────────────────
@@ -817,7 +845,32 @@ async def process_payout(
     cur = raw.get("status", STATUS_PENDING)
     if cur == STATUS_PENDING:
         await _transition(r, payout_id, to_status=STATUS_PROCESSING, extra=extra)
-    return await _transition(r, payout_id, to_status=STATUS_PAID, extra=extra)
+    resp = await _transition(r, payout_id, to_status=STATUS_PAID, extra=extra)
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # Admin-initiated transfer of funds — high regulator scrutiny.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id="admin",
+            actor_type="admin",
+            action="payout.process",
+            target_type="payout",
+            target_id=payout_id,
+            brand_id=raw.get("brand_id") or None,
+            result="success",
+            payload={
+                "amount_cents": int(raw.get("amount_cents", 0) or 0),
+                "payment_provider_ref": body.payment_provider_ref,
+                "source": raw.get("source"),
+            },
+        )
+    except Exception as exc:
+        logger.warning("audit_log (payout.process) skipped: %s", exc)
+
+    return resp
 
 
 @router.post("/{payout_id}/fail", response_model=PayoutResponse)
