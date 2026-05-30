@@ -1041,6 +1041,153 @@ async def anti_fraud_check(
     )
 
 
+# ── Stripe live flow: SetupIntent + REST aliases ─────────────────────────
+# Replaces the legacy "POST payment_token directly" path for new clients.
+# The mobile/web client:
+#   1. POST /{brand_id}/add-setup-intent          → {client_secret}
+#   2. Stripe Elements collects card with the client_secret
+#   3. On success, Stripe fires setup_intent.succeeded → webhook attaches PM
+#
+# The existing /{brand_id}/add endpoint stays for callers that already hold
+# a Stripe PaymentMethod id (server-to-server flow).
+
+class SetupIntentResponse(BaseModel):
+    brand_id: str
+    setup_intent_id: str
+    client_secret: str
+    customer_id: str | None = None
+    mode: str  # live/test/mock
+
+
+@router.post(
+    "/{brand_id}/add-setup-intent",
+    response_model=SetupIntentResponse,
+)
+async def create_payment_method_setup_intent(
+    brand_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> SetupIntentResponse:
+    """Issue a SetupIntent so the client can collect card details safely.
+
+    Use this for the modern Stripe Elements flow. The legacy ``/add``
+    endpoint (which accepts a pre-tokenised payment_token) is preserved
+    for server-side integrations.
+    """
+    from app.services import stripe_live
+
+    # Reuse / create the brand's Stripe Customer so future off-session
+    # charges work. In mock mode this returns a sentinel string.
+    customer_id: str | None = None
+    try:
+        customer_id = await _get_or_create_brand_stripe_customer(
+            brand_id, brand_id, None, r
+        )
+    except Exception as exc:  # noqa: BLE001 — best effort
+        logger.warning(
+            "setup_intent: customer ensure failed brand=%s: %s", brand_id, exc
+        )
+
+    try:
+        si = stripe_live.create_payment_method_setup_intent(
+            brand_id, customer_id=customer_id
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("setup_intent create failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "setup_intent_failed", "hint": str(exc)[:200]},
+        ) from exc
+
+    return SetupIntentResponse(
+        brand_id=brand_id,
+        setup_intent_id=si["setup_intent_id"],
+        client_secret=si["client_secret"],
+        customer_id=customer_id,
+        mode=si.get("mode") or stripe_live.get_mode(),
+    )
+
+
+@router.delete("/{pm_id}")
+async def delete_payment_method(
+    pm_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """DELETE alias for ``/{pm_id}/remove`` — also detaches at Stripe."""
+    from app.services import stripe_live
+
+    raw = await _load_pm(pm_id, r)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "payment_method_not_found"},
+        )
+
+    # Soft-delete locally via the existing path (handles defaults +
+    # subscription guards). We synthesise a minimal RemoveRequest.
+    body = RemoveRequest(reason="deleted_via_rest")
+    result = await remove_payment_method(pm_id, body, r)  # type: ignore[arg-type]
+
+    # Best-effort: detach at Stripe. Failure here doesn't undo the local
+    # remove — the audit log captures both legs.
+    stripe_pm_id = raw.get("payment_token") or ""
+    detach_info: dict[str, Any] = {"attempted": False}
+    if stripe_pm_id.startswith("pm_"):
+        try:
+            detach_info = stripe_live.detach_payment_method(stripe_pm_id)
+            detach_info["attempted"] = True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "stripe detach failed pm=%s: %s", stripe_pm_id, exc
+            )
+            detach_info = {"attempted": True, "error": str(exc)[:200]}
+        await _audit(r, pm_id, "stripe_detached", detach_info)
+
+    result["stripe_detach"] = detach_info
+    return result
+
+
+class SetDefaultPutRequest(BaseModel):
+    brand_id: str | None = None  # informational; resolved from pm_id
+
+
+@router.put("/{pm_id}/set-default", response_model=SetDefaultResponse)
+async def set_default_put(
+    pm_id: str,
+    body: SetDefaultPutRequest | None = None,
+    r: aioredis.Redis = Depends(get_redis),
+) -> SetDefaultResponse:
+    """PUT form of set-default — also pushes the default to Stripe Customer."""
+    from app.services import stripe_live
+
+    raw = await _load_pm(pm_id, r)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "payment_method_not_found"},
+        )
+    if raw.get("status") != "active":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "method_not_active", "status": raw.get("status")},
+        )
+    brand_id = raw["brand_id"]
+    await _set_default_internal(brand_id, pm_id, r)
+    await _audit(r, pm_id, "set_default", {"brand_id": brand_id, "via": "PUT"})
+
+    stripe_customer_id = raw.get("stripe_customer_id") or ""
+    stripe_pm_id = raw.get("payment_token") or ""
+    if stripe_customer_id and stripe_pm_id.startswith("pm_"):
+        try:
+            stripe_live.set_default_payment_method(stripe_customer_id, stripe_pm_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "stripe set_default failed pm=%s cust=%s: %s",
+                stripe_pm_id, stripe_customer_id, exc,
+            )
+
+    return SetDefaultResponse(payment_method_id=pm_id, is_default=True)
+
+
 # ── GET /{pm_id}/audit ───────────────────────────────────────────────────
 @router.get("/{pm_id}/audit")
 async def get_audit_trail(

@@ -331,6 +331,82 @@ The platform ships with a Project Fluent runtime under `app/i18n/`.
 - **Monitoring** — alert on the `i18n.missing_translation` log line;
   it indicates a key shipped without a translation in some locale.
 
+## Stripe Integration
+
+Stripe is the production payment provider for wallet top-ups, payment-
+method onboarding and subscription billing. The integration lives in
+`app/services/stripe_live.py` (single entry point) and three routers
+that call it:
+
+- `app/routers/wallet.py` — `POST /api/v1/wallet/{bid}/topup/checkout`
+  creates a Stripe Checkout session; the legacy `/topup` + `/topup/{id}/
+  confirm` pair stays for callers that still embed their own gateway
+  state machine, including the `?mock=true` fast-path for dashboard QA.
+- `app/routers/payment_methods.py` — `POST /{bid}/add-setup-intent`
+  returns a SetupIntent `client_secret` for client-side Stripe Elements.
+  `DELETE /{pm_id}` and `PUT /{pm_id}/set-default` also push state to
+  the customer at Stripe.
+- `app/routers/stripe_webhook.py` — `POST /api/v1/webhooks/stripe`
+  receives + verifies events. Idempotent via a two-phase Redis claim
+  (`processing` → `completed`).
+
+### Mode auto-detection
+
+`app.services.stripe_live.get_mode()` returns one of:
+
+- `live` — `STRIPE_SECRET_KEY` starts with `sk_live_`. Real money.
+- `test` — `STRIPE_SECRET_KEY` starts with `sk_test_`. Test cards only.
+- `mock` — key unset or set to `sk_test_stub`. Never touches the network.
+  All tests, CI and local dev use this mode by default.
+
+### Setting `STRIPE_SECRET_KEY` in production
+
+Add to the systemd `EnvironmentFile` (never commit secrets):
+
+```bash
+STRIPE_SECRET_KEY=sk_live_***
+STRIPE_WEBHOOK_SECRET=whsec_***
+```
+
+Then `systemctl restart kix-api`.
+
+### Configuring the webhook endpoint
+
+In the Stripe Dashboard → Developers → Webhooks → "Add endpoint":
+
+- URL: `https://<your-domain>/api/v1/webhooks/stripe`
+- Events to send:
+  - `payment_intent.succeeded`
+  - `payment_intent.payment_failed`
+  - `setup_intent.succeeded`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+  - `invoice.payment_succeeded`
+  - `invoice.payment_failed`
+  - `charge.refunded`
+
+Copy the **Signing secret** (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`.
+
+### Test mode before going live
+
+1. Use `sk_test_...` key + matching `whsec_...` from the test-mode
+   dashboard.
+2. Drive a full flow:
+   `POST /api/v1/wallet/<bid>/topup/checkout` → follow the returned
+   `checkout_url` → pay with `4242 4242 4242 4242`.
+3. Confirm the webhook fired and the wallet was credited.
+4. Swap to `sk_live_...` only after the test flow round-trips clean.
+
+### Troubleshooting Stripe-specific errors
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `stripe_checkout_failed` 502 on /topup/checkout | bad/expired API key | rotate `STRIPE_SECRET_KEY`; check Stripe dashboard logs |
+| Webhook returns 401 `invalid_signature` | webhook secret mismatch | re-copy `whsec_...` from dashboard, redeploy |
+| Webhook returns 503 `webhook_not_configured` | `STRIPE_WEBHOOK_SECRET` empty | set the env var; restart |
+| Wallet never credited despite payment success | metadata missing `brand_id` | confirm `/topup/checkout` was used (sets metadata) — direct charges via dashboard need manual reconciliation |
+| Stuck "pending" topup | webhook never delivered | check Stripe dashboard → Webhooks → Recent deliveries; verify endpoint reachable |
+
 ---
 
 Last reviewed: 2026-05-30

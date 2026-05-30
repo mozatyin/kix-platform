@@ -2967,3 +2967,154 @@ async def get_primary_balance_alias(
         "balance_cents": balance,
     }
 
+
+# ── POST /{brand_id}/topup/checkout ──────────────────────────────────────
+# Real-money Stripe top-up path. The legacy ``/topup`` + ``/topup/.../confirm``
+# endpoints above stay for backwards compatibility (callers that already
+# embed payment-gateway state machines, plus tests using
+# ``payment_gateway_response={"mock": True}``). New clients should:
+#
+#   1. POST /topup/checkout  → returns ``{checkout_url}``
+#   2. Redirect user to ``checkout_url``
+#   3. On payment success, Stripe fires ``payment_intent.succeeded`` to the
+#      webhook (``/api/v1/webhooks/stripe``). The handler resolves the
+#      pending topup record and credits the wallet exactly once.
+#
+# Setting ``?mock=true`` on this endpoint forces the legacy direct-credit
+# path so dashboard QA can fund a brand without touching Stripe.
+class TopupCheckoutRequest(BaseModel):
+    amount_cents: int = Field(..., gt=0, le=100_000_000)
+    currency: str | None = None
+    success_url: str = Field(..., min_length=1, max_length=1024)
+    cancel_url: str = Field(..., min_length=1, max_length=1024)
+
+    @field_validator("currency")
+    @classmethod
+    def _cur(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if len(v) != 3 or not v.isalpha():
+            raise ValueError("currency must be a 3-letter ISO code")
+        return v
+
+
+class TopupCheckoutResponse(BaseModel):
+    topup_id: str
+    checkout_url: str
+    session_id: str
+    status: Literal["pending", "confirmed"]
+    amount_cents: int
+    currency: str
+    mode: str  # "live" / "test" / "mock"
+
+
+@router.post("/{brand_id}/topup/checkout", response_model=TopupCheckoutResponse)
+async def create_topup_checkout(
+    brand_id: str,
+    body: TopupCheckoutRequest,
+    mock: bool = Query(default=False, description="legacy mock=true bypass"),
+    r: aioredis.Redis = Depends(get_redis),
+) -> TopupCheckoutResponse:
+    """Create a Stripe Checkout session for the wallet top-up.
+
+    Backwards-compat: ``?mock=true`` skips Stripe and immediately credits
+    the wallet (matches the original MVP behaviour preserved on
+    ``/topup`` + ``/topup/{id}/confirm``).
+    """
+    from app.services import stripe_live
+
+    cur_existing = await r.get(_k_currency(brand_id))
+    wallet_currency = (cur_existing or body.currency or DEFAULT_CURRENCY).upper()
+    if cur_existing is None:
+        await r.set(_k_currency(brand_id), wallet_currency)
+
+    topup_id = mint_id("dpt")
+    now = time.time()
+
+    # ── Mock fast-path: credit immediately, return a sentinel URL ───────
+    if mock or stripe_live.is_mock():
+        await r.hset(
+            _k_topup(topup_id),
+            mapping={
+                "topup_id": topup_id,
+                "brand_id": brand_id,
+                "amount": body.amount_cents,
+                "currency": wallet_currency,
+                "payment_method": "stripe_mock",
+                "status": "confirmed",
+                "created_at": now,
+                "confirmed_at": now,
+                "mock": "1",
+            },
+        )
+        await r.incrby(_k_balance(brand_id), body.amount_cents)
+        await r.set(_k_last_topup(brand_id), now)
+        await r.rpush(_k_tx_list(brand_id), topup_id)
+        await r.ltrim(_k_tx_list(brand_id), -TX_LIST_MAX, -1)
+        session = stripe_live.create_topup_checkout_session(
+            brand_id,
+            body.amount_cents,
+            body.success_url,
+            body.cancel_url,
+            currency=wallet_currency,
+            reference_id=topup_id,
+        )
+        return TopupCheckoutResponse(
+            topup_id=topup_id,
+            checkout_url=session["checkout_url"],
+            session_id=session["session_id"],
+            status="confirmed",
+            amount_cents=body.amount_cents,
+            currency=wallet_currency,
+            mode="mock",
+        )
+
+    # ── Live / test mode: create Checkout, wait for webhook ─────────────
+    try:
+        session = stripe_live.create_topup_checkout_session(
+            brand_id,
+            body.amount_cents,
+            body.success_url,
+            body.cancel_url,
+            currency=wallet_currency,
+            reference_id=topup_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — surface to the API as 502
+        logger.exception("topup checkout create failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "stripe_checkout_failed", "hint": str(exc)[:200]},
+        ) from exc
+
+    await r.hset(
+        _k_topup(topup_id),
+        mapping={
+            "topup_id": topup_id,
+            "brand_id": brand_id,
+            "amount": body.amount_cents,
+            "currency": wallet_currency,
+            "payment_method": "stripe",
+            "status": "pending",
+            "created_at": now,
+            "confirmed_at": "",
+            "stripe_session_id": session["session_id"],
+        },
+    )
+    # Index session→topup so webhook handlers can resolve the topup.
+    await r.set(
+        f"stripe_session:{session['session_id']}:topup_id",
+        topup_id,
+        ex=7 * 86400,
+    )
+
+    return TopupCheckoutResponse(
+        topup_id=topup_id,
+        checkout_url=session["checkout_url"],
+        session_id=session["session_id"],
+        status="pending",
+        amount_cents=body.amount_cents,
+        currency=wallet_currency,
+        mode=session.get("mode") or stripe_live.get_mode(),
+    )
+
