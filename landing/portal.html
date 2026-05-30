@@ -55,84 +55,114 @@ input,select,textarea,button{font-family:var(--font);font-size:14px}
 .page{display:none;min-height:100vh}
 .page.active{display:block}
 
-/* ── Login Page ─────────────────────────────────────────────────────── */
+/* ── Login Page (light enterprise theme) ────────────────────────────── */
 #login-page{
   min-height:100vh;padding:24px;
-  background:var(--dark);
+  background:#F8FAFC;
+  color:#0F172A;
   position:relative;overflow:hidden;
 }
 #login-page.active{display:flex;align-items:center;justify-content:center;}
 #login-page::before{
   content:'';position:absolute;
-  width:500px;height:500px;
-  background:radial-gradient(circle,rgba(0,252,0,.06) 0%,transparent 70%);
-  top:-150px;right:-150px;pointer-events:none;
+  width:600px;height:600px;
+  background:radial-gradient(circle,rgba(0,179,65,.06) 0%,transparent 70%);
+  top:-200px;right:-200px;pointer-events:none;
 }
 .login-card{
-  width:100%;max-width:400px;
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius);padding:40px 32px;
+  width:100%;max-width:420px;
+  background:#FFFFFF;border:1px solid #E2E8F0;
+  border-radius:16px;padding:40px 32px;
+  box-shadow:0 10px 30px rgba(15,23,42,.06);
   position:relative;z-index:1;
 }
 .login-logo{
-  text-align:center;margin-bottom:32px;
+  text-align:center;margin-bottom:28px;
 }
 .login-logo h1{
-  font-size:36px;font-weight:800;letter-spacing:-1px;
+  font-size:34px;font-weight:800;letter-spacing:-1px;color:#0F172A;
 }
-.login-logo h1 span{color:var(--green)}
+.login-logo h1 span{color:#00B341}
 .login-logo p{
-  color:var(--text-dim);font-size:14px;margin-top:4px;
+  color:#64748B;font-size:14px;margin-top:6px;font-weight:500;
 }
-.form-group{margin-bottom:20px}
+.form-group{margin-bottom:16px}
 .form-group label{
   display:block;font-size:13px;font-weight:500;
-  color:var(--text-dim);margin-bottom:6px;
+  color:#475569;margin-bottom:6px;
 }
 .form-input{
-  width:100%;padding:12px 16px;
-  background:var(--dark);border:1px solid var(--border-light);
-  border-radius:var(--radius-sm);color:var(--text);
+  width:100%;padding:12px 14px;
+  background:#FFFFFF;border:1px solid #CBD5E1;
+  border-radius:10px;color:#0F172A;
   font-size:15px;outline:none;
-  transition:border-color .2s;
+  transition:border-color .2s, box-shadow .2s;
 }
-.form-input:focus{border-color:var(--green)}
-.form-input::placeholder{color:var(--text-muted)}
+.form-input:focus{border-color:#00B341;box-shadow:0 0 0 3px rgba(0,179,65,.12)}
+.form-input::placeholder{color:#94A3B8}
 .btn-primary{
-  width:100%;padding:14px 24px;
-  background:var(--green);color:var(--dark);
-  border:none;border-radius:100px;
-  font-size:15px;font-weight:700;cursor:pointer;
-  transition:var(--transition);
+  width:100%;padding:13px 24px;
+  background:#00B341;color:#FFFFFF;
+  border:none;border-radius:10px;
+  font-size:15px;font-weight:600;cursor:pointer;
+  transition:all .15s ease;
 }
-.btn-primary:hover{transform:scale(1.02);box-shadow:0 0 24px rgba(0,252,0,.25)}
-.btn-primary:active{transform:scale(.98)}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary:hover{background:#009638}
+.btn-primary:active{transform:translateY(1px)}
+.btn-primary:disabled{opacity:.55;cursor:not-allowed}
 .login-toggle{
-  margin-top:20px;text-align:center;font-size:13px;color:var(--text-dim);
+  margin-top:18px;text-align:center;font-size:13px;color:#64748B;
 }
 .login-toggle a{
-  color:var(--green);font-weight:600;cursor:pointer;
+  color:#00B341;font-weight:600;cursor:pointer;
   transition:opacity .2s;
 }
 .login-toggle a:hover{opacity:.8}
 .login-form-section{transition:opacity .25s ease,max-height .3s ease;overflow:hidden}
 .login-form-section.hidden{opacity:0;max-height:0;pointer-events:none;margin:0;padding:0}
-.login-form-section.visible{opacity:1;max-height:600px}
+.login-form-section.visible{opacity:1;max-height:900px}
+.login-forgot{
+  display:block;text-align:right;font-size:12px;color:#00B341;
+  margin-top:-8px;margin-bottom:14px;font-weight:600;cursor:pointer;
+}
+.login-forgot:hover{text-decoration:underline}
+.login-divider{
+  display:flex;align-items:center;gap:10px;margin:20px 0;
+  color:#94A3B8;font-size:12px;font-weight:500;
+}
+.login-divider::before,.login-divider::after{
+  content:'';flex:1;height:1px;background:#E2E8F0;
+}
+.sso-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.sso-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px;background:#FFFFFF;border:1px solid #CBD5E1;
+  border-radius:10px;font-size:13px;font-weight:500;color:#334155;
+  cursor:pointer;transition:all .15s ease;
+}
+.sso-btn:hover{background:#F8FAFC;border-color:#94A3B8}
+.sso-btn svg{width:16px;height:16px}
+.otp-row{display:flex;gap:8px;margin-bottom:8px}
+.otp-row .form-input{flex:1}
+.otp-row .otp-send{
+  padding:0 14px;background:#F1F5F9;color:#0F172A;border:1px solid #CBD5E1;
+  border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.otp-row .otp-send:hover{background:#E2E8F0}
 .share-url-box{
   padding:14px 18px;margin:12px 0;
-  background:var(--dark);border:2px solid var(--green-border);
-  border-radius:var(--radius-sm);
+  background:#F8FAFC;border:2px solid rgba(0,179,65,.3);
+  border-radius:10px;
   font-family:monospace;font-size:14px;
-  color:var(--green);word-break:break-all;
-  cursor:pointer;transition:var(--transition);
+  color:#00B341;word-break:break-all;
+  cursor:pointer;transition:all .15s ease;
   text-align:center;
 }
-.share-url-box:hover{border-color:var(--green);background:var(--green-bg)}
+.share-url-box:hover{border-color:#00B341;background:#E6F7EE}
 .login-error{
   margin-top:12px;padding:10px 14px;
-  background:var(--danger-bg);border:1px solid rgba(255,68,68,.2);
-  border-radius:var(--radius-xs);color:var(--danger);
+  background:#FEF2F2;border:1px solid #FECACA;
+  border-radius:6px;color:#B91C1C;
   font-size:13px;display:none;
 }
 
@@ -1909,23 +1939,53 @@ textarea.form-input{
   <div class="login-card">
     <div class="login-logo">
       <h1>Ki<span>X</span></h1>
-      <p>Brand Portal / 品牌管理后台</p>
+      <p data-i18n="portal.login.tagline">Ads Manager · Sign in to your merchant account</p>
     </div>
+
+    <!-- SSO row -->
+    <div class="sso-row" id="sso-row">
+      <button type="button" class="sso-btn" onclick="ssoSignIn('google')" title="Continue with Google">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11 11 0 001 12c0 1.77.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+        Google
+      </button>
+      <button type="button" class="sso-btn" onclick="ssoSignIn('microsoft')" title="Continue with Microsoft">
+        <svg viewBox="0 0 24 24"><path fill="#F25022" d="M2 2h9.5v9.5H2z"/><path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00A4EF" d="M2 12.5h9.5V22H2z"/><path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z"/></svg>
+        Microsoft
+      </button>
+      <button type="button" class="sso-btn" onclick="ssoSignIn('apple')" title="Continue with Apple">
+        <svg viewBox="0 0 24 24" fill="#0F172A"><path d="M17.05 12.04c-.02-2.4 1.96-3.55 2.05-3.61-1.12-1.64-2.86-1.86-3.48-1.89-1.48-.15-2.89.87-3.64.87-.76 0-1.92-.85-3.16-.83-1.62.02-3.13.95-3.96 2.4-1.7 2.94-.43 7.28 1.21 9.66.8 1.16 1.76 2.46 3.01 2.42 1.21-.05 1.67-.78 3.14-.78 1.46 0 1.87.78 3.15.76 1.3-.02 2.12-1.18 2.92-2.35.92-1.35 1.3-2.66 1.32-2.73-.03-.01-2.52-.97-2.55-3.83zM14.74 4.78c.67-.81 1.12-1.94.99-3.06-.96.04-2.13.64-2.82 1.45-.62.72-1.16 1.87-1.02 2.97 1.07.08 2.17-.55 2.85-1.36z"/></svg>
+        Apple
+      </button>
+    </div>
+    <div class="login-divider" data-i18n="portal.login.or">or continue with email</div>
+
     <!-- Login Form -->
     <div id="login-section" class="login-form-section visible">
       <form id="login-form">
         <div class="form-group">
-          <label>Email / 邮箱</label>
-          <input type="email" id="login-email" class="form-input" placeholder="admin@kix.app" autocomplete="email" required>
+          <label data-i18n="portal.login.email">Email</label>
+          <input type="email" id="login-email" class="form-input" placeholder="you@company.com" autocomplete="email" required>
         </div>
         <div class="form-group">
-          <label>Password / 密码</label>
+          <label data-i18n="portal.login.password">Password</label>
           <input type="password" id="login-password" class="form-input" placeholder="Enter password" autocomplete="current-password" required>
         </div>
-        <button type="submit" id="login-btn" class="btn-primary">Login / 登录</button>
+        <a class="login-forgot" onclick="openForgotPassword()" data-i18n="portal.login.forgot">Forgot password?</a>
+
+        <!-- 2FA placeholder UI (shown after password if account has 2FA enabled) -->
+        <div id="login-2fa" class="form-group" style="display:none">
+          <label data-i18n="portal.login.otp">Two-factor code</label>
+          <div class="otp-row">
+            <input type="text" id="login-otp" class="form-input" placeholder="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+            <button type="button" class="otp-send" onclick="sendOtp()" data-i18n="portal.login.sendOtp">Send code</button>
+          </div>
+          <small style="color:#64748B;font-size:11px;display:block;margin-top:4px" data-i18n="portal.login.otpHelp">We'll send a code to your registered phone or authenticator app.</small>
+        </div>
+
+        <button type="submit" id="login-btn" class="btn-primary" data-i18n="portal.login.signIn">Sign in</button>
         <div id="login-error" class="login-error"></div>
         <div class="login-toggle">
-          Don't have an account? <a onclick="toggleAuthMode('register')">Register</a>
+          <span data-i18n="portal.login.noAccount">New to KiX?</span> <a onclick="toggleAuthMode('register')" data-i18n="portal.login.signUpMerchant">Sign up as merchant</a>
         </div>
       </form>
     </div>
@@ -1934,30 +1994,51 @@ textarea.form-input{
     <div id="register-section" class="login-form-section hidden">
       <form id="register-form">
         <div class="form-group">
-          <label>Email / 邮箱</label>
+          <label data-i18n="portal.login.email">Email</label>
           <input type="email" id="reg-email" class="form-input" placeholder="you@company.com" autocomplete="email" required>
         </div>
         <div class="form-group">
-          <label>Password / 密码</label>
-          <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" autocomplete="new-password" minlength="6" required>
+          <label data-i18n="portal.login.password">Password</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="Min 8 characters" autocomplete="new-password" minlength="8" required>
         </div>
         <div class="form-group">
-          <label>Brand / Cafe Name / 品牌名称</label>
-          <input type="text" id="reg-brand-name" class="form-input" placeholder="e.g. Bean Brothers" required>
+          <label data-i18n="portal.register.brandName">Brand / business name</label>
+          <input type="text" id="reg-brand-name" class="form-input" placeholder="e.g. Toast Box · Tampines" required>
         </div>
         <div class="form-group">
-          <label>Brand Color / 品牌主色 (optional)</label>
-          <input type="color" id="reg-brand-color" class="form-input" value="#1a73e8" style="height:44px;padding:4px">
+          <label data-i18n="portal.register.country">Country / billing currency</label>
+          <select id="reg-country" class="form-input">
+            <option value="SG" selected>Singapore (SGD · S$)</option>
+            <option value="MY">Malaysia (MYR · RM)</option>
+            <option value="ID">Indonesia (IDR · Rp)</option>
+            <option value="TH">Thailand (THB · ฿)</option>
+            <option value="HK">Hong Kong (HKD · HK$)</option>
+          </select>
         </div>
-        <button type="submit" id="register-btn" class="btn-primary">Register / 注册</button>
+        <button type="submit" id="register-btn" class="btn-primary" data-i18n="portal.register.submit">Create merchant account</button>
         <div id="register-error" class="login-error"></div>
         <div class="login-toggle">
-          Already have an account? <a onclick="toggleAuthMode('login')">Login</a>
+          <span data-i18n="portal.register.haveAccount">Already have an account?</span> <a onclick="toggleAuthMode('login')" data-i18n="portal.login.signIn">Sign in</a>
         </div>
       </form>
     </div>
-    <div style="text-align:center;margin-top:20px">
-      <a href="index.html" style="color:var(--text-dim);font-size:12px;text-decoration:none">← 返回 KiX 首页</a>
+
+    <!-- Forgot password (lightweight inline) -->
+    <div id="forgot-section" class="login-form-section hidden">
+      <form id="forgot-form" onsubmit="submitForgotPassword(event)">
+        <div class="form-group">
+          <label data-i18n="portal.login.email">Email</label>
+          <input type="email" id="forgot-email" class="form-input" placeholder="you@company.com" autocomplete="email" required>
+        </div>
+        <button type="submit" class="btn-primary" data-i18n="portal.login.sendReset">Send reset link</button>
+        <div class="login-toggle">
+          <a onclick="toggleAuthMode('login')" data-i18n="portal.login.backToSignIn">← Back to sign in</a>
+        </div>
+      </form>
+    </div>
+
+    <div style="text-align:center;margin-top:18px">
+      <a href="index.html" style="color:#94A3B8;font-size:12px;text-decoration:none" data-i18n="portal.login.backHome">← Back to KiX home</a>
     </div>
   </div>
 </div>
@@ -3885,24 +3966,36 @@ document.getElementById('login-form').addEventListener('submit',async(e)=>{
     err.style.display='block';
   }finally{
     btn.disabled=false;
-    btn.textContent='Login / 登录';
+    btn.textContent=(window.i18next && window.i18next.t && window.i18next.t('portal.login.signIn')) || 'Sign in';
   }
 });
 
 function toggleAuthMode(mode){
   const loginSection=document.getElementById('login-section');
   const registerSection=document.getElementById('register-section');
-  if(mode==='register'){
-    loginSection.classList.remove('visible');
-    loginSection.classList.add('hidden');
-    registerSection.classList.remove('hidden');
-    registerSection.classList.add('visible');
-  }else{
-    registerSection.classList.remove('visible');
-    registerSection.classList.add('hidden');
-    loginSection.classList.remove('hidden');
-    loginSection.classList.add('visible');
-  }
+  const forgotSection=document.getElementById('forgot-section');
+  [loginSection,registerSection,forgotSection].forEach(s=>{
+    if(!s) return;
+    s.classList.remove('visible'); s.classList.add('hidden');
+  });
+  const target=mode==='register'?registerSection:(mode==='forgot'?forgotSection:loginSection);
+  if(target){ target.classList.remove('hidden'); target.classList.add('visible'); }
+}
+function openForgotPassword(){ toggleAuthMode('forgot'); }
+function submitForgotPassword(e){
+  e.preventDefault();
+  const email=(document.getElementById('forgot-email')||{}).value||'';
+  if(window.showToast) showToast('Reset link sent to '+email,'success');
+  else alert('Reset link sent to '+email);
+  toggleAuthMode('login');
+}
+function ssoSignIn(provider){
+  // UI stub — backend wiring lives in portal_api.py /auth/sso/<provider>.
+  if(window.showToast) showToast(provider.charAt(0).toUpperCase()+provider.slice(1)+' sign-in — coming soon','info');
+  else alert(provider+' SSO — coming soon');
+}
+function sendOtp(){
+  if(window.showToast) showToast('OTP sent to your registered phone','success');
 }
 
 document.getElementById('register-form').addEventListener('submit',async(e)=>{
@@ -3921,7 +4014,7 @@ document.getElementById('register-form').addEventListener('submit',async(e)=>{
         email:document.getElementById('reg-email').value.trim(),
         password:document.getElementById('reg-password').value,
         brand_name:document.getElementById('reg-brand-name').value.trim(),
-        brand_color:document.getElementById('reg-brand-color').value.trim(),
+        country:(document.getElementById('reg-country')||{}).value||'SG',
       })
     });
 
@@ -3939,14 +4032,14 @@ document.getElementById('register-form').addEventListener('submit',async(e)=>{
     localStorage.setItem('kix_portal_refresh',data.refresh_token);
     localStorage.setItem('kix_brand_id',data.brand_id);
 
-    showToast('Registration successful / 注册成功');
+    showToast('Account created — welcome to KiX','success');
     showApp();
   }catch(e){
     err.textContent=e.message;
     err.style.display='block';
   }finally{
     btn.disabled=false;
-    btn.textContent='Register / 注册';
+    btn.textContent=(window.i18next && window.i18next.t && window.i18next.t('portal.register.submit')) || 'Create merchant account';
   }
 });
 
