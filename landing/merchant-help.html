@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help Centre — KiX for Merchants</title>
+<meta name="description" content="KiX merchant help centre — FAQs, contact support, schedule a call, status.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#00B341;
+  --brand-hover:#009335;
+  --brand-soft:rgba(0,179,65,.08);
+  --brand-border:rgba(0,179,65,.22);
+  --bg:#FFFFFF;
+  --bg-alt:#F7F8FA;
+  --bg-soft:#EEF2F7;
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+  --text:#0F172A;
+  --text-dim:#475569;
+  --text-muted:#64748B;
+  --warn:#B45309;
+  --info:#1D4ED8;
+  --info-soft:#EFF6FF;
+  --danger:#B42318;
+  --radius:8px;
+  --radius-sm:6px;
+  --radius-lg:12px;
+  --max:1100px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --shadow:0 4px 16px rgba(15,23,42,.06);
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--font);background:var(--bg-alt);color:var(--text);line-height:1.55;font-size:15px;min-height:100vh}
+.container{max-width:var(--max);margin:0 auto;padding:0 24px}
+a{color:var(--brand);text-decoration:none}
+a:hover{color:var(--brand-hover);text-decoration:underline}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:15px}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--radius-sm)}
+
+header{background:#fff;border-bottom:1px solid var(--border)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.logo span{color:var(--brand)}
+.nav-links{display:flex;gap:18px;font-size:14px;font-weight:500}
+.nav-links a{color:var(--text-dim)}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+
+.hero{background:linear-gradient(180deg,#fff 0%,var(--bg-alt) 100%);padding:48px 0 28px;border-bottom:1px solid var(--border)}
+.hero h1{font-size:34px;font-weight:800;letter-spacing:-.7px;margin-bottom:8px}
+.hero p{font-size:16px;color:var(--text-dim);max-width:640px;margin-bottom:22px}
+
+.search-wrap{position:relative;max-width:640px}
+.search-wrap input{
+  width:100%;padding:14px 18px 14px 44px;border-radius:var(--radius-lg);
+  border:1px solid var(--border-strong);background:#fff;font-size:16px;font-weight:500;
+  box-shadow:var(--shadow);
+}
+.search-wrap input:focus{border-color:var(--brand)}
+.search-wrap::before{
+  content:'';position:absolute;left:16px;top:50%;transform:translateY(-50%);
+  width:18px;height:18px;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat center/contain;
+}
+.search-status{font-size:13px;color:var(--text-muted);margin-top:8px;min-height:18px}
+
+main{padding:36px 0 80px}
+
+.cta-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:32px}
+@media(max-width:760px){.cta-row{grid-template-columns:1fr}}
+.cta{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s}
+.cta:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(15,23,42,.10)}
+.cta h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.cta p{font-size:13px;color:var(--text-dim);margin-bottom:12px}
+.cta .btn{width:100%}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border-strong);background:#fff;color:var(--text);transition:background .12s,color .12s,border-color .12s;min-height:40px}
+.btn:hover{background:var(--bg-alt);text-decoration:none}
+.btn-primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn-primary:hover{background:var(--brand-hover);color:#fff}
+.btn-secondary{background:var(--info-soft);color:var(--info);border-color:#BFDBFE}
+
+h2{font-size:18px;font-weight:700;margin:0 0 12px}
+
+.cats{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+@media(max-width:780px){.cats{grid-template-columns:1fr}}
+.cat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)}
+.cat-card h3{font-size:15px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.cat-card .cnt{font-size:11px;font-weight:700;color:var(--text-muted);background:var(--bg-soft);padding:2px 8px;border-radius:999px}
+.cat-card ul{list-style:none;margin:0}
+.cat-card li{border-top:1px solid var(--border);padding:8px 0}
+.cat-card li:first-child{border-top:none;padding-top:0}
+.cat-card details summary{cursor:pointer;font-weight:600;font-size:14px;outline:none;list-style:none}
+.cat-card details summary::-webkit-details-marker{display:none}
+.cat-card details[open] summary{color:var(--brand-hover)}
+.cat-card details .ans{margin-top:6px;font-size:13.5px;color:var(--text-dim);line-height:1.55}
+
+.results{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow);margin-bottom:24px;display:none}
+.results.show{display:block}
+.results h2{font-size:15px;margin-bottom:8px}
+.results .r-item{border-top:1px solid var(--border);padding:10px 0}
+.results .r-item:first-of-type{border-top:none}
+.results .r-q{font-weight:600;font-size:14px;margin-bottom:3px}
+.results .r-a{font-size:13.5px;color:var(--text-dim)}
+.results .r-cat{display:inline-block;font-size:10px;font-weight:700;color:var(--text-muted);background:var(--bg-soft);padding:2px 7px;border-radius:999px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+
+.status-strip{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:24px;display:flex;align-items:center;gap:10px;font-size:13.5px;box-shadow:var(--shadow)}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);flex-shrink:0}
+.status-strip a{margin-left:auto;font-weight:600}
+
+.chat-fab{position:fixed;bottom:20px;right:20px;background:var(--brand);color:#fff;width:56px;height:56px;border-radius:50%;box-shadow:0 10px 22px rgba(0,179,65,.32);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;z-index:900;border:none}
+.chat-fab:hover{background:var(--brand-hover)}
+.chat-fab[aria-expanded="true"]+.chat-panel{display:flex}
+.chat-panel{position:fixed;bottom:90px;right:20px;width:300px;max-width:calc(100vw - 40px);background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 18px 40px rgba(15,23,42,.18);padding:14px;display:none;flex-direction:column;gap:8px;z-index:900;font-size:13px}
+.chat-panel h4{font-size:13px;font-weight:700}
+.chat-panel p{color:var(--text-dim)}
+
+dialog{border:none;border-radius:var(--radius-lg);box-shadow:0 18px 50px rgba(15,23,42,.18);padding:0;max-width:560px;width:92%}
+dialog::backdrop{background:rgba(15,23,42,.4)}
+dialog .dh{padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+dialog .db{padding:18px 20px}
+dialog .df{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--bg-alt)}
+dialog label{display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+dialog input,dialog textarea,dialog select{width:100%;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:14px}
+dialog textarea{min-height:120px;resize:vertical}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:12px 18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px;font-weight:500;display:none;z-index:1000}
+.toast.show{display:block;animation:slidein .25s ease-out}
+.toast.err{background:var(--danger)}
+.toast.ok{background:var(--brand)}
+@keyframes slidein{from{transform:translate(-50%,8px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <a class="logo" href="/landing/index.html">Ki<span>X</span></a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/landing/index.html">Home</a>
+      <a href="/landing/alpha.html">Alpha</a>
+      <a href="/landing/merchant-help.html" style="color:var(--text)">Help</a>
+      <a href="https://status.kix.com" target="_blank" rel="noopener">Status</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1>How can we help?</h1>
+    <p>Search the FAQ, contact support, or jump on a call with the alpha founding team — usually within a few hours.</p>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search the help centre…" autocomplete="off"
+             aria-label="Search the help centre">
+    </div>
+    <div class="search-status" id="search-status">40 articles across 7 categories</div>
+  </div>
+</section>
+
+<main>
+  <div class="container">
+
+    <div class="status-strip" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span>All systems operational.</span>
+      <a href="https://status.kix.com" target="_blank" rel="noopener">View status →</a>
+    </div>
+
+    <div class="cta-row">
+      <div class="cta">
+        <h3>Contact support</h3>
+        <p>Open a ticket for anything broken, slow, or confusing. Alpha gets a reply within 4 business hours.</p>
+        <button class="btn btn-primary" id="open-contact">Open ticket</button>
+      </div>
+      <div class="cta">
+        <h3>Schedule a call</h3>
+        <p>Book 20 min with a founder. Two slots reserved daily for alpha merchants.</p>
+        <a class="btn btn-secondary" href="https://cal.com/kix-alpha" target="_blank" rel="noopener">Pick a slot</a>
+      </div>
+      <div class="cta">
+        <h3>Live chat</h3>
+        <p>Quick questions, instant answers (08:00–22:00 SGT).</p>
+        <button class="btn" id="open-chat">Start chat</button>
+      </div>
+    </div>
+
+    <div class="results" id="results" aria-live="polite">
+      <h2 id="results-h">Search results</h2>
+      <div id="results-body"></div>
+    </div>
+
+    <h2>Browse by topic</h2>
+    <div class="cats" id="cats"></div>
+  </div>
+</main>
+
+<button class="chat-fab" id="chat-fab" aria-expanded="false" aria-controls="chat-panel" aria-label="Open chat widget">?</button>
+<div class="chat-panel" id="chat-panel" role="dialog" aria-label="Live chat">
+  <h4>Live chat</h4>
+  <p>Our chat widget arrives next week. In the meantime, open a ticket — we read every reply and respond within 4 business hours.</p>
+  <button class="btn btn-primary" id="chat-open-ticket">Open a ticket</button>
+</div>
+
+<dialog id="contact-dlg" aria-label="Contact support">
+  <div class="dh">Open a support ticket
+    <button class="btn" type="button" id="contact-close" aria-label="Close" style="padding:4px 10px;min-height:30px">✕</button>
+  </div>
+  <form id="contact-form" method="dialog" novalidate>
+    <div class="db">
+      <label for="t-brand">Brand ID</label>
+      <input id="t-brand" type="text" required placeholder="alpha_tea" pattern="[a-z0-9_-]{2,64}">
+      <label for="t-cat">Category</label>
+      <select id="t-cat" required>
+        <option value="getting_started">Getting started</option>
+        <option value="campaigns">Campaigns</option>
+        <option value="wallet_billing">Wallet &amp; billing</option>
+        <option value="reporting">Reporting</option>
+        <option value="account">Account</option>
+        <option value="pixels_integrations">Pixels &amp; integrations</option>
+        <option value="troubleshooting" selected>Troubleshooting</option>
+        <option value="refund">Refund</option>
+        <option value="other">Other</option>
+      </select>
+      <label for="t-prio">Priority</label>
+      <select id="t-prio">
+        <option value="p3">P3 — nice to have</option>
+        <option value="p2" selected>P2 — needs answer</option>
+        <option value="p1">P1 — production blocker</option>
+        <option value="p0">P0 — outage / data loss</option>
+      </select>
+      <label for="t-subject">Subject</label>
+      <input id="t-subject" type="text" required minlength="2" maxlength="240">
+      <label for="t-body">What's happening?</label>
+      <textarea id="t-body" required minlength="2" maxlength="20000" placeholder="Steps to reproduce, screenshots, anything else useful…"></textarea>
+      <label for="t-email">Your email (optional — defaults to brand contact)</label>
+      <input id="t-email" type="email" placeholder="you@yourbrand.com">
+    </div>
+    <div class="df">
+      <button class="btn" type="button" id="contact-cancel">Cancel</button>
+      <button class="btn btn-primary" type="button" id="contact-submit">Submit ticket</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var $ = function(id){ return document.getElementById(id); };
+  var state = { faq: [], byCategory: {} };
+
+  // Friendly category labels — must include every category id used in the FAQ.
+  var CAT_LABELS = {
+    getting_started:     'Getting started',
+    campaigns:           'Campaigns',
+    wallet_billing:      'Wallet &amp; billing',
+    reporting:           'Reporting',
+    account:             'Account',
+    pixels_integrations: 'Pixels &amp; integrations',
+    troubleshooting:     'Troubleshooting'
+  };
+
+  function escapeHtml(s){
+    return (s == null ? '' : String(s))
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function toast(msg, kind){
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.remove('err','ok');
+    if(kind === 'err') t.classList.add('err');
+    if(kind === 'ok')  t.classList.add('ok');
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 2800);
+  }
+
+  function renderCats(){
+    var c = $('cats');
+    var order = Object.keys(CAT_LABELS);
+    c.innerHTML = order.filter(function(k){
+      return (state.byCategory[k] || []).length > 0;
+    }).map(function(k){
+      var items = state.byCategory[k];
+      var inner = items.map(function(f){
+        return '<li><details><summary>' + escapeHtml(f.q) + '</summary>'
+             + '<div class="ans">' + escapeHtml(f.a) + '</div></details></li>';
+      }).join('');
+      return '<div class="cat-card"><h3>' + CAT_LABELS[k] +
+             ' <span class="cnt">' + items.length + '</span></h3><ul>' + inner + '</ul></div>';
+    }).join('');
+  }
+
+  function renderResults(items, query){
+    var box = $('results');
+    var body = $('results-body');
+    if(!query){ box.classList.remove('show'); return; }
+    if(!items.length){
+      body.innerHTML = '<p style="color:var(--text-dim);font-size:14px">No results — try different keywords or '
+                     + '<a href="#" id="r-open-ticket">open a ticket</a>.</p>';
+    } else {
+      body.innerHTML = items.map(function(f){
+        return '<div class="r-item">'
+             + '<div class="r-cat">' + (CAT_LABELS[f.category] || escapeHtml(f.category)) + '</div>'
+             + '<div class="r-q">' + escapeHtml(f.q) + '</div>'
+             + '<div class="r-a">' + escapeHtml(f.a) + '</div>'
+             + '</div>';
+      }).join('');
+    }
+    $('results-h').textContent = items.length + ' result' + (items.length === 1 ? '' : 's') + ' for "' + query + '"';
+    box.classList.add('show');
+    var oa = $('r-open-ticket');
+    if(oa){ oa.addEventListener('click', function(e){ e.preventDefault(); openContact(query); }); }
+  }
+
+  // Load FAQ
+  fetch('/api/v1/support/faq').then(function(r){ return r.json(); }).then(function(d){
+    state.faq = d.items || [];
+    state.byCategory = {};
+    state.faq.forEach(function(f){
+      (state.byCategory[f.category] = state.byCategory[f.category] || []).push(f);
+    });
+    $('search-status').textContent = state.faq.length + ' articles across '
+      + Object.keys(state.byCategory).length + ' categories';
+    renderCats();
+  }).catch(function(){
+    $('search-status').textContent = 'Could not load FAQ — please try again shortly.';
+  });
+
+  // Search (debounced; server side)
+  var t = null;
+  $('search').addEventListener('input', function(){
+    clearTimeout(t);
+    var q = this.value.trim();
+    if(!q){ renderResults([], ''); return; }
+    t = setTimeout(function(){
+      fetch('/api/v1/support/faq/search?q=' + encodeURIComponent(q))
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderResults(d.items || [], q); })
+        .catch(function(){ /* silent — UI stays */ });
+    }, 180);
+  });
+
+  // Allow ?q= deep-link
+  var sp = new URLSearchParams(window.location.search);
+  if(sp.get('q')){
+    $('search').value = sp.get('q');
+    $('search').dispatchEvent(new Event('input'));
+  }
+
+  // Contact dialog
+  var dlg = $('contact-dlg');
+  function openContact(prefillSubject){
+    if(prefillSubject){
+      $('t-subject').value = prefillSubject.length > 120 ? prefillSubject.slice(0,120) : prefillSubject;
+    }
+    // Pre-fill brand from session if there's a value in localStorage
+    try {
+      var bid = localStorage.getItem('kix_brand_id');
+      if(bid && !$('t-brand').value){ $('t-brand').value = bid; }
+    } catch(_){ /* ignore */ }
+    dlg.showModal();
+    setTimeout(function(){ ($('t-brand').value ? $('t-subject') : $('t-brand')).focus(); }, 50);
+  }
+  $('open-contact').addEventListener('click', function(){ openContact(); });
+  $('contact-close').addEventListener('click', function(){ dlg.close(); });
+  $('contact-cancel').addEventListener('click', function(){ dlg.close(); });
+
+  $('contact-submit').addEventListener('click', function(){
+    var brand   = $('t-brand').value.trim();
+    var subject = $('t-subject').value.trim();
+    var body    = $('t-body').value.trim();
+    var cat     = $('t-cat').value;
+    var prio    = $('t-prio').value;
+    var email   = $('t-email').value.trim();
+    if(!brand || brand.length < 2){ toast('Brand ID is required', 'err'); return; }
+    if(!subject || subject.length < 2){ toast('Subject is required', 'err'); return; }
+    if(!body || body.length < 2){ toast('Please describe the issue', 'err'); return; }
+
+    var payload = {
+      brand_id: brand,
+      subject: subject,
+      body: body,
+      category: cat,
+      priority: prio,
+      contact_email: email,
+      current_page: window.location.pathname + window.location.search,
+      recent_actions: [] // wallet/portal would push these — empty from help centre
+    };
+    fetch('/api/v1/support/ticket', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    }).then(function(r){
+      if(!r.ok){ return r.text().then(function(t){ throw new Error(t); }); }
+      return r.json();
+    }).then(function(d){
+      toast('Ticket ' + d.ticket_id + ' submitted', 'ok');
+      try { localStorage.setItem('kix_brand_id', brand); } catch(_){}
+      dlg.close();
+      $('t-subject').value = ''; $('t-body').value = '';
+    }).catch(function(e){
+      toast('Submit failed: ' + e.message, 'err');
+    });
+  });
+
+  // Chat fab
+  var fab = $('chat-fab');
+  fab.addEventListener('click', function(){
+    var open = fab.getAttribute('aria-expanded') === 'true';
+    fab.setAttribute('aria-expanded', open ? 'false' : 'true');
+  });
+  $('open-chat').addEventListener('click', function(){
+    fab.setAttribute('aria-expanded', 'true');
+    fab.scrollIntoView({behavior:'smooth', block:'end'});
+  });
+  $('chat-open-ticket').addEventListener('click', function(){ openContact(); });
+
+})();
+</script>
+
+</body></html>

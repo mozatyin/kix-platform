@@ -857,6 +857,23 @@ and the shim helpers in `app.api_standards`.
         tags=["alpha-program"],
     )
 
+    # ── Customer Support: tickets / refunds / FAQ / announcements ─────
+    # Lazy import side-effect registers the 3 support_* email templates.
+    # Merchant + public routes mount under /api/v1/support; admin routes
+    # live under /api/v1/admin/support so the URL space mirrors the
+    # other admin tooling (email_admin, tenant_admin).
+    from app.routers import support as _support_router
+    app.include_router(
+        _support_router.router,
+        prefix="/api/v1/support",
+        tags=["support"],
+    )
+    app.include_router(
+        _support_router.admin_router,
+        prefix="/api/v1/admin/support",
+        tags=["support-admin"],
+    )
+
     # ── Trinity 3T iteration engine (meta-tooling, admin-only) ────────
     # Institutionalises the manual Trinity Protocol cycle (Industry ×
     # Academic × Reality) as a callable engine. See
