@@ -1066,6 +1066,20 @@ and the shim helpers in `app.api_standards`.
             "wave-f routers skipped: %s", _exc
         )
 
+    # ── Wave F specs 06-10 (each in its own isolated try-block so any
+    # one failure doesn't break the others — independent feature
+    # batches built additively on top of 01-05). ─────────────────────────
+    try:
+        from app.routers import wavef_geofenced_voucher as _wf06
+        app.include_router(
+            _wf06.router,
+            prefix="/api/v1/wavef/geo-voucher",
+            tags=["wavef", "geo-voucher"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning("wavef-06 skipped: %s", _exc)
+
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os
     _landing_dir = _os.path.join(_os.path.dirname(__file__), "..", "landing")
