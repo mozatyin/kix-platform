@@ -2082,6 +2082,25 @@ textarea.form-input{
 }
 </style>
 <!-- KiX i18n infrastructure (Phase 1 — scaffolding; no visible strings replaced yet) -->
+<script>
+  /* Phase 3 RTL pre-flight: set <html dir="rtl"> *before* the runtime loads
+   * so ar-*/he-* renders without an LTR→RTL flicker on first paint.
+   * The full runtime in i18next-runtime.js will re-apply this after the
+   * detection chain settles; this inline shim only owns the first frame. */
+  (function () {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var stored = null;
+      try { stored = localStorage.getItem('kix_locale'); } catch (_) {}
+      var nav = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+      var lang = params.get('lang') || stored || nav || 'en-SG';
+      var primary = (lang.split('-')[0] || '').toLowerCase();
+      var isRtl = primary === 'ar' || primary === 'he' || primary === 'fa' || primary === 'ur';
+      document.documentElement.setAttribute('lang', lang);
+      document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+    } catch (_) { /* defensive — never block portal load */ }
+  })();
+</script>
 <script src="i18n/i18next-runtime.js" defer></script>
 <script src="i18n/locale-switcher.js" defer></script>
 </head>
@@ -2236,9 +2255,9 @@ textarea.form-input{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         <span data-i18n="portal.nav.creative">Creative library</span>
       </div>
-      <div class="ent-nav-item" data-view="analytics" onclick="navigate('analytics')" role="link" tabindex="0" aria-label="Reports">
+      <div class="ent-nav-item" data-view="reports" onclick="navigate('reports')" role="link" tabindex="0" aria-label="Reports">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 6-6"/></svg>
-        <span data-i18n="portal.nav.reports">Reports &amp; Analytics</span>
+        <span data-i18n="portal.nav.reports">Reports</span>
       </div>
       <div class="ent-nav-item" data-view="rules" onclick="navigate('rules')" role="link" tabindex="0" aria-label="Automations">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h6a4 4 0 014 4v6"/></svg>
@@ -2281,10 +2300,10 @@ textarea.form-input{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span data-i18n="portal.nav.settings">Settings &amp; billing</span>
       </div>
-      <a class="ent-nav-item" href="https://docs.kix.app" target="_blank" rel="noopener" role="link" aria-label="Help and docs">
+      <div class="ent-nav-item" data-view="help" onclick="navigate('help')" role="link" tabindex="0" aria-label="Help and docs">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span data-i18n="portal.nav.help">Help &amp; docs</span>
-      </a>
+      </div>
     </nav>
     <div class="ent-sidebar-foot">
       <span id="sidebar-version">v2026.5</span>
@@ -5515,14 +5534,18 @@ function navigate(view){
       vouchers:'Vouchers', redeem:'Redemptions', qr:'QR codes',
       locations:'Locations', settings:'Settings',
       pixels:'Pixels & Tracking',
-      engagement:'Engagement'
+      engagement:'Engagement',
+      help:'Help & Docs',
+      reports:'Reports',
+      welcome:'Welcome'
     };
     const i18nKey='portal.nav.'+({dashboard:'overview', games:'campaigns', ads:'campaigns',
       'campaign-wizard':'wizard', pixels:'pixels',
       primitives:'audiences', recipes:'creative', analytics:'reports',
       rules:'automations', operations:'operations', monitoring:'monitoring',
       vouchers:'vouchers', redeem:'redemptions', qr:'qr', locations:'locations',
-      settings:'settings', engagement:'engagement'}[view]||'overview');
+      settings:'settings', engagement:'engagement',
+      help:'help', reports:'reports', welcome:'welcome'}[view]||'overview');
     const crumb=document.getElementById('ent-breadcrumb-curr');
     if(crumb){
       crumb.textContent=labels[view]||view;
@@ -5562,6 +5585,9 @@ function navigate(view){
     // case'primitives':if(window.PrimitivesAdminView)PrimitivesAdminView.render();break;
     // case'ads':if(window.AdsView)AdsView.render();break;
     case'redeem':onRedeemViewShown();break;
+    case'help':if(window.HelpCenter&&HelpCenter.render)HelpCenter.render();break;
+    case'reports':if(window.ReportsAdvanced&&ReportsAdvanced.render)ReportsAdvanced.render();break;
+    case'welcome':if(window.WelcomeScreen&&WelcomeScreen.render)WelcomeScreen.render();break;
   }
 }
 
@@ -5900,7 +5926,7 @@ function showApp(){
   applyDemoMode();
 
   const hash=location.hash.replace('#','');
-  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem','pixels','campaign-wizard'];
+  const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem','pixels','campaign-wizard','help','reports','welcome'];
   navigate(validViews.includes(hash)?hash:'dashboard');
   // Initial render of enterprise views (mock data)
   if(window.CampaignsView)CampaignsView.render();
@@ -8334,7 +8360,7 @@ async function applyGeneratedAsTutorial() {
       location.hash='#login';
       return;
     }
-    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem','pixels','campaign-wizard'];
+    const validViews=['dashboard','games','vouchers','qr','locations','settings','engagement','recipes','analytics','operations','rules','monitoring','primitives','ads','redeem','pixels','campaign-wizard','help','reports','welcome'];
     if(validViews.includes(hash)&&hash!==state.currentView){
       navigate(hash);
     }

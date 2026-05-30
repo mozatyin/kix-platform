@@ -1,0 +1,391 @@
+/* ============================================================
+ * KiX i18n — RTL Phase 3 P0 OVERRIDES
+ * ------------------------------------------------------------
+ * Loaded ONLY when <html dir="rtl"> (Arabic/Hebrew/Persian/Urdu)
+ * by landing/i18n/i18next-runtime.js → applyHtmlAttrs().
+ *
+ * Strategy: every rule is namespaced under `html[dir="rtl"]` so
+ * this sheet is a no-op for LTR locales. We do NOT rewrite the
+ * source HTML/CSS — Phase 3 hot-patches with high-specificity
+ * overrides; Phase 4 will migrate the source to CSS logical
+ * properties and delete each block once the underlying selector
+ * is no longer authored with directional intent.
+ *
+ * Coverage map (from docs/i18n/rtl-audit-report.csv):
+ *   - 21 P0 + 20 P1 from portal.html
+ *   - 12 P0 from play.html
+ *   - 8 P0 from app/app.css
+ *   - 7 P0 from sdk/kix.js
+ *   - 4 P0 from storefront.html
+ *   - 3 P0 from index.html
+ *
+ * Sibling sheets (already shipped):
+ *   - rtl.css         — top-right anchored utilities
+ *   - rtl-base.css    — page-level patches
+ *   - rtl-overrides.css (this file) — P0 audit fixes
+ * ============================================================ */
+
+/* ─── 1. Float left/right — flip to flexbox-equivalent ───────────
+ * All `float: left` in LTR codepaths should anchor to the start
+ * edge; in RTL that means swapping to `float: right`. Pages that
+ * already use flex containers ignore this without harm. */
+html[dir="rtl"] .float-left,
+html[dir="rtl"] [class*="-float-left"],
+html[dir="rtl"] .pull-left {
+  float: right !important;
+}
+html[dir="rtl"] .float-right,
+html[dir="rtl"] [class*="-float-right"],
+html[dir="rtl"] .pull-right {
+  float: left !important;
+}
+
+/* ─── 2. Sidebar — anchored to *start* edge (right in RTL) ─────── */
+html[dir="rtl"] .sidebar,
+html[dir="rtl"] aside.sidebar,
+html[dir="rtl"] #sidebar,
+html[dir="rtl"] .app-sidebar,
+html[dir="rtl"] [data-role="sidebar"] {
+  left: auto !important;
+  right: 0 !important;
+  /* Mirror the inner padding so content still hugs the start edge */
+  padding-left: var(--sidebar-pad-end, 12px);
+  padding-right: var(--sidebar-pad-start, 16px);
+  border-left: 1px solid var(--border, rgba(0,0,0,.08));
+  border-right: none;
+}
+
+/* Sidebar collapse/expand toggles often live on the inner edge */
+html[dir="rtl"] .sidebar-toggle,
+html[dir="rtl"] [data-role="sidebar-toggle"] {
+  left: 8px;
+  right: auto;
+  transform: scaleX(-1); /* mirror the chevron */
+}
+
+/* Main content shifts right to make room for the sidebar on the
+ * start edge; in RTL the sidebar moves to the right edge, so the
+ * main column needs a right offset instead. */
+html[dir="rtl"] .with-sidebar,
+html[dir="rtl"] .main-with-sidebar,
+html[dir="rtl"] .layout-shell > main {
+  margin-left: 0 !important;
+  margin-right: var(--sidebar-width, 240px);
+}
+
+/* ─── 3. Top bar — logo on right, account/notifications on left ── */
+html[dir="rtl"] .topbar,
+html[dir="rtl"] .app-header,
+html[dir="rtl"] header.topbar {
+  flex-direction: row-reverse;
+}
+html[dir="rtl"] .topbar .logo,
+html[dir="rtl"] .topbar [data-role="brand"],
+html[dir="rtl"] .topbar [data-role="logo"] {
+  margin-right: 0;
+  margin-left: auto;
+}
+html[dir="rtl"] .topbar .actions,
+html[dir="rtl"] .topbar [data-role="account"],
+html[dir="rtl"] .topbar [data-role="notifications"] {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* ─── 4. Margins / paddings (audit P1) ─────────────────────────── */
+/* Use :dir() when supported — falls through to attribute selector
+ * otherwise. Both selectors target the same nodes. */
+html[dir="rtl"] [class*="ml-"] { margin-left: 0; }
+html[dir="rtl"] .ml-1 { margin-right: 0.25rem; }
+html[dir="rtl"] .ml-2 { margin-right: 0.5rem; }
+html[dir="rtl"] .ml-3 { margin-right: 0.75rem; }
+html[dir="rtl"] .ml-4 { margin-right: 1rem; }
+html[dir="rtl"] .ml-auto { margin-right: auto; margin-left: 0 !important; }
+
+html[dir="rtl"] [class*="mr-"] { margin-right: 0; }
+html[dir="rtl"] .mr-1 { margin-left: 0.25rem; }
+html[dir="rtl"] .mr-2 { margin-left: 0.5rem; }
+html[dir="rtl"] .mr-3 { margin-left: 0.75rem; }
+html[dir="rtl"] .mr-4 { margin-left: 1rem; }
+html[dir="rtl"] .mr-auto { margin-left: auto; margin-right: 0 !important; }
+
+html[dir="rtl"] [class*="pl-"] { padding-left: 0; }
+html[dir="rtl"] .pl-1 { padding-right: 0.25rem; }
+html[dir="rtl"] .pl-2 { padding-right: 0.5rem; }
+html[dir="rtl"] .pl-3 { padding-right: 0.75rem; }
+html[dir="rtl"] .pl-4 { padding-right: 1rem; }
+
+html[dir="rtl"] [class*="pr-"] { padding-right: 0; }
+html[dir="rtl"] .pr-1 { padding-left: 0.25rem; }
+html[dir="rtl"] .pr-2 { padding-left: 0.5rem; }
+html[dir="rtl"] .pr-3 { padding-left: 0.75rem; }
+html[dir="rtl"] .pr-4 { padding-left: 1rem; }
+
+/* :dir() variant for browsers that support it (Safari 16.4+, FF 121+,
+ * Chrome 120+). Identical effect, future-proof selector. */
+:dir(rtl) .ml-1, :dir(rtl) .ml-2, :dir(rtl) .ml-3, :dir(rtl) .ml-4 {
+  margin-left: 0;
+}
+:dir(rtl) .mr-1, :dir(rtl) .mr-2, :dir(rtl) .mr-3, :dir(rtl) .mr-4 {
+  margin-right: 0;
+}
+
+/* ─── 5. Border directional swaps ──────────────────────────────── */
+html[dir="rtl"] .border-left,
+html[dir="rtl"] [class*="-border-left"] {
+  border-left: none !important;
+  border-right: 1px solid var(--border, rgba(0,0,0,.12));
+}
+html[dir="rtl"] .border-right,
+html[dir="rtl"] [class*="-border-right"] {
+  border-right: none !important;
+  border-left: 1px solid var(--border, rgba(0,0,0,.12));
+}
+
+/* ─── 6. Form labels — align to end (right) in RTL ─────────────── */
+html[dir="rtl"] label,
+html[dir="rtl"] .form-label,
+html[dir="rtl"] .input-label,
+html[dir="rtl"] form > div > label {
+  text-align: right;
+  display: block;
+}
+
+/* Form field hint/help text mirrors label alignment */
+html[dir="rtl"] .field-hint,
+html[dir="rtl"] .help-text,
+html[dir="rtl"] small.form-hint {
+  text-align: right;
+}
+
+/* Inputs whose contents should remain LTR (email/url/tel/number) */
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="number"] {
+  direction: ltr;
+  text-align: right; /* visually trails toward the start edge */
+  unicode-bidi: isolate;
+}
+
+/* ─── 7. Tables — numeric columns stay LTR ─────────────────────── *
+ * Wrap user-content cells with <bdi> in markup; numeric columns
+ * use [data-type="number"] to keep digits LTR even when surrounded
+ * by RTL UI chrome. */
+html[dir="rtl"] table {
+  /* Header row reads right-to-left, but the column ORDER stays the
+   * same (we don't want to mirror analytics tables). */
+}
+html[dir="rtl"] th, html[dir="rtl"] td {
+  text-align: right;
+}
+html[dir="rtl"] th[data-type="number"],
+html[dir="rtl"] td[data-type="number"],
+html[dir="rtl"] th.num, html[dir="rtl"] td.num {
+  text-align: left;
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+/* <bdi> isolates user-supplied content from surrounding bidi so
+ * mixed-script names render predictably. No layout fix needed —
+ * just ensure inline-block so isolation works in legacy browsers. */
+html[dir="rtl"] bdi {
+  unicode-bidi: isolate;
+  display: inline;
+}
+
+/* ─── 8. Charts — keep data axes LTR, only mirror chrome ───────── *
+ * Recharts/ApexCharts/echarts all render numeric axes that MUST
+ * read LTR (chronological / monotonic). We mirror the surrounding
+ * card chrome only. */
+html[dir="rtl"] .chart-card,
+html[dir="rtl"] .recharts-wrapper,
+html[dir="rtl"] [data-chart] {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+html[dir="rtl"] .chart-card > .chart-header,
+html[dir="rtl"] .chart-card > .chart-title,
+html[dir="rtl"] .chart-card > .chart-legend {
+  direction: rtl;
+  text-align: right;
+}
+
+/* ─── 9. Arrow icons — mirror SVG arrows, NOT brand glyphs ─────── *
+ * Anything explicitly marked `data-i18n-mirror="false"` is opt-OUT
+ * (logos, country flags, brand glyphs). Default behaviour is to
+ * mirror arrow-like icons. */
+html[dir="rtl"] [data-icon="arrow"],
+html[dir="rtl"] [data-icon="chevron"],
+html[dir="rtl"] [data-icon="caret"],
+html[dir="rtl"] .icon-arrow-right,
+html[dir="rtl"] .icon-arrow-left,
+html[dir="rtl"] .icon-chevron-right,
+html[dir="rtl"] .icon-chevron-left,
+html[dir="rtl"] .icon-back,
+html[dir="rtl"] .icon-forward,
+html[dir="rtl"] svg[data-mirror],
+html[dir="rtl"] .next-arrow,
+html[dir="rtl"] .prev-arrow {
+  transform: scaleX(-1);
+}
+html[dir="rtl"] [data-i18n-mirror="false"],
+html[dir="rtl"] .no-mirror,
+html[dir="rtl"] .logo,
+html[dir="rtl"] [data-role="logo"],
+html[dir="rtl"] .country-flag {
+  transform: none !important;
+}
+
+/* ─── 10. Position-fixed chrome (audit P0 — portal.html toasts) ── */
+/* Toast banners that fly in from the right edge in LTR should fly
+ * in from the left edge in RTL. */
+html[dir="rtl"] .toast-container,
+html[dir="rtl"] .notifications-stack,
+html[dir="rtl"] [data-role="toast-stack"] {
+  right: auto;
+  left: 16px;
+}
+html[dir="rtl"] .toast.toast-enter,
+html[dir="rtl"] .toast-enter-active {
+  transform: translateX(-120%);
+}
+html[dir="rtl"] .toast.toast-enter-done {
+  transform: translateX(0);
+}
+
+/* Floating action button — anchor to start edge */
+html[dir="rtl"] .fab,
+html[dir="rtl"] .floating-action,
+html[dir="rtl"] [data-role="fab"] {
+  right: auto;
+  left: 20px;
+}
+
+/* ─── 11. Tabs / pagination — mirror reading order ─────────────── */
+html[dir="rtl"] .tabs,
+html[dir="rtl"] .tab-list,
+html[dir="rtl"] [role="tablist"],
+html[dir="rtl"] .pagination,
+html[dir="rtl"] .pager {
+  flex-direction: row-reverse;
+}
+/* Active tab indicator — slides under the active tab. Mirror its
+ * transform origin so the slide animation feels natural. */
+html[dir="rtl"] .tab-indicator,
+html[dir="rtl"] [data-role="tab-indicator"] {
+  transform-origin: right;
+}
+
+/* ─── 12. Dropdowns / menus — open toward the start edge ───────── */
+html[dir="rtl"] .dropdown,
+html[dir="rtl"] .menu,
+html[dir="rtl"] [role="menu"] {
+  /* When the trigger is on the end edge, the menu should drop
+   * down-and-toward-start. */
+}
+html[dir="rtl"] .dropdown-menu,
+html[dir="rtl"] [role="menu"][data-position="end"] {
+  left: 0 !important;
+  right: auto !important;
+}
+html[dir="rtl"] .dropdown-menu[data-position="start"],
+html[dir="rtl"] [role="menu"][data-position="start"] {
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* ─── 13. Card / panel padding mirror (audit P1) ───────────────── */
+html[dir="rtl"] .card,
+html[dir="rtl"] .panel,
+html[dir="rtl"] .modal-body {
+  padding-inline-start: var(--card-pad-start, 16px);
+  padding-inline-end:   var(--card-pad-end, 16px);
+}
+
+/* Modal close button — flip to start edge (left in RTL) */
+html[dir="rtl"] .modal-close,
+html[dir="rtl"] [data-role="close"],
+html[dir="rtl"] button[aria-label="Close"] {
+  right: auto !important;
+  left: 16px !important;
+}
+
+/* ─── 14. Currency display — preserve numeric LTR ──────────────── *
+ * Markup convention: <span class="currency"><bdi>123.45</bdi> AED</span>
+ * The wrapper stays RTL (so the symbol/code reads right), but the
+ * numeric `<bdi>` block stays LTR. */
+html[dir="rtl"] .currency,
+html[dir="rtl"] .price,
+html[dir="rtl"] [data-format="currency"] {
+  unicode-bidi: plaintext;
+}
+html[dir="rtl"] .currency > bdi,
+html[dir="rtl"] .price > bdi {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── 15. Dates — LTR with surrounding RTL chrome ──────────────── */
+html[dir="rtl"] time,
+html[dir="rtl"] .date,
+html[dir="rtl"] [data-format="date"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ─── 16. JS-positioned widgets (sdk/kix.js audit) ─────────────── *
+ * The SDK sets `style.left` / `style.right` inline. Until Phase 4
+ * migrates that to class toggling, override with !important. */
+html[dir="rtl"] .kix-widget[style*="right:"],
+html[dir="rtl"] .kix-widget[style*="left:"] {
+  /* Force flex anchoring so the inline style is ignored. */
+  inset-inline-end: 14px !important;
+  inset-inline-start: auto !important;
+}
+
+/* ─── 17. Step indicator / breadcrumb — mirror direction ───────── */
+html[dir="rtl"] .breadcrumb,
+html[dir="rtl"] .breadcrumbs,
+html[dir="rtl"] .step-indicator,
+html[dir="rtl"] .stepper {
+  flex-direction: row-reverse;
+}
+html[dir="rtl"] .breadcrumb > * + ::before,
+html[dir="rtl"] .breadcrumbs > * + ::before {
+  content: " ‹ ";
+}
+
+/* ─── 18. Scrollbar gutter — stable in RTL too ─────────────────── */
+html[dir="rtl"] body {
+  scrollbar-gutter: stable;
+}
+
+/* ─── 19. Box-shadow (directional) ─────────────────────────────── */
+html[dir="rtl"] .shadow-end {
+  box-shadow: -8px 0 16px rgba(0, 0, 0, 0.18);
+}
+html[dir="rtl"] .shadow-start {
+  box-shadow: 8px 0 16px rgba(0, 0, 0, 0.18);
+}
+
+/* ─── 20. Code / pre / monospace — stay LTR ────────────────────── */
+html[dir="rtl"] code,
+html[dir="rtl"] pre,
+html[dir="rtl"] kbd,
+html[dir="rtl"] samp,
+html[dir="rtl"] tt,
+html[dir="rtl"] .mono,
+html[dir="rtl"] .font-mono {
+  direction: ltr;
+  text-align: start;
+  unicode-bidi: isolate;
+}
+
+/* ─── End-of-file marker ───────────────────────────────────────── *
+ * Phase 4 migration deletes blocks from above as the source HTML
+ * adopts CSS logical properties. Each block is independent — safe
+ * to delete in isolation. Track progress in
+ * docs/i18n/rtl-readiness-audit.md §3.2. */

@@ -12,6 +12,15 @@
     'zh-Hans-SG': { native: '简体中文 (新加坡)',  short: '中-SG' },
     'en-US':      { native: 'English (US)',     short: 'EN-US' },
     'zh-Hans-CN': { native: '简体中文 (中国)',    short: '中-CN' },
+    // Phase 2 SEA
+    'id-ID':      { native: 'Bahasa Indonesia',  short: 'ID' },
+    'ms-MY':      { native: 'Bahasa Melayu',     short: 'MS' },
+    'th-TH':      { native: 'ไทย',               short: 'TH' },
+    'vi-VN':      { native: 'Tiếng Việt',        short: 'VI' },
+    // Phase 3 RTL launch
+    'ar-EG':      { native: 'العربية (مصر)',       short: 'AR-EG' },
+    'ar-SA':      { native: 'العربية (السعودية)',  short: 'AR-SA' },
+    'he-IL':      { native: 'עברית',              short: 'HE' },
   };
 
   const STYLE = `

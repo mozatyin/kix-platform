@@ -107,6 +107,9 @@
       if (primary === 'ms') return 'ms-MY';
       if (primary === 'th') return 'th-TH';
       if (primary === 'vi') return 'vi-VN';
+      // Phase 3 RTL: route bare ar/he to the regional default.
+      if (primary === 'ar') return 'ar-EG';
+      if (primary === 'he') return 'he-IL';
     }
 
     // 4) default

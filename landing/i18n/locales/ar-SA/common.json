@@ -1,0 +1,22 @@
+{
+  "login.cta": "[ar-SA] Login",
+  "logout.cta": "[ar-SA] Log out",
+  "welcome.message": "[ar-SA] Welcome, {name}!",
+  "messages.count": "[ar-SA] {count, plural, =0 {No messages} one {1 message} other {# messages}}",
+  "loading": "[ar-SA] Loading…",
+  "common.cta.cancel": "[ar-SA] Cancel",
+  "common.cta.save": "[ar-SA] Save",
+  "common.cta.confirm": "[ar-SA] Confirm",
+  "common.cta.back": "[ar-SA] Back",
+  "common.cta.next": "[ar-SA] Next",
+  "landing.nav.problem": "[ar-SA] Problem",
+  "landing.nav.solution": "[ar-SA] Solution",
+  "landing.nav.how": "[ar-SA] How",
+  "landing.nav.pricing": "[ar-SA] Pricing",
+  "landing.nav.get_started": "[ar-SA] Get started",
+  "landing.hero.badge": "[ar-SA] Gamified Acquisition Platform",
+  "landing.hero.title": "[ar-SA] KiX = Gamified <em>TikTok Ads</em>",
+  "landing.hero.sub": "[ar-SA] All gamification features <strong style=\"color:var(--green)\">FREE</strong>. Only pay when we deliver a new user.",
+  "landing.hero.cta_primary": "[ar-SA] Get started →",
+  "landing.hero.cta_secondary": "[ar-SA] How it works"
+}

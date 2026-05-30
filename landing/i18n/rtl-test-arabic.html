@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ar-EG" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX RTL QA — Arabic / Hebrew smoke test</title>
+<link rel="stylesheet" href="rtl.css">
+<link rel="stylesheet" href="rtl-base.css">
+<link rel="stylesheet" href="rtl-overrides.css">
+<style>
+  :root {
+    --bg: #fafafa;
+    --fg: #111;
+    --border: #d9d9d9;
+    --green: #00cc00;
+    --accent: #0066cc;
+    --card-pad-start: 16px;
+    --card-pad-end: 16px;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, 'Noto Naskh Arabic', 'Noto Sans Hebrew', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 24px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  header.qa-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #111;
+    color: #fff;
+    padding: 12px 16px;
+    margin: -24px -24px 24px -24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  header.qa-toolbar h1 {
+    margin: 0;
+    font-size: 16px;
+    flex: 1;
+  }
+  header.qa-toolbar button {
+    background: #fff;
+    color: #111;
+    border: 0;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font: inherit;
+  }
+  header.qa-toolbar button.active {
+    background: var(--green);
+    font-weight: 600;
+  }
+  .qa-section {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-block-end: 16px;
+    padding: 16px;
+  }
+  .qa-section > h2 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .qa-section > .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .qa-section > .pair > div {
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .qa-section > .pair > div > .label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* ─── Pattern: topbar ─── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #111;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+  }
+  .topbar .logo {
+    font-weight: 700;
+  }
+  .topbar .actions {
+    display: flex;
+    gap: 8px;
+  }
+  .topbar .actions button {
+    background: rgba(255,255,255,.1);
+    color: #fff;
+    border: 0;
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+
+  /* ─── Pattern: sidebar ─── */
+  .sidebar-demo {
+    display: flex;
+    height: 160px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .sidebar-demo .sidebar {
+    background: #222;
+    color: #fff;
+    width: 80px;
+    padding: 12px;
+    font-size: 12px;
+  }
+  .sidebar-demo .with-sidebar {
+    flex: 1;
+    padding: 12px;
+    background: #fafafa;
+  }
+
+  /* ─── Pattern: card ─── */
+  .card-demo {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 4px 4px 8px rgba(0,0,0,.06);
+    display: flex;
+    gap: 10px;
+  }
+  .card-demo .icon-arrow-right {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    background: var(--accent);
+    clip-path: polygon(0 40%, 70% 40%, 70% 20%, 100% 50%, 70% 80%, 70% 60%, 0 60%);
+  }
+
+  /* ─── Pattern: form ─── */
+  form.demo-form {
+    display: grid;
+    gap: 8px;
+  }
+  form.demo-form label {
+    font-size: 13px;
+    color: #444;
+  }
+  form.demo-form input {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font: inherit;
+  }
+  form.demo-form .help-text {
+    font-size: 11px;
+    color: #888;
+  }
+
+  /* ─── Pattern: button group ─── */
+  .btn-group {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-group button {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .btn-group button.primary {
+    background: var(--green);
+    border-color: var(--green);
+    font-weight: 600;
+  }
+
+  /* ─── Pattern: modal ─── */
+  .modal-demo {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 16px;
+    position: relative;
+    max-width: 360px;
+  }
+  .modal-demo .modal-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: 0;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  /* ─── Pattern: dropdown ─── */
+  .dropdown-demo {
+    display: inline-block;
+    position: relative;
+  }
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    padding: 4px 0;
+    margin-top: 4px;
+  }
+  .dropdown-menu > a {
+    display: block;
+    padding: 6px 12px;
+    text-decoration: none;
+    color: #222;
+  }
+  .dropdown-menu > a:hover {
+    background: #f0f0f0;
+  }
+
+  /* ─── Pattern: tabs ─── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+  }
+  .tabs button {
+    background: transparent;
+    border: 0;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+  }
+  .tabs button.active {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ─── Pattern: pagination ─── */
+  .pagination {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .pagination button {
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  /* ─── Pattern: currency / dates ─── */
+  .currency, .date {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── Pattern: table ─── */
+  table.demo {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.demo th, table.demo td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.demo th {
+    background: #f4f4f4;
+    text-align: start;
+  }
+
+  /* ─── Pattern: icons ─── */
+  .icon-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 14px;
+  }
+  .icon-row svg {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    fill: currentColor;
+  }
+
+  /* QA: visualise the dir toggle */
+  html[dir="ltr"] body { background: #fff5f5; }
+  html[dir="rtl"] body { background: #f5fff5; }
+</style>
+</head>
+<body>
+
+<header class="qa-toolbar">
+  <h1>RTL QA — صفحة اختبار التخطيط من اليمين إلى اليسار / בדיקת RTL</h1>
+  <button id="btn-rtl" class="active" onclick="setDir('rtl')">RTL (Arabic)</button>
+  <button id="btn-ltr" onclick="setDir('ltr')">LTR (English baseline)</button>
+  <button id="btn-he" onclick="setLocale('he-IL')">תצוגת עברית</button>
+  <button id="btn-ar" onclick="setLocale('ar-EG')">عرض عربي</button>
+  <button id="btn-en" onclick="setLocale('en-SG')">English</button>
+  <span style="font-size:11px;opacity:.7">— 12 UI patterns covered</span>
+</header>
+
+<!-- 1. Header / top bar -->
+<section class="qa-section">
+  <h2>1. Top bar (logo right, account left in RTL)</h2>
+  <div class="topbar">
+    <span class="logo" data-i18n-mirror="false">KiX</span>
+    <span style="flex:1"></span>
+    <div class="actions">
+      <button data-l>الحساب</button>
+      <button data-l>الإشعارات</button>
+      <button data-l>الإعدادات</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Sidebar -->
+<section class="qa-section">
+  <h2>2. Sidebar (start edge = right in RTL)</h2>
+  <div class="sidebar-demo">
+    <nav class="sidebar">
+      <div data-l>الرئيسية</div>
+      <div data-l>الحملات</div>
+      <div data-l>المتاجر</div>
+      <div data-l>التقارير</div>
+    </nav>
+    <main class="with-sidebar">
+      <p data-l>مساحة المحتوى الرئيسية. تقرأ من اليمين إلى اليسار، والشريط الجانبي على اليمين.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 3. Cards -->
+<section class="qa-section">
+  <h2>3. Cards (with directional shadow + arrow icon)</h2>
+  <div class="card-demo shadow-end">
+    <span class="icon-arrow-right"></span>
+    <div>
+      <strong data-l>عرض ترويجي مميز</strong><br>
+      <small data-l>خصم 50% — صالح حتى نهاية الشهر</small>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Form -->
+<section class="qa-section">
+  <h2>4. Form (labels align end / inputs LTR for email/tel)</h2>
+  <form class="demo-form" onsubmit="event.preventDefault()">
+    <label data-l>الاسم الكامل</label>
+    <input type="text" placeholder="محمد عبد الله">
+    <label data-l>البريد الإلكتروني</label>
+    <input type="email" placeholder="name@example.com">
+    <small class="help-text" data-l>سيُستخدم لتأكيد الحساب فقط.</small>
+    <label data-l>الهاتف</label>
+    <input type="tel" placeholder="+20 100 123 4567">
+  </form>
+</section>
+
+<!-- 5. Button group -->
+<section class="qa-section">
+  <h2>5. Button group</h2>
+  <div class="btn-group">
+    <button class="primary" data-l>تأكيد</button>
+    <button data-l>إلغاء</button>
+    <button data-l>حفظ كمسودة</button>
+  </div>
+</section>
+
+<!-- 6. Modal -->
+<section class="qa-section">
+  <h2>6. Modal (close button on start edge = left in RTL)</h2>
+  <div class="modal-demo">
+    <button class="modal-close" aria-label="Close">×</button>
+    <h3 data-l>هل أنت متأكد؟</h3>
+    <p data-l>سيتم حذف هذا العنصر نهائياً ولا يمكن استرجاعه.</p>
+    <div class="btn-group">
+      <button class="primary" data-l>نعم، احذف</button>
+      <button data-l>تراجع</button>
+    </div>
+  </div>
+</section>
+
+<!-- 7. Dropdown -->
+<section class="qa-section">
+  <h2>7. Dropdown (opens toward start edge)</h2>
+  <div class="dropdown-demo">
+    <button data-l>القائمة ▾</button>
+    <div class="dropdown-menu" data-position="end">
+      <a href="#" data-l>الملف الشخصي</a>
+      <a href="#" data-l>الإعدادات</a>
+      <a href="#" data-l>المساعدة</a>
+      <a href="#" data-l>تسجيل الخروج</a>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Tabs -->
+<section class="qa-section">
+  <h2>8. Tabs (reverse reading order in RTL)</h2>
+  <div class="tabs" role="tablist">
+    <button class="active" data-l>نظرة عامة</button>
+    <button data-l>التحليلات</button>
+    <button data-l>الإعدادات</button>
+    <button data-l>الفريق</button>
+  </div>
+</section>
+
+<!-- 9. Pagination -->
+<section class="qa-section">
+  <h2>9. Pagination (arrows mirror)</h2>
+  <div class="pagination">
+    <button data-icon="arrow"><span data-l>السابق</span></button>
+    <button>1</button>
+    <button>2</button>
+    <button>3</button>
+    <button data-icon="arrow"><span data-l>التالي</span></button>
+  </div>
+</section>
+
+<!-- 10. Currency -->
+<section class="qa-section">
+  <h2>10. Currency (LTR digits, RTL label) — &lt;bdi&gt; wrapping</h2>
+  <p>
+    السعر الإجمالي:
+    <span class="currency"><bdi>1,234.56</bdi> EGP</span>
+    /
+    <span class="currency"><bdi>1,234.56</bdi> SAR</span>
+    /
+    <span class="currency"><bdi>1,234.56</bdi> ILS</span>
+  </p>
+</section>
+
+<!-- 11. Dates -->
+<section class="qa-section">
+  <h2>11. Dates (LTR digits, RTL context)</h2>
+  <p>
+    تاريخ الإصدار: <time class="date" datetime="2026-05-30">2026-05-30</time>
+    — منذ <bdi>3</bdi> أيام.
+  </p>
+</section>
+
+<!-- 12. Icons -->
+<section class="qa-section">
+  <h2>12. Icons (arrows mirror, logos / flags don't)</h2>
+  <div class="icon-row">
+    <svg data-icon="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-4-4 4 4-4 4"/></svg>
+    <span data-l>سهم (يتم عكسه)</span>
+    <svg data-i18n-mirror="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+    <span data-l>شعار (لا يُعكس)</span>
+    <span class="country-flag" data-l>🇪🇬 🇸🇦 🇮🇱</span>
+  </div>
+</section>
+
+<script>
+  function setDir(dir) {
+    document.documentElement.setAttribute('dir', dir);
+    document.getElementById('btn-rtl').classList.toggle('active', dir === 'rtl');
+    document.getElementById('btn-ltr').classList.toggle('active', dir === 'ltr');
+  }
+  function setLocale(locale) {
+    var primary = locale.split('-')[0];
+    var rtl = primary === 'ar' || primary === 'he';
+    document.documentElement.setAttribute('lang', locale);
+    setDir(rtl ? 'rtl' : 'ltr');
+    try { localStorage.setItem('kix_locale', locale); } catch (_) {}
+  }
+</script>
+</body>
+</html>
