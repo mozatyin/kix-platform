@@ -1,0 +1,38 @@
+{
+  "index.meta.title": "法律中心 — KiX",
+  "index.title": "法律中心",
+  "index.lede": "我们公开发布的关于 KiX 运营方式的全部文件：注册时您所同意的合约、我们如何处理数据、退款规则、平台允许的内容范围，以及我们如何与企业合规团队协作。KiX 是一家以新加坡为主体的商家游戏化平台，服务于九个司法辖区：新加坡、印尼、泰国、越南、菲律宾、欧盟、美国、巴西、印度。",
+
+  "terms.meta.title": "服务条款 — KiX",
+  "terms.title": "服务条款",
+  "terms.lede": "本条款约束您对 KiX 平台的访问与使用，包括商家门户、消费者端 App、公开 API、游戏模板与广告位。请仔细阅读。一旦您创建账户、接入 API 或使用任何 KiX 服务，即视为接受本条款的约束。",
+
+  "privacy.meta.title": "隐私政策 — KiX",
+  "privacy.title": "隐私政策",
+  "privacy.lede": "本隐私政策说明 KiX 收集的个人数据类型、收集目的、保留期限、共享对象，以及您对这些数据所享有的权利。我们在九个司法辖区运营，当各法域规则不同时采用最严格的适用标准。",
+
+  "refund.meta.title": "退款政策 — KiX",
+  "refund.title": "退款政策",
+  "refund.lede": "本政策说明在何种情况下可向 KiX 申请退款。适用范围包括钱包充值、订阅费及拒付。本政策为补充性规则，不取代您在当地法律下享有的强制性消费者保护权利。",
+
+  "aup.meta.title": "可接受使用政策 — KiX",
+  "aup.title": "可接受使用政策",
+  "aup.lede": "KiX 是商家游戏化营销平台。本政策说明 KiX 上允许与禁止上传、投放、运行的内容，并对各地区敏感品类设定附加规则。",
+
+  "cookies.meta.title": "Cookie 政策 — KiX",
+  "cookies.title": "Cookie 政策",
+  "cookies.lede": "本 Cookie 政策说明 KiX 所使用的 Cookie 及同类技术、其用途，以及您的控制方式。",
+
+  "dpa.meta.title": "数据处理附录 (DPA) — KiX",
+  "dpa.title": "数据处理附录 (DPA)",
+  "dpa.lede": "本附录是企业客户（数据控制者）与 KiX (Singapore) Pte. Ltd.（数据处理者）之间主协议的补充，适用于 KiX 代客户处理个人数据的所有情形。",
+
+  "footer.legal_center": "法律中心",
+  "footer.terms": "服务条款",
+  "footer.privacy": "隐私",
+  "footer.refund": "退款",
+  "footer.aup": "可接受使用",
+  "footer.cookies": "Cookie",
+  "footer.dpa": "DPA",
+  "footer.draft_notice": "草案 — 正式生效前需法律顾问审阅。"
+}

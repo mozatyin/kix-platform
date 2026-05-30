@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="legal:dpa.meta.title">Data Processing Addendum (DPA) — KiX</title>
+  <meta name="description" content="Template DPA for enterprise customers covering subject matter, technical and organisational measures, and the sub-processor list. Draft template pending counsel review.">
+  <meta name="robots" content="noindex,nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="legal.css">
+</head>
+<body>
+
+<header class="legal-header">
+  <div class="legal-nav">
+    <a href="/landing/" class="legal-logo" aria-label="KiX home">Ki<span>X</span></a>
+    <nav class="legal-top-links" aria-label="Site">
+      <a href="/landing/">Home</a>
+      <a href="index.html">Legal</a>
+      <a href="mailto:legal@letskix.com">Contact legal</a>
+    </nav>
+    <div class="legal-locale">
+      <select aria-label="Locale">
+        <option selected>English (SG)</option>
+        <option>简体中文 (SG)</option>
+        <option>Other locales · machine-translated</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<main class="legal-main">
+  <div class="legal-shell">
+
+    <div class="legal-draft-banner" role="note">
+      <strong>DRAFT — review by legal counsel required before binding use.</strong>
+      This DPA is a template prepared for KiX enterprise customers. It has not been reviewed by qualified counsel and must not be signed until your legal advisor signs off. Item-level details (sub-processor list, retention, regional addenda) reflect KiX alpha and will change.
+    </div>
+
+    <h1 class="legal-h1" data-i18n="legal:dpa.title">Data Processing Addendum (DPA)</h1>
+    <p class="legal-lede" data-i18n="legal:dpa.lede">
+      This Addendum supplements the master agreement between an enterprise customer (“<strong>Customer</strong>”, the controller) and KiX (Singapore) Pte. Ltd. (“<strong>KiX</strong>”, the processor) and applies whenever KiX processes personal data on behalf of the Customer. It implements the GDPR Article 28 requirements and the equivalent obligations under PDPA, PIPL, CCPA/CPRA, LGPD and the other regional laws in scope.
+    </p>
+
+    <div class="legal-meta">
+      <span class="legal-pill">Version 0.1 — Alpha</span>
+      <span class="legal-pill">Effective 2026-05-29</span>
+      <span class="legal-pill">Singapore-anchored</span>
+    </div>
+
+    <nav class="legal-toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#s1">Definitions and roles</a></li>
+        <li><a href="#s2">Scope and purpose</a></li>
+        <li><a href="#s3">KiX obligations as processor</a></li>
+        <li><a href="#s4">Customer obligations as controller</a></li>
+        <li><a href="#s5">Sub-processors</a></li>
+        <li><a href="#s6">International transfers</a></li>
+        <li><a href="#s7">Security incidents and notification</a></li>
+        <li><a href="#s8">Assistance with data-subject requests</a></li>
+        <li><a href="#s9">Audit rights</a></li>
+        <li><a href="#s10">Return or deletion on termination</a></li>
+        <li><a href="#s11">Liability</a></li>
+        <li><a href="#s12">Order of precedence</a></li>
+        <li><a href="#s13">Regional addenda (SG / EU / CN / BR / US)</a></li>
+        <li><a href="#sched1">Schedule 1 — Subject matter / duration / nature / data subjects</a></li>
+        <li><a href="#sched2">Schedule 2 — Technical and organisational measures</a></li>
+        <li><a href="#sched3">Schedule 3 — Sub-processors</a></li>
+      </ol>
+    </nav>
+
+    <section class="legal-body">
+
+      <h2 class="legal-h2" id="s1">1. Definitions and roles</h2>
+      <p>
+        Capitalised terms not defined here have the meaning given in the GDPR (or, for non-EU data, the analogous local law). “<strong>Personal Data</strong>” means any information processed by KiX on behalf of Customer that identifies or relates to an identified or identifiable natural person. The Customer is the “controller” and KiX is the “processor”. Where data is transferred to a sub-processor, the sub-processor acts under KiX’s instructions.
+      </p>
+
+      <h2 class="legal-h2" id="s2">2. Scope and purpose</h2>
+      <p>
+        KiX processes Personal Data only on the documented instructions of the Customer, including with regard to transfers to third countries, unless required to do so by law to which KiX is subject (in which case KiX will inform the Customer of that legal requirement before processing, unless that law prohibits such information on important grounds of public interest).
+      </p>
+
+      <h2 class="legal-h2" id="s3">3. KiX obligations as processor</h2>
+      <ul>
+        <li>Process Personal Data only as instructed.</li>
+        <li>Ensure personnel are bound by appropriate confidentiality obligations.</li>
+        <li>Implement the technical and organisational measures in Schedule 2.</li>
+        <li>Engage sub-processors only as permitted by Section 5.</li>
+        <li>Assist Customer in responding to data-subject requests (Section 8).</li>
+        <li>Assist Customer with data-protection impact assessments and prior consultation where applicable.</li>
+        <li>Make available the information necessary to demonstrate compliance and allow for audits (Section 9).</li>
+        <li>Notify Customer of Security Incidents (Section 7).</li>
+        <li>Delete or return Personal Data on termination (Section 10).</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s4">4. Customer obligations as controller</h2>
+      <ul>
+        <li>Have a valid legal basis for the processing.</li>
+        <li>Provide required notices to data subjects.</li>
+        <li>Issue lawful instructions to KiX.</li>
+        <li>Ensure that any Personal Data the Customer or its end users upload to KiX may lawfully be processed by KiX.</li>
+        <li>Configure the KiX platform in a way that meets the Customer’s compliance requirements (retention, region, consent settings).</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s5">5. Sub-processors</h2>
+      <p>
+        The Customer authorises KiX to engage the sub-processors listed in Schedule 3 and additional sub-processors that KiX appoints from time to time. KiX will:
+      </p>
+      <ul>
+        <li>Maintain an up-to-date sub-processor list on this page.</li>
+        <li>Give the Customer prior notice of new sub-processors (at least 14 days, by email to the address on file) so the Customer can object on reasonable data-protection grounds.</li>
+        <li>Impose data-protection obligations on each sub-processor no less protective than this DPA.</li>
+        <li>Remain liable for the acts and omissions of its sub-processors as if they were its own.</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s6">6. International transfers</h2>
+      <p>
+        Where Personal Data is transferred outside the EU/EEA to a country without an adequacy decision, the parties incorporate the European Commission’s Standard Contractual Clauses (2021), Module 2 (controller-to-processor) or Module 3 (processor-to-processor) as applicable. The UK International Data Transfer Addendum and Swiss FDPIC equivalent are incorporated by reference where the source country is the UK or Switzerland respectively. Personal Data of individuals in China is processed in China and not transferred out of China except under a recognised PIPL transfer mechanism.
+      </p>
+
+      <h2 class="legal-h2" id="s7">7. Security incidents and notification</h2>
+      <p>
+        KiX will notify the Customer without undue delay, and in any case within 48 hours of confirmation, after becoming aware of a Security Incident affecting the Customer’s Personal Data. The notification will include, to the extent then known: the nature of the incident, categories and approximate number of data subjects, likely consequences and measures taken or proposed. KiX will cooperate with the Customer in good faith to investigate and mitigate.
+      </p>
+
+      <h2 class="legal-h2" id="s8">8. Assistance with data-subject requests</h2>
+      <p>
+        Taking into account the nature of the processing, KiX will provide reasonable assistance, by appropriate technical and organisational measures, to enable the Customer to respond to data-subject requests under applicable law (access, correction, deletion, portability, restriction, objection). The KiX merchant portal exposes self-service tools where feasible.
+      </p>
+
+      <h2 class="legal-h2" id="s9">9. Audit rights</h2>
+      <p>
+        On reasonable prior written notice (and no more than once per year except where required by a regulator or following a Security Incident), the Customer may audit KiX’s compliance with this DPA. KiX may satisfy this obligation by providing summaries of independent third-party audits (for example, SOC 2 Type II reports, ISO 27001 certificates) where available, and by responding to a reasonable security questionnaire. On-site audits, if required, are conducted under confidentiality and at the Customer’s cost.
+      </p>
+
+      <h2 class="legal-h2" id="s10">10. Return or deletion on termination</h2>
+      <p>
+        On termination or expiry of the master agreement, and at the Customer’s choice, KiX will return or delete all Personal Data and existing copies within 90 days, unless storage is required by applicable law. Routine backups are deleted on the standard rotation schedule.
+      </p>
+
+      <h2 class="legal-h2" id="s11">11. Liability</h2>
+      <p>
+        Each party’s liability arising out of or in connection with this DPA is subject to the limitations and exclusions of liability set out in the master agreement.
+      </p>
+
+      <h2 class="legal-h2" id="s12">12. Order of precedence</h2>
+      <p>
+        In the event of conflict between this DPA and the master agreement, this DPA prevails on data-protection matters. The Standard Contractual Clauses prevail over both for any conflict relating to international transfers from the EU/EEA.
+      </p>
+
+      <h2 class="legal-h2" id="sched1">Schedule 1 — Subject matter, duration, nature, data subjects</h2>
+      <table class="legal-table">
+        <tbody>
+          <tr><th>Subject matter</th><td>Provision of the KiX gamified marketing platform to the Customer, including game serving, offer redemption, wallet management and analytics.</td></tr>
+          <tr><th>Duration</th><td>Term of the master agreement plus the deletion period in Section 10.</td></tr>
+          <tr><th>Nature and purpose</th><td>Hosting, storage, transmission, analytics, fraud detection, support, and limited AI-assisted features.</td></tr>
+          <tr><th>Categories of data subjects</th><td>Customer’s end consumers; Customer’s personnel administering the KiX account; integrators authorised by the Customer.</td></tr>
+          <tr><th>Categories of Personal Data</th><td>Identifiers (name, email, phone), account credentials, behavioural and engagement data, transactional data (top-ups, redemptions), device and technical data, coarse and (with consent) precise location, support correspondence.</td></tr>
+          <tr><th>Special categories</th><td>None routinely processed. If special categories appear in user-generated content uploaded by Customer’s end users, KiX processes them only to the extent necessary to provide the service.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="legal-h2" id="sched2">Schedule 2 — Technical and organisational measures</h2>
+      <ul>
+        <li><strong>Encryption.</strong> TLS 1.2+ in transit; AES-256 at rest for primary datastores; key management via cloud KMS.</li>
+        <li><strong>Access control.</strong> SSO with MFA for personnel access; role-based access; least privilege; periodic access reviews; offboarding within one business day.</li>
+        <li><strong>Network security.</strong> Segmented VPCs, security groups, WAF on public endpoints, DDoS protection at the edge.</li>
+        <li><strong>Application security.</strong> SDLC with code review; dependency scanning; secret scanning; periodic penetration testing.</li>
+        <li><strong>Logging and monitoring.</strong> Centralised logs, integrity-protected, retained for at least 12 months; anomaly detection.</li>
+        <li><strong>Backup and recovery.</strong> Regular encrypted backups; documented RTO/RPO; periodic recovery testing.</li>
+        <li><strong>Incident response.</strong> Documented runbook, on-call rotation, post-incident reviews shared with affected Customers.</li>
+        <li><strong>Personnel.</strong> Background checks where lawful; mandatory annual privacy/security training; written confidentiality obligations.</li>
+        <li><strong>Vendor management.</strong> Risk-based vendor reviews; contractual security and privacy commitments.</li>
+        <li><strong>Data minimisation.</strong> Region-bound storage; purpose-limited retention; pseudonymisation for analytics where feasible.</li>
+        <li><strong>Business continuity.</strong> Multi-AZ deployments where the regional provider allows; documented BCP.</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s13">13. Regional addenda</h2>
+      <p>The following regional addenda apply where Personal Data of data subjects in the named region is processed.</p>
+
+      <h3 class="legal-h3">Singapore (PDPA)</h3>
+      <p>
+        KiX has appointed a Data Protection Officer as required by §11 of the PDPA. KiX will comply with the data-protection obligations in Parts III to VIB of the PDPA where it acts as a data intermediary. Cross-border transfers comply with §26 and the Personal Data Protection Regulations 2014.
+      </p>
+
+      <h3 class="legal-h3">European Union / EEA / UK</h3>
+      <p>
+        The parties incorporate the EU Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914), Module 2 (controller-to-processor) and, where relevant, Module 3 (processor-to-processor). The UK International Data Transfer Addendum is incorporated by reference for UK transfers; the Swiss FDPIC adaptation applies for Swiss data. The optional docking clause is selected; option 1 of clause 17 applies (governing law of an EU Member State to be agreed).
+      </p>
+
+      <h3 class="legal-h3">China (PIPL)</h3>
+      <p>
+        Personal information of data subjects in China is processed in China. Cross-border transfers, if any, use a recognised PIPL mechanism (separate consent, security assessment by the CAC, or a standard contract). The Customer is the personal-information handler; KiX is the entrusted party under Article 21.
+      </p>
+
+      <h3 class="legal-h3">Brazil (LGPD)</h3>
+      <p>
+        For data subjects in Brazil, KiX acts as the operador (operator) and the Customer is the controlador (controller). International transfers from Brazil use one of the mechanisms set out in Article 33 of the LGPD.
+      </p>
+
+      <h3 class="legal-h3">United States</h3>
+      <p>
+        KiX is a “service provider” / “processor” under CCPA/CPRA and equivalent state laws. KiX does not sell or share Personal Data and uses Personal Data only for the business purposes specified by the Customer.
+      </p>
+
+      <h2 class="legal-h2" id="sched3">Schedule 3 — Sub-processors</h2>
+      <table class="legal-table">
+        <thead>
+          <tr><th>Sub-processor</th><th>Service</th><th>Region(s)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Amazon Web Services, Inc.</td><td>Hosting, storage, database, CDN.</td><td>Regional (SG, EU, US, etc.)</td></tr>
+          <tr><td>Stripe, Inc.</td><td>Payment processing, payouts.</td><td>US / EU / SG entities as applicable</td></tr>
+          <tr><td>Google LLC</td><td>Maps Platform; optional Google Analytics (only where deployed and with consent).</td><td>US / EU</td></tr>
+          <tr><td>Anthropic, PBC</td><td>AI model inference for specific platform features.</td><td>US (with enterprise privacy terms; no training on inputs)</td></tr>
+          <tr><td>Regional cloud providers</td><td>Data-residency-bound hosting where required (for example, in-country providers for China).</td><td>CN and other in-country deployments</td></tr>
+          <tr><td>Observability vendors</td><td>Error and performance monitoring (specific vendor disclosed on request).</td><td>US / EU</td></tr>
+          <tr><td>Email and messaging provider</td><td>Transactional email and SMS where contractually required.</td><td>US / EU / SG</td></tr>
+        </tbody>
+      </table>
+      <p>The authoritative live list is available on written request to <a href="mailto:legal@letskix.com">legal@letskix.com</a>.</p>
+
+      <div class="legal-doc-nav">
+        <a href="cookies.html">← Cookies</a>
+        <a href="index.html">Legal Center</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="legal-footer">
+  <div class="legal-shell legal-footer-inner">
+    <div>© 2026 KiX · letskix.com</div>
+    <nav aria-label="Legal footer">
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="refund-policy.html">Refund</a>
+      <a href="acceptable-use.html">Acceptable use</a>
+      <a href="cookies.html">Cookies</a>
+      <a href="dpa.html">DPA</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

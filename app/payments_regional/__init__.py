@@ -63,6 +63,11 @@ class PaymentMethod:
     supports_recurring: bool
     consumer_protection: str  # strong | medium | weak
     integration_status: str  # live | scaffold | planned
+    # Wave C addition: dotted-path to the per-PSP wrapper module in
+    # ``app.services.payment_psps``. Empty for methods that still route
+    # through Stripe or do not yet have a dedicated wrapper. Default
+    # empty keeps every existing row in the registry valid without edits.
+    client_module: str = ""
 
     def __post_init__(self) -> None:  # pragma: no cover — invariants only
         assert self.payment_type in {
@@ -104,6 +109,7 @@ _METHODS: list[PaymentMethod] = [
         supports_recurring=False,
         consumer_protection="strong",
         integration_status="live",
+        client_module="app.services.payment_psps.paynow_sg",
     ),
     PaymentMethod(
         code="nets",
@@ -153,6 +159,7 @@ _METHODS: list[PaymentMethod] = [
         supports_recurring=True,
         consumer_protection="medium",
         integration_status="live",
+        client_module="app.services.payment_psps.grabpay",
     ),
     PaymentMethod(
         code="apple_pay",
@@ -268,6 +275,7 @@ _METHODS: list[PaymentMethod] = [
         supports_recurring=True,
         consumer_protection="medium",
         integration_status="live",
+        client_module="app.services.payment_psps.ovo_indonesia",
     ),
     PaymentMethod(
         code="dana",
@@ -673,6 +681,7 @@ _METHODS: list[PaymentMethod] = [
         supports_recurring=True,
         consumer_protection="strong",
         integration_status="live",
+        client_module="app.services.payment_psps.alipay_global",
     ),
     PaymentMethod(
         code="wechat_pay",
@@ -689,6 +698,7 @@ _METHODS: list[PaymentMethod] = [
         supports_recurring=True,
         consumer_protection="strong",
         integration_status="live",
+        client_module="app.services.payment_psps.wechat_pay",
     ),
     PaymentMethod(
         code="unionpay",

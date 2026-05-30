@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="legal:cookies.meta.title">Cookie Policy — KiX</title>
+  <meta name="description" content="The cookies and similar technologies KiX uses, what they do, and how EU consent is captured. Draft template pending counsel review.">
+  <meta name="robots" content="noindex,nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="legal.css">
+</head>
+<body>
+
+<header class="legal-header">
+  <div class="legal-nav">
+    <a href="/landing/" class="legal-logo" aria-label="KiX home">Ki<span>X</span></a>
+    <nav class="legal-top-links" aria-label="Site">
+      <a href="/landing/">Home</a>
+      <a href="index.html">Legal</a>
+      <a href="mailto:privacy@letskix.com">Contact privacy</a>
+    </nav>
+    <div class="legal-locale">
+      <select aria-label="Locale">
+        <option selected>English (SG)</option>
+        <option>简体中文 (SG)</option>
+        <option>Other locales · machine-translated</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<main class="legal-main">
+  <div class="legal-shell">
+
+    <div class="legal-draft-banner" role="note">
+      <strong>DRAFT — review by legal counsel required before binding use.</strong>
+      This Cookie Policy is a template assembled for KiX alpha. It has not been reviewed by qualified counsel and must not be relied on for compliance until your legal advisor signs off.
+    </div>
+
+    <h1 class="legal-h1" data-i18n="legal:cookies.title">Cookie Policy</h1>
+    <p class="legal-lede" data-i18n="legal:cookies.lede">
+      This Cookie Policy explains which cookies and similar technologies KiX uses, what they do and how to control them. It supplements the <a href="privacy.html">Privacy Policy</a>.
+    </p>
+
+    <div class="legal-meta">
+      <span class="legal-pill">Effective 2026-05-29</span>
+      <span class="legal-pill">EU consent banner required (P0)</span>
+    </div>
+
+    <nav class="legal-toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#s1">What cookies are</a></li>
+        <li><a href="#s2">Categories we use</a></li>
+        <li><a href="#s3">Specific cookies (registry)</a></li>
+        <li><a href="#s4">Consent in the EU/UK</a></li>
+        <li><a href="#s5">How to control cookies</a></li>
+        <li><a href="#s6">Similar technologies</a></li>
+        <li><a href="#s7">Changes</a></li>
+        <li><a href="#s8">Contact</a></li>
+      </ol>
+    </nav>
+
+    <section class="legal-body">
+
+      <h2 class="legal-h2" id="s1">1. What cookies are</h2>
+      <p>
+        Cookies are small text files stored on your device when you visit a website or use a web app. They are used to remember preferences, keep you signed in, secure your session against attack, measure usage and (where you consent) personalise advertising. KiX also uses similar technologies such as local storage, session storage and SDK identifiers; this policy uses “cookies” to refer to all of them.
+      </p>
+
+      <h2 class="legal-h2" id="s2">2. Categories we use</h2>
+      <table class="legal-table">
+        <thead>
+          <tr><th>Category</th><th>Purpose</th><th>Consent required?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Essential</td><td>Authentication, session, CSRF protection, load balancing, security.</td><td>No (necessary for the service)</td></tr>
+          <tr><td>Functional</td><td>Locale preference, demo-mode toggle, accessibility settings.</td><td>No, unless required locally</td></tr>
+          <tr><td>Analytics</td><td>Aggregated usage, performance and error metrics to improve the product.</td><td>Yes in EU/UK and where local law requires; off by default</td></tr>
+          <tr><td>Advertising</td><td>Measurement, attribution and (only with consent) cross-context personalisation.</td><td>Yes; off by default everywhere we serve targeted ads</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="legal-h2" id="s3">3. Specific cookies (registry)</h2>
+      <p>The following is a representative list. The full registry, kept in our compliance backend, is the authoritative source.</p>
+      <table class="legal-table">
+        <thead>
+          <tr><th>Name</th><th>Set by</th><th>Category</th><th>Purpose</th><th>Lifetime</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>kix.session</td><td>KiX</td><td>Essential</td><td>Authenticated session ID.</td><td>Session</td></tr>
+          <tr><td>kix.csrf</td><td>KiX</td><td>Essential</td><td>Cross-site request forgery token.</td><td>Session</td></tr>
+          <tr><td>kix.locale</td><td>KiX</td><td>Functional</td><td>Stores selected locale (e.g. en-SG, zh-Hans-SG).</td><td>1 year</td></tr>
+          <tr><td>kix.demo_mode</td><td>KiX</td><td>Functional</td><td>Remembers demo-mode preference for partner sandbox.</td><td>30 days</td></tr>
+          <tr><td>kix.consent</td><td>KiX</td><td>Essential</td><td>Stores your cookie-consent choices.</td><td>12 months</td></tr>
+          <tr><td>kix.analytics.id</td><td>KiX (first-party analytics)</td><td>Analytics</td><td>Pseudonymous ID for product analytics. Off until consent.</td><td>12 months</td></tr>
+          <tr><td>__stripe_*</td><td>Stripe</td><td>Essential</td><td>Card-form fraud detection during top-ups.</td><td>1 year</td></tr>
+          <tr><td>_ga, _gid</td><td>Google Analytics (where deployed)</td><td>Analytics</td><td>Aggregate traffic measurement. Off until consent.</td><td>Up to 24 months</td></tr>
+          <tr><td>maps-session</td><td>Google Maps Platform</td><td>Functional</td><td>Renders maps in merchant locator features.</td><td>Session</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="legal-h2" id="s4">4. Consent in the EU/UK</h2>
+      <p>
+        For users in the EU/EEA and the UK we display a consent banner on first visit that:
+      </p>
+      <ul>
+        <li>Lists categories (Essential, Functional, Analytics, Advertising).</li>
+        <li>Lets you <strong>accept all</strong>, <strong>reject all</strong> or <strong>customise</strong> with equal prominence.</li>
+        <li>Stores your choice in <span class="legal-tag">kix.consent</span> and respects it on subsequent visits.</li>
+        <li>Reads Global Privacy Control (GPC) where supported as an opt-out signal for analytics and advertising categories.</li>
+        <li>Lets you change your choice at any time via a <em>Cookie preferences</em> link in the footer.</li>
+      </ul>
+      <p>
+        Until you have given consent, no non-essential cookies are set. We also honour the ePrivacy Directive’s rule that prior consent is required for any cookie that is not strictly necessary for a service explicitly requested by the user.
+      </p>
+
+      <h2 class="legal-h2" id="s5">5. How to control cookies</h2>
+      <ul>
+        <li>Use the <em>Cookie preferences</em> link in the footer to change your KiX-side choices.</li>
+        <li>Most browsers let you block or delete cookies in settings. Blocking essential cookies will break login and security.</li>
+        <li>Mobile platforms offer a Limit Ad Tracking / App Tracking Transparency setting; we honour these signals.</li>
+        <li>To opt out of broader cross-context advertising, see <a href="https://www.youronlinechoices.eu" target="_blank" rel="noopener">YourOnlineChoices.eu</a> (EU) or <a href="https://thenai.org" target="_blank" rel="noopener">NAI</a> (US).</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s6">6. Similar technologies</h2>
+      <p>
+        Local storage, session storage and IndexedDB are used for the same purposes as cookies in some places (for example, caching the catalogue, persisting your locale, storing client-side game state during a session). We treat them under the same category rules: essential, functional, analytics or advertising. SDK identifiers in our consumer app behave like advertising identifiers and are controlled by the platform-level setting on your device.
+      </p>
+
+      <h2 class="legal-h2" id="s6g">6f. Lifetime, scope and SameSite settings</h2>
+      <p>
+        Where the law gives us latitude, we minimise cookie lifetimes and scope. Session cookies expire when the browser closes. Persistent cookies have lifetimes proportionate to their function — typically one year for locale and consent records, shorter for analytics where local rules require. Cookies set by KiX use the most restrictive <span class="legal-tag">SameSite</span> attribute compatible with the feature (<span class="legal-tag">Lax</span> for navigational use cases, <span class="legal-tag">Strict</span> for high-sensitivity tokens, <span class="legal-tag">None; Secure</span> only where a cross-site flow is required). All cookies marked sensitive are flagged <span class="legal-tag">Secure</span> and, where possible, <span class="legal-tag">HttpOnly</span>.
+      </p>
+
+      <h2 class="legal-h2" id="s6h">6g. Worked examples of consent outcomes</h2>
+      <ul>
+        <li><strong>EU visitor accepts all.</strong> Functional, analytics and advertising cookies are set and the consent record is stored for 12 months. The footer preferences link remains available.</li>
+        <li><strong>EU visitor rejects all.</strong> Only essential cookies are set; no analytics or advertising cookies are placed. The site continues to function for authentication, navigation and security.</li>
+        <li><strong>EU visitor sets GPC.</strong> Even before interacting with the banner, we treat analytics and advertising as opted-out and surface the banner only for explicit confirmation.</li>
+        <li><strong>Non-EU visitor.</strong> Functional and analytics cookies may be set under legitimate interests where local law permits; advertising cookies remain off until consent in regions that require it.</li>
+        <li><strong>Visitor revokes consent.</strong> Previously stored non-essential cookies are deleted at the next page load, and we do not set new ones.</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s7">7. Changes</h2>
+      <p>
+        We will update this Cookie Policy when our use of cookies changes. Material changes will be notified by email or in-product at least 14 days before they take effect.
+      </p>
+
+      <h2 class="legal-h2" id="s6b">6a. Mobile identifiers and SDKs</h2>
+      <p>
+        Our consumer mobile app uses platform-provided advertising identifiers (IDFA on iOS, AAID on Android) only where you have not opted out at the operating-system level and, in the EU/UK, only where you have provided in-app consent. If you reset your advertising identifier or enable Limit Ad Tracking / App Tracking Transparency, we treat that as an opt-out signal for advertising purposes. Embedded software development kits (SDKs) are reviewed under our vendor-risk process; we publish the active SDK list on request to <a href="mailto:privacy@letskix.com">privacy@letskix.com</a>.
+      </p>
+
+      <h2 class="legal-h2" id="s6c">6b. Do Not Track and Global Privacy Control</h2>
+      <p>
+        KiX honours the Global Privacy Control (GPC) signal as a binding opt-out where it carries legal weight (notably in California under the CPRA). GPC is read alongside our consent banner; where you both deny consent in the banner and send GPC, the stricter setting applies. Legacy Do Not Track (DNT) signals do not have a single agreed legal meaning; we treat DNT as an indicative preference and apply it where consistent with applicable law.
+      </p>
+
+      <h2 class="legal-h2" id="s6d">6c. Children and cookies</h2>
+      <p>
+        We do not knowingly set non-essential cookies on devices we believe to be used by children below the applicable digital-consent age (13 / 16 depending on jurisdiction). Where age signals indicate a child, advertising and personalisation cookies are disabled by default and the consent banner is not used to obtain consent from the child directly.
+      </p>
+
+      <h2 class="legal-h2" id="s6e">6d. Cookie consent banner specification (P0 for EU)</h2>
+      <p>
+        For the avoidance of doubt, our EU cookie banner must implement the following behaviour on first visit from an EU/EEA/UK IP or where Member-State law requires:
+      </p>
+      <ul>
+        <li>No non-essential cookies are set before consent is recorded.</li>
+        <li>The banner offers <strong>Accept all</strong>, <strong>Reject all</strong> and <strong>Customise</strong> with equal visual prominence.</li>
+        <li>The Customise option presents per-category toggles (Functional, Analytics, Advertising) — defaulting to off.</li>
+        <li>Consent is granular, freely given, specific, informed and unambiguous (GDPR Art. 4(11)).</li>
+        <li>Withdrawing consent is as easy as giving it; a persistent footer link exposes the preferences modal.</li>
+        <li>Consent records (timestamp, choices, version of the banner) are retained as proof.</li>
+        <li>Banner re-prompts when material changes occur, otherwise consent is refreshed at most every 12 months.</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s6f">6e. Third-party services and embedded content</h2>
+      <p>
+        Some pages embed third-party services (for example, payment forms from Stripe or maps from Google) that may set their own cookies. Those cookies are governed by the third party’s privacy and cookie policies. Where third-party content is loaded only after consent, the content remains hidden behind a placeholder until you allow the relevant category.
+      </p>
+
+      <h2 class="legal-h2" id="s7b">7a. Accessibility of cookie controls</h2>
+      <p>
+        Our cookie banner and preferences modal are designed to meet WCAG 2.1 AA. They are keyboard-navigable, screen-reader-labelled, do not rely on colour alone to convey state, support reduced-motion preferences, and have visible focus rings. If you encounter an accessibility issue with the banner, please write to <a href="mailto:privacy@letskix.com">privacy@letskix.com</a> and we will treat it as a high-priority bug.
+      </p>
+
+      <h2 class="legal-h2" id="s7c">7b. Regional summary</h2>
+      <table class="legal-table">
+        <thead>
+          <tr><th>Region</th><th>Cookie consent default</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>EU / EEA / UK / Switzerland</td><td>Opt-in for non-essential cookies. Banner with equal-prominence Accept / Reject / Customise.</td></tr>
+          <tr><td>Singapore</td><td>Notice-based; cookie banner not legally required but offered for transparency.</td></tr>
+          <tr><td>United States (California, Colorado, Connecticut, Utah, Virginia, Texas, etc.)</td><td>Opt-out for advertising / sharing; we honour Global Privacy Control.</td></tr>
+          <tr><td>Brazil (LGPD)</td><td>Notice and choice; sensitive purposes require explicit consent.</td></tr>
+          <tr><td>Indonesia / Thailand / Vietnam / Philippines / India</td><td>Notice and, where local law requires, opt-in for advertising and analytics.</td></tr>
+          <tr><td>China (PIPL)</td><td>Separate consent for sensitive or cross-border processing; data residency rules apply.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="legal-h2" id="s8">8. Contact</h2>
+      <p>
+        Privacy: <a href="mailto:privacy@letskix.com">privacy@letskix.com</a><br>
+        Data Protection Officer: <a href="mailto:dpo@letskix.com">dpo@letskix.com</a>
+      </p>
+
+      <div class="legal-doc-nav">
+        <a href="acceptable-use.html">← Acceptable Use</a>
+        <a href="dpa.html">DPA →</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="legal-footer">
+  <div class="legal-shell legal-footer-inner">
+    <div>© 2026 KiX · letskix.com</div>
+    <nav aria-label="Legal footer">
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="refund-policy.html">Refund</a>
+      <a href="acceptable-use.html">Acceptable use</a>
+      <a href="cookies.html">Cookies</a>
+      <a href="dpa.html">DPA</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="legal:terms.meta.title">Terms of Service — KiX</title>
+  <meta name="description" content="The contract between KiX and the merchants, consumers and integrators who use the platform. Draft template pending counsel review.">
+  <meta name="robots" content="noindex,nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="legal.css">
+</head>
+<body>
+
+<header class="legal-header">
+  <div class="legal-nav">
+    <a href="/landing/" class="legal-logo" aria-label="KiX home">Ki<span>X</span></a>
+    <nav class="legal-top-links" aria-label="Site">
+      <a href="/landing/">Home</a>
+      <a href="index.html">Legal</a>
+      <a href="mailto:legal@letskix.com">Contact legal</a>
+    </nav>
+    <div class="legal-locale">
+      <select aria-label="Locale">
+        <option selected>English (SG)</option>
+        <option>简体中文 (SG)</option>
+        <option>Other locales · machine-translated</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<main class="legal-main">
+  <div class="legal-shell">
+
+    <div class="legal-draft-banner" role="note">
+      <strong>DRAFT — review by legal counsel required before binding use.</strong>
+      This Terms of Service is a template assembled for KiX alpha. It has not been reviewed by qualified counsel and must not be relied on as the final contract until your legal advisor signs off.
+    </div>
+
+    <h1 class="legal-h1" data-i18n="legal:terms.title">Terms of Service</h1>
+    <p class="legal-lede" data-i18n="legal:terms.lede">
+      These Terms govern your access to and use of the KiX platform — including the merchant portal, consumer app, public APIs, game templates and advertising inventory. Read them carefully. By creating an account, integrating with our APIs or using any KiX service, you agree to be bound by these Terms.
+    </p>
+
+    <div class="legal-meta">
+      <span class="legal-pill">Version 0.1 — Alpha</span>
+      <span class="legal-pill">Effective 2026-05-29</span>
+      <span class="legal-pill">Governed by Singapore law</span>
+    </div>
+
+    <nav class="legal-toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#s1">Acceptance and eligibility</a></li>
+        <li><a href="#s2">Account creation and responsibility</a></li>
+        <li><a href="#s3">Service description</a></li>
+        <li><a href="#s4">Merchant obligations</a></li>
+        <li><a href="#s5">Fees and payment</a></li>
+        <li><a href="#s6">Intellectual property</a></li>
+        <li><a href="#s7">Termination</a></li>
+        <li><a href="#s8">Disclaimer of warranties</a></li>
+        <li><a href="#s9">Limitation of liability</a></li>
+        <li><a href="#s10">Indemnification</a></li>
+        <li><a href="#s11">Dispute resolution and governing law</a></li>
+        <li><a href="#s12">Miscellaneous</a></li>
+        <li><a href="#s13">Contact</a></li>
+      </ol>
+    </nav>
+
+    <section class="legal-body">
+
+      <h2 class="legal-h2" id="s1">1. Acceptance and eligibility</h2>
+      <p>
+        These Terms form a binding contract between you and <strong>KiX (Singapore) Pte. Ltd.</strong> (“<strong>KiX</strong>”, “<strong>we</strong>”, “<strong>us</strong>”). They apply whether you are using KiX as a merchant, as a consumer playing one of the games on the platform, or as an integrator building against our APIs.
+      </p>
+      <p>
+        You may use KiX only if you can form a legally binding contract with us and you are not barred from doing so under applicable law. Minimum age varies by jurisdiction. The following thresholds apply to consumer accounts:
+      </p>
+      <ul>
+        <li><strong>13+</strong> in Singapore (PDPA), the United States (COPPA threshold), Indonesia, Thailand, Vietnam, the Philippines, India and Brazil — with verifiable parental consent required for users under 16 where required by local law.</li>
+        <li><strong>16+</strong> for EU/EEA users by default, in line with GDPR Article 8 (Member State law may permit lower, down to 13, but we apply 16 as the platform default).</li>
+        <li><strong>18+</strong> for any campaign or game flagged as age-restricted (for example, alcohol-related rewards in jurisdictions where 18 is the minimum drinking age).</li>
+      </ul>
+      <p>
+        Merchants and integrators must be legally able to enter into commercial contracts in their place of business. If you are accepting these Terms on behalf of a company or other entity, you represent that you have authority to bind that entity.
+      </p>
+
+      <h2 class="legal-h2" id="s2">2. Account creation and responsibility</h2>
+      <p>
+        You are responsible for the security of your KiX account, including your credentials, API keys and any access tokens issued under OAuth-style flows (for example, the merchant authorisation flow at <span class="legal-tag">/connect</span>). You agree to:
+      </p>
+      <ul>
+        <li>Provide accurate, complete and up-to-date information when creating an account, and keep it current.</li>
+        <li>Keep authentication credentials confidential and notify us promptly at <a href="mailto:security@letskix.com">security@letskix.com</a> if you suspect compromise.</li>
+        <li>Be responsible for every action taken under your account or with your API credentials, whether or not you authorised it.</li>
+      </ul>
+      <p>
+        We may suspend an account where we reasonably believe it has been compromised, is being used to violate these Terms, or is the subject of a credible legal order in a jurisdiction in which we operate.
+      </p>
+
+      <h2 class="legal-h2" id="s3">3. Service description</h2>
+      <p>
+        KiX is a multi-sided marketplace. On one side, <strong>merchants</strong> publish offers, run gamified campaigns and pay for new customer acquisitions. On the other side, <strong>consumers</strong> play games, redeem rewards and interact with offers. KiX provides:
+      </p>
+      <ul>
+        <li><strong>Advertising inventory</strong> — placements inside KiX-operated games and surfaces in the consumer app.</li>
+        <li><strong>Game templates and tooling</strong> — pre-built and merchant-customisable mini-games into which brand assets can be inserted via the KiX asset-slot model.</li>
+        <li><strong>Identity, wallet and offer infrastructure</strong> — merchant identity, wallet balances, offer redemption and analytics.</li>
+        <li><strong>APIs and SDKs</strong> — including the merchant portal, partner OAuth-style authorisation, and the public KiX SDK.</li>
+      </ul>
+      <p>
+        KiX is a <strong>platform</strong>, not a party to the underlying transaction between merchant and consumer (for example, the sale of food, beverage or retail goods). Disputes about the underlying transaction must be resolved between merchant and consumer; KiX may assist where it has visibility but does not warrant the merchant’s goods or services.
+      </p>
+
+      <h2 class="legal-h2" id="s4">4. Merchant obligations</h2>
+      <p>
+        Merchants must comply with all laws applicable to their goods and services in the jurisdictions in which they operate. This includes, without limitation:
+      </p>
+      <ul>
+        <li>Food &amp; beverage licensing, halal/kosher labelling where claimed, allergen disclosure and trading-hours rules.</li>
+        <li>Alcohol advertising restrictions (for example, no targeting to minors in Singapore; full prohibition or strict conditions in some Indonesian provinces; ABV-based rules elsewhere).</li>
+        <li>Gambling regulation. Real-money gambling is not permitted on KiX. Promotional sweepstakes and skill-based prize games must comply with local law and may require licensing (notably under the Singapore Gambling Control Act 2022).</li>
+        <li>Consumer protection, pricing-display and promotion rules.</li>
+        <li>Tax, invoicing and electronic-receipt requirements in their place of business.</li>
+      </ul>
+      <p>
+        Merchants are responsible for the lawfulness of brand assets uploaded into KiX games. Refer to the <a href="acceptable-use.html">Acceptable Use Policy</a> for the list of prohibited and region-restricted content categories.
+      </p>
+
+      <h2 class="legal-h2" id="s5">5. Fees and payment</h2>
+      <p>
+        KiX’s commercial model is summarised on our pricing page; the binding terms are set out in the order form, wallet-top-up flow, or master service agreement applicable to your account. Generally:
+      </p>
+      <ul>
+        <li>Gamification features are made available to merchants at no fixed platform fee during alpha. Fees are charged on a per-acquisition or per-redemption basis as configured in the merchant portal.</li>
+        <li>Wallet top-ups are processed by our payment processor (currently Stripe). All amounts are stated in the local currency configured for the merchant account, and are exclusive of tax unless stated otherwise.</li>
+        <li>Subscriptions (if any) renew automatically unless cancelled before the renewal date. Cancellation takes effect at the end of the current billing period.</li>
+        <li>Late-payment interest may apply to invoiced amounts at the lesser of 1.5% per month or the maximum permitted by law.</li>
+      </ul>
+      <p>Refunds and chargeback handling are described in the <a href="refund-policy.html">Refund Policy</a>.</p>
+
+      <h2 class="legal-h2" id="s6">6. Intellectual property</h2>
+      <p>
+        <strong>KiX retains all rights</strong> in the platform, the game templates, the SDKs, the documentation and any improvements derived from operating the platform. Nothing in these Terms transfers ownership of KiX intellectual property to you.
+      </p>
+      <p>
+        <strong>You retain all rights</strong> in your brand assets, trademarks, product imagery and any content you upload to KiX. You grant KiX a worldwide, royalty-free, non-exclusive licence to host, reproduce, adapt (only to the extent necessary to fit into asset-slot positions in a game template), distribute and display those assets, solely for the purpose of operating the services for you.
+      </p>
+      <p>
+        You will not (a) reverse engineer the platform except as permitted by mandatory law, (b) circumvent rate limits or access controls, (c) use KiX content to train a competing model or service without our written permission, or (d) remove proprietary notices.
+      </p>
+
+      <h2 class="legal-h2" id="s7">7. Termination</h2>
+      <p>
+        You may close your account at any time from the merchant portal or by writing to <a href="mailto:support@letskix.com">support@letskix.com</a>. We may suspend or terminate your account for material breach of these Terms (including the Acceptable Use Policy), for non-payment, where required by law, or where continued service would expose KiX or other users to material risk.
+      </p>
+      <p>
+        On termination, your right to use the platform ends. Sections that by their nature should survive termination — including IP, disclaimers, liability caps, indemnities, dispute resolution and governing law — will continue.
+      </p>
+
+      <h2 class="legal-h2" id="s8">8. Disclaimer of warranties</h2>
+      <p>
+        The platform is provided <strong>“as is” and “as available”</strong>. KiX is currently in an <strong>alpha / beta state</strong> and includes features marked as preview, experimental, mock or simulated. To the maximum extent permitted by law, KiX disclaims all warranties, express or implied, including any warranty of merchantability, fitness for a particular purpose, non-infringement and any warranty arising out of course of dealing or usage of trade.
+      </p>
+      <p>
+        Without limitation, we do not warrant that the platform will be uninterrupted, error-free, or that any defect will be corrected within a particular time. Acknowledging beta state does not waive your statutory rights as a consumer where those rights cannot be excluded.
+      </p>
+
+      <h2 class="legal-h2" id="s9">9. Limitation of liability</h2>
+      <p>
+        To the maximum extent permitted by law:
+      </p>
+      <ul>
+        <li>Neither party will be liable for any indirect, incidental, special, consequential, exemplary or punitive damages, or for loss of profits, revenues, goodwill or anticipated savings, even if advised of the possibility.</li>
+        <li>Each party’s total aggregate liability arising out of or relating to these Terms or the services, regardless of the form of action, will not exceed the amounts paid by you to KiX in the twelve (12) months immediately preceding the event giving rise to liability, or one hundred Singapore dollars (S$100), whichever is greater.</li>
+      </ul>
+      <p>
+        Nothing in these Terms limits liability for fraud, fraudulent misrepresentation, death or personal injury caused by negligence, or any other liability that cannot be excluded under applicable law.
+      </p>
+
+      <h2 class="legal-h2" id="s10">10. Indemnification</h2>
+      <p>
+        You will defend, indemnify and hold harmless KiX, its affiliates and their personnel against any third-party claim arising from (a) your breach of these Terms, (b) content you upload (including brand assets and offer copy), (c) your goods or services or any transaction between you and a consumer, or (d) your violation of applicable law. We will provide prompt notice of the claim and reasonable co-operation at your expense.
+      </p>
+
+      <h2 class="legal-h2" id="s11">11. Dispute resolution and governing law</h2>
+      <p>
+        These Terms are governed by the laws of <strong>Singapore</strong>, without regard to conflict-of-laws rules. Any dispute, controversy or claim arising out of or in connection with these Terms, including any question regarding its existence, validity or termination, will be referred to and finally resolved by arbitration administered by the <strong>Singapore International Arbitration Centre (SIAC)</strong> in accordance with the SIAC Rules in force at the time, which are deemed to be incorporated by reference. The seat of arbitration is Singapore, the tribunal will consist of one arbitrator, and the language is English. Judgment on the award may be entered in any court of competent jurisdiction.
+      </p>
+      <p>
+        Either party may seek interim or injunctive relief from any court of competent jurisdiction to protect its intellectual property or confidential information pending arbitration.
+      </p>
+      <p>
+        Where mandatory consumer-protection law in your place of residence gives you the right to bring proceedings in your local courts or to require resolution under local consumer redress procedures, nothing in this section overrides that right.
+      </p>
+
+      <h2 class="legal-h2" id="s12">12. Miscellaneous</h2>
+      <ul>
+        <li><strong>Changes.</strong> We may update these Terms. Material changes will be notified by email or in-product at least 14 days before they take effect, unless a shorter notice period is required by law.</li>
+        <li><strong>Assignment.</strong> You may not assign these Terms without our written consent. We may assign to an affiliate or in connection with a merger, acquisition or sale of substantially all assets.</li>
+        <li><strong>Entire agreement.</strong> These Terms, together with the documents they reference, constitute the entire agreement between you and KiX on the subject matter, and supersede prior agreements on the same subject.</li>
+        <li><strong>Severability.</strong> If any provision is held unenforceable, the rest remains in effect.</li>
+        <li><strong>No waiver.</strong> Failure to enforce a provision is not a waiver of the right to enforce it later.</li>
+        <li><strong>Force majeure.</strong> Neither party is liable for delay or failure caused by events outside its reasonable control.</li>
+        <li><strong>Notices.</strong> Notices to KiX must be sent to <a href="mailto:legal@letskix.com">legal@letskix.com</a>. We will send notices to the email address on your account.</li>
+      </ul>
+
+      <h2 class="legal-h2" id="s13">13. Contact</h2>
+      <p>
+        <strong>KiX (Singapore) Pte. Ltd.</strong><br>
+        Legal: <a href="mailto:legal@letskix.com">legal@letskix.com</a><br>
+        Support: <a href="mailto:support@letskix.com">support@letskix.com</a><br>
+        Privacy / DPO: <a href="mailto:dpo@letskix.com">dpo@letskix.com</a>
+      </p>
+      <p>
+        Full registered address available on written request to <a href="mailto:legal@letskix.com">legal@letskix.com</a>.
+      </p>
+
+      <div class="legal-doc-nav">
+        <a href="index.html">← Legal Center</a>
+        <a href="privacy.html">Privacy Policy →</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="legal-footer">
+  <div class="legal-shell legal-footer-inner">
+    <div>© 2026 KiX · letskix.com</div>
+    <nav aria-label="Legal footer">
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="refund-policy.html">Refund</a>
+      <a href="acceptable-use.html">Acceptable use</a>
+      <a href="cookies.html">Cookies</a>
+      <a href="dpa.html">DPA</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
