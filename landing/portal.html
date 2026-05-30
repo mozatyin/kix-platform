@@ -2054,6 +2054,22 @@ textarea.form-input{
 #app-shell .view .stat-value{ color:var(--text-strong); font-weight:600; font-size:24px; }
 #app-shell .view .section-title{ color:var(--text-strong); }
 
+/* Skeleton loader (P1-12) */
+#app-shell .skeleton{
+  background:linear-gradient(90deg,#F1F5F9 0%,#E2E8F0 50%,#F1F5F9 100%);
+  background-size:200% 100%;animation:skel 1.4s ease-in-out infinite;
+  border-radius:8px;
+}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+#app-shell .empty-state{
+  padding:32px 16px;text-align:center;
+  border:1px dashed var(--border-subdued);border-radius:12px;
+  background:var(--surface-subdued);
+}
+#app-shell .empty-state .illus{
+  width:48px;height:48px;margin:0 auto 10px;color:var(--text-subdued);
+}
+
 /* Tabular numerals for tables and metrics globally inside app-shell */
 #app-shell .tnum{ font-variant-numeric:tabular-nums; }
 
@@ -2327,11 +2343,11 @@ textarea.form-input{
         <span class="code" id="ent-lang-code">EN</span>
         <span data-i18n="portal.lang.short">/ 中</span>
       </button>
-      <button class="ent-iconbtn" aria-label="Notifications" type="button" onclick="toggleNotifications()">
+      <button class="ent-iconbtn" aria-label="Notifications" title="Notifications" type="button" onclick="toggleNotifications()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span class="dot-notif" id="notif-dot"></span>
       </button>
-      <button class="ent-iconbtn" aria-label="Help" type="button" onclick="toggleHelpMenu(event)">
+      <button class="ent-iconbtn" aria-label="Help" title="Help & support" type="button" onclick="toggleHelpMenu(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </button>
       <div class="ent-menu" id="ent-help-menu" style="top:48px;right:60px">
@@ -2978,7 +2994,7 @@ textarea.form-input{
             <tr>
               <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:var(--brand);border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
               <td class="col-name">Pause low-CTR campaigns</td>
-              <td><code style="font-size:12px;font-family:ui-monospace,monospace">spend &gt; S$50 AND ctr &lt; 0.5%</code></td>
+              <td>If <strong>spend &gt; S$50</strong> and <strong>CTR &lt; 0.5%</strong><div style="font-size:11px;color:var(--text-subdued);margin-top:2px">Pause this campaign if I spend more than S$50 and CTR is below 0.5%</div></td>
               <td><span class="ebadge paused"><span class="dot"></span>Pause</span></td>
               <td>All campaigns</td>
               <td>2h ago</td>
@@ -2987,7 +3003,7 @@ textarea.form-input{
             <tr>
               <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:var(--brand);border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
               <td class="col-name">Scale up winning creatives</td>
-              <td><code style="font-size:12px;font-family:ui-monospace,monospace">roas &gt; 5x for 24h</code></td>
+              <td>If <strong>earning &gt; S$5 per S$1 spent</strong> for 24 hours<div style="font-size:11px;color:var(--text-subdued);margin-top:2px">Scale up creatives that earn over 5× return for a day</div></td>
               <td><span class="ebadge active"><span class="dot"></span>Increase budget +25%</span></td>
               <td>Active campaigns</td>
               <td>Yesterday</td>
@@ -2996,7 +3012,7 @@ textarea.form-input{
             <tr>
               <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:#CBD5E1;border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
               <td class="col-name">Low voucher inventory alert</td>
-              <td><code style="font-size:12px;font-family:ui-monospace,monospace">voucher_pool_remaining &lt; 100</code></td>
+              <td>If <strong>fewer than 100 vouchers</strong> left in pool<div style="font-size:11px;color:var(--text-subdued);margin-top:2px">Notify me before the voucher pool runs out</div></td>
               <td><span class="ebadge info"><span class="dot"></span>Notify owner</span></td>
               <td>All locations</td>
               <td>3 days ago</td>
@@ -3005,7 +3021,7 @@ textarea.form-input{
             <tr>
               <td><label style="display:inline-block;position:relative;width:34px;height:18px"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:var(--brand);border-radius:var(--r-full);cursor:pointer"></span><span style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s"></span></label></td>
               <td class="col-name">Cap daily spend per campaign</td>
-              <td><code style="font-size:12px;font-family:ui-monospace,monospace">daily_spend &gt; daily_budget × 1.1</code></td>
+              <td>If <strong>today's spend exceeds budget by 10%</strong><div style="font-size:11px;color:var(--text-subdued);margin-top:2px">Stop a campaign when it goes 10% over its daily cap</div></td>
               <td><span class="ebadge paused"><span class="dot"></span>Pause campaign</span></td>
               <td>All campaigns</td>
               <td>Never</td>
@@ -4827,6 +4843,21 @@ async function refreshWalletBalance(){
 // Boot: poll wallet every 30s while app shell active
 setInterval(()=>{ if(document.getElementById('app-shell')&&document.getElementById('app-shell').classList.contains('active')) refreshWalletBalance(); }, 30000);
 
+// "Last updated Xs ago" pill rotator (P1-15)
+let _lastUpdateAt=Date.now();
+function markFreshUpdate(){ _lastUpdateAt=Date.now(); renderLastUpdatedPill(); }
+function renderLastUpdatedPill(){
+  const el=document.querySelector('#last-updated-pill span:last-child'); if(!el) return;
+  const s=Math.floor((Date.now()-_lastUpdateAt)/1000);
+  let label;
+  if(s<10) label='Last updated just now';
+  else if(s<60) label=`Last updated ${s}s ago`;
+  else if(s<3600) label=`Last updated ${Math.floor(s/60)}m ago`;
+  else label='Last updated >1h ago';
+  el.textContent=label;
+}
+setInterval(renderLastUpdatedPill, 15000);
+
 // Update language code on toggle
 (function patchLocale(){
   if(typeof window.kixToggleLocale==='function'){
@@ -5141,7 +5172,94 @@ function closeAudienceDrawer(){
   document.getElementById('audience-drawer-scrim').classList.remove('visible');
 }
 function openAudienceImport(){ alert('Import audience — CSV upload (mock)'); }
-function openRuleBuilder(){ alert('Rule builder — When/If/Then (mock)'); }
+function openRuleBuilder(){
+  // Friendly WYSIWYG rule builder modal (P1-5)
+  let modal=document.getElementById('rule-builder-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='rule-builder-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:24px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="font-size:18px;font-weight:600;color:#0F172A;margin:0">Create automation rule</h3>
+        <button onclick="closeRuleBuilder()" style="background:transparent;border:none;cursor:pointer;font-size:22px;color:#64748B">×</button>
+      </div>
+      <div class="form-group"><label>Rule name</label><input id="rule-name" type="text" class="form-input" placeholder="e.g. Pause low-CTR campaigns" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+      <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">WHEN</div>
+        <div id="rule-conditions"></div>
+        <button onclick="addRuleCondition()" class="ebtn tertiary sm" style="margin-top:8px">+ Add condition</button>
+      </div>
+      <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">THEN</div>
+        <select id="rule-action" class="form-input" style="background:#fff;border-color:#CBD5E1;color:#0F172A">
+          <option value="pause">Pause the campaign</option>
+          <option value="lower_bid">Lower bid by 25%</option>
+          <option value="raise_bid">Raise bid by 25%</option>
+          <option value="notify">Notify me</option>
+          <option value="duplicate">Duplicate to top audience</option>
+        </select>
+      </div>
+      <div id="rule-preview" style="background:#E6F7EE;border:1px solid #00B341;border-radius:10px;padding:10px 14px;font-size:13px;color:#0F172A;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="closeRuleBuilder()" class="ebtn secondary">Cancel</button>
+        <button onclick="saveRule()" class="ebtn primary">Save rule</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    addRuleCondition();
+  } else {
+    modal.style.display='flex';
+  }
+  updateRulePreview();
+}
+function closeRuleBuilder(){ const m=document.getElementById('rule-builder-modal'); if(m) m.style.display='none'; }
+let _ruleCondIdx=0;
+function addRuleCondition(){
+  _ruleCondIdx++;
+  const wrap=document.getElementById('rule-conditions'); if(!wrap) return;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap';
+  row.innerHTML=`
+    ${_ruleCondIdx>1?'<select class="form-input rc-join" style="width:auto;background:#fff;border-color:#CBD5E1;color:#0F172A;font-size:12px;padding:6px 8px"><option>and</option><option>or</option></select>':'<span style="font-size:12px;color:#64748B;width:42px">if</span>'}
+    <select class="form-input rc-metric" onchange="updateRulePreview()" style="width:auto;background:#fff;border-color:#CBD5E1;color:#0F172A;font-size:12px;padding:6px 8px">
+      <option value="spend">spend</option>
+      <option value="clicks">clicks</option>
+      <option value="impressions">impressions</option>
+      <option value="ctr">CTR</option>
+      <option value="conversions">conversions</option>
+      <option value="cpa">cost per customer</option>
+    </select>
+    <select class="form-input rc-op" onchange="updateRulePreview()" style="width:auto;background:#fff;border-color:#CBD5E1;color:#0F172A;font-size:12px;padding:6px 8px">
+      <option value=">">is more than</option>
+      <option value="<">is less than</option>
+      <option value="=">equals</option>
+      <option value=">=">is at least</option>
+      <option value="<=">is at most</option>
+    </select>
+    <input class="form-input rc-val" type="text" placeholder="50" onchange="updateRulePreview()" oninput="updateRulePreview()" style="width:80px;background:#fff;border-color:#CBD5E1;color:#0F172A;font-size:12px;padding:6px 8px">
+    <button onclick="this.parentElement.remove();updateRulePreview()" class="ebtn tertiary sm" type="button" style="padding:4px 8px">×</button>
+  `;
+  wrap.appendChild(row);
+  updateRulePreview();
+}
+function updateRulePreview(){
+  const prev=document.getElementById('rule-preview'); if(!prev) return;
+  const rows=Array.from(document.querySelectorAll('#rule-conditions > div'));
+  if(rows.length===0){ prev.textContent='Set up at least one condition above.'; return; }
+  const phrases=rows.map((r,i)=>{
+    const join=r.querySelector('.rc-join'); const m=r.querySelector('.rc-metric'); const o=r.querySelector('.rc-op'); const v=r.querySelector('.rc-val');
+    const opTxt={">":'is more than','<':'is less than','=':'equals','>=':'is at least','<=':'is at most'}[o.value];
+    const prefix=(i===0?'if':(join?join.value:'and'));
+    return `${prefix} ${m.value} ${opTxt} ${v.value||'?'}`;
+  });
+  const action=({pause:'pause the campaign',lower_bid:'lower bid by 25%',raise_bid:'raise bid by 25%',notify:'notify me',duplicate:'duplicate to top audience'})[document.getElementById('rule-action').value]||'…';
+  prev.innerHTML=`<strong>Plain English:</strong> ${phrases.join(' ')}, then ${action}.`;
+}
+function saveRule(){
+  if(window.showToast) showToast('Rule saved','success');
+  closeRuleBuilder();
+}
 function toggleNotifications(){
   const dot=document.getElementById('notif-dot');
   if(dot) dot.style.display='none';
