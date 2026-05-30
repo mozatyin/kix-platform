@@ -1635,6 +1635,191 @@ async def push_device_unregister(
     return {"kid": kid, "device_id": device_id, "status": "unregistered"}
 
 
+# ── Endpoints: SSO bridge (Wave E item 5) ───────────────────────────────
+#
+# The kix_id primitive above mints the network-wide identifier. The SSO
+# bridge endpoints below layer the **network effect** semantics on top:
+# per-brand opt-in linkage with explicit consent, cross-brand attribution,
+# and the ops-dashboard network-stats roll-up. All link/unlink flows are
+# audited via ``audit_log_service`` for PIPL §51 compliance.
+#
+# These endpoints are STRICTLY ADDITIVE — every legacy flow (register,
+# lookup, qr_scan_bind, …) keeps working unchanged. ``register`` already
+# auto-links the source brand via ``ensure_kid``, which the bridge service
+# upgrades to a consent-scoped BrandLink on first call from this surface.
+
+
+class LinkBrandRequest(BaseModel):
+    kid: str = Field(..., min_length=1, max_length=64)
+    brand_id: str = Field(..., min_length=1, max_length=64)
+    consent_scope: list[str] = Field(..., min_length=1)
+    source: str = Field("explicit", max_length=32)
+
+
+class UnlinkBrandRequest(BaseModel):
+    kid: str = Field(..., min_length=1, max_length=64)
+    brand_id: str = Field(..., min_length=1, max_length=64)
+    reason: str | None = Field(None, max_length=512)
+
+
+class CrossBrandAttributeRequest(BaseModel):
+    kid: str = Field(..., min_length=1, max_length=64)
+    source_brand: str = Field(..., min_length=1, max_length=64)
+    target_brand: str = Field(..., min_length=1, max_length=64)
+    event: str = Field(..., min_length=1, max_length=128)
+
+
+class AutoLinkCityRequest(BaseModel):
+    kid: str = Field(..., min_length=1, max_length=64)
+    enabled: bool
+
+
+@router.post("/link-brand")
+async def link_brand_endpoint(
+    body: LinkBrandRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Opt-in: link this kid to a brand with an explicit consent scope.
+
+    Idempotent — re-linking unions the scope set. Every call is audited
+    via ``audit_log_service`` (PIPL §51).
+    """
+    profile = await _load_kid(r, body.kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+    if profile.get("status") == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE, detail="kid is deleted"
+        )
+
+    from app.services import sso_bridge
+
+    try:
+        return await sso_bridge.link_to_brand(
+            r,
+            kid=body.kid,
+            brand_id=body.brand_id,
+            consent_scope=body.consent_scope,
+            source=body.source,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+
+@router.post("/unlink-brand")
+async def unlink_brand_endpoint(
+    body: UnlinkBrandRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Privacy right: revoke a brand's link + cascade revoke its grants."""
+    profile = await _load_kid(r, body.kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+
+    from app.services import sso_bridge
+
+    return await sso_bridge.unlink_from_brand(
+        r,
+        kid=body.kid,
+        brand_id=body.brand_id,
+        reason=body.reason,
+    )
+
+
+@router.get("/{kid}/brands")
+async def list_user_brands_endpoint(
+    kid: str,
+    include_revoked: bool = False,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """List every brand this kid is linked to."""
+    profile = await _load_kid(r, kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+
+    from app.services import sso_bridge
+
+    brands = await sso_bridge.get_user_brands(
+        r, kid=kid, include_revoked=include_revoked
+    )
+    return {"kid": kid, "brands": brands, "count": len(brands)}
+
+
+@router.post("/cross-brand-attribute")
+async def cross_brand_attribute_endpoint(
+    body: CrossBrandAttributeRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Track a cross-brand journey event for network-effect telemetry.
+
+    Requires the kid to have granted ``cross_brand_tracking`` (or
+    ``history``) on at least one of the source/target brand links.
+    """
+    profile = await _load_kid(r, body.kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+
+    from app.services import sso_bridge
+
+    try:
+        return await sso_bridge.cross_brand_attribute(
+            r,
+            kid=body.kid,
+            source_brand=body.source_brand,
+            target_brand=body.target_brand,
+            event=body.event,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+
+@router.get("/sso/network-stats")
+async def network_stats_endpoint(
+    x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Admin-only: network-effect snapshot for the ops dashboard."""
+    _check_admin(x_admin_token)
+
+    from app.services import sso_bridge
+
+    return await sso_bridge.network_stats(r)
+
+
+@router.post("/auto-link-city")
+async def auto_link_city_endpoint(
+    body: AutoLinkCityRequest,
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Opt-in: auto-link to new merchants in the user's city. Default off."""
+    profile = await _load_kid(r, body.kid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="kid not found"
+        )
+
+    from app.services import sso_bridge
+
+    return await sso_bridge.set_auto_link_city(
+        r, kid=body.kid, enabled=body.enabled
+    )
+
+
+# ── End SSO bridge endpoints ─────────────────────────────────────────────
+
+
 @router.get("/compliance/age-gate")
 async def kix_id_age_gate(
     region: str,
