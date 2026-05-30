@@ -1091,6 +1091,19 @@ and the shim helpers in `app.api_standards`.
         import logging as _logging
         _logging.getLogger(__name__).warning("wavef-07 skipped: %s", _exc)
 
+    try:
+        from app.routers import wavef_referral as _wfr01
+        app.include_router(
+            _wfr01.router,
+            prefix="/api/v1/wavef/referral",
+            tags=["wavef", "referral"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wavef-spec-01 referral skipped: %s", _exc
+        )
+
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os
     _landing_dir = _os.path.join(_os.path.dirname(__file__), "..", "landing")
