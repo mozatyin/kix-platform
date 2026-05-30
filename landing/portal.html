@@ -1202,6 +1202,699 @@ textarea.form-input{
   text-align: center; color: var(--text-dim);
   font-style: italic; padding: 20px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* ENTERPRISE THEME — Trinity redesign overlay (scoped to #app-shell)     */
+/* Overrides legacy dark/neon tokens with Google-Ads-grade light theme.    */
+/* Login page (#login-page) is intentionally untouched.                    */
+/* ══════════════════════════════════════════════════════════════════════ */
+#app-shell{
+  /* Surface */
+  --surface-canvas:#FFFFFF;
+  --surface-subdued:#F8FAFC;
+  --surface-hover:#F1F5F9;
+  --surface-pressed:#E2E8F0;
+  --surface-inverse:#0F172A;
+  --surface-overlay:rgba(15,23,42,.48);
+  --surface-sidebar:#1F2937;
+  --surface-sidebar-hover:#374151;
+  --surface-sidebar-active:#111827;
+  /* Border */
+  --border-subdued:#E5E7EB;
+  --border-default:#D1D5DB;
+  --border-strong:#9CA3AF;
+  --border-focus:#0B57D0;
+  /* Text */
+  --text-default:#1F2937;
+  --text-strong:#0F172A;
+  --text-subdued:#6B7280;
+  --text-disabled:#9CA3AF;
+  --text-on-brand:#FFFFFF;
+  --text-on-sidebar:#E5E7EB;
+  --text-on-sidebar-muted:#9CA3AF;
+  --text-link:#0B57D0;
+  /* Brand — KiX-distinctive muted green (WCAG AA on white) */
+  --brand:#00B341;
+  --brand-hover:#009638;
+  --brand-soft:#E6F7EE;
+  --brand-bg:#F0FBF5;
+  --primary:#0B57D0;
+  --primary-hover:#0842A0;
+  /* Semantic */
+  --success:#00A862; --success-bg:#E3F8EE;
+  --warning:#D97706; --warning-bg:#FEF3C7;
+  --critical:#DC2626; --critical-bg:#FEE2E2;
+  --info:#2563EB;    --info-bg:#DBEAFE;
+  /* Chart palette */
+  --chart-1:#1A73E8; --chart-2:#00B341; --chart-3:#F4A300; --chart-4:#DC2626;
+  --chart-5:#6F42C1; --chart-6:#008080; --chart-7:#FF6B35; --chart-8:#C2185B;
+  /* Spacing */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px;
+  /* Radius */
+  --r-1:2px; --r-2:4px; --r-3:6px; --r-4:8px; --r-full:999px;
+  /* Shadow */
+  --sh-sm:0 1px 2px rgba(15,23,42,.04), 0 1px 1px rgba(15,23,42,.06);
+  --sh-md:0 4px 8px rgba(15,23,42,.06), 0 2px 4px rgba(15,23,42,.08);
+  --sh-lg:0 12px 24px rgba(15,23,42,.08), 0 8px 16px rgba(15,23,42,.06);
+  --sh-focus:0 0 0 3px rgba(11,87,208,.25);
+  /* Layout dims */
+  --sidebar-w:240px;
+  --sidebar-w-collapsed:64px;
+  --topbar-h:60px;
+
+  background:var(--surface-subdued);
+  color:var(--text-default);
+  font-size:14px;
+  line-height:1.5;
+}
+
+/* ── Top Bar ────────────────────────────────────────────────────────── */
+#app-shell .ent-topbar{
+  position:fixed; top:0; left:var(--sidebar-w); right:0; z-index:90;
+  height:var(--topbar-h);
+  background:var(--surface-canvas);
+  border-bottom:1px solid var(--border-subdued);
+  display:flex; align-items:center;
+  padding:0 var(--space-6);
+  gap:var(--space-4);
+}
+#app-shell .ent-brand{
+  display:flex; align-items:center; gap:var(--space-3);
+  font-weight:700; font-size:16px; color:var(--text-strong);
+}
+#app-shell .ent-brand .dot{
+  width:8px; height:8px; border-radius:var(--r-full); background:var(--brand);
+}
+#app-shell .ent-breadcrumb{
+  font-size:13px; color:var(--text-subdued);
+  display:flex; align-items:center; gap:var(--space-2);
+}
+#app-shell .ent-breadcrumb .sep{ color:var(--text-disabled); }
+#app-shell .ent-breadcrumb .curr{ color:var(--text-strong); font-weight:500; }
+#app-shell .ent-search{
+  flex:1; max-width:480px; margin:0 auto;
+  position:relative;
+}
+#app-shell .ent-search input{
+  width:100%; height:36px;
+  background:var(--surface-subdued);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+  padding:0 var(--space-4) 0 36px;
+  font-size:14px; color:var(--text-default);
+  outline:none; transition:border-color .15s, box-shadow .15s;
+}
+#app-shell .ent-search input:focus{
+  border-color:var(--border-focus); box-shadow:var(--sh-focus);
+  background:var(--surface-canvas);
+}
+#app-shell .ent-search .icon{
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  width:16px; height:16px; color:var(--text-subdued);
+}
+#app-shell .ent-search .kbd{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:11px; color:var(--text-subdued);
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-2); padding:2px 6px;
+  font-family:ui-monospace,monospace;
+}
+#app-shell .ent-topbar-right{
+  display:flex; align-items:center; gap:var(--space-2);
+  margin-left:auto;
+}
+#app-shell .ent-iconbtn{
+  width:36px; height:36px; border-radius:var(--r-3);
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; cursor:pointer;
+  color:var(--text-subdued); transition:background .12s, color .12s;
+  position:relative;
+}
+#app-shell .ent-iconbtn:hover{ background:var(--surface-hover); color:var(--text-default); }
+#app-shell .ent-iconbtn .dot-notif{
+  position:absolute; top:8px; right:8px;
+  width:8px; height:8px; border-radius:var(--r-full); background:var(--critical);
+}
+#app-shell .ent-iconbtn svg{ width:18px; height:18px; }
+#app-shell .ent-daterange{
+  display:flex; align-items:center; gap:var(--space-2);
+  height:36px; padding:0 var(--space-3);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+  background:var(--surface-canvas);
+  font-size:13px; color:var(--text-default); cursor:pointer;
+}
+#app-shell .ent-daterange:hover{ background:var(--surface-hover); }
+#app-shell .ent-daterange svg{ width:16px; height:16px; color:var(--text-subdued); }
+#app-shell .ent-avatar{
+  display:flex; align-items:center; gap:var(--space-2);
+  height:36px; padding:0 var(--space-2) 0 var(--space-2);
+  border-radius:var(--r-3); cursor:pointer;
+  border:1px solid transparent;
+}
+#app-shell .ent-avatar:hover{ background:var(--surface-hover); }
+#app-shell .ent-avatar .av{
+  width:28px; height:28px; border-radius:var(--r-full);
+  background:var(--brand); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:600; font-size:12px;
+}
+#app-shell .ent-avatar .name{ font-size:13px; color:var(--text-default); font-weight:500; }
+
+/* ── Sidebar ────────────────────────────────────────────────────────── */
+#app-shell .ent-sidebar{
+  position:fixed; top:0; left:0; bottom:0; z-index:100;
+  width:var(--sidebar-w);
+  background:var(--surface-sidebar);
+  color:var(--text-on-sidebar);
+  display:flex; flex-direction:column;
+  border-right:1px solid #111827;
+}
+#app-shell .ent-sidebar-head{
+  height:var(--topbar-h);
+  display:flex; align-items:center;
+  padding:0 var(--space-5);
+  border-bottom:1px solid rgba(255,255,255,.06);
+  font-weight:700; font-size:18px; color:#fff;
+  letter-spacing:-.3px;
+}
+#app-shell .ent-sidebar-head .x{ color:var(--brand); }
+#app-shell .ent-sidebar-nav{
+  flex:1; overflow-y:auto;
+  padding:var(--space-3) var(--space-2);
+}
+#app-shell .ent-nav-section{
+  font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--text-on-sidebar-muted);
+  padding:var(--space-4) var(--space-3) var(--space-2);
+  font-weight:600;
+}
+#app-shell .ent-nav-item{
+  display:flex; align-items:center; gap:var(--space-3);
+  height:36px; padding:0 var(--space-3);
+  border-radius:var(--r-3);
+  color:var(--text-on-sidebar);
+  font-size:14px; font-weight:500;
+  cursor:pointer; position:relative;
+  transition:background .12s, color .12s;
+  margin-bottom:2px;
+}
+#app-shell .ent-nav-item svg{ width:18px; height:18px; flex-shrink:0; opacity:.85; }
+#app-shell .ent-nav-item:hover{ background:var(--surface-sidebar-hover); color:#fff; }
+#app-shell .ent-nav-item.active{
+  background:var(--surface-sidebar-active); color:#fff;
+}
+#app-shell .ent-nav-item.active::before{
+  content:''; position:absolute; left:-8px; top:8px; bottom:8px;
+  width:3px; background:var(--brand); border-radius:0 var(--r-2) var(--r-2) 0;
+}
+#app-shell .ent-nav-item .nav-count{
+  margin-left:auto; font-size:11px;
+  background:rgba(255,255,255,.1); border-radius:var(--r-full);
+  padding:1px 8px; color:var(--text-on-sidebar);
+}
+#app-shell .ent-sidebar-foot{
+  padding:var(--space-3) var(--space-4);
+  border-top:1px solid rgba(255,255,255,.06);
+  font-size:12px; color:var(--text-on-sidebar-muted);
+  display:flex; align-items:center; justify-content:space-between;
+}
+#app-shell .ent-sidebar-foot .lang-toggle{
+  background:transparent; border:1px solid rgba(255,255,255,.15);
+  color:var(--text-on-sidebar); font-size:12px;
+  padding:4px 10px; border-radius:var(--r-3); cursor:pointer;
+}
+#app-shell .ent-sidebar-foot .lang-toggle:hover{ background:rgba(255,255,255,.06); }
+
+/* ── Workspace (replaces .app-content) ─────────────────────────────── */
+#app-shell .app-content{
+  max-width:none !important;
+  margin:0 !important;
+  padding:calc(var(--topbar-h) + var(--space-6)) var(--space-8) var(--space-10) calc(var(--sidebar-w) + var(--space-8)) !important;
+  background:var(--surface-subdued);
+  min-height:100vh;
+}
+
+/* ── Hide legacy chrome inside #app-shell ──────────────────────────── */
+#app-shell .app-header,
+#app-shell .bottom-nav{ display:none !important; }
+
+/* ── Page header (under topbar) ────────────────────────────────────── */
+#app-shell .ent-page-head{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:var(--space-4); margin-bottom:var(--space-6);
+  flex-wrap:wrap;
+}
+#app-shell .ent-page-title{
+  font-size:24px; font-weight:600; color:var(--text-strong);
+  letter-spacing:-.2px; margin:0 0 var(--space-1) 0;
+}
+#app-shell .ent-page-subtitle{
+  font-size:14px; color:var(--text-subdued); margin:0;
+}
+#app-shell .ent-page-actions{ display:flex; gap:var(--space-2); align-items:center; }
+
+/* Override legacy page-title within #app-shell to match enterprise scale */
+#app-shell .page-title{
+  font-size:24px !important; font-weight:600 !important;
+  color:var(--text-strong) !important;
+  letter-spacing:-.2px !important;
+}
+#app-shell .page-subtitle{
+  font-size:14px !important; color:var(--text-subdued) !important;
+}
+
+/* ── Buttons (enterprise) ──────────────────────────────────────────── */
+#app-shell .ebtn{
+  display:inline-flex; align-items:center; gap:var(--space-2);
+  height:32px; padding:0 var(--space-4);
+  border-radius:var(--r-2);
+  font-size:14px; font-weight:500;
+  border:1px solid transparent; cursor:pointer;
+  transition:background .12s, border-color .12s, color .12s, box-shadow .12s;
+  text-decoration:none; line-height:1;
+}
+#app-shell .ebtn svg{ width:16px; height:16px; }
+#app-shell .ebtn.primary{ background:var(--primary); color:#fff; border-color:var(--primary); }
+#app-shell .ebtn.primary:hover{ background:var(--primary-hover); border-color:var(--primary-hover); }
+#app-shell .ebtn.brand{ background:var(--brand); color:#fff; border-color:var(--brand); }
+#app-shell .ebtn.brand:hover{ background:var(--brand-hover); border-color:var(--brand-hover); }
+#app-shell .ebtn.secondary{
+  background:var(--surface-canvas); color:var(--text-default);
+  border-color:var(--border-default);
+}
+#app-shell .ebtn.secondary:hover{ background:var(--surface-hover); border-color:var(--border-strong); }
+#app-shell .ebtn.tertiary{ background:transparent; color:var(--text-default); }
+#app-shell .ebtn.tertiary:hover{ background:var(--surface-hover); }
+#app-shell .ebtn.destructive{ background:var(--critical); color:#fff; border-color:var(--critical); }
+#app-shell .ebtn:focus-visible{ box-shadow:var(--sh-focus); outline:none; }
+#app-shell .ebtn.sm{ height:28px; padding:0 var(--space-3); font-size:13px; }
+#app-shell .ebtn.lg{ height:40px; padding:0 var(--space-5); font-size:15px; }
+#app-shell .ebtn[disabled]{ opacity:.5; cursor:not-allowed; }
+
+/* ── Cards (enterprise) ────────────────────────────────────────────── */
+#app-shell .ecard{
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+  padding:var(--space-5);
+  margin-bottom:var(--space-4);
+}
+#app-shell .ecard-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:var(--space-4);
+}
+#app-shell .ecard-title{
+  font-size:16px; font-weight:600; color:var(--text-strong);
+  margin:0;
+}
+#app-shell .ecard-sub{
+  font-size:13px; color:var(--text-subdued); margin-top:var(--space-1);
+}
+
+/* ── Metric cards (KPI 4-up) ───────────────────────────────────────── */
+#app-shell .metric-grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:var(--space-4);
+  margin-bottom:var(--space-6);
+}
+#app-shell .metric-card{
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+  padding:var(--space-5);
+}
+#app-shell .metric-card .label{
+  font-size:13px; font-weight:500; color:var(--text-subdued);
+  margin-bottom:var(--space-2);
+  display:flex; align-items:center; gap:var(--space-2);
+}
+#app-shell .metric-card .value{
+  font-size:28px; font-weight:600; color:var(--text-strong);
+  letter-spacing:-.4px; line-height:1.1;
+  font-variant-numeric:tabular-nums;
+}
+#app-shell .metric-card .delta{
+  font-size:13px; margin-top:var(--space-2);
+  display:flex; align-items:center; gap:var(--space-1);
+  font-variant-numeric:tabular-nums;
+}
+#app-shell .metric-card .delta.up{ color:var(--success); }
+#app-shell .metric-card .delta.down{ color:var(--critical); }
+#app-shell .metric-card .delta .vs{ color:var(--text-subdued); margin-left:var(--space-1); }
+#app-shell .metric-card .sparkline{
+  margin-top:var(--space-3); height:32px;
+}
+
+/* ── Filter chips ──────────────────────────────────────────────────── */
+#app-shell .filter-bar{
+  display:flex; align-items:center; gap:var(--space-2);
+  flex-wrap:wrap; margin-bottom:var(--space-4);
+}
+#app-shell .filter-chip{
+  display:inline-flex; align-items:center; gap:var(--space-2);
+  height:30px; padding:0 var(--space-3);
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+  font-size:13px; color:var(--text-default);
+  cursor:pointer;
+}
+#app-shell .filter-chip:hover{ background:var(--surface-hover); }
+#app-shell .filter-chip.active{ background:var(--info-bg); color:var(--info); border-color:var(--info); }
+#app-shell .filter-chip svg{ width:14px; height:14px; }
+
+/* ── Data Table (enterprise) ───────────────────────────────────────── */
+#app-shell .etable-wrap{
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+  overflow:hidden;
+  margin-bottom:var(--space-4);
+}
+#app-shell .etable{
+  width:100%; border-collapse:collapse;
+  font-variant-numeric:tabular-nums;
+}
+#app-shell .etable thead th{
+  background:var(--surface-subdued);
+  color:var(--text-subdued);
+  font-size:12px; font-weight:600;
+  text-transform:none;
+  letter-spacing:0;
+  text-align:left;
+  padding:10px var(--space-4);
+  border-bottom:1px solid var(--border-subdued);
+  white-space:nowrap;
+  position:sticky; top:0; z-index:1;
+}
+#app-shell .etable thead th.sortable{ cursor:pointer; user-select:none; }
+#app-shell .etable thead th.sortable:hover{ color:var(--text-default); }
+#app-shell .etable thead th .sort-icon{ font-size:10px; opacity:.5; margin-left:4px; }
+#app-shell .etable thead th.numeric,
+#app-shell .etable tbody td.numeric{ text-align:right; }
+#app-shell .etable tbody td{
+  padding:12px var(--space-4);
+  border-bottom:1px solid var(--border-subdued);
+  color:var(--text-default); font-size:14px;
+  vertical-align:middle;
+}
+#app-shell .etable tbody tr:last-child td{ border-bottom:none; }
+#app-shell .etable tbody tr:hover{ background:var(--surface-hover); }
+#app-shell .etable tbody tr.selected{ background:var(--info-bg); }
+#app-shell .etable td.col-name{ font-weight:500; color:var(--text-strong); }
+#app-shell .etable td.col-name .meta{ font-size:12px; color:var(--text-subdued); font-weight:400; margin-top:2px; }
+#app-shell .etable th.col-check,
+#app-shell .etable td.col-check{ width:40px; padding-left:var(--space-4); padding-right:0; }
+#app-shell .etable input[type="checkbox"]{
+  width:16px; height:16px; cursor:pointer;
+  accent-color:var(--primary);
+}
+#app-shell .etable .row-actions{
+  display:inline-flex; gap:var(--space-1);
+}
+#app-shell .etable .row-actions button{
+  background:transparent; border:none; cursor:pointer;
+  color:var(--text-subdued); padding:4px;
+  border-radius:var(--r-2);
+}
+#app-shell .etable .row-actions button:hover{ background:var(--surface-hover); color:var(--text-default); }
+
+#app-shell .etable-foot{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:var(--space-3) var(--space-4);
+  border-top:1px solid var(--border-subdued);
+  background:var(--surface-canvas);
+  font-size:13px; color:var(--text-subdued);
+}
+#app-shell .epagination{ display:flex; gap:var(--space-1); align-items:center; }
+#app-shell .epagination button{
+  width:30px; height:30px; border-radius:var(--r-2);
+  border:1px solid var(--border-subdued); background:var(--surface-canvas);
+  font-size:13px; cursor:pointer; color:var(--text-default);
+}
+#app-shell .epagination button.active{ background:var(--primary); color:#fff; border-color:var(--primary); }
+#app-shell .epagination button[disabled]{ opacity:.4; cursor:not-allowed; }
+
+/* ── Status badges (enterprise) ────────────────────────────────────── */
+#app-shell .ebadge{
+  display:inline-flex; align-items:center; gap:6px;
+  height:22px; padding:0 8px;
+  border-radius:var(--r-2);
+  font-size:12px; font-weight:500;
+  line-height:1;
+}
+#app-shell .ebadge .dot{ width:6px; height:6px; border-radius:var(--r-full); }
+#app-shell .ebadge.active{ background:var(--success-bg); color:var(--success); }
+#app-shell .ebadge.active .dot{ background:var(--success); }
+#app-shell .ebadge.paused{ background:#F1F5F9; color:#475569; }
+#app-shell .ebadge.paused .dot{ background:#94A3B8; }
+#app-shell .ebadge.pending{ background:var(--warning-bg); color:var(--warning); }
+#app-shell .ebadge.pending .dot{ background:var(--warning); }
+#app-shell .ebadge.ended{ background:#F1F5F9; color:#64748B; }
+#app-shell .ebadge.ended .dot{ background:#64748B; }
+#app-shell .ebadge.critical{ background:var(--critical-bg); color:var(--critical); }
+#app-shell .ebadge.info{ background:var(--info-bg); color:var(--info); }
+
+/* ── Bulk action toolbar (slides in when rows selected) ────────────── */
+#app-shell .bulk-bar{
+  display:none;
+  background:var(--surface-inverse); color:#fff;
+  padding:var(--space-3) var(--space-4);
+  border-radius:var(--r-3);
+  margin-bottom:var(--space-3);
+  align-items:center; gap:var(--space-3);
+  font-size:13px;
+}
+#app-shell .bulk-bar.visible{ display:flex; }
+#app-shell .bulk-bar .count{ font-weight:600; }
+#app-shell .bulk-bar button{
+  background:transparent; border:1px solid rgba(255,255,255,.2);
+  color:#fff; height:28px; padding:0 var(--space-3);
+  border-radius:var(--r-2); cursor:pointer; font-size:13px;
+}
+#app-shell .bulk-bar button:hover{ background:rgba(255,255,255,.1); }
+
+/* ── Empty State ───────────────────────────────────────────────────── */
+#app-shell .empty-state{
+  text-align:center; padding:var(--space-10) var(--space-6);
+  background:var(--surface-canvas);
+  border:1px dashed var(--border-default);
+  border-radius:var(--r-3);
+}
+#app-shell .empty-state .illus{
+  width:96px; height:96px; margin:0 auto var(--space-4);
+  border-radius:var(--r-full);
+  background:var(--brand-bg);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--brand);
+}
+#app-shell .empty-state .illus svg{ width:48px; height:48px; }
+#app-shell .empty-state h3{
+  font-size:18px; font-weight:600; color:var(--text-strong);
+  margin:0 0 var(--space-2) 0;
+}
+#app-shell .empty-state p{
+  font-size:14px; color:var(--text-subdued);
+  margin:0 auto var(--space-5) auto; max-width:380px;
+}
+
+/* ── Tabs (enterprise underline) ───────────────────────────────────── */
+#app-shell .etabs{
+  display:flex; gap:var(--space-2); align-items:center;
+  border-bottom:1px solid var(--border-subdued);
+  margin-bottom:var(--space-5);
+}
+#app-shell .etab{
+  background:transparent; border:none;
+  padding:var(--space-3) var(--space-4);
+  font-size:14px; font-weight:500;
+  color:var(--text-subdued); cursor:pointer;
+  border-bottom:2px solid transparent;
+  margin-bottom:-1px;
+}
+#app-shell .etab:hover{ color:var(--text-default); }
+#app-shell .etab.active{ color:var(--primary); border-bottom-color:var(--primary); }
+
+/* ── Grid 2-col / 8-4 ──────────────────────────────────────────────── */
+#app-shell .grid-2{ display:grid; grid-template-columns:2fr 1fr; gap:var(--space-5); }
+#app-shell .grid-3{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-4); }
+
+/* ── Toast (enterprise) override ───────────────────────────────────── */
+#app-shell ~ .toast,
+#app-shell .toast{
+  background:var(--surface-inverse) !important; color:#fff !important;
+  border-radius:var(--r-3) !important;
+}
+
+/* ── Form inputs (enterprise) ──────────────────────────────────────── */
+#app-shell .einput{
+  width:100%; height:32px;
+  background:var(--surface-canvas);
+  border:1px solid var(--border-default);
+  border-radius:var(--r-2);
+  padding:0 var(--space-3); font-size:14px;
+  color:var(--text-default); outline:none;
+  transition:border-color .12s, box-shadow .12s;
+}
+#app-shell .einput:focus{ border-color:var(--border-focus); box-shadow:var(--sh-focus); }
+#app-shell .einput.numeric{ text-align:right; font-variant-numeric:tabular-nums; }
+#app-shell .efield{ margin-bottom:var(--space-4); }
+#app-shell .efield label{
+  display:block; font-size:13px; font-weight:500;
+  color:var(--text-default); margin-bottom:var(--space-1);
+}
+
+/* ── Chart placeholder ─────────────────────────────────────────────── */
+#app-shell .chart-canvas{
+  height:240px; width:100%;
+  background:var(--surface-subdued);
+  border-radius:var(--r-2);
+  display:flex; align-items:flex-end; gap:6px;
+  padding:var(--space-4);
+}
+#app-shell .chart-canvas .bar{
+  flex:1; background:var(--primary); border-radius:var(--r-2) var(--r-2) 0 0;
+  opacity:.8; transition:opacity .15s;
+}
+#app-shell .chart-canvas .bar:hover{ opacity:1; }
+
+/* ── Sparkline (inline svg) ────────────────────────────────────────── */
+#app-shell .spark{ display:block; }
+
+/* ── Right rail card ───────────────────────────────────────────────── */
+#app-shell .insight-item{
+  display:flex; gap:var(--space-3); padding:var(--space-3) 0;
+  border-bottom:1px solid var(--border-subdued);
+  font-size:13px;
+}
+#app-shell .insight-item:last-child{ border-bottom:none; }
+#app-shell .insight-item .icon{
+  width:28px; height:28px; border-radius:var(--r-2);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+#app-shell .insight-item.up .icon{ background:var(--success-bg); color:var(--success); }
+#app-shell .insight-item.warn .icon{ background:var(--warning-bg); color:var(--warning); }
+#app-shell .insight-item.info .icon{ background:var(--info-bg); color:var(--info); }
+#app-shell .insight-item .body{ flex:1; }
+#app-shell .insight-item .body .h{ font-weight:500; color:var(--text-strong); margin-bottom:2px; }
+#app-shell .insight-item .body .s{ color:var(--text-subdued); font-size:12px; }
+
+/* ── Donut chart (CSS-only) ────────────────────────────────────────── */
+#app-shell .donut{
+  width:140px; height:140px; border-radius:var(--r-full);
+  background:conic-gradient(
+    var(--chart-1) 0 35%,
+    var(--chart-2) 35% 60%,
+    var(--chart-3) 60% 80%,
+    var(--chart-4) 80% 92%,
+    var(--chart-5) 92% 100%
+  );
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+#app-shell .donut::after{
+  content:''; position:absolute; inset:18px;
+  background:var(--surface-canvas); border-radius:var(--r-full);
+}
+#app-shell .donut-legend{
+  display:flex; flex-direction:column; gap:var(--space-2);
+  font-size:13px;
+}
+#app-shell .donut-legend .li{
+  display:flex; align-items:center; gap:var(--space-2);
+}
+#app-shell .donut-legend .sw{
+  width:10px; height:10px; border-radius:var(--r-2);
+}
+
+/* ── Stream item (Monitoring) ──────────────────────────────────────── */
+#app-shell .stream-item{
+  display:grid; grid-template-columns:80px 1fr auto;
+  gap:var(--space-3); align-items:center;
+  padding:8px var(--space-4);
+  border-bottom:1px solid var(--border-subdued);
+  font-size:13px; font-family:ui-monospace, monospace;
+}
+#app-shell .stream-item:last-child{ border-bottom:none; }
+#app-shell .stream-item .t{ color:var(--text-subdued); }
+#app-shell .stream-item .e{ color:var(--text-default); }
+#app-shell .stream-item .v{ color:var(--text-strong); font-weight:500; }
+
+/* ── Drawer ────────────────────────────────────────────────────────── */
+#app-shell .drawer{
+  position:fixed; top:0; right:0; bottom:0; width:480px;
+  background:var(--surface-canvas);
+  border-left:1px solid var(--border-subdued);
+  box-shadow:var(--sh-lg);
+  transform:translateX(100%); transition:transform .25s;
+  z-index:200; display:flex; flex-direction:column;
+}
+#app-shell .drawer.open{ transform:translateX(0); }
+#app-shell .drawer-head{
+  padding:var(--space-4) var(--space-5);
+  border-bottom:1px solid var(--border-subdued);
+  display:flex; align-items:center; justify-content:space-between;
+}
+#app-shell .drawer-head h3{ font-size:16px; font-weight:600; color:var(--text-strong); margin:0; }
+#app-shell .drawer-body{ flex:1; overflow-y:auto; padding:var(--space-5); }
+#app-shell .drawer-foot{
+  padding:var(--space-4) var(--space-5);
+  border-top:1px solid var(--border-subdued);
+  display:flex; gap:var(--space-2); justify-content:flex-end;
+}
+#app-shell .scrim{
+  position:fixed; inset:0; background:var(--surface-overlay);
+  z-index:199; display:none;
+}
+#app-shell .scrim.visible{ display:block; }
+
+/* ── Responsive collapse ───────────────────────────────────────────── */
+@media (max-width:1280px){
+  #app-shell{ --sidebar-w:64px; }
+  #app-shell .ent-nav-item span,
+  #app-shell .ent-nav-section,
+  #app-shell .ent-sidebar-head .label,
+  #app-shell .ent-nav-item .nav-count{ display:none; }
+  #app-shell .ent-nav-item{ justify-content:center; padding:0; width:48px; margin:2px auto; }
+  #app-shell .ent-sidebar-foot{ display:none; }
+}
+@media (max-width:900px){
+  #app-shell .metric-grid{ grid-template-columns:repeat(2, 1fr); }
+  #app-shell .grid-2{ grid-template-columns:1fr; }
+  #app-shell .ent-search{ max-width:none; }
+}
+
+/* Make sure legacy stat-card / cards inside enterprise views inherit light style */
+#app-shell .view .card{
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  color:var(--text-default);
+  border-radius:var(--r-3);
+}
+#app-shell .view .stat-card{
+  background:var(--surface-canvas);
+  border:1px solid var(--border-subdued);
+  border-radius:var(--r-3);
+}
+#app-shell .view .stat-label{ color:var(--text-subdued); text-transform:none; letter-spacing:0; font-size:13px; }
+#app-shell .view .stat-value{ color:var(--text-strong); font-weight:600; font-size:24px; }
+#app-shell .view .section-title{ color:var(--text-strong); }
+
+/* Tabular numerals for tables and metrics globally inside app-shell */
+#app-shell .tnum{ font-variant-numeric:tabular-nums; }
+
+/* Focus visible everywhere */
+#app-shell button:focus-visible,
+#app-shell a:focus-visible,
+#app-shell input:focus-visible,
+#app-shell select:focus-visible{
+  outline:2px solid var(--border-focus); outline-offset:2px;
+}
 </style>
 <!-- KiX i18n infrastructure (Phase 1 — scaffolding; no visible strings replaced yet) -->
 <script src="i18n/i18next-runtime.js" defer></script>
@@ -1273,14 +1966,123 @@ textarea.form-input{
 <!-- APP SHELL                                                         -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div id="app-shell">
-  <!-- Header -->
-  <div class="app-header">
+  <!-- Legacy header (hidden by enterprise CSS; kept for any legacy JS hooks) -->
+  <div class="app-header" aria-hidden="true">
     <div style="display:flex;align-items:center">
       <div class="logo">Ki<span>X</span></div>
       <span class="brand-label" id="header-brand-name"></span>
     </div>
     <button class="btn-logout" onclick="doLogout()">Logout / 登出</button>
   </div>
+
+  <!-- ═══ Enterprise Sidebar ════════════════════════════════════════ -->
+  <aside class="ent-sidebar" aria-label="Primary navigation">
+    <div class="ent-sidebar-head">
+      <span>Ki<span class="x">X</span></span>
+      <span class="label" style="margin-left:8px;font-size:11px;font-weight:500;color:var(--text-on-sidebar-muted);text-transform:uppercase;letter-spacing:.08em">Ads Manager</span>
+    </div>
+    <nav class="ent-sidebar-nav">
+      <div class="ent-nav-section" data-i18n="portal.nav.section.workspace">Workspace</div>
+      <div class="ent-nav-item" data-view="dashboard" onclick="navigate('dashboard')" role="link" tabindex="0" aria-label="Overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span data-i18n="portal.nav.overview">Overview</span>
+      </div>
+      <div class="ent-nav-item" data-view="ads" onclick="navigate('ads')" role="link" tabindex="0" aria-label="Campaigns">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8v18l-18-8z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>
+        <span data-i18n="portal.nav.campaigns">Campaigns</span>
+        <span class="nav-count" id="nav-count-campaigns">10</span>
+      </div>
+      <div class="ent-nav-item" data-view="primitives" onclick="navigate('primitives')" role="link" tabindex="0" aria-label="Audiences">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M17 11a3 3 0 100-6"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
+        <span data-i18n="portal.nav.audiences">Audiences</span>
+      </div>
+      <div class="ent-nav-item" data-view="recipes" onclick="navigate('recipes')" role="link" tabindex="0" aria-label="Creative library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span data-i18n="portal.nav.creative">Creative library</span>
+      </div>
+      <div class="ent-nav-item" data-view="analytics" onclick="navigate('analytics')" role="link" tabindex="0" aria-label="Reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 6-6"/></svg>
+        <span data-i18n="portal.nav.reports">Reports &amp; Analytics</span>
+      </div>
+      <div class="ent-nav-item" data-view="rules" onclick="navigate('rules')" role="link" tabindex="0" aria-label="Automations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h6a4 4 0 014 4v6"/></svg>
+        <span data-i18n="portal.nav.automations">Automations</span>
+      </div>
+      <div class="ent-nav-item" data-view="operations" onclick="navigate('operations')" role="link" tabindex="0" aria-label="Operations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span data-i18n="portal.nav.operations">Operations</span>
+      </div>
+      <div class="ent-nav-item" data-view="monitoring" onclick="navigate('monitoring')" role="link" tabindex="0" aria-label="Live monitoring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span data-i18n="portal.nav.monitoring">Live monitoring</span>
+      </div>
+
+      <div class="ent-nav-section" data-i18n="portal.nav.section.rewards">Rewards</div>
+      <div class="ent-nav-item" data-view="vouchers" onclick="navigate('vouchers')" role="link" tabindex="0" aria-label="Vouchers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 003 3 3 3 0 00-3 3v3h20v-3a3 3 0 00-3-3 3 3 0 003-3V6H2v3z"/><path d="M9 6v12"/></svg>
+        <span data-i18n="portal.nav.vouchers">Vouchers</span>
+      </div>
+      <div class="ent-nav-item" data-view="redeem" onclick="navigate('redeem')" role="link" tabindex="0" aria-label="Redemptions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span data-i18n="portal.nav.redemptions">Redemptions</span>
+      </div>
+      <div class="ent-nav-item" data-view="qr" onclick="navigate('qr')" role="link" tabindex="0" aria-label="QR codes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/></svg>
+        <span data-i18n="portal.nav.qr">QR codes</span>
+      </div>
+      <div class="ent-nav-item" data-view="locations" onclick="navigate('locations')" role="link" tabindex="0" aria-label="Locations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span data-i18n="portal.nav.locations">Locations</span>
+      </div>
+
+      <div class="ent-nav-section" data-i18n="portal.nav.section.system">System</div>
+      <div class="ent-nav-item" data-view="settings" onclick="navigate('settings')" role="link" tabindex="0" aria-label="Settings &amp; billing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span data-i18n="portal.nav.settings">Settings &amp; billing</span>
+      </div>
+      <a class="ent-nav-item" href="https://docs.kix.app" target="_blank" rel="noopener" role="link" aria-label="Help and docs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span data-i18n="portal.nav.help">Help &amp; docs</span>
+      </a>
+    </nav>
+    <div class="ent-sidebar-foot">
+      <span id="sidebar-version">v2026.5</span>
+      <button class="lang-toggle" onclick="window.KiXLocale && KiXLocale.toggle && KiXLocale.toggle()" data-i18n="portal.sidebar.lang">EN / 中文</button>
+    </div>
+  </aside>
+
+  <!-- ═══ Enterprise Top Bar ════════════════════════════════════════ -->
+  <header class="ent-topbar" role="banner">
+    <div class="ent-breadcrumb">
+      <span class="ent-brand"><span class="dot"></span><span id="ent-brand-name">KiX</span></span>
+      <span class="sep">/</span>
+      <span class="curr" id="ent-breadcrumb-curr" data-i18n="portal.nav.overview">Overview</span>
+    </div>
+    <div class="ent-search">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input id="ent-search-input" type="search" placeholder="Search campaigns, audiences, reports..." data-i18n-attr="placeholder:portal.topbar.search.placeholder" aria-label="Global search">
+      <span class="kbd">⌘K</span>
+    </div>
+    <div class="ent-topbar-right">
+      <button class="ent-daterange" id="ent-daterange-btn" aria-label="Date range" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span data-i18n="portal.topbar.daterange.last7">Last 7 days</span>
+        <span style="color:var(--text-subdued)">·</span>
+        <span data-i18n="portal.topbar.daterange.compare">vs Previous</span>
+      </button>
+      <button class="ent-iconbtn" aria-label="Notifications" type="button" onclick="toggleNotifications()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="dot-notif" id="notif-dot"></span>
+      </button>
+      <button class="ent-iconbtn" aria-label="Help" type="button" onclick="window.open('https://docs.kix.app','_blank')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
+      <button class="ent-avatar" onclick="doLogout()" aria-label="Account menu" type="button" title="Sign out">
+        <span class="av" id="ent-avatar-initial">K</span>
+        <span class="name" id="ent-avatar-name">Demo</span>
+      </button>
+    </div>
+  </header>
 
   <!-- Content -->
   <div class="app-content">
@@ -1549,8 +2351,125 @@ textarea.form-input{
       </div>
     </div>
 
-    <!-- ─── Analytics / 数据分析 ────────────────────────────────── -->
-    <div id="view-analytics" class="view"></div>
+    <!-- ─── Reports & Analytics ───────────────────────────────────────── -->
+    <div id="view-analytics" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.reports.title">Reports &amp; Analytics</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.reports.subtitle">Performance across campaigns, audiences, and conversion funnels.</p>
+        </div>
+        <div class="ent-page-actions">
+          <button class="ebtn secondary" type="button" data-i18n="portal.actions.savedView">Saved view ▼</button>
+          <button class="ebtn secondary" type="button" onclick="exportReportsCsv()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span data-i18n="portal.actions.export">Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI 4-up -->
+      <div class="metric-grid" id="reports-kpi-grid">
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.totalSpend">Total spend</span></div>
+          <div class="value">S$12,486</div>
+          <div class="delta up">▲ 12.3% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <svg class="sparkline spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+            <polyline fill="none" stroke="var(--success)" stroke-width="2" points="0,24 15,20 30,22 45,18 60,15 75,16 90,10 105,8 120,5"/>
+          </svg>
+        </div>
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.conversions">Conversions</span></div>
+          <div class="value">1,420</div>
+          <div class="delta up">▲ 28.4% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <svg class="sparkline spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+            <polyline fill="none" stroke="var(--success)" stroke-width="2" points="0,28 15,24 30,20 45,22 60,16 75,12 90,10 105,6 120,4"/>
+          </svg>
+        </div>
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.avgCpa">Avg CPA</span></div>
+          <div class="value">S$8.79</div>
+          <div class="delta down">▼ 5.6% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <svg class="sparkline spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+            <polyline fill="none" stroke="var(--critical)" stroke-width="2" points="0,8 15,10 30,14 45,12 60,16 75,18 90,20 105,22 120,24"/>
+          </svg>
+        </div>
+        <div class="metric-card">
+          <div class="label"><span data-i18n="portal.kpi.roas">ROAS</span></div>
+          <div class="value">4.2×</div>
+          <div class="delta up">▲ 0.6× <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
+          <svg class="sparkline spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+            <polyline fill="none" stroke="var(--success)" stroke-width="2" points="0,22 15,20 30,18 45,14 60,12 75,10 90,8 105,6 120,4"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Filter row -->
+      <div class="filter-bar">
+        <button class="filter-chip active" data-i18n="portal.reports.filter.allCampaigns">All campaigns</button>
+        <button class="filter-chip" data-i18n="portal.reports.filter.allObjectives">All objectives</button>
+        <button class="filter-chip" data-i18n="portal.reports.filter.allAudiences">All audiences</button>
+      </div>
+
+      <!-- Trend chart -->
+      <div class="ecard">
+        <div class="ecard-head">
+          <div>
+            <h3 class="ecard-title" data-i18n="portal.reports.trend.title">Performance trend</h3>
+            <div class="ecard-sub" data-i18n="portal.reports.trend.sub">Spend &amp; conversions, last 7 days</div>
+          </div>
+          <div style="display:flex;gap:var(--space-2)">
+            <button class="filter-chip active">Spend</button>
+            <button class="filter-chip">Conversions</button>
+            <button class="filter-chip">CTR</button>
+          </div>
+        </div>
+        <div class="chart-canvas" role="img" aria-label="Spend trend bar chart">
+          <div class="bar" style="height:35%"></div>
+          <div class="bar" style="height:48%"></div>
+          <div class="bar" style="height:42%"></div>
+          <div class="bar" style="height:62%"></div>
+          <div class="bar" style="height:55%"></div>
+          <div class="bar" style="height:75%"></div>
+          <div class="bar" style="height:90%"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Top campaigns by ROAS -->
+        <div class="ecard">
+          <div class="ecard-head">
+            <h3 class="ecard-title" data-i18n="portal.reports.topRoas.title">Top campaigns by ROAS</h3>
+          </div>
+          <table class="etable" aria-label="Top campaigns by ROAS">
+            <thead><tr><th data-i18n="portal.table.name">Name</th><th class="numeric" data-i18n="portal.table.spend">Spend</th><th class="numeric" data-i18n="portal.table.conversions">Conv</th><th class="numeric">ROAS</th></tr></thead>
+            <tbody>
+              <tr><td class="col-name">Toast Box · Morning Combo</td><td class="numeric">S$1,840</td><td class="numeric">312</td><td class="numeric tnum">6.4×</td></tr>
+              <tr><td class="col-name">Ya Kun Kaya · Weekend Spin</td><td class="numeric">S$1,620</td><td class="numeric">288</td><td class="numeric tnum">5.9×</td></tr>
+              <tr><td class="col-name">CHIR CHIR · K-Drama Trivia</td><td class="numeric">S$2,150</td><td class="numeric">320</td><td class="numeric tnum">5.2×</td></tr>
+              <tr><td class="col-name">Bean Brothers · Loyalty Ladder</td><td class="numeric">S$1,210</td><td class="numeric">196</td><td class="numeric tnum">4.6×</td></tr>
+              <tr><td class="col-name">Killiney · Lunch Hour Roulette</td><td class="numeric">S$  945</td><td class="numeric">148</td><td class="numeric tnum">4.1×</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Spend by objective (donut) -->
+        <div class="ecard">
+          <div class="ecard-head">
+            <h3 class="ecard-title" data-i18n="portal.reports.byObjective.title">Spend by objective</h3>
+          </div>
+          <div style="display:flex;gap:var(--space-5);align-items:center;padding:var(--space-3) 0">
+            <div class="donut" role="img" aria-label="Spend by objective donut chart"></div>
+            <ul class="donut-legend" style="list-style:none;padding:0;margin:0">
+              <li class="li"><span class="sw" style="background:var(--chart-1)"></span><span data-i18n="portal.objective.acquisition">New customers</span> · 35%</li>
+              <li class="li"><span class="sw" style="background:var(--chart-2)"></span><span data-i18n="portal.objective.retention">Retention</span> · 25%</li>
+              <li class="li"><span class="sw" style="background:var(--chart-3)"></span><span data-i18n="portal.objective.viral">Viral / referral</span> · 20%</li>
+              <li class="li"><span class="sw" style="background:var(--chart-4)"></span><span data-i18n="portal.objective.awareness">Awareness</span> · 12%</li>
+              <li class="li"><span class="sw" style="background:var(--chart-5)"></span><span data-i18n="portal.objective.other">Other</span> · 8%</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ─── Rules / 规则引擎 ────────────────────────────────────── -->
     <div id="view-rules" class="view"></div>
@@ -1737,8 +2656,78 @@ textarea.form-input{
     <!-- Monitoring View -->
     <div id="view-monitoring" class="view"></div>
 
-    <!-- Ads Manager View -->
-    <div id="view-ads" class="view"></div>
+    <!-- ─── Campaigns (Ads Manager) ───────────────────────────────────── -->
+    <div id="view-ads" class="view">
+      <div class="ent-page-head">
+        <div>
+          <h1 class="ent-page-title" data-i18n="portal.campaigns.title">Campaigns</h1>
+          <p class="ent-page-subtitle" data-i18n="portal.campaigns.subtitle">Manage and optimize your gamified marketing campaigns across all channels.</p>
+        </div>
+        <div class="ent-page-actions">
+          <button class="ebtn secondary" type="button" onclick="exportCampaignsCsv()" aria-label="Export campaigns CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span data-i18n="portal.actions.export">Export CSV</span>
+          </button>
+          <button class="ebtn primary" type="button" onclick="openCampaignDrawer()" aria-label="Create new campaign">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="portal.actions.createCampaign">Create campaign</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter chips -->
+      <div class="filter-bar" role="toolbar" aria-label="Campaign filters">
+        <button class="filter-chip active" data-filter="status:all" data-i18n="portal.campaigns.filter.all">All</button>
+        <button class="filter-chip" data-filter="status:active" data-i18n="portal.campaigns.filter.active">Active</button>
+        <button class="filter-chip" data-filter="status:paused" data-i18n="portal.campaigns.filter.paused">Paused</button>
+        <button class="filter-chip" data-filter="status:pending" data-i18n="portal.campaigns.filter.pending">Pending review</button>
+        <button class="filter-chip" data-filter="status:ended" data-i18n="portal.campaigns.filter.ended">Ended</button>
+        <span style="flex:1"></span>
+        <input class="einput" id="campaigns-search" type="search" placeholder="Search campaigns..." data-i18n-attr="placeholder:portal.campaigns.searchPlaceholder" style="max-width:260px;height:30px">
+      </div>
+
+      <!-- Bulk action toolbar -->
+      <div class="bulk-bar" id="campaigns-bulk-bar" role="toolbar">
+        <span class="count"><span id="campaigns-bulk-count">0</span> <span data-i18n="portal.bulk.selected">selected</span></span>
+        <button type="button" data-i18n="portal.bulk.pause">Pause</button>
+        <button type="button" data-i18n="portal.bulk.activate">Activate</button>
+        <button type="button" data-i18n="portal.bulk.duplicate">Duplicate</button>
+        <button type="button" data-i18n="portal.bulk.delete">Delete</button>
+        <span style="flex:1"></span>
+        <button type="button" onclick="clearCampaignSelection()" data-i18n="portal.bulk.clear">Clear</button>
+      </div>
+
+      <!-- Data table -->
+      <div class="etable-wrap">
+        <table class="etable" id="campaigns-table" aria-label="Campaigns list">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="campaigns-select-all" aria-label="Select all campaigns" onchange="toggleAllCampaigns(this)"></th>
+              <th class="sortable" data-sort="status"><span data-i18n="portal.table.status">Status</span> <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-sort="name"><span data-i18n="portal.table.name">Name</span> <span class="sort-icon">↕</span></th>
+              <th data-i18n="portal.table.objective">Objective</th>
+              <th class="numeric sortable" data-sort="budget"><span data-i18n="portal.table.budget">Budget</span> <span class="sort-icon">↕</span></th>
+              <th class="numeric sortable" data-sort="spend"><span data-i18n="portal.table.spend">Spend</span> <span class="sort-icon">↕</span></th>
+              <th class="numeric sortable" data-sort="impressions"><span data-i18n="portal.table.impressions">Impressions</span> <span class="sort-icon">↕</span></th>
+              <th class="numeric sortable" data-sort="clicks"><span data-i18n="portal.table.clicks">Clicks</span> <span class="sort-icon">↕</span></th>
+              <th class="numeric sortable" data-sort="ctr"><span data-i18n="portal.table.ctr">CTR</span> <span class="sort-icon">↕</span></th>
+              <th class="numeric sortable" data-sort="conversions"><span data-i18n="portal.table.conversions">Conversions</span> <span class="sort-icon">↕</span></th>
+              <th class="numeric sortable" data-sort="cpa"><span data-i18n="portal.table.cpa">CPA</span> <span class="sort-icon">↕</span></th>
+              <th aria-label="Row actions"></th>
+            </tr>
+          </thead>
+          <tbody id="campaigns-tbody"></tbody>
+        </table>
+        <div class="etable-foot">
+          <span><span id="campaigns-range">1–10</span> <span data-i18n="portal.pagination.of">of</span> <span id="campaigns-total">10</span></span>
+          <div class="epagination">
+            <button type="button" disabled>‹</button>
+            <button type="button" class="active">1</button>
+            <button type="button">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Module Config Modal -->
@@ -2522,10 +3511,48 @@ function navigate(view){
   const target=document.getElementById('view-'+view);
   if(target)target.classList.add('active');
 
-  // Update nav
+  // Update legacy bottom-nav (hidden) + enterprise sidebar nav
   document.querySelectorAll('.nav-item').forEach(n=>{
     n.classList.toggle('active',n.dataset.view===view);
   });
+  document.querySelectorAll('.ent-nav-item').forEach(n=>{
+    n.classList.toggle('active',n.dataset.view===view);
+  });
+  // Update breadcrumb label
+  try{
+    const labels={
+      dashboard:'Overview', games:'Campaigns', ads:'Campaigns',
+      primitives:'Audiences', recipes:'Creative library',
+      analytics:'Reports & Analytics', rules:'Automations',
+      operations:'Operations', monitoring:'Live monitoring',
+      vouchers:'Vouchers', redeem:'Redemptions', qr:'QR codes',
+      locations:'Locations', settings:'Settings & billing',
+      engagement:'Engagement'
+    };
+    const i18nKey='portal.nav.'+({dashboard:'overview', games:'campaigns', ads:'campaigns',
+      primitives:'audiences', recipes:'creative', analytics:'reports',
+      rules:'automations', operations:'operations', monitoring:'monitoring',
+      vouchers:'vouchers', redeem:'redemptions', qr:'qr', locations:'locations',
+      settings:'settings', engagement:'engagement'}[view]||'overview');
+    const crumb=document.getElementById('ent-breadcrumb-curr');
+    if(crumb){
+      crumb.textContent=labels[view]||view;
+      crumb.setAttribute('data-i18n', i18nKey);
+      if(window.i18next && window.i18next.t){
+        const t=window.i18next.t(i18nKey);
+        if(t && t!==i18nKey) crumb.textContent=t;
+      }
+    }
+  }catch(_){}
+  // Render new views if their renderer exists
+  switch(view){
+    case'ads':if(window.CampaignsView&&CampaignsView.render)CampaignsView.render();break;
+    case'analytics':if(window.ReportsView&&ReportsView.render)ReportsView.render();break;
+    case'primitives':if(window.AudiencesView&&AudiencesView.render)AudiencesView.render();break;
+    case'rules':if(window.AutomationsView&&AutomationsView.render)AutomationsView.render();break;
+    case'operations':if(window.OperationsHubView&&OperationsHubView.render)OperationsHubView.render();break;
+    case'monitoring':if(window.LiveMonitoringView&&LiveMonitoringView.render)LiveMonitoringView.render();break;
+  }
 
   // Load data
   switch(view){
