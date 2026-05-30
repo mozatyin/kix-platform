@@ -1,0 +1,137 @@
+name: Scheduled
+
+on:
+  schedule:
+    - cron: "0 3 * * *"     # nightly 03:00 UTC
+    - cron: "0 4 * * 1"     # weekly Monday 04:00 UTC
+    - cron: "0 5 1 * *"     # monthly 1st 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "Which schedule to run"
+        required: true
+        default: "nightly"
+        type: choice
+        options: [nightly, weekly, monthly]
+
+jobs:
+  nightly-dep-scan:
+    name: Nightly dependency vuln scan
+    if: github.event.schedule == '0 3 * * *' || inputs.run == 'nightly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: |
+          pip install --upgrade pip pip-audit safety
+          pip-audit -r requirements.txt || true
+          safety check -r requirements.txt --full-report || true
+      - name: Trivy repo scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+
+  nightly-e2e:
+    name: Nightly full E2E
+    if: github.event.schedule == '0 3 * * *' || inputs.run == 'nightly'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: |
+          pip install -r requirements.txt
+          pip install pytest
+          pytest tests/ -m "e2e" --maxfail=20 || true
+          python scripts/e2e_superapp.py || true
+          python scripts/e2e_ads_platform.py || true
+
+  nightly-perf:
+    name: Nightly perf regression
+    if: github.event.schedule == '0 3 * * *' || inputs.run == 'nightly'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: |
+          pip install -r requirements.txt
+          if [ -d load_tests ]; then
+            echo "TODO: run locust/k6 baseline against staging"
+            ls load_tests/
+          fi
+          # TODO: compare against load-baseline.json, fail if p95 regression > 20%
+
+  weekly-security-audit:
+    name: Weekly security audit
+    if: github.event.schedule == '0 4 * * 1' || inputs.run == 'weekly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: |
+          pip install -r requirements.txt
+          pip install bandit
+          bandit -r app/ -ll
+          if [ -f scripts/audit_rtl.py ]; then python scripts/audit_rtl.py; fi
+
+  weekly-translation:
+    name: Weekly translation status
+    if: github.event.schedule == '0 4 * * 1' || inputs.run == 'weekly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: |
+          pip install -r requirements.txt
+          python scripts/i18n_lint.py || true
+          if [ -f scripts/i18n_extract.py ]; then python scripts/i18n_extract.py --report; fi
+
+  weekly-bible-drift:
+    name: Weekly Bible drift
+    if: github.event.schedule == '0 4 * * 1' || inputs.run == 'weekly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: |
+          if [ -f scripts/bible_check.py ]; then
+            python scripts/bible_check.py --report
+          else
+            echo "scripts/bible_check.py not yet present"
+          fi
+
+  monthly-compliance:
+    name: Monthly compliance scan
+    if: github.event.schedule == '0 5 1 * *' || inputs.run == 'monthly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "TODO: run compliance scan (SOC2/GDPR placeholders)"
+          # TODO: configure ${COMPLIANCE_API_KEY}
+
+  monthly-license-audit:
+    name: Monthly license audit
+    if: github.event.schedule == '0 5 1 * *' || inputs.run == 'monthly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: |
+          pip install --upgrade pip pip-licenses
+          pip install -r requirements.txt
+          pip-licenses --format=markdown --with-urls --with-license-file > licenses.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: licenses-report
+          path: licenses.md

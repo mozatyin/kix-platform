@@ -1,0 +1,39 @@
+# CODEOWNERS — auto-request reviews based on path.
+# Format: <pattern> <owner1> <owner2>
+# Replace placeholder team handles before enabling branch protection.
+
+# Default owners
+*                                   @kix-platform/maintainers   # TODO: real team
+
+# Backend
+/app/                               @kix-platform/backend       # TODO: real team
+/app/api/                           @kix-platform/backend
+/app/services/payments/             @kix-platform/payments      # TODO: real team
+/app/services/auth/                 @kix-platform/security      # TODO: real team
+
+# Data / migrations
+/migrations/                        @kix-platform/data          # TODO: real team
+/alembic.ini                        @kix-platform/data
+
+# Frontend / portal
+/landing/                           @kix-platform/frontend      # TODO: real team
+
+# Infra & deploy
+/deployment/                        @kix-platform/devops        # TODO: real team
+/Dockerfile                         @kix-platform/devops
+/docker-compose*.yml                @kix-platform/devops
+/.github/                           @kix-platform/devops
+/Makefile                           @kix-platform/devops
+
+# Tests & scripts
+/tests/                             @kix-platform/qa            # TODO: real team
+/scripts/                           @kix-platform/backend
+
+# Docs & Bible (architectural source of truth)
+/KIX_GAMIFICATION_BIBLE.md          @kix-platform/architects    # TODO: real team
+/docs/                              @kix-platform/architects
+/*.md                               @kix-platform/architects
+
+# Security-sensitive
+/scripts/audit_*.py                 @kix-platform/security
+/app/security/                      @kix-platform/security

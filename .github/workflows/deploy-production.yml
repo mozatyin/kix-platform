@@ -1,0 +1,123 @@
+name: Deploy Production
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.2.3)"
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: kix-platform
+  REGISTRY: ghcr.io
+  ERROR_RATE_THRESHOLD: "0.01"
+  # TODO: configure ${PROD_KUBECONFIG}, ${PROD_AWS_ROLE}, ${PAGERDUTY_TOKEN}, ${DATADOG_API_KEY}
+
+jobs:
+  approval:
+    name: Manual approval gate
+    runs-on: ubuntu-latest
+    environment:
+      name: production-approval   # requires reviewers configured in GitHub UI
+    steps:
+      - name: Approved
+        run: echo "Production deploy approved for ${{ github.ref_name }}"
+
+  build:
+    name: Build & push prod image
+    runs-on: ubuntu-latest
+    needs: approval
+    timeout-minutes: 30
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Meta
+        id: meta
+        run: |
+          TAG="${{ github.ref_name }}"
+          [ -z "$TAG" ] && TAG="${{ inputs.tag }}"
+          echo "image=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${TAG}" >> "$GITHUB_OUTPUT"
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  canary-5:
+    name: Canary 5%
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy 5% canary
+        run: |
+          echo "TODO: kubectl apply -f deployment/k8s/canary-5pct.yaml --namespace=prod"
+          echo "Image: ${{ needs.build.outputs.image }}"
+      - name: Bake 15 min, watch error rate
+        run: |
+          echo "Sleeping 15m while observing metrics (placeholder)"
+          # TODO: query Datadog/Prometheus for error_rate; fail if > $ERROR_RATE_THRESHOLD
+          sleep 30   # placeholder; real run uses 900
+
+  canary-25:
+    name: Canary 25%
+    runs-on: ubuntu-latest
+    needs: canary-5
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Bump to 25%
+        run: |
+          echo "TODO: kubectl scale canary to 25%"
+      - name: Bake 20 min
+        run: |
+          echo "Observing error rate at 25%"
+          sleep 30   # placeholder; real run 1200
+
+  full-rollout:
+    name: Roll out 100%
+    runs-on: ubuntu-latest
+    needs: canary-25
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Promote to 100%
+        run: |
+          echo "TODO: kubectl set image deployment/kix-api kix-api=${{ needs.build.outputs.image }} -n prod"
+          echo "TODO: kubectl rollout status deployment/kix-api -n prod --timeout=10m"
+      - name: Smoke tests
+        run: |
+          echo "TODO: run scripts/smoke_voucher_reserve_claim.py against prod"
+
+  rollback:
+    name: Auto rollback
+    runs-on: ubuntu-latest
+    needs: [canary-5, canary-25, full-rollout]
+    if: failure()
+    steps:
+      - name: Rollback
+        run: |
+          echo "Rolling back production deployment"
+          echo "TODO: kubectl rollout undo deployment/kix-api -n prod"
+      - name: Page on-call
+        run: |
+          echo "TODO: trigger PagerDuty via \${PAGERDUTY_TOKEN}"
