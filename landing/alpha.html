@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX Alpha — Singapore F&amp;B Pilot</title>
+<meta name="description" content="Apply to the KiX Alpha — 90 days free, S$500 ad credit, and a direct line to the founding team. For Singapore F&amp;B owners with 1–10 stores.">
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#00B341;
+  --brand-hover:#009335;
+  --brand-soft:rgba(0,179,65,.08);
+  --brand-border:rgba(0,179,65,.22);
+  --bg:#FFFFFF;
+  --bg-alt:#F7F8FA;
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+  --text:#0F172A;
+  --text-dim:#475569;
+  --text-muted:#64748B;
+  --danger:#B42318;
+  --danger-soft:#FEF3F2;
+  --radius:6px;
+  --radius-sm:4px;
+  --radius-lg:8px;
+  --max:960px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --shadow:0 4px 12px rgba(15,23,42,.06);
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.55;font-size:15px}
+a{text-decoration:none;color:var(--brand)}
+a:hover{color:var(--brand-hover)}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--radius-sm)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.container{max-width:var(--max);margin:0 auto;padding:0 24px}
+
+header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--border)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
+.logo span{color:var(--brand)}
+.nav-back{font-size:14px;color:var(--text-dim);font-weight:500}
+.nav-back:hover{color:var(--text)}
+
+.hero{padding:80px 0 48px;background:radial-gradient(900px 500px at 80% -10%,rgba(0,252,0,.08) 0%,transparent 60%),var(--bg);border-bottom:1px solid var(--border)}
+.hero-inner{text-align:center;max-width:720px;margin:0 auto}
+.eyebrow{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);background:var(--brand-soft);border:1px solid var(--brand-border);padding:6px 12px;border-radius:999px;margin-bottom:20px}
+h1{font-size:44px;line-height:1.1;font-weight:800;letter-spacing:-1px;margin-bottom:16px}
+@media(max-width:640px){h1{font-size:32px}}
+.lede{font-size:18px;color:var(--text-dim);max-width:580px;margin:0 auto 28px}
+
+.cta-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;padding:12px 22px;border-radius:var(--radius);transition:background .15s,color .15s,border-color .15s;border:1px solid transparent;min-height:44px}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-hover);color:#fff}
+.btn-ghost{background:#fff;color:var(--text);border-color:var(--border-strong)}
+.btn-ghost:hover{background:var(--bg-alt)}
+
+section{padding:64px 0;border-bottom:1px solid var(--border)}
+section:last-of-type{border-bottom:none}
+h2{font-size:28px;font-weight:700;margin-bottom:24px;letter-spacing:-.5px}
+h3{font-size:18px;font-weight:600;margin-bottom:8px}
+
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:760px){.grid-3{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;box-shadow:var(--shadow)}
+.card .num{font-size:24px;font-weight:800;color:var(--brand);margin-bottom:6px}
+.card p{color:var(--text-dim);font-size:14px;line-height:1.5}
+
+.eligibility{background:var(--bg-alt)}
+.checklist{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:12px 32px;margin-top:8px}
+@media(max-width:640px){.checklist{grid-template-columns:1fr}}
+.checklist li{padding-left:28px;position:relative;color:var(--text);font-size:15px}
+.checklist li::before{content:"✓";position:absolute;left:0;top:0;width:20px;height:20px;background:var(--brand);color:#fff;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+
+/* ── form ───────────────────────────────────────────────── */
+form{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow);max-width:640px;margin:0 auto}
+.field{margin-bottom:18px}
+.field label{display:block;font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)}
+.field .req{color:var(--danger);margin-left:2px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-family:inherit;font-size:15px;background:#fff;color:var(--text);transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px var(--brand-soft)}
+.field textarea{min-height:110px;resize:vertical}
+.field-help{font-size:12px;color:var(--text-muted);margin-top:4px}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:540px){.row-2{grid-template-columns:1fr}}
+
+.alert{padding:12px 14px;border-radius:var(--radius);font-size:14px;margin-bottom:18px;display:none}
+.alert-success{background:var(--brand-soft);border:1px solid var(--brand-border);color:var(--brand-hover)}
+.alert-error{background:var(--danger-soft);border:1px solid #FECDCA;color:var(--danger)}
+
+/* ── FAQ ──────────────────────────────────────────────── */
+details{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px}
+details[open]{border-color:var(--brand-border)}
+details summary{font-weight:600;cursor:pointer;list-style:none;padding-right:24px;position:relative}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";position:absolute;right:0;top:0;font-size:18px;font-weight:600;color:var(--text-dim)}
+details[open] summary::after{content:"−"}
+details p{margin-top:12px;color:var(--text-dim);font-size:14px;line-height:1.6}
+
+footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px}
+
+.code-input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <a href="/landing/index.html" class="logo">Ki<span>X</span> Alpha</a>
+    <a href="/landing/index.html" class="nav-back">← Back to KiX</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container hero-inner">
+    <span class="eyebrow">Invite-only · Singapore F&amp;B</span>
+    <h1>Help us shape KiX.<br>Get 90 days on the house.</h1>
+    <p class="lede">We're hand-picking 5 Singapore F&amp;B chain owners for the closed alpha. Real merchants. Real campaigns. Direct line to the founders.</p>
+    <div class="cta-row">
+      <a href="#apply" class="btn btn-primary">Apply now</a>
+      <a href="#what-you-get" class="btn btn-ghost">What you get</a>
+    </div>
+  </div>
+</section>
+
+<section id="what-you-get">
+  <div class="container">
+    <h2>What alpha merchants get</h2>
+    <div class="grid-3">
+      <div class="card">
+        <div class="num">90 days</div>
+        <h3>STARTER on the house</h3>
+        <p>Full platform — campaigns, analytics, audiences. No card required.</p>
+      </div>
+      <div class="card">
+        <div class="num">S$500</div>
+        <h3>Ad credit</h3>
+        <p>Applied after your first wallet top-up. Spend it on acquiring new customers.</p>
+      </div>
+      <div class="card">
+        <div class="num">1:1</div>
+        <h3>Founder support</h3>
+        <p>WhatsApp line to the team building KiX. Roadmap input on every feature.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="eligibility">
+  <div class="container">
+    <h2>Who we're looking for</h2>
+    <ul class="checklist">
+      <li>F&amp;B chain owner or GM</li>
+      <li>1 to 10 stores in Singapore</li>
+      <li>Currently running some form of customer marketing</li>
+      <li>Willing to share monthly written feedback</li>
+      <li>OK with weekly 15-min check-ins for the first month</li>
+      <li>Comfortable being a public alpha reference (logo only — optional)</li>
+    </ul>
+  </div>
+</section>
+
+<section id="apply">
+  <div class="container">
+    <h2 style="text-align:center">Apply</h2>
+    <p style="text-align:center;color:var(--text-dim);max-width:520px;margin:0 auto 28px">Either fill the application (we'll reply within 2 business days) or paste your invite code below if you already have one.</p>
+
+    <form id="alpha-form" novalidate>
+      <div class="alert alert-success" id="alert-success" role="alert">Thanks — we received your application. We'll reply within 2 business days.</div>
+      <div class="alert alert-error" id="alert-error" role="alert">Something went wrong. Please try again or email alpha@letskix.com.</div>
+
+      <div class="field">
+        <label for="invite_code">Have an invite code? <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+        <input id="invite_code" name="invite_code" type="text" class="code-input" placeholder="KIX-XXXX-XXXX" autocomplete="off">
+        <div class="field-help">Skips the queue and unlocks signup immediately.</div>
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label for="name">Your name<span class="req">*</span></label>
+          <input id="name" name="name" type="text" required maxlength="200" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="email">Email<span class="req">*</span></label>
+          <input id="email" name="email" type="email" required maxlength="200" autocomplete="email">
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label for="brand">Brand / business name<span class="req">*</span></label>
+          <input id="brand" name="brand" type="text" required maxlength="200">
+        </div>
+        <div class="field">
+          <label for="store_count">Number of stores<span class="req">*</span></label>
+          <select id="store_count" name="store_count" required>
+            <option value="">Select…</option>
+            <option value="1">1</option>
+            <option value="2">2–3</option>
+            <option value="5">4–5</option>
+            <option value="10">6–10</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="monthly_ad_spend_sgd">Current monthly marketing spend (S$)</label>
+        <select id="monthly_ad_spend_sgd" name="monthly_ad_spend_sgd">
+          <option value="0">Less than S$500</option>
+          <option value="1000">S$500 – S$2,000</option>
+          <option value="3000">S$2,000 – S$5,000</option>
+          <option value="8000">S$5,000 – S$10,000</option>
+          <option value="15000">More than S$10,000</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="why_interested">Why are you interested in KiX?<span class="req">*</span></label>
+        <textarea id="why_interested" name="why_interested" required minlength="10" maxlength="2000" placeholder="What problem are you hoping KiX will solve for your stores?"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submit-btn" style="width:100%">Apply for alpha</button>
+    </form>
+  </div>
+</section>
+
+<section>
+  <div class="container" style="max-width:720px">
+    <h2>FAQ</h2>
+    <details>
+      <summary>Why an alpha programme?</summary>
+      <p>We're building KiX with merchants, not for them. The alpha cohort gets direct line to the team — every feature on the roadmap traces back to a real conversation with an alpha member.</p>
+    </details>
+    <details>
+      <summary>What happens after 90 days?</summary>
+      <p>Your trial converts to a regular STARTER plan unless you cancel. Alpha members get a discount that carries forward — we'll confirm it in writing before the trial ends.</p>
+    </details>
+    <details>
+      <summary>How much time will this take?</summary>
+      <p>One 15-minute weekly check-in for the first month, then monthly. Plus a 30-second NPS survey each month. We respect your time.</p>
+    </details>
+    <details>
+      <summary>What if KiX isn't a fit?</summary>
+      <p>No charge, no obligation. You walk away with whatever data you exported and our thanks for the feedback.</p>
+    </details>
+    <details>
+      <summary>I have an invite code — what do I do?</summary>
+      <p>Paste it in the form above. After we validate the code you'll be redirected to set up your brand and the trial activates instantly.</p>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Questions? <a href="mailto:alpha@letskix.com">alpha@letskix.com</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  // Prefill code from query-string ?code=XXX
+  var params = new URLSearchParams(window.location.search);
+  var preCode = params.get('code');
+  if(preCode){
+    var input = document.getElementById('invite_code');
+    if(input){ input.value = preCode.trim().toUpperCase(); }
+  }
+
+  var form = document.getElementById('alpha-form');
+  var btn  = document.getElementById('submit-btn');
+  var ok   = document.getElementById('alert-success');
+  var bad  = document.getElementById('alert-error');
+
+  function showAlert(el, msg){
+    el.style.display = 'block';
+    if(msg){ el.textContent = msg; }
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  function hideAlerts(){
+    ok.style.display = 'none';
+    bad.style.display = 'none';
+  }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    hideAlerts();
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    var data = {
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      brand: form.brand.value.trim(),
+      store_count: parseInt(form.store_count.value || '0', 10),
+      monthly_ad_spend_sgd: parseInt(form.monthly_ad_spend_sgd.value || '0', 10),
+      why_interested: form.why_interested.value.trim(),
+      locale: (navigator.language && navigator.language.indexOf('zh') === 0) ? 'zh-Hans-SG' : 'en-SG'
+    };
+
+    // Basic client-side validation
+    if(!data.name || !data.email || !data.brand || !data.store_count || data.why_interested.length < 10){
+      btn.disabled = false; btn.textContent = 'Apply for alpha';
+      showAlert(bad, 'Please fill all required fields. "Why interested" needs at least 10 characters.');
+      return;
+    }
+
+    fetch('/api/v1/alpha/apply', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    }).then(function(r){
+      if(!r.ok){ throw new Error('HTTP ' + r.status); }
+      return r.json();
+    }).then(function(){
+      form.reset();
+      btn.disabled = false;
+      btn.textContent = 'Apply for alpha';
+      showAlert(ok);
+    }).catch(function(err){
+      btn.disabled = false;
+      btn.textContent = 'Apply for alpha';
+      showAlert(bad, 'Could not submit (' + err.message + '). Email alpha@letskix.com.');
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

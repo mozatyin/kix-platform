@@ -770,6 +770,15 @@ and the shim helpers in `app.api_standards`.
         tags=["portal-pixels"],
     )
 
+    # ── Alpha-Merchant Program: invite / signup / feedback / cohort ────
+    # Lazy import: side-effect registers the 4 alpha_* email templates.
+    from app.routers import alpha_program
+    app.include_router(
+        alpha_program.router,
+        prefix="/api/v1/alpha",
+        tags=["alpha-program"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Send Feedback — KiX Alpha</title>
+<meta name="description" content="In-app feedback portal for KiX Alpha merchants. Rate your week, flag an issue, share an idea.">
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#00B341;
+  --brand-hover:#009335;
+  --brand-soft:rgba(0,179,65,.08);
+  --brand-border:rgba(0,179,65,.22);
+  --bg:#FFFFFF;
+  --bg-alt:#F7F8FA;
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+  --text:#0F172A;
+  --text-dim:#475569;
+  --text-muted:#64748B;
+  --danger:#B42318;
+  --danger-soft:#FEF3F2;
+  --radius:6px;
+  --radius-sm:4px;
+  --radius-lg:8px;
+  --max:720px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --shadow:0 4px 12px rgba(15,23,42,.06);
+  --star:#FACC15;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--font);background:var(--bg-alt);color:var(--text);line-height:1.55;font-size:15px;min-height:100vh}
+a{text-decoration:none;color:var(--brand)}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--radius-sm)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.container{max-width:var(--max);margin:0 auto;padding:0 24px}
+
+header{background:#fff;border-bottom:1px solid var(--border)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
+.logo span{color:var(--brand)}
+.nav-back{font-size:14px;color:var(--text-dim);font-weight:500}
+.nav-back:hover{color:var(--text)}
+
+main{padding:40px 0 80px}
+h1{font-size:28px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px}
+.subtitle{color:var(--text-dim);margin-bottom:32px;font-size:15px}
+
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:18px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;font-weight:600;margin-bottom:14px}
+.section-label{font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+
+/* ── star rating ─────────────────────────────────────────── */
+.stars{display:flex;gap:6px;margin-bottom:8px}
+.star-btn{
+  width:44px;height:44px;border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;line-height:1;background:transparent;color:#D1D5DB;
+  border:1px solid var(--border);transition:color .12s,border-color .12s,background .12s
+}
+.star-btn:hover,.star-btn.active{color:var(--star);border-color:var(--star);background:rgba(250,204,21,.08)}
+.rating-label{font-size:14px;color:var(--text-muted);min-height:20px}
+
+/* ── category pills ──────────────────────────────────────── */
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{padding:8px 14px;border-radius:999px;border:1px solid var(--border-strong);font-size:13px;font-weight:500;background:#fff;color:var(--text-dim);transition:all .12s}
+.pill:hover{border-color:var(--brand);color:var(--text)}
+.pill.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+/* ── form fields ─────────────────────────────────────────── */
+.field{margin-bottom:14px}
+.field label{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
+.field textarea,.field input[type="file"],.field input[type="text"]{
+  width:100%;padding:10px 12px;border:1px solid var(--border-strong);
+  border-radius:var(--radius);font-family:inherit;font-size:15px;
+  background:#fff;color:var(--text);transition:border-color .15s
+}
+.field textarea{min-height:110px;resize:vertical}
+.field textarea:focus,.field input:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px var(--brand-soft)}
+.field-help{font-size:12px;color:var(--text-muted);margin-top:4px}
+
+.context-block{background:var(--bg-alt);border:1px dashed var(--border-strong);border-radius:var(--radius);padding:10px 12px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-dim);max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;padding:12px 22px;border-radius:var(--radius);transition:background .15s;min-height:44px;width:100%}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-hover)}
+.btn-primary:disabled{background:var(--border-strong);cursor:not-allowed}
+
+.alert{padding:14px 16px;border-radius:var(--radius);font-size:14px;margin-bottom:18px;display:none}
+.alert-success{background:var(--brand-soft);border:1px solid var(--brand-border);color:var(--brand-hover)}
+.alert-error{background:var(--danger-soft);border:1px solid #FECDCA;color:var(--danger)}
+
+.thanks{display:none;text-align:center;padding:48px 24px}
+.thanks .check{width:64px;height:64px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 20px}
+.thanks h2{font-size:22px;font-weight:700;margin-bottom:8px}
+.thanks p{color:var(--text-dim);margin-bottom:24px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <a href="/landing/portal.html" class="logo">Ki<span>X</span> Feedback</a>
+    <a href="/landing/portal.html" class="nav-back">← Back to portal</a>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <h1>Tell us what's working — and what isn't.</h1>
+    <p class="subtitle">Every alpha submission is read by the founding team within 1 business day.</p>
+
+    <div class="alert alert-error" id="alert-error" role="alert">Something went wrong. Please try again or email alpha@letskix.com.</div>
+
+    <form id="feedback-form" novalidate>
+
+      <!-- 1. Star rating -->
+      <div class="card">
+        <h2>How's your experience this week?</h2>
+        <div class="stars" id="stars" role="radiogroup" aria-label="Weekly rating">
+          <button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>
+          <button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>
+          <button type="button" class="star-btn" data-value="3" aria-label="3 stars">★</button>
+          <button type="button" class="star-btn" data-value="4" aria-label="4 stars">★</button>
+          <button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>
+        </div>
+        <div class="rating-label" id="rating-label">Tap a star — 1 = struggling, 5 = loving it</div>
+      </div>
+
+      <!-- 2. Category -->
+      <div class="card">
+        <h2>What's this about?</h2>
+        <div class="pills" id="categories" role="radiogroup" aria-label="Feedback category">
+          <button type="button" class="pill" data-cat="performance">Performance</button>
+          <button type="button" class="pill" data-cat="design">Design</button>
+          <button type="button" class="pill" data-cat="confusion">Confusion</button>
+          <button type="button" class="pill" data-cat="missing_feature">Missing feature</button>
+          <button type="button" class="pill" data-cat="bug">Bug</button>
+          <button type="button" class="pill" data-cat="praise">Praise</button>
+          <button type="button" class="pill" data-cat="other">Other</button>
+        </div>
+      </div>
+
+      <!-- 3. Open feedback -->
+      <div class="card">
+        <h2>Tell us more</h2>
+        <div class="field">
+          <label for="comment">Your feedback</label>
+          <textarea id="comment" name="comment" placeholder="The more specific, the more useful…" maxlength="8000"></textarea>
+          <div class="field-help">Keep it short or write a novel — we read both.</div>
+        </div>
+        <div class="field">
+          <label for="screenshot">Screenshot URL (optional)</label>
+          <input id="screenshot" name="screenshot_url" type="text" placeholder="https://…" maxlength="2000">
+          <div class="field-help">Drop in a Slack/Drive link if you have one — uploads coming soon.</div>
+        </div>
+        <div class="field">
+          <label>Auto-captured context</label>
+          <div class="context-block" id="ctx-display">loading…</div>
+          <div class="field-help">We attach the page URL, browser, screen size, and your last 10 portal actions to help us reproduce.</div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Send feedback</button>
+    </form>
+
+    <!-- Thank-you state -->
+    <div class="thanks" id="thanks">
+      <div class="check">✓</div>
+      <h2 id="thanks-title">Thanks!</h2>
+      <p id="thanks-msg">We received your feedback — we'll get back to you within 1 business day.</p>
+      <a href="/landing/portal.html" class="btn btn-primary" style="display:inline-flex;width:auto">Back to portal</a>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── state ────────────────────────────────────────────────
+  var state = {
+    rating: 0,
+    category: '',
+    brand_id: ''
+  };
+
+  var RATING_LABELS = [
+    'Tap a star — 1 = struggling, 5 = loving it',
+    '1 — struggling. Tell us what hurts.',
+    '2 — frustrated. We want to know why.',
+    '3 — neutral. What would tip you to a 5?',
+    '4 — happy. What can we polish?',
+    '5 — loving it. What should we double down on?'
+  ];
+
+  // ── pick up brand_id + URL params ────────────────────────
+  var params = new URLSearchParams(window.location.search);
+  state.brand_id = params.get('bid')
+    || (window.localStorage && localStorage.getItem('kix.brand_id'))
+    || '';
+
+  // Pre-select category if ?cat=bug
+  var preCat = params.get('cat');
+
+  // ── auto-context ─────────────────────────────────────────
+  function recentActions(){
+    try{
+      var raw = localStorage.getItem('kix.recent_actions');
+      if(!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.slice(-10) : [];
+    }catch(_){ return []; }
+  }
+  function buildContext(){
+    return {
+      page_context: document.referrer || window.location.href,
+      browser: navigator.userAgent.slice(0, 200),
+      screen_size: window.screen.width + 'x' + window.screen.height,
+      recent_actions: recentActions(),
+      brand_id: state.brand_id || '(unknown)'
+    };
+  }
+  function renderContext(){
+    var ctx = buildContext();
+    var lines = [
+      'brand_id:     ' + ctx.brand_id,
+      'page:         ' + ctx.page_context,
+      'browser:      ' + ctx.browser,
+      'screen:       ' + ctx.screen_size,
+      'recent (' + ctx.recent_actions.length + '): ' +
+        (ctx.recent_actions.length ? ctx.recent_actions.join(' → ') : '(none)')
+    ];
+    document.getElementById('ctx-display').textContent = lines.join('\n');
+  }
+  renderContext();
+
+  // ── stars ────────────────────────────────────────────────
+  var stars = document.querySelectorAll('.star-btn');
+  var ratingLabel = document.getElementById('rating-label');
+  function paintStars(n){
+    stars.forEach(function(s, i){
+      s.classList.toggle('active', i < n);
+    });
+    ratingLabel.textContent = RATING_LABELS[n] || RATING_LABELS[0];
+  }
+  stars.forEach(function(s){
+    s.addEventListener('click', function(){
+      state.rating = parseInt(s.getAttribute('data-value'), 10);
+      paintStars(state.rating);
+      updateSubmit();
+    });
+  });
+
+  // ── categories ───────────────────────────────────────────
+  var pills = document.querySelectorAll('.pill');
+  function selectCategory(cat){
+    state.category = cat;
+    pills.forEach(function(p){
+      p.classList.toggle('active', p.getAttribute('data-cat') === cat);
+    });
+    updateSubmit();
+  }
+  pills.forEach(function(p){
+    p.addEventListener('click', function(){
+      selectCategory(p.getAttribute('data-cat'));
+    });
+  });
+  if(preCat){ selectCategory(preCat); }
+
+  // ── submit gating ────────────────────────────────────────
+  var submitBtn = document.getElementById('submit-btn');
+  function updateSubmit(){
+    submitBtn.disabled = !(state.rating && state.category);
+  }
+
+  // ── form submit ──────────────────────────────────────────
+  var form = document.getElementById('feedback-form');
+  var bad  = document.getElementById('alert-error');
+  var thanks = document.getElementById('thanks');
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    bad.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+
+    var ctx = buildContext();
+    var body = {
+      brand_id: state.brand_id || 'alpha_anonymous',
+      category: state.category,
+      rating: state.rating,
+      comment: document.getElementById('comment').value.trim(),
+      page_context: ctx.page_context,
+      screenshot_url: document.getElementById('screenshot').value.trim() || null,
+      browser: ctx.browser,
+      screen_size: ctx.screen_size,
+      recent_actions: ctx.recent_actions
+    };
+
+    fetch('/api/v1/alpha/feedback/submit', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).then(function(r){
+      if(!r.ok){ throw new Error('HTTP ' + r.status); }
+      return r.json();
+    }).then(function(payload){
+      form.style.display = 'none';
+      thanks.style.display = 'block';
+      if(payload && payload.thank_you){
+        document.getElementById('thanks-msg').textContent = payload.thank_you;
+      }
+      window.scrollTo({top:0, behavior:'smooth'});
+    }).catch(function(err){
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send feedback';
+      bad.textContent = 'Could not send (' + err.message + '). Email alpha@letskix.com.';
+      bad.style.display = 'block';
+      bad.scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

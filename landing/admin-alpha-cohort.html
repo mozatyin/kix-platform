@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha Cohort Dashboard — KiX Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#00B341;
+  --brand-hover:#009335;
+  --brand-soft:rgba(0,179,65,.08);
+  --brand-border:rgba(0,179,65,.22);
+  --bg:#FFFFFF;
+  --bg-alt:#F7F8FA;
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+  --text:#0F172A;
+  --text-dim:#475569;
+  --text-muted:#64748B;
+  --warn:#B45309;
+  --warn-soft:#FEF3C7;
+  --warn-border:#FDE68A;
+  --danger:#B42318;
+  --danger-soft:#FEF3F2;
+  --radius:6px;
+  --radius-sm:4px;
+  --radius-lg:8px;
+  --max:1400px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --shadow:0 4px 12px rgba(15,23,42,.06);
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--font);background:var(--bg-alt);color:var(--text);line-height:1.5;font-size:14px;min-height:100vh}
+.container{max-width:var(--max);margin:0 auto;padding:0 24px}
+a{color:var(--brand);text-decoration:none}
+a:hover{color:var(--brand-hover)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--radius-sm)}
+
+header{background:#fff;border-bottom:1px solid var(--border)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-size:18px;font-weight:800;letter-spacing:-.5px}
+.logo span{color:var(--brand)}
+.tag{padding:3px 10px;border-radius:999px;background:var(--bg-alt);border:1px solid var(--border);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim)}
+
+main{padding:32px 0 64px}
+h1{font-size:24px;font-weight:700;margin-bottom:6px}
+.subtitle{color:var(--text-dim);margin-bottom:24px}
+
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#fff;padding:16px;border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:18px;box-shadow:var(--shadow)}
+.toolbar label{font-size:12px;font-weight:600;color:var(--text-dim);margin-right:6px}
+.toolbar input,.toolbar select{padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:14px}
+
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+@media(max-width:880px){.summary{grid-template-columns:repeat(2,1fr)}}
+.stat{background:#fff;padding:18px;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.stat .label{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em}
+.stat .value{font-size:28px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.stat.warn .value{color:var(--warn)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;padding:7px 12px;border-radius:var(--radius);border:1px solid var(--border-strong);background:#fff;color:var(--text);transition:background .12s,color .12s,border-color .12s;min-height:32px}
+.btn:hover{background:var(--bg-alt)}
+.btn-primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn-primary:hover{background:var(--brand-hover);color:#fff}
+.btn-warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
+.btn-warn:hover{background:#FDE68A}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+
+.table-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--text-dim);background:var(--bg-alt);padding:10px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;font-size:11px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.at-risk{background:rgba(180,131,9,.05)}
+tr:hover{background:var(--bg-alt)}
+.brand-cell{font-weight:600;color:var(--text)}
+.brand-cell .bid{display:block;font-weight:400;font-size:11px;color:var(--text-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.status-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.status-pill.ok{background:var(--brand-soft);color:var(--brand-hover);border:1px solid var(--brand-border)}
+.status-pill.risk{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn-border)}
+
+.empty{padding:48px;text-align:center;color:var(--text-muted)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 18px;border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px;font-weight:500;display:none;z-index:1000}
+.toast.show{display:block;animation:slidein .25s ease-out}
+@keyframes slidein{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <div style="display:flex;gap:12px;align-items:center">
+      <span class="logo">Ki<span>X</span> Admin</span>
+      <span class="tag">Alpha Cohort</span>
+    </div>
+    <a href="/landing/index.html" style="font-size:13px;color:var(--text-dim)">← KiX</a>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <h1>Alpha Cohort Dashboard</h1>
+    <p class="subtitle">Singapore F&amp;B alpha — pilot programme tracking.</p>
+
+    <div class="toolbar">
+      <label for="cohort">Cohort:</label>
+      <input id="cohort" type="text" value="2026q1" style="width:120px">
+      <label for="admin_token">Admin token:</label>
+      <input id="admin_token" type="password" placeholder="KIX_ADMIN_TOKEN" style="width:240px">
+      <button class="btn btn-primary" id="refresh-btn">Refresh</button>
+      <span style="flex:1"></span>
+      <span id="last-updated" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+
+    <div class="summary">
+      <div class="stat"><div class="label">Cohort size</div><div class="value" id="s-size">—</div></div>
+      <div class="stat warn"><div class="label">At risk</div><div class="value" id="s-risk">—</div></div>
+      <div class="stat"><div class="label">Campaigns total</div><div class="value" id="s-campaigns">—</div></div>
+      <div class="stat"><div class="label">Spend total (S$)</div><div class="value" id="s-spend">—</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Brand</th>
+            <th>Status</th>
+            <th>Tier</th>
+            <th>Signup</th>
+            <th>Last login</th>
+            <th>Campaigns</th>
+            <th>Spend (S$)</th>
+            <th>Health</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="9" class="empty">Enter an admin token and click Refresh.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function toast(msg){
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 2400);
+  }
+
+  function fmtDate(iso){
+    if(!iso) return '—';
+    try{
+      var d = new Date(iso);
+      return d.toISOString().slice(0,10);
+    }catch(_){ return iso; }
+  }
+
+  function escapeHtml(s){
+    return (s == null ? '' : String(s))
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function renderRows(members){
+    var rows = $('rows');
+    if(!members.length){
+      rows.innerHTML = '<tr><td colspan="9" class="empty">No merchants in cohort yet.</td></tr>';
+      return;
+    }
+    rows.innerHTML = members.map(function(m){
+      var risk = m.at_risk;
+      var reasons = (m.risk_reasons || []).join(', ');
+      return '<tr class="' + (risk ? 'at-risk' : '') + '">' +
+        '<td class="brand-cell">' + escapeHtml(m.brand_name) +
+          '<span class="bid">' + escapeHtml(m.brand_id) + '</span></td>' +
+        '<td><span class="status-pill ' + (m.status === 'approved' ? 'ok' : 'risk') + '">' + escapeHtml(m.status) + '</span></td>' +
+        '<td>' + escapeHtml(m.tier) + '</td>' +
+        '<td>' + fmtDate(m.signup_date) + '</td>' +
+        '<td>' + (m.last_login_iso ? fmtDate(m.last_login_iso) : '<span style="color:var(--text-muted)">never</span>') + '</td>' +
+        '<td>' + (m.campaigns_created || 0) + '</td>' +
+        '<td>' + (m.spend_total_sgd || 0).toFixed(2) + '</td>' +
+        '<td>' + (risk
+            ? '<span class="status-pill risk" title="' + escapeHtml(reasons) + '">' + escapeHtml(reasons || 'at risk') + '</span>'
+            : '<span class="status-pill ok">healthy</span>') + '</td>' +
+        '<td>' + (risk
+            ? '<button class="btn btn-warn" data-bid="' + escapeHtml(m.brand_id) + '" data-email="' + escapeHtml(m.contact_email || '') + '">Send check-in</button>'
+            : '<span style="color:var(--text-muted)">—</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    // wire up check-in buttons
+    rows.querySelectorAll('button[data-bid]').forEach(function(b){
+      b.addEventListener('click', function(){
+        sendCheckin(b.getAttribute('data-bid'), b.getAttribute('data-email'), b);
+      });
+    });
+  }
+
+  function load(){
+    var cohort = $('cohort').value.trim() || '2026q1';
+    var token  = $('admin_token').value.trim();
+    if(!token){ toast('Admin token required'); return; }
+
+    fetch('/api/v1/alpha/cohort?cohort=' + encodeURIComponent(cohort), {
+      headers:{'X-Admin-Token': token}
+    }).then(function(r){
+      if(!r.ok){ throw new Error('HTTP ' + r.status); }
+      return r.json();
+    }).then(function(data){
+      $('s-size').textContent      = data.size || 0;
+      $('s-risk').textContent      = data.at_risk_count || 0;
+      var totalCampaigns = (data.members || []).reduce(function(a, m){ return a + (m.campaigns_created || 0); }, 0);
+      var totalSpend     = (data.members || []).reduce(function(a, m){ return a + (m.spend_total_sgd || 0); }, 0);
+      $('s-campaigns').textContent = totalCampaigns;
+      $('s-spend').textContent     = totalSpend.toFixed(2);
+      renderRows(data.members || []);
+      $('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    }).catch(function(err){
+      toast('Load failed: ' + err.message);
+      $('rows').innerHTML = '<tr><td colspan="9" class="empty">Load failed — check token.</td></tr>';
+    });
+  }
+
+  function sendCheckin(bid, email, btn){
+    // Stub: a future POST endpoint can wire to the email queue.
+    // For now we trigger a manual feedback prompt via mailto.
+    if(!email){ toast('No contact email on file for ' + bid); return; }
+    var subject = encodeURIComponent('Quick KiX alpha check-in');
+    var body = encodeURIComponent(
+      'Hi,\n\nNoticed you have not logged in this week. Anything we can help with?\n\n— KiX team'
+    );
+    window.open('mailto:' + email + '?subject=' + subject + '&body=' + body, '_blank');
+    btn.textContent = 'Email opened';
+    btn.disabled = true;
+    setTimeout(function(){
+      btn.textContent = 'Send check-in';
+      btn.disabled = false;
+    }, 3000);
+  }
+
+  $('refresh-btn').addEventListener('click', load);
+  $('admin_token').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ load(); }
+  });
+})();
+</script>
+
+</body>
+</html>
