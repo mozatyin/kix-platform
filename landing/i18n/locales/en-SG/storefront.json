@@ -2,5 +2,69 @@
   "storefront.title": "KiX Storefront",
   "storefront.cta.shop": "Shop now",
   "storefront.cart.empty": "Your cart is empty",
-  "storefront.cart.items": "{count, plural, =0 {Cart is empty} one {1 item in cart} other {# items in cart}}"
+  "storefront.cart.items": "{count, plural, =0 {Cart is empty} one {1 item in cart} other {# items in cart}}",
+
+  "storefront.meta.title": "Discover stores · KiX",
+  "storefront.meta.description": "Browse and play at thousands of merchant stores on KiX — earn rewards from your favourite brands.",
+
+  "storefront.nav.discover": "Discover",
+  "storefront.nav.categories": "Categories",
+  "storefront.nav.play": "Play",
+  "storefront.nav.rewards": "Rewards",
+  "storefront.nav.for_merchants": "For merchants",
+  "storefront.nav.menu_aria": "Open navigation menu",
+
+  "storefront.search.aria_label": "Search stores",
+  "storefront.search.placeholder": "Search stores, cuisines, brands…",
+  "storefront.search.placeholder_hero": "Search by store name, category, or location",
+
+  "storefront.cta.login": "Log in",
+  "storefront.cta.signup": "Sign up",
+
+  "storefront.hero.eyebrow": "Stores on KiX",
+  "storefront.hero.title": "Discover stores. Play games. Earn rewards.",
+  "storefront.hero.lede": "Browse thousands of merchant storefronts across Singapore. Play branded mini-games at checkout and unlock real vouchers, free items, and exclusive perks.",
+
+  "storefront.filters.aria": "Filter stores",
+  "storefront.filters.label": "Filter",
+  "storefront.filters.category_aria": "Category",
+  "storefront.filters.distance_aria": "Distance",
+  "storefront.filters.rating_aria": "Rating",
+  "storefront.filters.all": "All",
+  "storefront.filters.distance": "Distance",
+  "storefront.filters.rating": "Rating",
+
+  "storefront.cat.fnb": "Food & Drink",
+  "storefront.cat.retail": "Retail",
+  "storefront.cat.beauty": "Beauty",
+  "storefront.cat.fitness": "Fitness",
+  "storefront.cat.travel": "Travel",
+  "storefront.cat.education": "Education",
+
+  "storefront.section.featured": "Featured stores",
+  "storefront.section.browse_categories": "Browse by category",
+
+  "storefront.results.count": "{count, plural, =0 {No stores} one {1 store} other {# stores}}",
+
+  "storefront.card.featured": "Featured",
+  "storefront.card.distance": "{distance} km",
+  "storefront.card.image_alt": "{name} storefront photo",
+
+  "storefront.empty.no_results": "No stores match your filters yet.",
+
+  "storefront.footer.about": "KiX is the gamified acquisition platform for local merchants. Discover stores, play to earn, and turn every visit into a reward.",
+  "storefront.footer.product": "Product",
+  "storefront.footer.company": "Company",
+  "storefront.footer.legal": "Legal",
+  "storefront.footer.about_link": "About",
+  "storefront.footer.contact": "Contact",
+  "storefront.footer.merchant_signup": "Merchant sign-up",
+  "storefront.footer.press": "Press",
+  "storefront.footer.mobile_app": "Mobile app",
+  "storefront.footer.terms": "Terms",
+  "storefront.footer.privacy": "Privacy",
+  "storefront.footer.cookies": "Cookie policy",
+  "storefront.footer.status": "Status",
+  "storefront.footer.copyright": "© {year} KiX Pte Ltd · All rights reserved.",
+  "storefront.footer.location": "Singapore"
 }

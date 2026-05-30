@@ -2,5 +2,69 @@
   "storefront.title": "KiX 商城",
   "storefront.cta.shop": "立即选购",
   "storefront.cart.empty": "购物车是空的",
-  "storefront.cart.items": "{count, plural, =0 {购物车是空的} other {购物车中有 # 件商品}}"
+  "storefront.cart.items": "{count, plural, =0 {购物车是空的} other {购物车中有 # 件商品}}",
+
+  "storefront.meta.title": "发现商家 · KiX",
+  "storefront.meta.description": "在 KiX 浏览数千家本地商家，玩游戏赚取真实奖励。",
+
+  "storefront.nav.discover": "发现",
+  "storefront.nav.categories": "分类",
+  "storefront.nav.play": "玩游戏",
+  "storefront.nav.rewards": "奖励",
+  "storefront.nav.for_merchants": "商家入驻",
+  "storefront.nav.menu_aria": "打开导航菜单",
+
+  "storefront.search.aria_label": "搜索商家",
+  "storefront.search.placeholder": "搜索商家、品类、品牌…",
+  "storefront.search.placeholder_hero": "按商家名、品类或地点搜索",
+
+  "storefront.cta.login": "登录",
+  "storefront.cta.signup": "注册",
+
+  "storefront.hero.eyebrow": "KiX 商家",
+  "storefront.hero.title": "发现商家·玩游戏·赚奖励",
+  "storefront.hero.lede": "浏览新加坡数千家入驻商家，在结账时玩品牌定制小游戏，解锁真实优惠券、免费商品和专属福利。",
+
+  "storefront.filters.aria": "筛选商家",
+  "storefront.filters.label": "筛选",
+  "storefront.filters.category_aria": "品类",
+  "storefront.filters.distance_aria": "距离",
+  "storefront.filters.rating_aria": "评分",
+  "storefront.filters.all": "全部",
+  "storefront.filters.distance": "距离",
+  "storefront.filters.rating": "评分",
+
+  "storefront.cat.fnb": "餐饮",
+  "storefront.cat.retail": "零售",
+  "storefront.cat.beauty": "美妆",
+  "storefront.cat.fitness": "健身",
+  "storefront.cat.travel": "旅游",
+  "storefront.cat.education": "教育",
+
+  "storefront.section.featured": "精选商家",
+  "storefront.section.browse_categories": "按品类浏览",
+
+  "storefront.results.count": "{count, plural, =0 {暂无商家} other {共 # 家商家}}",
+
+  "storefront.card.featured": "精选",
+  "storefront.card.distance": "{distance} 公里",
+  "storefront.card.image_alt": "{name} 门店照片",
+
+  "storefront.empty.no_results": "暂无符合筛选条件的商家。",
+
+  "storefront.footer.about": "KiX 是面向本地商家的游戏化获客平台。发现商家、边玩边赚，让每一次到店都成为奖励。",
+  "storefront.footer.product": "产品",
+  "storefront.footer.company": "公司",
+  "storefront.footer.legal": "法律",
+  "storefront.footer.about_link": "关于我们",
+  "storefront.footer.contact": "联系我们",
+  "storefront.footer.merchant_signup": "商家注册",
+  "storefront.footer.press": "媒体合作",
+  "storefront.footer.mobile_app": "移动 App",
+  "storefront.footer.terms": "服务条款",
+  "storefront.footer.privacy": "隐私政策",
+  "storefront.footer.cookies": "Cookie 政策",
+  "storefront.footer.status": "系统状态",
+  "storefront.footer.copyright": "© {year} KiX Pte Ltd · 保留所有权利。",
+  "storefront.footer.location": "新加坡"
 }
