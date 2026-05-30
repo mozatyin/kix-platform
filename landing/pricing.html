@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing — KiX</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+       background:#FFFFFF;color:#0F172A;line-height:1.6;-webkit-font-smoothing:antialiased}
+  :root{--brand:#00B341;--brand-dk:#008A33;--blue:#1A73E8;--surface:#F7F8FA;
+        --border:#E2E8F0;--text-muted:#64748B}
+  .container{max-width:1200px;margin:0 auto;padding:0 24px}
+  /* Header */
+  header{background:#FFFFFF;border-bottom:1px solid var(--border);
+         position:sticky;top:0;z-index:100;padding:14px 0}
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.5px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:24px;align-items:center}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  /* Hero */
+  .hero{padding:80px 0 40px;text-align:center}
+  .pill{display:inline-block;background:#E6F7EB;color:var(--brand-dk);
+        padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;
+        letter-spacing:.5px;margin-bottom:24px;text-transform:uppercase}
+  h1{font-size:48px;line-height:1.1;font-weight:800;letter-spacing:-1.2px;
+     margin-bottom:16px;color:#0F172A}
+  .sub{font-size:18px;color:var(--text-muted);max-width:640px;margin:0 auto}
+  /* Pricing grid */
+  .pricing-section{padding:40px 0 80px}
+  .pricing-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:24px;
+                margin-top:48px}
+  @media(max-width:880px){.pricing-grid{grid-template-columns:1fr}}
+  .price-card{background:#FFFFFF;border:1px solid var(--border);
+              border-radius:12px;padding:40px;position:relative}
+  .price-card.featured{border-color:var(--brand);border-width:2px;
+                       box-shadow:0 4px 24px rgba(0,179,65,.08)}
+  .price-card.featured::before{content:"MOST POPULAR";position:absolute;
+              top:-12px;left:24px;background:var(--brand);color:#FFFFFF;
+              font-size:11px;font-weight:700;letter-spacing:1px;
+              padding:4px 12px;border-radius:6px}
+  .price-label{font-size:13px;font-weight:600;color:var(--brand-dk);
+               text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+  .price-amount{font-size:42px;font-weight:800;color:#0F172A;
+                margin-bottom:8px;letter-spacing:-1px}
+  .price-amount small{font-size:16px;font-weight:500;color:var(--text-muted);
+                      letter-spacing:0}
+  .price-desc{color:var(--text-muted);margin-bottom:24px;font-size:15px}
+  .price-list{list-style:none;margin:24px 0 0}
+  .price-list li{padding:10px 0;border-bottom:1px solid var(--border);
+                 font-size:14px;display:flex;align-items:flex-start;gap:10px}
+  .price-list li::before{content:"✓";color:var(--brand);font-weight:700;flex-shrink:0}
+  .tier-row{display:flex;justify-content:space-between;align-items:center;
+            padding:14px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .tier-row:last-child{border-bottom:none}
+  .tier-name{display:flex;flex-direction:column;gap:2px}
+  .tier-name>span:first-child{font-weight:700;font-size:15px}
+  .tier-name>span:last-child{color:var(--text-muted);font-size:12px}
+  .tier-price{font-weight:700;color:#0F172A;font-size:15px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
+       border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;
+       transition:transform .15s,box-shadow .15s}
+  .btn-primary{background:var(--brand);color:#FFFFFF}
+  .btn-primary:hover{background:var(--brand-dk);transform:translateY(-1px)}
+  /* First 100 free callout */
+  .first100{background:linear-gradient(135deg,#E6F7EB 0%,#F0F9FF 100%);
+            border:1px solid var(--brand);border-radius:12px;padding:32px;
+            margin:48px 0 0;display:grid;grid-template-columns:auto 1fr auto;
+            gap:24px;align-items:center}
+  @media(max-width:780px){.first100{grid-template-columns:1fr;text-align:center}}
+  .first100-num{font-size:64px;font-weight:800;color:var(--brand);line-height:1;
+                letter-spacing:-2px}
+  .first100-text h3{font-size:20px;font-weight:700;color:#0F172A;margin-bottom:6px}
+  .first100-text p{color:var(--text-muted);font-size:14px}
+  /* FAQ */
+  .faq{padding:60px 0;background:var(--surface);margin-top:60px}
+  .faq h2{font-size:32px;font-weight:800;margin-bottom:32px;text-align:center}
+  .faq-item{background:#FFFFFF;border:1px solid var(--border);
+            border-radius:10px;padding:24px;margin-bottom:12px}
+  .faq-item h4{font-size:16px;font-weight:700;margin-bottom:8px;color:#0F172A}
+  .faq-item p{color:var(--text-muted);font-size:14px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;
+         border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/portal.html">Portal</a>
+        <a href="/alpha.html">Alpha Program</a>
+        <a href="mailto:michael@mozat.com">Contact</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">PRICING</span>
+    <h1>Free SaaS. Pay only for results.</h1>
+    <p class="sub">All gamification capabilities at no cost. Pay per acquired customer only when KiX delivers — no subscription, no setup fee, no contract lock-in.</p>
+  </div>
+</section>
+
+<section class="pricing-section">
+  <div class="container">
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-label">Free forever</div>
+        <div class="price-amount">S$0<small> / month</small></div>
+        <div class="price-desc">All gamification capabilities, at no cost.</div>
+        <ul class="price-list">
+          <li>All AI-generated games</li>
+          <li>Full analytics + cohort reports</li>
+          <li>SDKs for Web, iOS, Android</li>
+          <li>No brand limits, no user caps</li>
+          <li>No contract, no setup fee</li>
+          <li>Self-serve onboarding in 5 minutes</li>
+        </ul>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-label">Pay for acquisition</div>
+        <div class="price-amount">Pay per result<small> · per delivered customer</small></div>
+        <div class="price-desc">Auction-based bidding with flexible settlement options.</div>
+        <div style="margin-top:8px">
+          <div class="tier-row"><div class="tier-name"><span>CPA</span><span>per new customer</span></div><div class="tier-price">S$3 – S$30</div></div>
+          <div class="tier-row"><div class="tier-name"><span>CPS</span><span>share of new-customer revenue</span></div><div class="tier-price">5% – 15%</div></div>
+          <div class="tier-row"><div class="tier-name"><span>CPM</span><span>per thousand impressions</span></div><div class="tier-price">Available</div></div>
+          <div class="tier-row"><div class="tier-name"><span>CPV</span><span>per store visit</span></div><div class="tier-price">Available</div></div>
+          <div class="tier-row"><div class="tier-name"><span>CPE</span><span>per engagement</span></div><div class="tier-price">Available</div></div>
+        </div>
+        <a href="/alpha.html" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center">Start free</a>
+      </div>
+    </div>
+
+    <!-- First 100 free per country -->
+    <div class="first100">
+      <div class="first100-num">100</div>
+      <div class="first100-text">
+        <h3>First 100 merchants free, every country.</h3>
+        <p>Sign up before your country's 100-slot quota is full and never pay any CPA/CPS take rate. Founding merchants get permanent 0% commission. <strong>Tanzania, Cambodia, Philippines, Singapore — same offer everywhere.</strong></p>
+      </div>
+      <a href="/alpha.html" class="btn btn-primary">Claim slot</a>
+    </div>
+
+  </div>
+</section>
+
+<section class="faq">
+  <div class="container">
+    <h2>Questions you're probably asking</h2>
+    <div class="faq-item">
+      <h4>What if I want to leave?</h4>
+      <p>No contract. Cancel anytime. Your campaigns stay live until the budget runs out, then auto-pause. Your data is exportable via CSV or API at any moment.</p>
+    </div>
+    <div class="faq-item">
+      <h4>How is "delivered customer" defined?</h4>
+      <p>A delivered customer is a unique consumer who (a) completed a KiX-generated game, (b) registered as a customer (phone or email), and (c) made a tracked first transaction with your brand within 30 days. You only pay when all three happen.</p>
+    </div>
+    <div class="faq-item">
+      <h4>What does CPS actually cost?</h4>
+      <p>You choose. The 5%-15% range is auction-set — higher bids win more auctions but cost more per customer. Most F&B merchants set 5-8%. Most beauty/retail set 10-15%. You can change anytime.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Is "First 100 free" really permanent?</h4>
+      <p>Yes. Founding-merchant slots have 0% take rate forever — not a 90-day trial, not a discount. We use this to seed each market's network effects. Once a country's 100 slots fill, new merchants pay normal CPA/CPS.</p>
+    </div>
+    <div class="faq-item">
+      <h4>What payment methods do you accept?</h4>
+      <p>Singapore: PayNow + credit card. Asia: GrabPay, Alipay, WeChat Pay, OVO. Global: Stripe (cards). You only get charged after each campaign delivers customers — no monthly bills.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Can I see real merchant numbers?</h4>
+      <p>Yes. Our public benchmark report shows real performance across F&B / beauty / travel verticals. Email michael@mozat.com — we'll send actual cohort data, not a sales pitch.</p>
+    </div>
+    <div class="faq-item">
+      <h4>What about enterprise contracts?</h4>
+      <p>Large brands (50+ stores) can request custom SLAs, API/SFTP integration, and 12-month commitment terms. Same per-result pricing, just with predictable invoicing.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    KiX · Singapore-first, 200 countries ·
+    <a href="/legal/terms.html">Terms</a> ·
+    <a href="/legal/privacy.html">Privacy</a> ·
+    <a href="mailto:michael@mozat.com">Contact</a>
+  </div>
+</footer>
+
+</body>
+</html>
