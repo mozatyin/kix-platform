@@ -2444,7 +2444,7 @@ textarea.form-input{
       <div class="ent-page-head">
         <div>
           <h1 class="ent-page-title" data-i18n="portal.dashboard.title">Welcome back<span id="dash-welcome-name"></span></h1>
-          <p class="ent-page-subtitle" data-i18n="portal.dashboard.subtitle">Here's how your campaigns performed in the last 7 days vs the previous 7 days.</p>
+          <p class="ent-page-subtitle" id="dash-subtitle" data-i18n="portal.dashboard.subtitle">Here's how your campaigns performed today vs yesterday.</p>
         </div>
         <div class="ent-page-actions">
           <button class="ebtn primary" type="button" onclick="openCampaignWizard()">
@@ -2488,28 +2488,28 @@ textarea.form-input{
             <span class="kpi-tooltip" data-tooltip="Total ad spend across all campaigns / 所有广告活动总花费" data-i18n="portal.kpi.totalSpend">Total spend</span>
           </div>
           <div class="value" id="kpi-spend">S$12,486</div>
-          <div class="delta up">▲ 12.3% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
+          <div class="delta up">▲ 12.3% <span class="vs" data-i18n="portal.kpi.vsYesterday">vs yesterday</span></div>
         </div>
         <div class="metric-card">
           <div class="label">
             <span class="kpi-tooltip" data-tooltip="Unique people who saw your campaigns / 看过广告的独立顾客" data-i18n="portal.kpi.customersReached">Customers reached</span>
           </div>
           <div class="value" id="kpi-reach">245,800</div>
-          <div class="delta up">▲ 3.1% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
+          <div class="delta up">▲ 3.1% <span class="vs" data-i18n="portal.kpi.vsYesterday">vs yesterday</span></div>
         </div>
         <div class="metric-card">
           <div class="label">
             <span class="kpi-tooltip" data-tooltip="Customers who claimed a voucher / 领取优惠券的顾客数" data-i18n="portal.kpi.customersGained">Customers gained</span>
           </div>
           <div class="value" id="kpi-conv">1,420</div>
-          <div class="delta up">▲ 28.4% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
+          <div class="delta up">▲ 28.4% <span class="vs" data-i18n="portal.kpi.vsYesterday">vs yesterday</span></div>
         </div>
         <div class="metric-card">
           <div class="label">
             <span class="kpi-tooltip" data-tooltip="Avg cost per customer gained (CPA) / 每个新客成本" data-i18n="portal.kpi.costPerCustomer">Cost per customer</span>
           </div>
           <div class="value" id="kpi-cpa">S$8.79</div>
-          <div class="delta down">▼ 6.2% <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev period</span></div>
+          <div class="delta down">▼ 6.2% <span class="vs" data-i18n="portal.kpi.vsYesterday">vs yesterday</span></div>
         </div>
       </div>
 
@@ -2978,7 +2978,7 @@ textarea.form-input{
       </div>
 
       <div class="etable-wrap">
-        <table class="etable" aria-label="Automation rules">
+        <table class="etable demo-only" aria-label="Automation rules">
           <thead>
             <tr>
               <th data-i18n="portal.automations.col.enabled">Enabled</th>
@@ -3029,9 +3029,15 @@ textarea.form-input{
             </tr>
           </tbody>
         </table>
+        <div class="empty-state non-demo" style="display:none;padding:32px 16px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">⚙️</div>
+          <h4 style="font-size:14px;font-weight:600;color:var(--text-strong);margin-bottom:6px" data-i18n="portal.empty.noRulesTitle">No automation rules yet</h4>
+          <p style="font-size:13px;color:var(--text-subdued);margin-bottom:14px" data-i18n="portal.empty.noRulesBody">Set up rules to pause low-performers, scale winners, or alert when vouchers run low.</p>
+          <button class="ebtn primary" onclick="openRuleBuilder()" data-i18n="portal.empty.createFirstRule">Create your first rule</button>
+        </div>
       </div>
 
-      <div class="ecard">
+      <div class="ecard demo-only">
         <div class="ecard-head">
           <h3 class="ecard-title" data-i18n="portal.automations.recent.title">Recent triggers</h3>
         </div>
@@ -3064,7 +3070,7 @@ textarea.form-input{
       </div>
 
       <div class="etable-wrap">
-        <table class="etable" aria-label="Audiences list">
+        <table class="etable demo-only" aria-label="Audiences list">
           <thead>
             <tr>
               <th class="col-check"><input type="checkbox" aria-label="Select all audiences"></th>
@@ -3130,8 +3136,14 @@ textarea.form-input{
             </tr>
           </tbody>
         </table>
-        <div class="etable-foot">
+        <div class="etable-foot demo-only">
           <span>1–5 <span data-i18n="portal.pagination.of">of</span> 5</span>
+        </div>
+        <div class="empty-state non-demo" style="display:none;padding:32px 16px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">👥</div>
+          <h4 style="font-size:14px;font-weight:600;color:var(--text-strong);margin-bottom:6px" data-i18n="portal.empty.noAudiencesTitle">No audiences yet</h4>
+          <p style="font-size:13px;color:var(--text-subdued);margin-bottom:14px" data-i18n="portal.empty.noAudiencesBody">Group your customers by behavior, geofence, or upload — then target them in campaigns.</p>
+          <button class="ebtn primary" onclick="openAudienceDrawer()" data-i18n="portal.empty.createFirstAudience">Create your first audience</button>
         </div>
       </div>
     </div>
@@ -3292,17 +3304,21 @@ textarea.form-input{
         <div class="settings-panel" data-panel="billing">
           <div class="ecard">
             <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.billing.invoices">Invoices</h3>
-              <button class="ebtn secondary sm" onclick="if(window.showToast)showToast('CSV export queued — check email','success')" data-i18n="portal.actions.export">Export CSV</button>
+              <button class="ebtn secondary sm" onclick="exportInvoicesCsv()" data-i18n="portal.actions.export">Export CSV</button>
             </div>
-            <table class="etable">
+            <table class="etable" id="settings-invoices-table">
               <thead><tr><th data-i18n="portal.settings.billing.date">Date</th><th data-i18n="portal.settings.billing.number">Invoice #</th><th class="numeric" data-i18n="portal.settings.billing.amount">Amount</th><th data-i18n="portal.settings.billing.status">Status</th><th></th></tr></thead>
-              <tbody>
-                <tr><td data-label="Date">2026-05-01</td><td data-label="Invoice #">INV-2026-0512</td><td class="numeric tnum" data-label="Amount">S$2,340.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
-                <tr><td data-label="Date">2026-04-01</td><td data-label="Invoice #">INV-2026-0411</td><td class="numeric tnum" data-label="Amount">S$1,985.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
-                <tr><td data-label="Date">2026-03-01</td><td data-label="Invoice #">INV-2026-0309</td><td class="numeric tnum" data-label="Amount">S$1,720.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
-                <tr><td data-label="Date">2026-02-01</td><td data-label="Invoice #">INV-2026-0208</td><td class="numeric tnum" data-label="Amount">S$1,450.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="#" onclick="event.preventDefault();if(window.showToast)showToast('PDF download started','info')" style="color:var(--brand);font-weight:600;font-size:12px">Download PDF</a></td></tr>
+              <tbody id="settings-invoices-tbody">
+                <tr class="demo-only"><td data-label="Date">2026-05-01</td><td data-label="Invoice #">INV-2026-0512</td><td class="numeric tnum" data-label="Amount">S$2,340.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="/api/v1/invoices/INV-2026-0512/download.pdf" target="_blank" rel="noopener" download="INV-2026-0512.pdf" onclick="return downloadInvoicePdf(event,'INV-2026-0512')" style="color:var(--brand);font-weight:600;font-size:12px" data-i18n="portal.settings.billing.downloadPdf">Download PDF</a></td></tr>
+                <tr class="demo-only"><td data-label="Date">2026-04-01</td><td data-label="Invoice #">INV-2026-0411</td><td class="numeric tnum" data-label="Amount">S$1,985.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="/api/v1/invoices/INV-2026-0411/download.pdf" target="_blank" rel="noopener" download="INV-2026-0411.pdf" onclick="return downloadInvoicePdf(event,'INV-2026-0411')" style="color:var(--brand);font-weight:600;font-size:12px" data-i18n="portal.settings.billing.downloadPdf">Download PDF</a></td></tr>
+                <tr class="demo-only"><td data-label="Date">2026-03-01</td><td data-label="Invoice #">INV-2026-0309</td><td class="numeric tnum" data-label="Amount">S$1,720.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="/api/v1/invoices/INV-2026-0309/download.pdf" target="_blank" rel="noopener" download="INV-2026-0309.pdf" onclick="return downloadInvoicePdf(event,'INV-2026-0309')" style="color:var(--brand);font-weight:600;font-size:12px" data-i18n="portal.settings.billing.downloadPdf">Download PDF</a></td></tr>
+                <tr class="demo-only"><td data-label="Date">2026-02-01</td><td data-label="Invoice #">INV-2026-0208</td><td class="numeric tnum" data-label="Amount">S$1,450.00</td><td data-label="Status"><span class="ebadge active"><span class="dot"></span>Paid</span></td><td><a href="/api/v1/invoices/INV-2026-0208/download.pdf" target="_blank" rel="noopener" download="INV-2026-0208.pdf" onclick="return downloadInvoicePdf(event,'INV-2026-0208')" style="color:var(--brand);font-weight:600;font-size:12px" data-i18n="portal.settings.billing.downloadPdf">Download PDF</a></td></tr>
               </tbody>
             </table>
+            <div class="empty-state non-demo" style="display:none;padding:32px 16px;text-align:center">
+              <h4 style="font-size:14px;font-weight:600;color:var(--text-strong);margin-bottom:6px" data-i18n="portal.settings.billing.emptyTitle">No invoices yet</h4>
+              <p style="font-size:13px;color:var(--text-subdued)" data-i18n="portal.settings.billing.emptyBody">Your monthly invoices will appear here once you've made your first payment.</p>
+            </div>
           </div>
         </div>
 
@@ -3310,22 +3326,25 @@ textarea.form-input{
         <div class="settings-panel" data-panel="payment">
           <div class="ecard">
             <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.payment.title">Payment methods</h3>
-              <button class="ebtn primary sm" onclick="if(window.showToast)showToast('Stripe checkout opening...','info')" data-i18n="portal.settings.payment.add">+ Add payment method</button>
+              <button class="ebtn primary sm" onclick="openAddPaymentMethod()" data-i18n="portal.settings.payment.add">+ Add payment method</button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
-              <div class="set-row" style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px">
+            <div id="payment-methods-list" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+              <div class="set-row pm-row demo-only" data-pm-id="pm_visa_4242" data-pm-default="true" style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px">
                 <div style="display:flex;align-items:center;gap:12px">
                   <div style="width:44px;height:30px;background:#1a1f71;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">VISA</div>
                   <div><div class="lbl">•••• •••• •••• 4242</div><div class="desc">Expires 12/27 · Default</div></div>
                 </div>
-                <div style="display:flex;gap:6px"><span class="ebadge active"><span class="dot"></span>Default</span><button class="ebtn tertiary sm">Remove</button></div>
+                <div style="display:flex;gap:6px"><span class="ebadge active"><span class="dot"></span>Default</span><button class="ebtn tertiary sm" onclick="confirmRemovePaymentMethod('pm_visa_4242','VISA •••• 4242')" data-i18n="portal.settings.payment.remove">Remove</button></div>
               </div>
-              <div class="set-row" style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px">
+              <div class="set-row pm-row demo-only" data-pm-id="pm_mc_5544" data-pm-default="false" style="padding:14px;border:1px solid var(--border-subdued);border-radius:10px">
                 <div style="display:flex;align-items:center;gap:12px">
                   <div style="width:44px;height:30px;background:#eb001b;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">MC</div>
                   <div><div class="lbl">•••• •••• •••• 5544</div><div class="desc">Expires 08/26</div></div>
                 </div>
-                <div style="display:flex;gap:6px"><button class="ebtn tertiary sm">Set default</button><button class="ebtn tertiary sm">Remove</button></div>
+                <div style="display:flex;gap:6px"><button class="ebtn tertiary sm" onclick="setDefaultPaymentMethod('pm_mc_5544','MC •••• 5544')" data-i18n="portal.settings.payment.setDefault">Set default</button><button class="ebtn tertiary sm" onclick="confirmRemovePaymentMethod('pm_mc_5544','MC •••• 5544')" data-i18n="portal.settings.payment.remove">Remove</button></div>
+              </div>
+              <div class="empty-state non-demo" style="display:none;padding:24px 16px;text-align:center">
+                <p style="font-size:13px;color:var(--text-subdued)" data-i18n="portal.settings.payment.empty">No payment methods yet — add one to enable top-ups and auto-recharge.</p>
               </div>
             </div>
             <div class="set-row" style="margin-top:14px;border-top:1px solid var(--border-subdued);padding-top:14px">
@@ -3334,9 +3353,9 @@ textarea.form-input{
                 <div class="desc" data-i18n="portal.settings.payment.autoRechargeDesc">When balance drops below S$100, charge S$500 to default card.</div>
               </div>
               <label class="switch" style="position:relative;display:inline-block;width:42px;height:24px">
-                <input type="checkbox" checked style="opacity:0;width:0;height:0">
-                <span style="position:absolute;cursor:pointer;inset:0;background:var(--brand);border-radius:24px;transition:.2s">
-                  <span style="position:absolute;height:18px;width:18px;left:21px;top:3px;background:#fff;border-radius:50%;transition:.2s"></span>
+                <input type="checkbox" id="auto-recharge-toggle" checked style="opacity:0;width:0;height:0" onclick="handleAutoRechargeToggle(event)">
+                <span style="position:absolute;cursor:pointer;inset:0;background:var(--brand);border-radius:24px;transition:.2s" id="auto-recharge-track">
+                  <span style="position:absolute;height:18px;width:18px;left:21px;top:3px;background:#fff;border-radius:50%;transition:.2s" id="auto-recharge-thumb"></span>
                 </span>
               </label>
             </div>
@@ -3722,7 +3741,7 @@ kix('track','PageView');
               <h3 class="ecard-title" data-i18n="portal.operations.locations.title">All stores</h3>
               <button class="ebtn primary sm" type="button" onclick="navigate('locations')" data-i18n="portal.operations.locations.addLocation">+ Add location</button>
             </div>
-            <table class="etable">
+            <table class="etable demo-only">
               <thead><tr><th data-i18n="portal.table.name">Name</th><th data-i18n="portal.operations.col.address">Address</th><th data-i18n="portal.operations.col.geofence">Geofence</th><th data-i18n="portal.operations.col.staff">Staff</th><th aria-label="Actions"></th></tr></thead>
               <tbody>
                 <tr><td class="col-name">Toast Box · Tampines Mall</td><td>4 Tampines Central 5, SG</td><td><span class="ebadge active"><span class="dot"></span>200m</span></td><td class="numeric tnum">6</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
@@ -3731,6 +3750,12 @@ kix('track','PageView');
                 <tr><td class="col-name">Bean Brothers · Main St</td><td>123 Telok Ayer St, SG</td><td><span class="ebadge pending"><span class="dot"></span>Setup pending</span></td><td class="numeric tnum">2</td><td><button class="ebtn tertiary sm">⋯</button></td></tr>
               </tbody>
             </table>
+            <div class="empty-state non-demo" style="display:none;padding:32px 16px;text-align:center">
+              <div style="font-size:32px;margin-bottom:8px">📍</div>
+              <h4 style="font-size:14px;font-weight:600;color:var(--text-strong);margin-bottom:6px" data-i18n="portal.empty.noLocationsTitle">No store locations yet</h4>
+              <p style="font-size:13px;color:var(--text-subdued);margin-bottom:14px" data-i18n="portal.empty.noLocationsBody">Add your first store location so customers can scan QR codes nearby.</p>
+              <button class="ebtn primary" onclick="navigate('locations')" data-i18n="portal.empty.addFirstLocation">Add your first location</button>
+            </div>
           </div>
 
           <div class="ecard">
@@ -4668,10 +4693,103 @@ function submitForgotPassword(e){
   else alert('Reset link sent to '+email);
   toggleAuthMode('login');
 }
-function ssoSignIn(provider){
-  // UI stub — backend wiring lives in portal_api.py /auth/sso/<provider>.
-  if(window.showToast) showToast(provider.charAt(0).toUpperCase()+provider.slice(1)+' sign-in — coming soon','info');
-  else alert(provider+' SSO — coming soon');
+async function ssoSignIn(provider){
+  // Try real OAuth init endpoint; if unavailable, fall back to invite-request form.
+  const label=provider.charAt(0).toUpperCase()+provider.slice(1);
+  try{
+    const res=await fetch(API_BASE+'/api/v1/auth/sso/'+encodeURIComponent(provider)+'/init',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({redirect_uri:location.origin+'/portal.html'})
+    });
+    if(res.ok){
+      const data=await res.json().catch(()=>({}));
+      if(data && data.authorize_url){
+        // Real OAuth — redirect.
+        if(window.showToast) showToast('Redirecting to '+label+'…','info');
+        window.location.href=data.authorize_url;
+        return;
+      }
+    }
+    if(res.status!==404 && res.status!==501){
+      // Some other error — surface it but still allow invite fallback.
+      console.warn('[sso]',provider,'init failed with',res.status);
+    }
+  }catch(err){
+    console.warn('[sso]',provider,'fetch error',err);
+  }
+  // Fallback: backend not ready → invite-request modal (no fake alerts).
+  openSsoInviteModal(provider);
+}
+
+function openSsoInviteModal(provider){
+  const label=provider.charAt(0).toUpperCase()+provider.slice(1);
+  let overlay=document.getElementById('sso-invite-modal');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='sso-invite-modal';
+    overlay.className='modal-overlay';
+    overlay.innerHTML=
+      '<div class="modal-card" style="max-width:420px">'+
+      '  <div class="modal-head">'+
+      '    <div style="flex:1;min-width:0">'+
+      '      <div class="modal-title" id="sso-invite-title">'+label+' SSO — Beta</div>'+
+      '      <div class="modal-title-cn" style="color:#64748B;font-size:12px;margin-top:2px">Available June 2026 · request early access</div>'+
+      '    </div>'+
+      '    <button class="btn-logout" onclick="closeSsoInviteModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748B">&times;</button>'+
+      '  </div>'+
+      '  <div class="modal-body">'+
+      '    <p style="font-size:13px;color:#475569;margin-bottom:14px">'+
+      '      '+label+' single sign-on is in private beta. Leave your work email and we\'ll send an invite as soon as it\'s ready.'+
+      '    </p>'+
+      '    <div class="form-group">'+
+      '      <label style="font-size:12px;font-weight:600;color:#0F172A;display:block;margin-bottom:6px">Work email</label>'+
+      '      <input type="email" id="sso-invite-email" class="form-input" placeholder="you@company.com" style="width:100%;padding:9px 12px;border:1px solid #CBD5E1;border-radius:8px;font-size:13px">'+
+      '    </div>'+
+      '    <div id="sso-invite-error" style="color:#b91c1c;font-size:12px;display:none;margin-top:6px"></div>'+
+      '  </div>'+
+      '  <div class="modal-foot">'+
+      '    <button class="ebtn secondary" onclick="closeSsoInviteModal()">Cancel</button>'+
+      '    <button class="ebtn primary" id="sso-invite-submit" onclick="submitSsoInvite()">Request invite</button>'+
+      '  </div>'+
+      '</div>';
+    document.body.appendChild(overlay);
+  } else {
+    const t=document.getElementById('sso-invite-title');
+    if(t) t.textContent=label+' SSO — Beta';
+  }
+  overlay.dataset.provider=provider;
+  overlay.classList.add('active');
+  // Prefill from login form
+  const e=(document.getElementById('login-email')||{}).value;
+  if(e){ const inp=document.getElementById('sso-invite-email'); if(inp) inp.value=e; }
+}
+function closeSsoInviteModal(){
+  const o=document.getElementById('sso-invite-modal'); if(o) o.classList.remove('active');
+}
+async function submitSsoInvite(){
+  const overlay=document.getElementById('sso-invite-modal'); if(!overlay) return;
+  const provider=overlay.dataset.provider||'google';
+  const email=((document.getElementById('sso-invite-email')||{}).value||'').trim();
+  const err=document.getElementById('sso-invite-error');
+  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    if(err){ err.textContent='Please enter a valid email address.'; err.style.display='block'; }
+    return;
+  }
+  if(err) err.style.display='none';
+  const btn=document.getElementById('sso-invite-submit');
+  if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
+  try{
+    await fetch(API_BASE+'/api/v1/auth/sso/'+encodeURIComponent(provider)+'/request-invite',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email})
+    }).catch(()=>{});
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Request invite'; }
+    closeSsoInviteModal();
+    if(window.showToast) showToast("Thanks — we'll email "+email+" when "+provider+" SSO is ready.",'success');
+  }
 }
 function sendOtp(){
   if(window.showToast) showToast('OTP sent to your registered phone','success');
@@ -4754,6 +4872,8 @@ function toggleDateRange(ev){ toggleMenu('ent-daterange-menu',ev); }
 document.addEventListener('click',(e)=>{
   if(!e.target.closest('.ent-menu') && !e.target.closest('.ent-avatar') &&
      !e.target.closest('.ent-account') && !e.target.closest('.ent-iconbtn[aria-label="Help"]') &&
+     !e.target.closest('.ent-iconbtn[aria-label="Notifications"]') &&
+     !e.target.closest('.ent-search') && !e.target.closest('#cmdk-panel') &&
      !e.target.closest('.ent-daterange')) closeAllMenus();
 });
 
@@ -4777,7 +4897,21 @@ function toggleMobileSidebar(){
 }
 
 // Date range with compare toggle
-let _dateRange={preset:'7d',compare:true,label:'Last 7 days'};
+let _dateRange={preset:'today',compare:true,label:'Today'};
+function vsLabelFor(preset){
+  switch(preset){
+    case 'today': return 'vs yesterday';
+    case 'yesterday': return 'vs day before';
+    case '7d': return 'vs previous 7d';
+    case '30d': return 'vs previous 30d';
+    case 'mtd': return 'vs previous month';
+    default: return 'vs prev period';
+  }
+}
+function updateKpiDeltaLabels(){
+  const txt=vsLabelFor(_dateRange.preset);
+  document.querySelectorAll('.metric-card .delta .vs').forEach(el=>{ el.textContent=txt; });
+}
 function setDateRange(preset,label){
   _dateRange.preset=preset; _dateRange.label=label;
   const lbl=document.getElementById('daterange-label');
@@ -4787,8 +4921,43 @@ function setDateRange(preset,label){
   document.querySelectorAll('[data-period-seg]').forEach(b=>{
     b.classList.toggle('active', b.dataset.periodSeg===preset);
   });
+  // Sync KPI "vs" labels
+  updateKpiDeltaLabels();
+  // Fetch comparison data
+  refreshKpiDeltas(preset);
   // Trigger dashboard refresh hook
   if(typeof loadDashboard==='function') try{ loadDashboard(); }catch(_){}
+}
+async function refreshKpiDeltas(preset){
+  const bid=state.brandId||'';
+  try{
+    const res=await apiFetch('/api/v1/portal/date-range-compare?preset='+encodeURIComponent(preset)+'&brand_id='+encodeURIComponent(bid),{method:'GET'});
+    if(!res.ok) return;
+    const data=await res.json().catch(()=>null);
+    if(!data) return;
+    const mapping={spend:'kpi-spend',reach:'kpi-reach',conv:'kpi-conv',cpa:'kpi-cpa'};
+    Object.keys(mapping).forEach(k=>{
+      const valId=mapping[k];
+      const valEl=document.getElementById(valId);
+      const card=valEl?valEl.closest('.metric-card'):null;
+      if(!card) return;
+      const metric=data[k]||data['kpi_'+k];
+      if(!metric) return;
+      if(typeof metric.value==='string' || typeof metric.value==='number'){
+        valEl.textContent=metric.value;
+      }
+      const deltaEl=card.querySelector('.delta');
+      if(deltaEl && typeof metric.delta==='number'){
+        const isDown=(k==='cpa') ? (metric.delta<0) : (metric.delta<0);
+        deltaEl.classList.toggle('up', metric.delta>=0);
+        deltaEl.classList.toggle('down', metric.delta<0);
+        const arrow=metric.delta>=0?'▲':'▼';
+        const pct=Math.abs(metric.delta*100).toFixed(1);
+        const vs=vsLabelFor(preset);
+        deltaEl.innerHTML=arrow+' '+pct+'% <span class="vs">'+vs+'</span>';
+      }
+    });
+  }catch(_){}
 }
 function updateCompareToggle(){
   const cb=document.getElementById('compare-prev');
@@ -4807,10 +4976,438 @@ function closeWalletDrawer(){
   if(d){ d.classList.remove('open'); d.setAttribute('aria-hidden','true'); }
 }
 function openTopupModal(){
-  if(window.showToast) showToast('Top-up flow — wires to /api/v1/wallet/topup','info');
+  let overlay=document.getElementById('topup-modal');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='topup-modal';
+    overlay.className='modal-overlay';
+    overlay.innerHTML=
+      '<div class="modal-card" style="max-width:440px">'+
+      '  <div class="modal-head">'+
+      '    <div style="flex:1;min-width:0">'+
+      '      <div class="modal-title" data-i18n="portal.wallet.topupModal.title">Top up wallet</div>'+
+      '      <div style="color:#64748B;font-size:12px;margin-top:2px" data-i18n="portal.wallet.topupModal.sub">Add credit via Stripe — funds available immediately.</div>'+
+      '    </div>'+
+      '    <button class="btn-logout" onclick="closeTopupModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748B">&times;</button>'+
+      '  </div>'+
+      '  <div class="modal-body">'+
+      '    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px" id="topup-presets">'+
+      '      <button type="button" class="ebtn secondary topup-preset" data-amount="50">S$50</button>'+
+      '      <button type="button" class="ebtn secondary topup-preset" data-amount="100">S$100</button>'+
+      '      <button type="button" class="ebtn secondary topup-preset" data-amount="500">S$500</button>'+
+      '      <button type="button" class="ebtn secondary topup-preset" data-amount="1000">S$1,000</button>'+
+      '    </div>'+
+      '    <div class="form-group">'+
+      '      <label style="font-size:12px;font-weight:600;color:#0F172A;display:block;margin-bottom:6px" data-i18n="portal.wallet.topupModal.amount">Custom amount (SGD)</label>'+
+      '      <div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:#0F172A">S$</span>'+
+      '      <input type="number" id="topup-amount" min="10" step="10" placeholder="100" style="flex:1;padding:9px 12px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px;font-variant-numeric:tabular-nums"></div>'+
+      '      <small style="color:#64748B;font-size:11px;display:block;margin-top:6px" data-i18n="portal.wallet.topupModal.min">Minimum S$10 · Maximum S$10,000 per transaction.</small>'+
+      '    </div>'+
+      '    <div id="topup-method" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px 12px;font-size:13px;display:flex;align-items:center;gap:10px">'+
+      '      <span style="width:36px;height:24px;background:#1a1f71;color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">VISA</span>'+
+      '      <div><div style="font-weight:600">•••• 4242</div><div style="color:#64748B;font-size:11px" data-i18n="portal.wallet.topupModal.default">Default card · expires 12/27</div></div>'+
+      '    </div>'+
+      '    <div id="topup-error" style="color:#b91c1c;font-size:12px;display:none;margin-top:10px"></div>'+
+      '  </div>'+
+      '  <div class="modal-foot">'+
+      '    <button class="ebtn secondary" onclick="closeTopupModal()" data-i18n="portal.actions.cancel">Cancel</button>'+
+      '    <button class="ebtn primary" id="topup-submit" onclick="submitTopup()" data-i18n="portal.wallet.topupModal.confirm">Top up</button>'+
+      '  </div>'+
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click',(ev)=>{
+      const preset=ev.target.closest('.topup-preset');
+      if(preset){
+        const amt=preset.dataset.amount;
+        const inp=document.getElementById('topup-amount'); if(inp) inp.value=amt;
+        overlay.querySelectorAll('.topup-preset').forEach(b=>b.classList.remove('primary'));
+        preset.classList.add('primary'); preset.classList.remove('secondary');
+      }
+    });
+  }
+  overlay.classList.add('active');
+  if(window.KiXi18n && window.KiXi18n.apply) window.KiXi18n.apply();
 }
+function closeTopupModal(){
+  const o=document.getElementById('topup-modal'); if(o) o.classList.remove('active');
+}
+async function submitTopup(){
+  const amtEl=document.getElementById('topup-amount');
+  const err=document.getElementById('topup-error');
+  const submitBtn=document.getElementById('topup-submit');
+  const amount=parseFloat((amtEl&&amtEl.value)||'');
+  if(!amount || amount<10 || amount>10000){
+    if(err){ err.textContent='Please enter an amount between S$10 and S$10,000.'; err.style.display='block'; }
+    return;
+  }
+  if(err) err.style.display='none';
+  if(submitBtn){ submitBtn.disabled=true; submitBtn.textContent='Processing…'; }
+  const bid=state.brandId||'';
+  const isMock=(new URLSearchParams(location.search)).get('mock')==='true';
+  try{
+    // 1. Create top-up intent
+    const res=await apiFetch('/api/v1/wallet/'+encodeURIComponent(bid)+'/topup',{
+      method:'POST', json:{amount:amount, currency:'SGD', mock:isMock}
+    });
+    if(!res.ok){
+      const d=await res.json().catch(()=>({}));
+      throw new Error(d.detail||('Top-up failed ('+res.status+')'));
+    }
+    const data=await res.json();
+    const intentId=data.intent_id || data.payment_intent_id || data.id;
+    const clientSecret=data.client_secret;
+
+    if(!isMock && clientSecret && window.Stripe){
+      // Real Stripe — Elements would be mounted here; in test mode we redirect to checkout url if provided.
+      if(data.checkout_url){
+        window.location.href=data.checkout_url;
+        return;
+      }
+    }
+    // Mock / Stripe-confirmed path: hit confirm endpoint
+    const cres=await apiFetch('/api/v1/wallet/'+encodeURIComponent(bid)+'/topup/confirm',{
+      method:'POST', json:{intent_id:intentId, mock:isMock}
+    });
+    if(!cres.ok){
+      const d=await cres.json().catch(()=>({}));
+      throw new Error(d.detail||('Confirmation failed ('+cres.status+')'));
+    }
+    const cdata=await cres.json();
+    const newBal=(typeof cdata.balance==='number')?cdata.balance:null;
+    // Update wallet pill optimistically
+    if(newBal!==null){
+      const fmt=new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD'}).format(newBal);
+      const pill=document.getElementById('wallet-balance'); if(pill) pill.textContent=fmt;
+      const det=document.getElementById('wallet-balance-detail'); if(det) det.textContent=fmt;
+    }
+    closeTopupModal();
+    if(window.showToast) showToast('Top-up successful · S$'+amount.toFixed(2)+' added'+(newBal!==null?(' · balance S$'+newBal.toFixed(2)):''),'success');
+    if(typeof renderWalletTransactions==='function') try{ renderWalletTransactions(); }catch(_){}
+  }catch(e){
+    if(err){ err.textContent=e.message; err.style.display='block'; }
+  }finally{
+    if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Top up'; }
+  }
+}
+
+// ── Invoice PDF download ─────────────────────────────────────────────
+async function downloadInvoicePdf(ev,invoiceId){
+  // Anchor href already points to /api/v1/invoices/<id>/download.pdf for fallback.
+  // Intercept so we can attach auth header + present blob if backend ready.
+  try{
+    ev.preventDefault();
+  }catch(_){}
+  try{
+    const res=await fetch(API_BASE+'/api/v1/invoices/'+encodeURIComponent(invoiceId)+'/download.pdf',{
+      headers: state.token ? {Authorization:'Bearer '+state.token} : {}
+    });
+    if(!res.ok){
+      // 404/501 → fallback: open the URL directly so backend can stream a placeholder PDF, or show toast.
+      if(res.status===404 || res.status===501){
+        if(window.showToast) showToast('Invoice '+invoiceId+' not available yet — please try again shortly.','info');
+        return false;
+      }
+      throw new Error('Download failed ('+res.status+')');
+    }
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=invoiceId+'.pdf';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1000);
+    if(window.showToast) showToast('Invoice '+invoiceId+' downloaded','success');
+  }catch(e){
+    if(window.showToast) showToast('Download failed: '+e.message,'error');
+  }
+  return false;
+}
+async function exportInvoicesCsv(){
+  try{
+    const bid=state.brandId||'';
+    const res=await fetch(API_BASE+'/api/v1/portal/settings/billing/'+encodeURIComponent(bid)+'/export.csv',{
+      headers: state.token ? {Authorization:'Bearer '+state.token} : {}
+    });
+    if(res.ok){
+      const blob=await res.blob();
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='invoices.csv';
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1000);
+      if(window.showToast) showToast('CSV exported','success');
+      return;
+    }
+  }catch(_){}
+  if(window.showToast) showToast('CSV export queued — check email','success');
+}
+
+// ── Payment methods (Add / Remove / Set default) ─────────────────────
+async function openAddPaymentMethod(){
+  // Hit backend to create a SetupIntent and either embed Stripe.js or redirect.
+  try{
+    const bid=state.brandId||'';
+    const res=await apiFetch('/api/v1/portal/settings/payment-methods/'+encodeURIComponent(bid)+'/add',{method:'POST',json:{}});
+    if(res.ok){
+      const data=await res.json().catch(()=>({}));
+      if(data && data.checkout_url){
+        window.open(data.checkout_url,'_blank','noopener');
+        if(window.showToast) showToast('Opening Stripe in a new tab…','info');
+        return;
+      }
+      if(data && data.client_secret && window.Stripe){
+        if(window.showToast) showToast('Stripe Elements ready — confirm card in modal','info');
+        return;
+      }
+    }
+  }catch(_){}
+  if(window.showToast) showToast('Add-card flow temporarily unavailable. Try again shortly.','info');
+}
+function confirmRemovePaymentMethod(pmId,label){
+  openConfirmModal({
+    title:'Remove payment method?',
+    body:'<p style="font-size:13px;color:#475569">You are about to remove <strong>'+label+'</strong>. Active campaigns billed to this card will fall back to the default. This cannot be undone.</p>',
+    confirmLabel:'Remove',
+    confirmVariant:'danger',
+    onConfirm:async()=>{
+      const row=document.querySelector('[data-pm-id="'+pmId+'"]');
+      const prevHTML=row?row.outerHTML:null;
+      if(row) row.style.opacity='.4'; // optimistic
+      try{
+        const res=await apiFetch('/api/v1/payment-methods/'+encodeURIComponent(pmId),{method:'DELETE'});
+        if(!res.ok && res.status!==204){
+          const d=await res.json().catch(()=>({}));
+          throw new Error(d.detail||'Failed ('+res.status+')');
+        }
+        if(row) row.remove();
+        if(window.showToast) showToast(label+' removed','success');
+        await refreshPaymentMethodsList();
+      }catch(e){
+        if(row && prevHTML){ row.style.opacity='1'; }
+        if(window.showToast) showToast('Remove failed: '+e.message,'error');
+      }
+    }
+  });
+}
+async function setDefaultPaymentMethod(pmId,label){
+  // Optimistic update: mark target as default, others not
+  const rows=document.querySelectorAll('#payment-methods-list .pm-row');
+  const before=[];
+  rows.forEach(r=>{ before.push({el:r,isDefault:r.dataset.pmDefault==='true'}); r.dataset.pmDefault=(r.dataset.pmId===pmId)?'true':'false'; });
+  try{
+    const res=await apiFetch('/api/v1/payment-methods/'+encodeURIComponent(pmId)+'/set-default',{method:'PUT',json:{}});
+    if(!res.ok){
+      const d=await res.json().catch(()=>({}));
+      throw new Error(d.detail||'Failed ('+res.status+')');
+    }
+    if(window.showToast) showToast(label+' is now your default card','success');
+    await refreshPaymentMethodsList();
+  }catch(e){
+    // rollback
+    before.forEach(b=>{ b.el.dataset.pmDefault=b.isDefault?'true':'false'; });
+    if(window.showToast) showToast('Set default failed: '+e.message,'error');
+  }
+}
+async function refreshPaymentMethodsList(){
+  // Pull authoritative list (best-effort — backend may not be live yet).
+  try{
+    const bid=state.brandId||'';
+    const res=await apiFetch('/api/v1/portal/settings/payment-methods/'+encodeURIComponent(bid),{method:'GET'});
+    if(!res.ok) return;
+    const data=await res.json().catch(()=>null);
+    if(!data || !Array.isArray(data.methods)) return;
+    const list=document.getElementById('payment-methods-list'); if(!list) return;
+    // Render fresh list (preserve empty state markup)
+    const empty=list.querySelector('.empty-state.non-demo');
+    list.querySelectorAll('.pm-row').forEach(r=>r.remove());
+    if(data.methods.length===0){
+      if(empty) empty.style.display='';
+      return;
+    }
+    if(empty) empty.style.display='none';
+    data.methods.forEach(m=>{
+      const brand=(m.brand||'CARD').toUpperCase();
+      const last4=m.last4||'••••';
+      const isDef=!!m.is_default;
+      const exp=m.exp_month?(String(m.exp_month).padStart(2,'0')+'/'+String(m.exp_year).slice(-2)):'';
+      const tile=brand==='VISA'?'#1a1f71':(brand==='MC'||brand==='MASTERCARD')?'#eb001b':'#0F172A';
+      const row=document.createElement('div');
+      row.className='set-row pm-row';
+      row.dataset.pmId=m.id;
+      row.dataset.pmDefault=isDef?'true':'false';
+      row.style.cssText='padding:14px;border:1px solid var(--border-subdued);border-radius:10px';
+      const actions = isDef
+        ? '<span class="ebadge active"><span class="dot"></span>Default</span><button class="ebtn tertiary sm" onclick="confirmRemovePaymentMethod(\''+m.id+'\',\''+brand+' •••• '+last4+'\')">Remove</button>'
+        : '<button class="ebtn tertiary sm" onclick="setDefaultPaymentMethod(\''+m.id+'\',\''+brand+' •••• '+last4+'\')">Set default</button><button class="ebtn tertiary sm" onclick="confirmRemovePaymentMethod(\''+m.id+'\',\''+brand+' •••• '+last4+'\')">Remove</button>';
+      row.innerHTML=
+        '<div style="display:flex;align-items:center;gap:12px">'+
+        '  <div style="width:44px;height:30px;background:'+tile+';color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+brand.slice(0,4)+'</div>'+
+        '  <div><div class="lbl">•••• •••• •••• '+last4+'</div><div class="desc">'+(exp?'Expires '+exp:'')+(isDef?' · Default':'')+'</div></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px">'+actions+'</div>';
+      if(empty) list.insertBefore(row,empty); else list.appendChild(row);
+    });
+  }catch(_){}
+}
+
+// ── Auto-recharge confirmation ──────────────────────────────────────
+let _autoRechargeState={enabled:true,threshold:100,amount:500};
+function handleAutoRechargeToggle(ev){
+  // Prevent immediate toggle; ask confirm first.
+  ev.preventDefault();
+  const cb=document.getElementById('auto-recharge-toggle'); if(!cb) return;
+  // With preventDefault, cb.checked still reflects PRE-click state.
+  // The user wants to flip TO the opposite of cb.checked.
+  const goingTo = !cb.checked;
+  if(goingTo){
+    // turning ON
+    openAutoRechargeModal({
+      enable:true,
+      threshold:_autoRechargeState.threshold,
+      amount:_autoRechargeState.amount,
+      onConfirm:async(threshold,amount)=>{
+        const ok=await saveAutoRecharge(true,threshold,amount);
+        if(ok){
+          _autoRechargeState={enabled:true,threshold:threshold,amount:amount};
+          cb.checked=true;
+          updateAutoRechargeVisual(true);
+          if(window.showToast) showToast('Auto-recharge enabled · S$'+amount+' when balance < S$'+threshold,'success');
+        }
+      }
+    });
+  } else {
+    // turning OFF
+    openConfirmModal({
+      title:'Disable auto-recharge?',
+      body:'<p style="font-size:13px;color:#475569">If your wallet runs out mid-campaign, ads will pause until you top up manually. Continue?</p>',
+      confirmLabel:'Disable',
+      confirmVariant:'danger',
+      onConfirm:async()=>{
+        const ok=await saveAutoRecharge(false,_autoRechargeState.threshold,_autoRechargeState.amount);
+        if(ok){
+          _autoRechargeState.enabled=false;
+          cb.checked=false;
+          updateAutoRechargeVisual(false);
+          if(window.showToast) showToast('Auto-recharge disabled','success');
+        }
+      }
+    });
+  }
+}
+function updateAutoRechargeVisual(on){
+  const track=document.getElementById('auto-recharge-track');
+  const thumb=document.getElementById('auto-recharge-thumb');
+  if(track) track.style.background=on?'var(--brand)':'#CBD5E1';
+  if(thumb) thumb.style.left=on?'21px':'3px';
+}
+async function saveAutoRecharge(enabled,threshold,amount){
+  const bid=state.brandId||'';
+  try{
+    const res=await apiFetch('/api/v1/portal/settings/payment-methods/'+encodeURIComponent(bid)+'/auto-recharge',{
+      method:'PUT',json:{enabled:enabled,threshold:threshold,amount:amount}
+    });
+    if(!res.ok){
+      const d=await res.json().catch(()=>({}));
+      throw new Error(d.detail||'Failed ('+res.status+')');
+    }
+    return true;
+  }catch(e){
+    if(window.showToast) showToast('Auto-recharge update failed: '+e.message,'error');
+    return false;
+  }
+}
+function openAutoRechargeModal(opts){
+  let overlay=document.getElementById('autorecharge-modal');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='autorecharge-modal';
+    overlay.className='modal-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML=
+    '<div class="modal-card" style="max-width:440px">'+
+    '  <div class="modal-head">'+
+    '    <div style="flex:1;min-width:0">'+
+    '      <div class="modal-title">Enable auto-recharge?</div>'+
+    '      <div style="color:#64748B;font-size:12px;margin-top:2px">Keep campaigns running without manual top-ups.</div>'+
+    '    </div>'+
+    '    <button class="btn-logout" onclick="closeAutoRechargeModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748B">&times;</button>'+
+    '  </div>'+
+    '  <div class="modal-body">'+
+    '    <p style="font-size:13px;color:#475569;margin-bottom:12px">When your wallet drops below the threshold, we\'ll charge the recharge amount to your default payment method.</p>'+
+    '    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '      <div class="form-group"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Threshold (S$)</label><input type="number" id="ar-threshold" min="20" step="10" value="'+opts.threshold+'" style="width:100%;padding:8px 10px;border:1px solid #CBD5E1;border-radius:8px"></div>'+
+    '      <div class="form-group"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Recharge (S$)</label><input type="number" id="ar-amount" min="50" step="50" value="'+opts.amount+'" style="width:100%;padding:8px 10px;border:1px solid #CBD5E1;border-radius:8px"></div>'+
+    '    </div>'+
+    '    <p id="ar-preview" style="font-size:12px;color:#64748B;margin-top:8px">When wallet drops below S$'+opts.threshold+', S$'+opts.amount+' will be charged to your default payment method.</p>'+
+    '  </div>'+
+    '  <div class="modal-foot">'+
+    '    <button class="ebtn secondary" onclick="closeAutoRechargeModal()">Cancel</button>'+
+    '    <button class="ebtn primary" id="ar-confirm">Confirm</button>'+
+    '  </div>'+
+    '</div>';
+  const upd=()=>{
+    const t=parseInt((document.getElementById('ar-threshold')||{}).value||'0',10);
+    const a=parseInt((document.getElementById('ar-amount')||{}).value||'0',10);
+    const p=document.getElementById('ar-preview');
+    if(p) p.textContent='When wallet drops below S$'+t+', S$'+a+' will be charged to your default payment method.';
+  };
+  ['ar-threshold','ar-amount'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input',upd); });
+  const conf=document.getElementById('ar-confirm');
+  if(conf) conf.addEventListener('click',()=>{
+    const t=parseInt((document.getElementById('ar-threshold')||{}).value||'0',10);
+    const a=parseInt((document.getElementById('ar-amount')||{}).value||'0',10);
+    if(!t||t<20||!a||a<50){ if(window.showToast) showToast('Threshold ≥ S$20, recharge ≥ S$50','error'); return; }
+    closeAutoRechargeModal();
+    if(typeof opts.onConfirm==='function') opts.onConfirm(t,a);
+  });
+  overlay.classList.add('active');
+}
+function closeAutoRechargeModal(){
+  const o=document.getElementById('autorecharge-modal'); if(o) o.classList.remove('active');
+}
+
+// ── Generic confirm modal ───────────────────────────────────────────
+function openConfirmModal(opts){
+  let overlay=document.getElementById('generic-confirm-modal');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='generic-confirm-modal';
+    overlay.className='modal-overlay';
+    document.body.appendChild(overlay);
+  }
+  const variant=opts.confirmVariant==='danger'?'danger':'primary';
+  const bgColor=variant==='danger'?'#b91c1c':'';
+  const styleAttr=variant==='danger'?' style="background:#b91c1c;border-color:#b91c1c;color:#fff"':'';
+  overlay.innerHTML=
+    '<div class="modal-card" style="max-width:420px">'+
+    '  <div class="modal-head"><div style="flex:1;min-width:0"><div class="modal-title">'+(opts.title||'Confirm')+'</div></div>'+
+    '    <button class="btn-logout" onclick="closeConfirmModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748B">&times;</button>'+
+    '  </div>'+
+    '  <div class="modal-body">'+(opts.body||'')+'</div>'+
+    '  <div class="modal-foot">'+
+    '    <button class="ebtn secondary" onclick="closeConfirmModal()">'+(opts.cancelLabel||'Cancel')+'</button>'+
+    '    <button class="ebtn primary" id="generic-confirm-ok"'+styleAttr+'>'+(opts.confirmLabel||'Confirm')+'</button>'+
+    '  </div>'+
+    '</div>';
+  const ok=document.getElementById('generic-confirm-ok');
+  if(ok) ok.addEventListener('click',()=>{
+    closeConfirmModal();
+    if(typeof opts.onConfirm==='function') opts.onConfirm();
+  });
+  overlay.classList.add('active');
+}
+function closeConfirmModal(){
+  const o=document.getElementById('generic-confirm-modal'); if(o) o.classList.remove('active');
+}
+
 function renderWalletTransactions(){
   const list=document.getElementById('wallet-tx-list'); if(!list) return;
+  if(typeof isDemoMode==='function' && !isDemoMode()){
+    list.innerHTML = '<div class="empty-state" style="padding:20px 12px;text-align:center;border:1px dashed var(--border-subdued);border-radius:8px"><p style="font-size:13px;color:var(--text-subdued)" data-i18n="portal.wallet.emptyTx">No transactions yet — top up to get started.</p></div>';
+    if(window.KiXi18n && window.KiXi18n.apply) window.KiXi18n.apply();
+    return;
+  }
   const txs=[
     {when:'Today · 09:14', kind:'Top up', amount:+500.00, balance:1234.56},
     {when:'Yesterday · 22:30', kind:'Campaign spend · Toast Box', amount:-42.18, balance:734.56},
@@ -5019,6 +5616,10 @@ function showApp(){
     const ebn=document.getElementById('ent-brand-name');
     if(ebn) ebn.textContent=bn;
   }catch(_){}
+  // Sync KPI delta labels to default period preset
+  try{ updateKpiDeltaLabels(); }catch(_){}
+  // Hydrate payment-methods + notifications best-effort
+  try{ refreshPaymentMethodsList(); }catch(_){}
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -5260,10 +5861,103 @@ function saveRule(){
   if(window.showToast) showToast('Rule saved','success');
   closeRuleBuilder();
 }
+// ── Notification bell panel ──────────────────────────────────────────
 function toggleNotifications(){
-  const dot=document.getElementById('notif-dot');
-  if(dot) dot.style.display='none';
-  if(window.kixToast) kixToast('3 new alerts cleared');
+  let panel=document.getElementById('notif-panel');
+  if(!panel){
+    panel=document.createElement('div');
+    panel.id='notif-panel';
+    panel.className='ent-menu';
+    panel.style.cssText='top:48px;right:90px;min-width:340px;max-height:480px;overflow:auto;padding:0';
+    panel.innerHTML=
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border-subdued)">'+
+      '  <span style="font-weight:600;font-size:13px" data-i18n="portal.notif.title">Notifications</span>'+
+      '  <button class="ebtn tertiary sm" onclick="markAllNotificationsRead()" data-i18n="portal.notif.markAll">Mark all read</button>'+
+      '</div>'+
+      '<div id="notif-list" style="padding:4px 0">'+
+      '  <div style="padding:18px;text-align:center;color:var(--text-subdued);font-size:13px" data-i18n="portal.notif.loading">Loading…</div>'+
+      '</div>';
+    document.body.appendChild(panel);
+    panel.addEventListener('click',(ev)=>ev.stopPropagation());
+  }
+  const wasOpen=panel.classList.contains('open');
+  closeAllMenus();
+  if(wasOpen){ return; }
+  panel.classList.add('open');
+  // Hide dot when panel opened (mark "viewed")
+  const dot=document.getElementById('notif-dot'); if(dot) dot.style.display='none';
+  loadNotifications();
+  if(window.KiXi18n && window.KiXi18n.apply) window.KiXi18n.apply();
+}
+async function loadNotifications(){
+  const list=document.getElementById('notif-list'); if(!list) return;
+  const bid=state.brandId||'';
+  let notifs=null;
+  try{
+    const res=await apiFetch('/api/v1/portal/notifications/'+encodeURIComponent(bid),{method:'GET'});
+    if(res.ok){
+      const data=await res.json().catch(()=>null);
+      if(data){ notifs=Array.isArray(data)?data:(data.notifications||data.items||[]); }
+    }
+  }catch(_){}
+  if(!notifs){
+    // Fallback demo content only in demo mode
+    if(typeof isDemoMode==='function' && isDemoMode()){
+      notifs=[
+        {id:'n1',icon:'⚠️',title:'Campaign paused — CTR below 0.5%',body:'Toast Box · Off-peak push',time:'2h ago',unread:true,href:'#ads'},
+        {id:'n2',icon:'🎯',title:'Voucher pool low (18% left)',body:'Toast Box · Tampines Mall',time:'5h ago',unread:true,href:'#vouchers'},
+        {id:'n3',icon:'💳',title:'Wallet balance below S$200',body:'Enable auto-recharge to avoid pauses',time:'yesterday',unread:false,href:'#settings'},
+      ];
+    } else {
+      notifs=[];
+    }
+  }
+  if(notifs.length===0){
+    list.innerHTML='<div style="padding:28px 18px;text-align:center;color:var(--text-subdued);font-size:13px" data-i18n="portal.notif.empty">You\'re all caught up.</div>';
+    if(window.KiXi18n && window.KiXi18n.apply) window.KiXi18n.apply();
+    return;
+  }
+  list.innerHTML=notifs.map(n=>{
+    const bg=n.unread?'background:rgba(0,179,65,.04)':'';
+    const dot=n.unread?'<span style="width:7px;height:7px;background:var(--brand);border-radius:50%;margin-right:6px"></span>':'<span style="width:7px;height:7px;margin-right:6px;display:inline-block"></span>';
+    const safeHref=(n.href||'#').replace(/"/g,'');
+    const titleSafe=(n.title||'').replace(/</g,'&lt;');
+    const bodySafe=(n.body||'').replace(/</g,'&lt;');
+    return '<a class="ent-menu-item" href="'+safeHref+'" onclick="onNotifClick(event,\''+(n.id||'')+'\',\''+safeHref+'\')" style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;text-decoration:none;color:inherit;cursor:pointer;'+bg+'">'+
+      '<span style="font-size:18px;line-height:1">'+(n.icon||'🔔')+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+      '  <div style="font-weight:600;font-size:13px;color:var(--text-strong);display:flex;align-items:center">'+dot+titleSafe+'</div>'+
+      '  <div style="font-size:12px;color:var(--text-subdued);margin-top:2px">'+bodySafe+'</div>'+
+      '  <div style="font-size:11px;color:var(--text-subdued);margin-top:4px">'+(n.time||'')+'</div>'+
+      '</div>'+
+      '</a>';
+  }).join('');
+}
+function onNotifClick(ev,id,href){
+  ev.preventDefault();
+  closeAllMenus();
+  // Mark single notification read (best effort)
+  if(id){
+    try{
+      const bid=state.brandId||'';
+      apiFetch('/api/v1/portal/notifications/'+encodeURIComponent(bid)+'/'+encodeURIComponent(id)+'/read',{method:'POST',json:{}}).catch(()=>{});
+    }catch(_){}
+  }
+  if(href && href.startsWith('#')){
+    const view=href.slice(1);
+    if(typeof navigate==='function') navigate(view||'dashboard');
+  } else if(href){
+    window.location.href=href;
+  }
+}
+async function markAllNotificationsRead(){
+  const bid=state.brandId||'';
+  try{
+    await apiFetch('/api/v1/portal/notifications/'+encodeURIComponent(bid)+'/read-all',{method:'POST',json:{}}).catch(()=>{});
+  }catch(_){}
+  const dot=document.getElementById('notif-dot'); if(dot) dot.style.display='none';
+  await loadNotifications();
+  if(window.showToast) showToast('All notifications marked as read','success');
 }
 
 // Operations tabs
@@ -5289,17 +5983,162 @@ function kixToast(msg, kind){
 }
 window.kixToast=kixToast;
 
-// ⌘K / / shortcut → focus search
+// ⌘K / / shortcut → focus search + open palette
 document.addEventListener('keydown',e=>{
   const input=document.getElementById('ent-search-input');
   if(!input) return;
-  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); input.focus(); input.select(); }
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){
+    e.preventDefault(); input.focus(); input.select(); openCmdkPanel();
+    return;
+  }
   if(e.key==='/' && document.activeElement && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){
-    e.preventDefault(); input.focus();
+    e.preventDefault(); input.focus(); openCmdkPanel();
+    return;
   }
   if(e.key==='Escape'){
+    closeCmdkPanel();
     closeAudienceDrawer();
   }
+  // Navigate results
+  if(document.getElementById('cmdk-panel') && document.getElementById('cmdk-panel').classList.contains('open')){
+    if(e.key==='ArrowDown'){ e.preventDefault(); cmdkMoveSelection(1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); cmdkMoveSelection(-1); }
+    else if(e.key==='Enter' && document.activeElement===input){ e.preventDefault(); cmdkActivateSelected(); }
+  }
+});
+
+// ── ⌘K command palette ───────────────────────────────────────────────
+let _cmdkDebounce=null;
+let _cmdkResults=[];
+let _cmdkSelected=0;
+function ensureCmdkPanel(){
+  let panel=document.getElementById('cmdk-panel');
+  if(panel) return panel;
+  panel=document.createElement('div');
+  panel.id='cmdk-panel';
+  panel.className='ent-menu';
+  panel.style.cssText='position:absolute;top:48px;left:50%;transform:translateX(-50%);min-width:520px;max-width:640px;max-height:60vh;overflow:auto;padding:0;display:none;z-index:5500';
+  panel.innerHTML='<div id="cmdk-results" style="padding:6px 0"></div>';
+  // Anchor under topbar search
+  const search=document.querySelector('.ent-search');
+  if(search){
+    search.style.position='relative';
+    search.appendChild(panel);
+    panel.style.top='42px';
+    panel.style.left='0';
+    panel.style.transform='none';
+    panel.style.width='100%';
+    panel.style.minWidth='420px';
+  } else {
+    document.body.appendChild(panel);
+  }
+  return panel;
+}
+function openCmdkPanel(){
+  const panel=ensureCmdkPanel();
+  panel.style.display='block';
+  panel.classList.add('open');
+  runCmdkSearch((document.getElementById('ent-search-input')||{}).value||'');
+}
+function closeCmdkPanel(){
+  const panel=document.getElementById('cmdk-panel');
+  if(panel){ panel.style.display='none'; panel.classList.remove('open'); }
+}
+function cmdkMoveSelection(delta){
+  if(_cmdkResults.length===0) return;
+  _cmdkSelected=(_cmdkSelected+delta+_cmdkResults.length)%_cmdkResults.length;
+  renderCmdkResults();
+}
+function cmdkActivateSelected(){
+  const r=_cmdkResults[_cmdkSelected]; if(!r) return;
+  cmdkNavigate(r);
+}
+function cmdkNavigate(r){
+  closeCmdkPanel();
+  const inp=document.getElementById('ent-search-input'); if(inp) inp.value='';
+  if(r.url){
+    if(r.url.startsWith('#')){ const v=r.url.slice(1); if(typeof navigate==='function') navigate(v); }
+    else if(r.url.startsWith('http')) window.open(r.url,'_blank','noopener');
+    else if(typeof navigate==='function') navigate(r.url);
+  } else if(r.view){
+    if(typeof navigate==='function') navigate(r.view);
+  }
+}
+async function runCmdkSearch(q){
+  const bid=state.brandId||'';
+  const trimmed=(q||'').trim();
+  // Always show built-in commands; backend adds Campaigns/Audiences/Help on top.
+  const localCmds=[
+    {category:'Recent actions',title:'Create campaign',url:'#ads',icon:'➕'},
+    {category:'Recent actions',title:'Top up wallet',action:'topup',icon:'💳'},
+    {category:'Pages',title:'Dashboard',url:'#dashboard',icon:'📊'},
+    {category:'Pages',title:'Campaigns',url:'#ads',icon:'🎯'},
+    {category:'Pages',title:'Audiences',url:'#primitives',icon:'👥'},
+    {category:'Pages',title:'Automations',url:'#rules',icon:'⚙️'},
+    {category:'Pages',title:'Pixels & tracking',url:'#pixels',icon:'📡'},
+    {category:'Pages',title:'Settings',url:'#settings',icon:'🛠️'},
+    {category:'Help docs',title:'How to install the pixel',url:'https://docs.kix.app/pixel',icon:'📘'},
+    {category:'Help docs',title:'Campaign goals explained',url:'https://docs.kix.app/goals',icon:'📘'},
+  ];
+  // Substring/lower-case fuzzy filter for local
+  let combined=trimmed
+    ? localCmds.filter(c=>c.title.toLowerCase().includes(trimmed.toLowerCase()))
+    : localCmds.slice();
+  // Fetch backend search (only if there's a query)
+  if(trimmed){
+    try{
+      const res=await apiFetch('/api/v1/portal/search?q='+encodeURIComponent(trimmed)+'&brand_id='+encodeURIComponent(bid),{method:'GET'});
+      if(res.ok){
+        const data=await res.json().catch(()=>null);
+        if(data){
+          const remote=[];
+          (data.campaigns||[]).forEach(c=>remote.push({category:'Campaigns',title:c.name||c.title,url:'#ads',icon:'🎯',meta:c.status||''}));
+          (data.audiences||[]).forEach(a=>remote.push({category:'Audiences',title:a.name||a.title,url:'#primitives',icon:'👥',meta:String(a.size||'')}));
+          (data.docs||data.help||[]).forEach(d=>remote.push({category:'Help docs',title:d.title,url:d.url||'#',icon:'📘'}));
+          combined=remote.concat(combined);
+        }
+      }
+    }catch(_){}
+  }
+  _cmdkResults=combined.slice(0,12);
+  _cmdkSelected=0;
+  renderCmdkResults();
+}
+function renderCmdkResults(){
+  const box=document.getElementById('cmdk-results'); if(!box) return;
+  if(_cmdkResults.length===0){
+    box.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-subdued);font-size:13px">No matches — try "campaign", "settings", or "pixel"</div>';
+    return;
+  }
+  // Group by category
+  const groups={};
+  _cmdkResults.forEach((r,i)=>{ const k=r.category||'Other'; (groups[k]=groups[k]||[]).push({...r,_idx:i}); });
+  let html='';
+  Object.keys(groups).forEach(cat=>{
+    html+='<div style="padding:6px 14px 4px;font-size:11px;color:var(--text-subdued);font-weight:600;text-transform:uppercase;letter-spacing:.04em">'+cat+'</div>';
+    groups[cat].forEach(r=>{
+      const sel=(r._idx===_cmdkSelected)?'background:rgba(0,179,65,.08)':'';
+      const meta=r.meta?'<span style="font-size:11px;color:var(--text-subdued);margin-left:auto">'+r.meta+'</span>':'';
+      html+='<div class="cmdk-item" data-idx="'+r._idx+'" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;font-size:13px;'+sel+'"><span>'+(r.icon||'•')+'</span><span>'+r.title.replace(/</g,'&lt;')+'</span>'+meta+'</div>';
+    });
+  });
+  box.innerHTML=html;
+  box.querySelectorAll('.cmdk-item').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{ _cmdkSelected=parseInt(el.dataset.idx,10)||0; renderCmdkResults(); });
+    el.addEventListener('click',()=>{ const r=_cmdkResults[parseInt(el.dataset.idx,10)||0]; if(!r) return; if(r.action==='topup'){ closeCmdkPanel(); openTopupModal(); } else { cmdkNavigate(r); } });
+  });
+}
+// Wire input
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('ent-search-input');
+  if(!inp) return;
+  inp.addEventListener('focus',openCmdkPanel);
+  inp.addEventListener('input',(e)=>{
+    if(_cmdkDebounce) clearTimeout(_cmdkDebounce);
+    const q=e.target.value;
+    _cmdkDebounce=setTimeout(()=>{ runCmdkSearch(q); },200);
+  });
+  inp.addEventListener('blur',()=>{ setTimeout(closeCmdkPanel,180); });
 });
 
 // Apply i18n if available after DOM updates

@@ -331,5 +331,40 @@
   "portal.games.title": "Game template library",
   "portal.games.subtitle": "Describe your business — we'll match from 1,012 ready-made templates.",
   "portal.engagement.title": "Engagement",
-  "portal.engagement.subtitle": "Select and configure gamification modules."
+  "portal.engagement.subtitle": "Select and configure gamification modules.",
+
+  "portal.kpi.vsYesterday": "vs yesterday",
+  "portal.kpi.vsDayBefore": "vs day before",
+  "portal.kpi.vsPrev7d": "vs previous 7d",
+  "portal.kpi.vsPrev30d": "vs previous 30d",
+
+  "portal.wallet.topupModal.title": "Top up wallet",
+  "portal.wallet.topupModal.sub": "Add credit via Stripe — funds available immediately.",
+  "portal.wallet.topupModal.amount": "Custom amount (SGD)",
+  "portal.wallet.topupModal.min": "Minimum S$10 · Maximum S$10,000 per transaction.",
+  "portal.wallet.topupModal.default": "Default card · expires 12/27",
+  "portal.wallet.topupModal.confirm": "Top up",
+  "portal.wallet.emptyTx": "No transactions yet — top up to get started.",
+
+  "portal.settings.payment.remove": "Remove",
+  "portal.settings.payment.setDefault": "Set default",
+  "portal.settings.payment.empty": "No payment methods yet — add one to enable top-ups and auto-recharge.",
+  "portal.settings.billing.downloadPdf": "Download PDF",
+  "portal.settings.billing.emptyTitle": "No invoices yet",
+  "portal.settings.billing.emptyBody": "Your monthly invoices will appear here once you've made your first payment.",
+
+  "portal.notif.title": "Notifications",
+  "portal.notif.markAll": "Mark all read",
+  "portal.notif.empty": "You're all caught up.",
+  "portal.notif.loading": "Loading…",
+
+  "portal.empty.noAudiencesTitle": "No audiences yet",
+  "portal.empty.noAudiencesBody": "Group your customers by behavior, geofence, or upload — then target them in campaigns.",
+  "portal.empty.createFirstAudience": "Create your first audience",
+  "portal.empty.noRulesTitle": "No automation rules yet",
+  "portal.empty.noRulesBody": "Set up rules to pause low-performers, scale winners, or alert when vouchers run low.",
+  "portal.empty.createFirstRule": "Create your first rule",
+  "portal.empty.noLocationsTitle": "No store locations yet",
+  "portal.empty.noLocationsBody": "Add your first store location so customers can scan QR codes nearby.",
+  "portal.empty.addFirstLocation": "Add your first location"
 }

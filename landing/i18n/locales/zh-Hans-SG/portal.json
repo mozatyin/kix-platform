@@ -331,5 +331,40 @@
   "portal.games.title": "游戏模板库",
   "portal.games.subtitle": "描述您的业务——我们将从 1,012 套模板中智能匹配。",
   "portal.engagement.title": "互动",
-  "portal.engagement.subtitle": "选择并配置游戏化模块。"
+  "portal.engagement.subtitle": "选择并配置游戏化模块。",
+
+  "portal.kpi.vsYesterday": "对比昨日",
+  "portal.kpi.vsDayBefore": "对比前日",
+  "portal.kpi.vsPrev7d": "对比上 7 天",
+  "portal.kpi.vsPrev30d": "对比上 30 天",
+
+  "portal.wallet.topupModal.title": "钱包充值",
+  "portal.wallet.topupModal.sub": "通过 Stripe 充值，资金立即到账。",
+  "portal.wallet.topupModal.amount": "自定义金额（SGD）",
+  "portal.wallet.topupModal.min": "最低 S$10，单笔最高 S$10,000。",
+  "portal.wallet.topupModal.default": "默认卡 · 有效期 12/27",
+  "portal.wallet.topupModal.confirm": "确认充值",
+  "portal.wallet.emptyTx": "暂无交易记录——充值即可开始。",
+
+  "portal.settings.payment.remove": "移除",
+  "portal.settings.payment.setDefault": "设为默认",
+  "portal.settings.payment.empty": "尚未添加支付方式——添加后可开启充值与自动续费。",
+  "portal.settings.billing.downloadPdf": "下载 PDF",
+  "portal.settings.billing.emptyTitle": "暂无账单",
+  "portal.settings.billing.emptyBody": "完成首笔付款后，每月账单将显示在这里。",
+
+  "portal.notif.title": "通知",
+  "portal.notif.markAll": "全部标为已读",
+  "portal.notif.empty": "您已查看所有通知。",
+  "portal.notif.loading": "加载中…",
+
+  "portal.empty.noAudiencesTitle": "暂无受众",
+  "portal.empty.noAudiencesBody": "按行为、地理围栏或自有名单分组客户，再投放到广告活动。",
+  "portal.empty.createFirstAudience": "创建第一个受众",
+  "portal.empty.noRulesTitle": "暂无自动化规则",
+  "portal.empty.noRulesBody": "设置规则以暂停低表现、扩大获胜创意，或在卡券不足时提醒。",
+  "portal.empty.createFirstRule": "创建第一条规则",
+  "portal.empty.noLocationsTitle": "暂无门店",
+  "portal.empty.noLocationsBody": "添加门店后，附近顾客即可扫码参与活动。",
+  "portal.empty.addFirstLocation": "添加第一个门店"
 }
