@@ -1114,6 +1114,17 @@ and the shim helpers in `app.api_standards`.
         _logging.getLogger(__name__).warning("wavef-09 skipped: %s", _exc)
 
     try:
+        from app.routers import wavef_game_speed as _wf10
+        app.include_router(
+            _wf10.router,
+            prefix="/api/v1/wavef/game-speed",
+            tags=["wavef", "game-speed"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning("wavef-10 skipped: %s", _exc)
+
+    try:
         from app.routers import wavef_referral as _wfr01
         app.include_router(
             _wfr01.router,
