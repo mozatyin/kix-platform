@@ -210,12 +210,11 @@ def test_1000_brand_fairness_distribution():
     min_per_brand = per_brand_min_wins(DIVERSITY_WINDOW)
     # Minimum wins required across all brands, summed.
     total_min = n_brands * min_per_brand
-    # At 1000 brands × 5 wins each = 5000 total floor demand.
-    # On a single 1000-window the demand exceeds capacity, BUT the floor
-    # only PROMOTES one starved candidate per auction, so the practical
-    # cap is one promotion per auction → 1000 total promotions max, which
-    # is exactly the 5% per-region floor budget envelope.
-    assert total_min == 5000
+    # Wave H tune (per-brand min 0.5% → 0.15%): per_brand_min_wins() returns 1
+    # at N=1000 (since 1000 × 0.15% = 1.5, max(1, int(1.5)) = 1).
+    # Total floor demand at 1000 brands × 1 win = 1000 — exactly fits within
+    # one auction-per-promotion practical cap.
+    assert total_min == 1000
     # Per-region floor budget envelope (5% × 1000 = 50 wins per region)
     # leaves ≥50% of auctions to merit-ranked traffic.
     assert REGION_QUOTA_FLOOR_PCT == pytest.approx(5.0, rel=1e-3)
