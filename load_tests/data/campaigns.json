@@ -1,0 +1,4802 @@
+[
+  {
+    "campaign_id": "cmp_adb2bda8dcf5ea964c1ceb",
+    "brand_id": "brd_4ed8d8a2308046cdf62bbc",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 2.21,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0b70b72e0d4ecfee3d4c5f",
+    "brand_id": "brd_4ed8d8a2308046cdf62bbc",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.34,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_fed91e4368fdedae5834c0",
+    "brand_id": "brd_4ed8d8a2308046cdf62bbc",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.25,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ccdd706e21ca022ec2e1cb",
+    "brand_id": "brd_074e79e0dcf5fcf8a6bbbf",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1f5f194b8a75c936443bf8",
+    "brand_id": "brd_074e79e0dcf5fcf8a6bbbf",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_35fef1d6ac0be8ecdadacf",
+    "brand_id": "brd_074e79e0dcf5fcf8a6bbbf",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1ac1267816cd6aae4811ee",
+    "brand_id": "brd_feba9d31efd0f6b0ac25c1",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1c69b34ba21fb7b5c3c9ae",
+    "brand_id": "brd_feba9d31efd0f6b0ac25c1",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d49b63a9f1ed2d8df2b206",
+    "brand_id": "brd_feba9d31efd0f6b0ac25c1",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_433e4db31c74a9cdfe4ff4",
+    "brand_id": "brd_5aee7f910f1b34e84cff07",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.09,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9faaeddfcdca6f6de0ffbb",
+    "brand_id": "brd_5aee7f910f1b34e84cff07",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.37,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4e518c506b5b3fae1c2add",
+    "brand_id": "brd_5aee7f910f1b34e84cff07",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.59,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_743dda56a089dbaefffdbf",
+    "brand_id": "brd_dfefab3fab8c930bcfc7dc",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d2c7fca1d6ce9b2f3ede7c",
+    "brand_id": "brd_dfefab3fab8c930bcfc7dc",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.25,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f17e38b0ffb1cab06cceb9",
+    "brand_id": "brd_dfefab3fab8c930bcfc7dc",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 2.32,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_39b8af71b65b1ee55fbecf",
+    "brand_id": "brd_c43a6ef24b8e54f26b2bbd",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c86aef25c1f033f7f1e7fb",
+    "brand_id": "brd_c43a6ef24b8e54f26b2bbd",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3bfe6c5fdead95aafadd8f",
+    "brand_id": "brd_c43a6ef24b8e54f26b2bbd",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.65,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ccee1c520528f45d80d68c",
+    "brand_id": "brd_fbaafdcff118fd89faf7c3",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.33,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9ccbdede22ce6f9eed809d",
+    "brand_id": "brd_fbaafdcff118fd89faf7c3",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.58,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ddbec06345fe9d1feea2f0",
+    "brand_id": "brd_fbaafdcff118fd89faf7c3",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.73,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fc73a7f52ea8ff8a0fdc5f",
+    "brand_id": "brd_cfa84e88af6ee12dae6f4a",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 2.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c1cab0dd359fbd8f0fe5bb",
+    "brand_id": "brd_cfa84e88af6ee12dae6f4a",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.86,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_e1219d5e2611f15ee3aacf",
+    "brand_id": "brd_cfa84e88af6ee12dae6f4a",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.17,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c49f9cd03d4cf17ed3ac74",
+    "brand_id": "brd_130bcfa9c40bcee98fcedb",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.68,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4ebcbdb0c7efa84dab5c16",
+    "brand_id": "brd_130bcfa9c40bcee98fcedb",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.55,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_05b21362c3f2bfe38ea4bf",
+    "brand_id": "brd_130bcfa9c40bcee98fcedb",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.21,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fe077dfebedd4f689ec34f",
+    "brand_id": "brd_ab1c75dbbfb8ce268a9bcf",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 2.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_acf7dd6ff96fa957cb3baa",
+    "brand_id": "brd_ab1c75dbbfb8ce268a9bcf",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 2.16,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c2c258bafef5dc44c8b3ce",
+    "brand_id": "brd_ab1c75dbbfb8ce268a9bcf",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bfafabfcec5b2ed5eeacab",
+    "brand_id": "brd_6f2cffa2d9e9b56bd1fe3b",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.74,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cf00bebc4cccefee9a8fda",
+    "brand_id": "brd_6f2cffa2d9e9b56bd1fe3b",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 2.36,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_efe696bc0f2ecc5ffddb8f",
+    "brand_id": "brd_6f2cffa2d9e9b56bd1fe3b",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_52d6e021fa5f7bab34df3c",
+    "brand_id": "brd_fd09ff8dc3fec12dc97ff5",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b6b1e5decbd616abb02ac3",
+    "brand_id": "brd_fd09ff8dc3fec12dc97ff5",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4f0a7a24de0affa1c7cbe3",
+    "brand_id": "brd_fd09ff8dc3fec12dc97ff5",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.26,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aaccef356fdc9ad8aea8fe",
+    "brand_id": "brd_2abe09cda42a7a0ea1ac0c",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dbdb410c725bcf6e0705e0",
+    "brand_id": "brd_2abe09cda42a7a0ea1ac0c",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.21,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e7c1bceb5d8ef8eae1bb8b",
+    "brand_id": "brd_2abe09cda42a7a0ea1ac0c",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5d5e1ababfbd85264f76bd",
+    "brand_id": "brd_07e3d3acc3f8f88e2f3ca6",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fe020dbd7dbeab36ff2640",
+    "brand_id": "brd_07e3d3acc3f8f88e2f3ca6",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 0.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5f4afa3c9acc38db292df2",
+    "brand_id": "brd_07e3d3acc3f8f88e2f3ca6",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_302600e95dbde9da3a9252",
+    "brand_id": "brd_fc34dfe80cfc8aa8a1196c",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5a3beec51cafb06fbb5a1e",
+    "brand_id": "brd_fc34dfe80cfc8aa8a1196c",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.03,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_b44c6bdc4cd6c6fae8dbda",
+    "brand_id": "brd_fc34dfe80cfc8aa8a1196c",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.92,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_e6b4f9bdba8afdba2ae3ad",
+    "brand_id": "brd_e31eb5aac17ebfc7b0ab80",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.43,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_93f7ec1c3193dbd2fceb5a",
+    "brand_id": "brd_e31eb5aac17ebfc7b0ab80",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_63f4f7fb3b73fdf3e3255d",
+    "brand_id": "brd_e31eb5aac17ebfc7b0ab80",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.99,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ad0d4e838ea4f5d911d88c",
+    "brand_id": "brd_dfad613ff5adf4fb75f5f1",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 1.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5bfb1b0897dbfcf1c68ba0",
+    "brand_id": "brd_dfad613ff5adf4fb75f5f1",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.52,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f7ef99baadab8f9d550915",
+    "brand_id": "brd_dfad613ff5adf4fb75f5f1",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.69,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8a24aaaff8ad809f7b3aeb",
+    "brand_id": "brd_0fb4abfb6c701c46bb2bb3",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.95,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e4f0cfe034321c4ccad827",
+    "brand_id": "brd_0fb4abfb6c701c46bb2bb3",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e8a4909c2fcae74aa620bb",
+    "brand_id": "brd_0fb4abfb6c701c46bb2bb3",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.85,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a6f1adfa66aa1cd4be7ad4",
+    "brand_id": "brd_da9a8f04f56b4e3a8ddd26",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 2.37,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1fba6f1aaca6ee0217bbb8",
+    "brand_id": "brd_da9a8f04f56b4e3a8ddd26",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 0.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_39f1ee0b2d112d25ebafb8",
+    "brand_id": "brd_da9a8f04f56b4e3a8ddd26",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.04,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d2aec6196baa691dccdaa7",
+    "brand_id": "brd_8c89afcdc1c519adca8c2c",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.13,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ce79badcef754c4ea32dfd",
+    "brand_id": "brd_8c89afcdc1c519adca8c2c",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.69,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4e0fe69c6dbadfffa3b6c4",
+    "brand_id": "brd_8c89afcdc1c519adca8c2c",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 2.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8c5652a9ae186d1f5f703b",
+    "brand_id": "brd_e1adecbfb663bdc7fdbdad",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0eac2ddadd526ff2dabdf8",
+    "brand_id": "brd_e1adecbfb663bdc7fdbdad",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.75,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_afdfcfa49dbe360cabca1b",
+    "brand_id": "brd_e1adecbfb663bdc7fdbdad",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.64,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_14f53f9c5a0d2d6dd63165",
+    "brand_id": "brd_520edbd50d591ffcfcb50a",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.89,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b5ffba292a5b7d74c1d6b7",
+    "brand_id": "brd_520edbd50d591ffcfcb50a",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 0.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4e846032c8fdf4f24a3ab7",
+    "brand_id": "brd_520edbd50d591ffcfcb50a",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.36,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_92bff469d173c503efbd73",
+    "brand_id": "brd_cea334a07abcd6aa9b8e25",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 2.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ebb0fc2418eb5c353f3bb6",
+    "brand_id": "brd_cea334a07abcd6aa9b8e25",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.3,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_baadfdbc4fdec0d7e9af1a",
+    "brand_id": "brd_cea334a07abcd6aa9b8e25",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.36,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1168d29efd030c6a7fca2c",
+    "brand_id": "brd_3ae51e0ee3bab9fc5d530f",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 2.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3d53d3b19dffe595ac0aa6",
+    "brand_id": "brd_3ae51e0ee3bab9fc5d530f",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f342ec5fc08c6feaea93cd",
+    "brand_id": "brd_3ae51e0ee3bab9fc5d530f",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.73,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7baf3dd693ec10cebfde5f",
+    "brand_id": "brd_d0f860dbabc14edba994af",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0f8dbc2bb868aba43f877f",
+    "brand_id": "brd_d0f860dbabc14edba994af",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.17,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9b75d1ae0d8ff29fdc3b82",
+    "brand_id": "brd_d0f860dbabc14edba994af",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.58,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d7a7fbf204ddd1a7f108f7",
+    "brand_id": "brd_b9b5a242e5dcbe0a20ac55",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.07,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e4d3ee8e7bce22adaeedfc",
+    "brand_id": "brd_b9b5a242e5dcbe0a20ac55",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.58,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a7ddd31d4fbe0bea23d175",
+    "brand_id": "brd_b9b5a242e5dcbe0a20ac55",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6eaaba60ae0a0d21e8d8ab",
+    "brand_id": "brd_d8f829f342892b3c1b21fd",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_86c8beb4daf7cf0ac544c4",
+    "brand_id": "brd_d8f829f342892b3c1b21fd",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 0.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3e20cabf8aa59eec7bddd5",
+    "brand_id": "brd_d8f829f342892b3c1b21fd",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.55,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_65e8d55ac9b28ad58c598c",
+    "brand_id": "brd_5a5ea7c73ee3f1bcfcb568",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 2.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9d7b3dbc3cfd7e1b577516",
+    "brand_id": "brd_5a5ea7c73ee3f1bcfcb568",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0b7b3dc9feccdbbacf1c20",
+    "brand_id": "brd_5a5ea7c73ee3f1bcfcb568",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e4bebbd7c50f56d6e8ca9e",
+    "brand_id": "brd_dcab8c4027f53abf8fadf2",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bafe3a8edebb3acfc24bd9",
+    "brand_id": "brd_dcab8c4027f53abf8fadf2",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_57abf695ad37663bf0d902",
+    "brand_id": "brd_dcab8c4027f53abf8fadf2",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_51beb47aa2b6d462fae3dd",
+    "brand_id": "brd_bb5dd477e967801f438060",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 0.9,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2cd4eeb5a1db4e7c254a7d",
+    "brand_id": "brd_bb5dd477e967801f438060",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ccbfe9c2022c48c4bbd945",
+    "brand_id": "brd_bb5dd477e967801f438060",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.43,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a0645c044ec5bbd2d42eea",
+    "brand_id": "brd_2c9177ed434e5cd5db8260",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.74,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_4be43f17f9fa0d5ccdb1cd",
+    "brand_id": "brd_2c9177ed434e5cd5db8260",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.65,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4f9d4d984cddfce8de7ee8",
+    "brand_id": "brd_2c9177ed434e5cd5db8260",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.47,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_ed3c284a6baa3507979fea",
+    "brand_id": "brd_19eb9990dbb4c8b71ac88d",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.57,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6eca63ccad995f993ba81d",
+    "brand_id": "brd_19eb9990dbb4c8b71ac88d",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 2.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_16aa9d6c05d67bfe0bbdeb",
+    "brand_id": "brd_19eb9990dbb4c8b71ac88d",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.8,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d3a53f0c5dc7d7bfcf8dad",
+    "brand_id": "brd_fce78aeaac16f8cac9aafb",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a8e4ca77bba0ba9cfad09c",
+    "brand_id": "brd_fce78aeaac16f8cac9aafb",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2adce530d1acf1ddbfbac1",
+    "brand_id": "brd_fce78aeaac16f8cac9aafb",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.26,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cedcdc7a4f0ffd329a32e5",
+    "brand_id": "brd_eb32ffe1b6c491adc6fc5e",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 2.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_99cc143beb2054bf6cfa6b",
+    "brand_id": "brd_eb32ffe1b6c491adc6fc5e",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dcd004cdfe9dbdf4be7e2b",
+    "brand_id": "brd_eb32ffe1b6c491adc6fc5e",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b26cddb76df0e52b725134",
+    "brand_id": "brd_722aaa6f8bfccdc2f6f0ee",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.72,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a6fbbefc2dbffe7cb793dd",
+    "brand_id": "brd_722aaa6f8bfccdc2f6f0ee",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 2.01,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_34b2f9eabfeb92ffa65f87",
+    "brand_id": "brd_722aaa6f8bfccdc2f6f0ee",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.02,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ef18fa02f81baa057f29cb",
+    "brand_id": "brd_28fb37ca7fedcbf8db7dba",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 2.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f1bdbcbcab06bddc554cac",
+    "brand_id": "brd_28fb37ca7fedcbf8db7dba",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.0,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_03f65eabaf13614ead96d6",
+    "brand_id": "brd_28fb37ca7fedcbf8db7dba",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.87,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fefe0b5f1c5abc5b8d56f7",
+    "brand_id": "brd_25780fca3073e5e84ff9f9",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.84,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_bd0198f741e4922d5736f9",
+    "brand_id": "brd_25780fca3073e5e84ff9f9",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.76,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_74c99e8df91afbec7c0cfe",
+    "brand_id": "brd_25780fca3073e5e84ff9f9",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.64,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d5e1308f36f08cba6a0be3",
+    "brand_id": "brd_2bd8c87ec2f6e3be68134d",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.09,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e9ddd7b83dff2f32c7ea07",
+    "brand_id": "brd_2bd8c87ec2f6e3be68134d",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.37,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a17a0d71e20dfaaea7ebe7",
+    "brand_id": "brd_2bd8c87ec2f6e3be68134d",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ce1098ecabc58f3b419912",
+    "brand_id": "brd_cc8e8cdfd17d3deae1efba",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9c9cc7b1bec3dece5bba58",
+    "brand_id": "brd_cc8e8cdfd17d3deae1efba",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.86,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eeac07caa5fada8e3fdc93",
+    "brand_id": "brd_cc8e8cdfd17d3deae1efba",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.55,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4bcfceb5e1ef5a14bbcda0",
+    "brand_id": "brd_60e027a9eb9ee0cd492e8f",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_75bde5b0809cc62e4df215",
+    "brand_id": "brd_60e027a9eb9ee0cd492e8f",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_717d5fda9fa15a123f8b42",
+    "brand_id": "brd_60e027a9eb9ee0cd492e8f",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dcb5ebe7c21d2fdbbe60f0",
+    "brand_id": "brd_3bcb0c2aea1b7abbbc6ee3",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ed5fa0dfdc0bcb9ada6a11",
+    "brand_id": "brd_3bcb0c2aea1b7abbbc6ee3",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.25,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f0ac6549b59762e9d3fdd6",
+    "brand_id": "brd_3bcb0c2aea1b7abbbc6ee3",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 0.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f5cf0d85d76edb48ebf69f",
+    "brand_id": "brd_1154bdba9dd8e16ddfd37a",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bbab2d3dfea78b6d5aa8ba",
+    "brand_id": "brd_1154bdba9dd8e16ddfd37a",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 0.64,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_72ddcfe0865cb7cb8cdd6a",
+    "brand_id": "brd_1154bdba9dd8e16ddfd37a",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.2,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_6e616a69bdcb37bcc55bfa",
+    "brand_id": "brd_a0b1056f0ee3f6eb2af6dc",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 2.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fce322dba2dacae52f1a01",
+    "brand_id": "brd_a0b1056f0ee3f6eb2af6dc",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.1,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_080263cde3ebbaca21ca1a",
+    "brand_id": "brd_a0b1056f0ee3f6eb2af6dc",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a5c8caef7e1a6cd47bbd55",
+    "brand_id": "brd_c1fb270bd4adffe1a0b7d7",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2b5bb6b6268cd09b476a7c",
+    "brand_id": "brd_c1fb270bd4adffe1a0b7d7",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8f7b8dc6a4ad2f682f4f82",
+    "brand_id": "brd_c1fb270bd4adffe1a0b7d7",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.65,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8a117c72e95ea41e7eea9f",
+    "brand_id": "brd_5dd7cba24dde269aed6424",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 0.7,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1a4bc79ea4a3fa915c6522",
+    "brand_id": "brd_5dd7cba24dde269aed6424",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eacdec82430291bf663af3",
+    "brand_id": "brd_5dd7cba24dde269aed6424",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_37a4a037960bd4fddae2fc",
+    "brand_id": "brd_1affc5ace7ba057a12fece",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 0.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cbe3f5cdc4afd7cffdd7bc",
+    "brand_id": "brd_1affc5ace7ba057a12fece",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.84,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_51e4b60ab4152c645b7e4a",
+    "brand_id": "brd_1affc5ace7ba057a12fece",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2a83b18cccf825b3cf2ec2",
+    "brand_id": "brd_bfea15cec6cceb7adbecd1",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9acf610e5ed5154a6c08a1",
+    "brand_id": "brd_bfea15cec6cceb7adbecd1",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fefa8ef35c767862131c75",
+    "brand_id": "brd_bfea15cec6cceb7adbecd1",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 2.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ac6efcfd88dd080cb4ff8e",
+    "brand_id": "brd_8de1b96aa7dce45b2b31fc",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bd1f8ebf0cfd79cbc574ba",
+    "brand_id": "brd_8de1b96aa7dce45b2b31fc",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_73eca0cb4decdd685027d1",
+    "brand_id": "brd_8de1b96aa7dce45b2b31fc",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.08,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_b47f3ee7fa29b57f0dddc6",
+    "brand_id": "brd_d097cdda3e1be2a487bcaf",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5f48fcda0bedbef2ddecd9",
+    "brand_id": "brd_d097cdda3e1be2a487bcaf",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.3,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5de52d00ea42c16fa23ccb",
+    "brand_id": "brd_d097cdda3e1be2a487bcaf",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 0.19,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a2fec0d0bfeedc43e52bdc",
+    "brand_id": "brd_b0333d8173d0df86c17576",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6aa2db4efce9c118fbd73f",
+    "brand_id": "brd_b0333d8173d0df86c17576",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.5,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f5bebd3e9aa5acaa7a9e0b",
+    "brand_id": "brd_b0333d8173d0df86c17576",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_215f30c5864f9f9e06297c",
+    "brand_id": "brd_ce33f52817f845bbeee5e7",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 0.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d2e79de4885fd90261783a",
+    "brand_id": "brd_ce33f52817f845bbeee5e7",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fdb52d349ecfcb45a8d43c",
+    "brand_id": "brd_ce33f52817f845bbeee5e7",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 0.88,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b6b8aa2cfdacb9b86ad67a",
+    "brand_id": "brd_b7b8e5eccb3be1eaf253a4",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.64,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_06a3c8f52bcaeac95c4c6b",
+    "brand_id": "brd_b7b8e5eccb3be1eaf253a4",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eff63b782bb4ea76edaba6",
+    "brand_id": "brd_b7b8e5eccb3be1eaf253a4",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.15,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6e39e80093f595fba4a91a",
+    "brand_id": "brd_53fffb3dba9dcfde13ed00",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.24,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_adbe9aad7b7aa7aa0681ea",
+    "brand_id": "brd_53fffb3dba9dcfde13ed00",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.94,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_733cc978faf76ca752ab4f",
+    "brand_id": "brd_53fffb3dba9dcfde13ed00",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.87,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2b07f4f5c16b6d5b0c0791",
+    "brand_id": "brd_87adf1b7efbbdcc1aed593",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.87,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cfbfeeb62fdf3ca2c0d1cf",
+    "brand_id": "brd_87adf1b7efbbdcc1aed593",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a5b30ebaa319bb5ea3ecc2",
+    "brand_id": "brd_87adf1b7efbbdcc1aed593",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_15e6bdaf6af8c5d51c68aa",
+    "brand_id": "brd_733b730ccc1b04c3c0d77a",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.67,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_72a94df52dd8b36bbe7d8a",
+    "brand_id": "brd_733b730ccc1b04c3c0d77a",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.56,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a1cefbead1c73ce6bce78c",
+    "brand_id": "brd_733b730ccc1b04c3c0d77a",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.9,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_62f4030cf5593463206d76",
+    "brand_id": "brd_221f0a88ffb3d7b5aad73a",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.45,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0f05bbd7f7e887fbcdc0db",
+    "brand_id": "brd_221f0a88ffb3d7b5aad73a",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bfc45a8e8d6cdbe0bcbbbd",
+    "brand_id": "brd_221f0a88ffb3d7b5aad73a",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 1.36,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8b903a1bcc883f9c8098cb",
+    "brand_id": "brd_4cad11d92cdbf4ea75238a",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9e2d5d38d1ddce2ba56857",
+    "brand_id": "brd_4cad11d92cdbf4ea75238a",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.97,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6dbe95fd0f0cf1ddcbfc81",
+    "brand_id": "brd_4cad11d92cdbf4ea75238a",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.73,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_000dd7cb2da3cba2df51af",
+    "brand_id": "brd_ec2fc9bbe1d4aa1e39779a",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 2.43,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bbf8827f44b864abe0ff7a",
+    "brand_id": "brd_ec2fc9bbe1d4aa1e39779a",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.31,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f43d393e2cc67edd50fe1a",
+    "brand_id": "brd_ec2fc9bbe1d4aa1e39779a",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 1.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8a889ac3a3ce3b61ab9bb2",
+    "brand_id": "brd_5527ab8cb67e5714bbbb9d",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 2.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bffbdbeba74f6fa225fa6d",
+    "brand_id": "brd_5527ab8cb67e5714bbbb9d",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.16,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d5fbc3cdee83eabf860522",
+    "brand_id": "brd_5527ab8cb67e5714bbbb9d",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5b97a9afc18c02206a9c17",
+    "brand_id": "brd_4bf208a2405bdabca5c13e",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_64d1c7a73ea2286aebb8fd",
+    "brand_id": "brd_4bf208a2405bdabca5c13e",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.86,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aac1a8bbeeecd03815a1af",
+    "brand_id": "brd_4bf208a2405bdabca5c13e",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 2.15,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b3cf333ccbf9acfbdbabc5",
+    "brand_id": "brd_c88d1f5ed15b06cd0cc6ef",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.07,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_085f86760beda8fabea2db",
+    "brand_id": "brd_c88d1f5ed15b06cd0cc6ef",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 2.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8b42ed6eecfa7cfeefecdd",
+    "brand_id": "brd_c88d1f5ed15b06cd0cc6ef",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.16,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eaa8ad3bd2dac5436ad3ea",
+    "brand_id": "brd_f8b7c7e79bbaa17fa8ad85",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.76,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d6cbfcbfceeb6a1fe4c03c",
+    "brand_id": "brd_f8b7c7e79bbaa17fa8ad85",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 0.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3566de2eca9cbaabefde5d",
+    "brand_id": "brd_f8b7c7e79bbaa17fa8ad85",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 0.46,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ad6bb156fefdb77aaaa72c",
+    "brand_id": "brd_eee9ba0cef392fae3317af",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.84,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_50ced2e3debf8ad6fdeecf",
+    "brand_id": "brd_eee9ba0cef392fae3317af",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5bb6dff43cb476bc8f0c5c",
+    "brand_id": "brd_eee9ba0cef392fae3317af",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_28a8dcc53cd4a7bb232b1b",
+    "brand_id": "brd_087ed061fac140ab5cbcb9",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6eabbe6dfa5ba473c77aa4",
+    "brand_id": "brd_087ed061fac140ab5cbcb9",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 0.86,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d11eb63057d07decfb6c47",
+    "brand_id": "brd_087ed061fac140ab5cbcb9",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 2.43,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_4bec950fcaa86beb75f14a",
+    "brand_id": "brd_6b30fbade385da73ce58da",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fd50ccd63b6c2ded5fa2ce",
+    "brand_id": "brd_6b30fbade385da73ce58da",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e400db6bb0ede05f3ee6af",
+    "brand_id": "brd_6b30fbade385da73ce58da",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bcc81bb6e4995fda5cadfc",
+    "brand_id": "brd_7f280bd15453bd2c6b0e7a",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 2.0,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3465c5b45cd42c05dd7df3",
+    "brand_id": "brd_7f280bd15453bd2c6b0e7a",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b1eb7dd674aa8bfd8d69dc",
+    "brand_id": "brd_7f280bd15453bd2c6b0e7a",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.2,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8956fe94e2f18cfee82894",
+    "brand_id": "brd_eeeacd9a42ce0fbf738e64",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cf3ec57bfcf5b7b1cb6f1e",
+    "brand_id": "brd_eeeacd9a42ce0fbf738e64",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_19ccbce50ea20e261532fc",
+    "brand_id": "brd_eeeacd9a42ce0fbf738e64",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.08,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_9616fa311dda3faacccbcd",
+    "brand_id": "brd_f8979edf65c46eca4aabde",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 0.95,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e4c7fbecf4cc34bcab8bfa",
+    "brand_id": "brd_f8979edf65c46eca4aabde",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 0.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_71ccf49fbb6cffef3befdd",
+    "brand_id": "brd_f8979edf65c46eca4aabde",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8b901e2b5cd17d9e6efdcb",
+    "brand_id": "brd_ff7b0fd7e7f1a019faa0ba",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 2.16,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_caffc62e3dad2bb55dbe2d",
+    "brand_id": "brd_ff7b0fd7e7f1a019faa0ba",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.93,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_ad5acc09b58032ae36a82d",
+    "brand_id": "brd_ff7b0fd7e7f1a019faa0ba",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.67,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6d2af1e0c2da4cdfbad5fa",
+    "brand_id": "brd_bdbcbc42fcaddf798baa9b",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.35,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ee32eba9a6478ed57bb5d8",
+    "brand_id": "brd_bdbcbc42fcaddf798baa9b",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.2,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6af1fcafc8a30455d701f2",
+    "brand_id": "brd_bdbcbc42fcaddf798baa9b",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.86,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3e1dd1f496aeb2aeeefb0d",
+    "brand_id": "brd_cabdbb76cdaeb3c6f2ca32",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1a4b47ff9dcf4e2be2a58a",
+    "brand_id": "brd_cabdbb76cdaeb3c6f2ca32",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 0.65,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ce7adeddfb2ddbc73730ae",
+    "brand_id": "brd_cabdbb76cdaeb3c6f2ca32",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.68,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_afb778eeae0f22bbf1a1b6",
+    "brand_id": "brd_2afcabd2fe6ed45ad0dfa2",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 2.07,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a0f2883fc14dbaf8fa0eae",
+    "brand_id": "brd_2afcabd2fe6ed45ad0dfa2",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.38,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_a3bef9c41e2d6e70feffea",
+    "brand_id": "brd_2afcabd2fe6ed45ad0dfa2",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aeadef9dabdbeccc6b69d0",
+    "brand_id": "brd_2bcb0c775c8fb4fdaa480e",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 2.45,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_04403c3cb0eaaaa6acb7da",
+    "brand_id": "brd_2bcb0c775c8fb4fdaa480e",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.19,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5bd1f1a6e3075bb649671d",
+    "brand_id": "brd_2bcb0c775c8fb4fdaa480e",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.67,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6b027bb092eed3bbfa73ca",
+    "brand_id": "brd_dfd2fc2d34bac48afb87e2",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 2.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_798ef4bfea1dd3eefc003a",
+    "brand_id": "brd_dfd2fc2d34bac48afb87e2",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.01,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c8a7fb3e5fe2eec27997bf",
+    "brand_id": "brd_dfd2fc2d34bac48afb87e2",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.75,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4bea5b3c9a39bb53ea3ffb",
+    "brand_id": "brd_e4aaccaaa3b3eb52e443b1",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7b7edea3abc5b730edbebb",
+    "brand_id": "brd_e4aaccaaa3b3eb52e443b1",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_43d14fd3a54439ce7c5fe1",
+    "brand_id": "brd_e4aaccaaa3b3eb52e443b1",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.69,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ee4cb1e3d74a3b5e8d6e44",
+    "brand_id": "brd_95613c7561469d767d4fcb",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.16,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d9c89651ceab7904de0f2a",
+    "brand_id": "brd_95613c7561469d767d4fcb",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.9,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_bb4ef068bedd9a2399a5fd",
+    "brand_id": "brd_95613c7561469d767d4fcb",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.37,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bff3f406a4c7707e4163e4",
+    "brand_id": "brd_ea218b7c36abdcaa3b2d5f",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a5dd2fb3b9760aad3afa0b",
+    "brand_id": "brd_ea218b7c36abdcaa3b2d5f",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fa10bf4c9fd2a8281554ce",
+    "brand_id": "brd_ea218b7c36abdcaa3b2d5f",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.32,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c5d4caa76dc60dd5bd09de",
+    "brand_id": "brd_6fb95b508ff1dbb5baebb7",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a964a0e08dd00ab41ee31d",
+    "brand_id": "brd_6fb95b508ff1dbb5baebb7",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_72f99fffc4d9ccc97ea470",
+    "brand_id": "brd_6fb95b508ff1dbb5baebb7",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.6,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eecb6d2dab834a4bef8f91",
+    "brand_id": "brd_de81e5f83e809c46021c53",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 2.17,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7dbb2fcbfcda2c7e9d51e7",
+    "brand_id": "brd_de81e5f83e809c46021c53",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 2.25,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8fce87cb158bd7bd1b3d96",
+    "brand_id": "brd_de81e5f83e809c46021c53",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.78,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_81d4ae252b602b1cfa899f",
+    "brand_id": "brd_5cf8bdd9ac8f93a829cc10",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.32,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_1b8cc5d9bea1fee9f8dc8d",
+    "brand_id": "brd_5cf8bdd9ac8f93a829cc10",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.35,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_873a9cacb6cabea1f661f2",
+    "brand_id": "brd_5cf8bdd9ac8f93a829cc10",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.77,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_fc1c7ba081dc619dafca26",
+    "brand_id": "brd_efcc3cb51e9c3bbcc2377b",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.13,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ff3fc5df9bdc088f4e22dd",
+    "brand_id": "brd_efcc3cb51e9c3bbcc2377b",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 1.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9d7bbb5e9dfa1c00a93cbf",
+    "brand_id": "brd_efcc3cb51e9c3bbcc2377b",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_58fdb5a17ced5de29c2ec4",
+    "brand_id": "brd_5a7effc0aebadd45bbf2ca",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2cab3acaabcdba53bb2f1a",
+    "brand_id": "brd_5a7effc0aebadd45bbf2ca",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 2.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_945ea1e34b6bceb7f40e57",
+    "brand_id": "brd_5a7effc0aebadd45bbf2ca",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 1.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a4b4d88bdc90c8764a3b5f",
+    "brand_id": "brd_7b7e933f55b67bfbe25a01",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_43e5f7e5ccda929e6eee5b",
+    "brand_id": "brd_7b7e933f55b67bfbe25a01",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 2.33,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_a92f82b3f351a06b601cfa",
+    "brand_id": "brd_7b7e933f55b67bfbe25a01",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_da4ae3f3450a8dc93c0733",
+    "brand_id": "brd_b6abae1bd3cad38e6cc0f8",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.27,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_7c4c66ee32300fadab8bea",
+    "brand_id": "brd_b6abae1bd3cad38e6cc0f8",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.9,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2baeacbcabb0fde7fcc94a",
+    "brand_id": "brd_b6abae1bd3cad38e6cc0f8",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.13,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_ed16802b4dfe79ee7f4cf3",
+    "brand_id": "brd_2d38d5acaf06e48a58f36f",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.57,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9c43ced058cf0105ff2496",
+    "brand_id": "brd_2d38d5acaf06e48a58f36f",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 0.6,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bfa29b385babbada5fb2ad",
+    "brand_id": "brd_2d38d5acaf06e48a58f36f",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_272ada2b8ebe0beaeee8bf",
+    "brand_id": "brd_fbf8f110eb9d853683eea1",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 1.2,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_28ee5ba05c81afc68f6cfd",
+    "brand_id": "brd_fbf8f110eb9d853683eea1",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cfab2fefc649ecdab6c6f9",
+    "brand_id": "brd_fbf8f110eb9d853683eea1",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.53,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ccbdcce097c3f53051fcfd",
+    "brand_id": "brd_dea0759cccbfa22bcca04d",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_69bedb2ddabfedb614eff2",
+    "brand_id": "brd_dea0759cccbfa22bcca04d",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.98,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dfcfb33e5f04eccd151656",
+    "brand_id": "brd_dea0759cccbfa22bcca04d",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5a541ff55abbd5e229e87a",
+    "brand_id": "brd_40bba7a1e5c5cbd22b261d",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 0.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7ed5e98c555ddfb8cd5809",
+    "brand_id": "brd_40bba7a1e5c5cbd22b261d",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.85,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c7c927ba2e2c254c8ebcb1",
+    "brand_id": "brd_40bba7a1e5c5cbd22b261d",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_de0d8e3b16eb62ccbbe847",
+    "brand_id": "brd_eeaddccf220a1eaaabea60",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.75,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5e1e1b1f721f5ee3cfd1ee",
+    "brand_id": "brd_eeaddccf220a1eaaabea60",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.43,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e6643ec29485bdef0f3961",
+    "brand_id": "brd_eeaddccf220a1eaaabea60",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_72ebba6ec4f2ffdce2a0c5",
+    "brand_id": "brd_49ca8d59bd9e0dfa773ec5",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.17,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_382c1626eddbbb6bf6fd77",
+    "brand_id": "brd_49ca8d59bd9e0dfa773ec5",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 0.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fcbdac4be509f9ba20ab0a",
+    "brand_id": "brd_49ca8d59bd9e0dfa773ec5",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.83,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b52b29dc44aebafac9b05c",
+    "brand_id": "brd_6cee3becf860de5bb0c8c4",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 1.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_41fb8ef8c2b231f27820f2",
+    "brand_id": "brd_6cee3becf860de5bb0c8c4",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.53,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bafcde85e11ecc79cc3c28",
+    "brand_id": "brd_6cee3becf860de5bb0c8c4",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.88,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_db9dddd4b1da80d7ae2dcd",
+    "brand_id": "brd_a59ae2245e0995761cdcbf",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7b87ff9aca69dfb4e626b9",
+    "brand_id": "brd_a59ae2245e0995761cdcbf",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.84,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dadcc58ffcfac01afbb8ce",
+    "brand_id": "brd_a59ae2245e0995761cdcbf",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.45,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_58ad6ebef0efeaf23f45d0",
+    "brand_id": "brd_668e6a58b98ebac34c172f",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.46,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_32cb78cbfaa4700edea6a9",
+    "brand_id": "brd_668e6a58b98ebac34c172f",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.21,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cfb79f1d5ecb20e5e914f5",
+    "brand_id": "brd_668e6a58b98ebac34c172f",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cd361b203aefe62eda5be1",
+    "brand_id": "brd_cfa4e0edd30e153e6db1c9",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_45fa4beeffbf0c32d61f9e",
+    "brand_id": "brd_cfa4e0edd30e153e6db1c9",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.37,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cfa53a4b364f59dc96f58d",
+    "brand_id": "brd_cfa4e0edd30e153e6db1c9",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.2,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_436f2c6ec48cc0eb5b4edb",
+    "brand_id": "brd_27eee13d95887aec6bf8fe",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.57,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b5ea3dbb4ac7a88b1afaa4",
+    "brand_id": "brd_27eee13d95887aec6bf8fe",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.47,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_faf1aa6fabfaeec6aa60d9",
+    "brand_id": "brd_27eee13d95887aec6bf8fe",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 2.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e24e6834b7c0c6cdac3e48",
+    "brand_id": "brd_2617ad1ac4a9a1459ccb98",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.83,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eacf4c1c9ad39b08edac5e",
+    "brand_id": "brd_2617ad1ac4a9a1459ccb98",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cbbefcce5ab49cceade52f",
+    "brand_id": "brd_2617ad1ac4a9a1459ccb98",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e6cb2eb8ccd4d95f14366a",
+    "brand_id": "brd_b453da45d57efb21ecae2e",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aec4e976ceefadfe6ce082",
+    "brand_id": "brd_b453da45d57efb21ecae2e",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e82f4f7ebd92acc5596fc5",
+    "brand_id": "brd_b453da45d57efb21ecae2e",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9ea0ff62c38cea93efc5ae",
+    "brand_id": "brd_e14c7810e398df6c220e4a",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3cd4b826bf966301fd756b",
+    "brand_id": "brd_e14c7810e398df6c220e4a",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6b2790abe7e326b2ea681a",
+    "brand_id": "brd_e14c7810e398df6c220e4a",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_82c5cbabfaaab63b4ddc5a",
+    "brand_id": "brd_7d658e2effaffe7a3afc0b",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f4f2bcc927bf57dd28e33b",
+    "brand_id": "brd_7d658e2effaffe7a3afc0b",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 0.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3a2ffdb3b4cce7c2cdc1cf",
+    "brand_id": "brd_7d658e2effaffe7a3afc0b",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.45,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6ef7dddde4ef75f6e5f0a1",
+    "brand_id": "brd_8c9e7fb4cbdc58b493aaf5",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 1.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_32558fceb3325d15a53228",
+    "brand_id": "brd_8c9e7fb4cbdc58b493aaf5",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.48,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_decfda8bb0c83b8b4e6dc1",
+    "brand_id": "brd_8c9e7fb4cbdc58b493aaf5",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.17,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b132dc1b0fe04ca8f3794f",
+    "brand_id": "brd_ff9d8bdbc9e1be88a8d2ca",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.42,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_8ca8258df032c3757da74b",
+    "brand_id": "brd_ff9d8bdbc9e1be88a8d2ca",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.78,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_80733297264b290aad35cc",
+    "brand_id": "brd_ff9d8bdbc9e1be88a8d2ca",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2bcb3dea0efa0d022dcfbc",
+    "brand_id": "brd_4eeba6f86181a0dea0a96b",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3bb1dc76aab91d829fdfb8",
+    "brand_id": "brd_4eeba6f86181a0dea0a96b",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.05,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_2ace95edcb8db6ba5bcb91",
+    "brand_id": "brd_4eeba6f86181a0dea0a96b",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c2e1feca53d2378caf28f8",
+    "brand_id": "brd_d4b2dd3b411c6748bf9c2d",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eed2aa085efe2247c15e1d",
+    "brand_id": "brd_d4b2dd3b411c6748bf9c2d",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.97,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cceba4179e0e3ad5cb8c5a",
+    "brand_id": "brd_d4b2dd3b411c6748bf9c2d",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.98,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cab209a72fb5daadf7ffdd",
+    "brand_id": "brd_9897ad7e9d0bfbbadb522a",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_da5d5e0abda64e0c3f66cc",
+    "brand_id": "brd_9897ad7e9d0bfbbadb522a",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_be0eaa0d2eb380f8abdfea",
+    "brand_id": "brd_9897ad7e9d0bfbbadb522a",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.08,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_cb2e3fc5eb0cf42a152f72",
+    "brand_id": "brd_b00bdc05b3bd9fe591c378",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.41,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_2eeb37ef2daee9ac14c4b8",
+    "brand_id": "brd_b00bdc05b3bd9fe591c378",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.89,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eb746a08c03c31a28942cf",
+    "brand_id": "brd_b00bdc05b3bd9fe591c378",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.43,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bab75d07cfdbd661e3eeed",
+    "brand_id": "brd_82c495d4cc6a9ce319cfb7",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_465eefbe0d47aa0f3e67ed",
+    "brand_id": "brd_82c495d4cc6a9ce319cfb7",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 2.19,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0af30d2cb0f12d3daaca04",
+    "brand_id": "brd_82c495d4cc6a9ce319cfb7",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.5,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cacf0badcc7a5cfd04ac6d",
+    "brand_id": "brd_bbd7fc43dcdfb7327ef297",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0bd5cfd2ecffa98cba0eba",
+    "brand_id": "brd_bbd7fc43dcdfb7327ef297",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.55,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_14852233ac639ae5cebdab",
+    "brand_id": "brd_bbd7fc43dcdfb7327ef297",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 2.27,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_51e3fbf4aca2478bc6faca",
+    "brand_id": "brd_b711dbff69c3bef63a3de4",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3efaa0b0ea0fdfb98bfdcd",
+    "brand_id": "brd_b711dbff69c3bef63a3de4",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.84,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b7009708575fefad5f3cef",
+    "brand_id": "brd_b711dbff69c3bef63a3de4",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.84,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bbdd59741d4c1ccdc7fd6a",
+    "brand_id": "brd_128a9eeb6fb4ffb8ea6ce1",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 0.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b8272bd8ad2efc609ec1e0",
+    "brand_id": "brd_128a9eeb6fb4ffb8ea6ce1",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 0.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6e2bcdca04c4dd6d45768c",
+    "brand_id": "brd_128a9eeb6fb4ffb8ea6ce1",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_abab3aa3435bbae11324c1",
+    "brand_id": "brd_ebc6a14202f63decfcb2dd",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.77,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b08fc5edeac4fecef6fb9f",
+    "brand_id": "brd_ebc6a14202f63decfcb2dd",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ef16a2fd7d46ad23edea8d",
+    "brand_id": "brd_ebc6a14202f63decfcb2dd",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.97,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8c1afcb0e8adf9148bfcad",
+    "brand_id": "brd_cec5de401a7a08da0327f3",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 0.19,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_151affbc0a089390124e45",
+    "brand_id": "brd_cec5de401a7a08da0327f3",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ebbacebda573541c7ac1ac",
+    "brand_id": "brd_cec5de401a7a08da0327f3",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eae6cdba744f7d2a24bbc6",
+    "brand_id": "brd_b401fe60ba87bf9b0621ad",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e84fcdee47d5202a6e77ba",
+    "brand_id": "brd_b401fe60ba87bf9b0621ad",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.5,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b2563bda2cfbc2a8dba327",
+    "brand_id": "brd_b401fe60ba87bf9b0621ad",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4fd3ad6afbac2c39b1d8e2",
+    "brand_id": "brd_455100cc2ec23a1a8e8a1a",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.04,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c1fdfb36971ae4dfd1e37d",
+    "brand_id": "brd_455100cc2ec23a1a8e8a1a",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 1.09,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_195dd36c5b550ed25e0b15",
+    "brand_id": "brd_455100cc2ec23a1a8e8a1a",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f339eeaedc4db0886cffeb",
+    "brand_id": "brd_4b0daaf9ce8cfdf5eb9f6b",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.76,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_250b6e5a3bf40b0fbff6c3",
+    "brand_id": "brd_4b0daaf9ce8cfdf5eb9f6b",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_294bff9a8bd8efd894cbfe",
+    "brand_id": "brd_4b0daaf9ce8cfdf5eb9f6b",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 0.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7d751cdb2ac4fafd5c5033",
+    "brand_id": "brd_43aa12d8b23b5f2dbcffef",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 2.32,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6fb4caccefb8f6febbaf7f",
+    "brand_id": "brd_43aa12d8b23b5f2dbcffef",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.6,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ad2086b1ff1e1ea57af784",
+    "brand_id": "brd_43aa12d8b23b5f2dbcffef",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.58,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_9b0abe5dcbcb7af0c9b9b3",
+    "brand_id": "brd_b9cecae840d4a3efa94e78",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.15,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_694b6ba7a1fdeebc18a38b",
+    "brand_id": "brd_b9cecae840d4a3efa94e78",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.95,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e3ecd3c80bfb4dbaf15f01",
+    "brand_id": "brd_b9cecae840d4a3efa94e78",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 2.25,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cd2c1ac8becea6f1751023",
+    "brand_id": "brd_07ddcfbfaf4fdc1fc25b3d",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1ccbf7179f659a75e0c4fa",
+    "brand_id": "brd_07ddcfbfaf4fdc1fc25b3d",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bdf04b7dde71f2bfde7076",
+    "brand_id": "brd_07ddcfbfaf4fdc1fc25b3d",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.41,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_28a35ecc1d81cfb506daf2",
+    "brand_id": "brd_c0f8df17d1755dfbc06bd2",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 2.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ff41105eaa8336d3df4d8d",
+    "brand_id": "brd_c0f8df17d1755dfbc06bd2",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.21,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_7e73da619a171d327dba31",
+    "brand_id": "brd_c0f8df17d1755dfbc06bd2",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ee32e2caafc1e8ad43b374",
+    "brand_id": "brd_aa1cdbe8ecdd8b4f4ebadf",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 1.01,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_30d76ae54eceed6dc315dd",
+    "brand_id": "brd_aa1cdbe8ecdd8b4f4ebadf",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.56,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6a62db49b5f519ab2fd09e",
+    "brand_id": "brd_aa1cdbe8ecdd8b4f4ebadf",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a13f246b37f7f32012bede",
+    "brand_id": "brd_e5fe3d455c218216bc054f",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.85,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_da1e82a1e65c80190e5410",
+    "brand_id": "brd_e5fe3d455c218216bc054f",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.82,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_a8d1bb3ae3adecff83562d",
+    "brand_id": "brd_e5fe3d455c218216bc054f",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1c4f42eeaa5e7aecd9dcde",
+    "brand_id": "brd_affd3f9fa9dc58f8dc78df",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2f90fe0e6b4a0bf8c1eea9",
+    "brand_id": "brd_affd3f9fa9dc58f8dc78df",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5a2ba1af5b4c15fe15bacb",
+    "brand_id": "brd_affd3f9fa9dc58f8dc78df",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7ac9b585420f28aea17ea7",
+    "brand_id": "brd_8dbaad3ae4f6231cbd5bdc",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 0.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f11a8062f005b185aa6f0c",
+    "brand_id": "brd_8dbaad3ae4f6231cbd5bdc",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 0.98,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ccfc38628ad9b784c679d1",
+    "brand_id": "brd_8dbaad3ae4f6231cbd5bdc",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.23,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d68a29db18fbc34bbc10ef",
+    "brand_id": "brd_1eeec35df9ecca4fa0ccd4",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fa8f8dce9f5e09e76ed5fe",
+    "brand_id": "brd_1eeec35df9ecca4fa0ccd4",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 1.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_12f8d6dfa27fbbc8d87317",
+    "brand_id": "brd_1eeec35df9ecca4fa0ccd4",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e4ff0e7bef516ce123fad6",
+    "brand_id": "brd_e1babdd69bc3dede0a0c74",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 0.59,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f46cbd402a2f433faabee4",
+    "brand_id": "brd_e1babdd69bc3dede0a0c74",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b0cebb64af4094f8abcda8",
+    "brand_id": "brd_e1babdd69bc3dede0a0c74",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.97,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_68edc0cfa08e5c27f999bd",
+    "brand_id": "brd_a0525da485f6012debe0df",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 2.48,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_87559fb922bcb40daa83cd",
+    "brand_id": "brd_a0525da485f6012debe0df",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.15,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9d4edb2cde8bf8cd65b771",
+    "brand_id": "brd_a0525da485f6012debe0df",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 0.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_97f16ee7bdfb1006cfbe3b",
+    "brand_id": "brd_4e8f8f04af021fb75438b5",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_be3fa7af8bd0edb5cccd1a",
+    "brand_id": "brd_4e8f8f04af021fb75438b5",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9b1c63fe8bfb21f8edaf68",
+    "brand_id": "brd_4e8f8f04af021fb75438b5",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 2.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b1689a20b6c8abb2d4d7bd",
+    "brand_id": "brd_bba96f0cdf03ee1f21eedb",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.71,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d5ffd54eaea17f26df8d30",
+    "brand_id": "brd_bba96f0cdf03ee1f21eedb",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.3,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_101a6fb3c9d0ea14cb014e",
+    "brand_id": "brd_bba96f0cdf03ee1f21eedb",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.99,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d105916110a8015afb2c24",
+    "brand_id": "brd_d32267aeb6b1069635e86f",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 2.07,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_95b1e2036daf58b0b0da4b",
+    "brand_id": "brd_d32267aeb6b1069635e86f",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b4d8aba5bfe68a6fe9c8cc",
+    "brand_id": "brd_d32267aeb6b1069635e86f",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 2.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b20eea789a0acf3f83ce0e",
+    "brand_id": "brd_b295c6ddc0ce7d1ae9fe3a",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.59,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ee8d1ee48d5a5bbaa7213a",
+    "brand_id": "brd_b295c6ddc0ce7d1ae9fe3a",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.65,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2d0a2d2baabd447e4fdba8",
+    "brand_id": "brd_b295c6ddc0ce7d1ae9fe3a",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b7ccedac2634dbf6adaf53",
+    "brand_id": "brd_151c30fcee792f0275fef0",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8eb13bff16f832ced07aee",
+    "brand_id": "brd_151c30fcee792f0275fef0",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.3,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8a66c5ddc4a1affdf5a0eb",
+    "brand_id": "brd_151c30fcee792f0275fef0",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.56,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ace9492d04fed683d1c521",
+    "brand_id": "brd_2d0e3ad06fc38ab5bb1fd5",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.48,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_82d87a8b21f02c3a5d8ebb",
+    "brand_id": "brd_2d0e3ad06fc38ab5bb1fd5",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 2.48,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aebdef2eebe9cd923ad004",
+    "brand_id": "brd_2d0e3ad06fc38ab5bb1fd5",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.25,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e9e60daa1aafc255386f56",
+    "brand_id": "brd_d7ec887fa1a7f2f6bad7af",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.51,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_54e35e49be50ef6f4fab8f",
+    "brand_id": "brd_d7ec887fa1a7f2f6bad7af",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b8a2a8f2bcc303d2eeaad9",
+    "brand_id": "brd_d7ec887fa1a7f2f6bad7af",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.43,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_295c8d3aaad7ba9c88bae0",
+    "brand_id": "brd_c23cbccfdb26a9d7bac5e8",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e86ffbe3eab1dfb9b0f3f0",
+    "brand_id": "brd_c23cbccfdb26a9d7bac5e8",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.99,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cd8ae8fb8708abddea4b5a",
+    "brand_id": "brd_c23cbccfdb26a9d7bac5e8",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.72,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_895ea02c35abadbcd15829",
+    "brand_id": "brd_6db2e8bff18f1c846bdff2",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.35,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f7fefca6ce55ea7ed97715",
+    "brand_id": "brd_6db2e8bff18f1c846bdff2",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f9d5b2e4d06c45dfe2cab8",
+    "brand_id": "brd_6db2e8bff18f1c846bdff2",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8f6c7aae45a9df72aca93e",
+    "brand_id": "brd_3bdaaaa5f08f249fedadcf",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 2.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bcefffd0fcae09abeebf97",
+    "brand_id": "brd_3bdaaaa5f08f249fedadcf",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3ba060ac677f4a02dbdfba",
+    "brand_id": "brd_3bdaaaa5f08f249fedadcf",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.64,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_5aa0dfa3bec3b2bc19faf8",
+    "brand_id": "brd_ee2cc21d24b7db6b6aa374",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9a8c406f7e96615bb0edf7",
+    "brand_id": "brd_ee2cc21d24b7db6b6aa374",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.2,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_a0db867fe1213edee0fde7",
+    "brand_id": "brd_ee2cc21d24b7db6b6aa374",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.72,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d1ce11bfcfa5b2f6c3eeab",
+    "brand_id": "brd_baefdd7f350f9ff34b92bf",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.86,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9aa4ca6e733d53086d4fa5",
+    "brand_id": "brd_baefdd7f350f9ff34b92bf",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.62,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_ee90cbe8f6e65fc23de41c",
+    "brand_id": "brd_baefdd7f350f9ff34b92bf",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.32,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a331bc6bacf4addfccc943",
+    "brand_id": "brd_3d8decd1f21ccff08d425f",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.87,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_de955751aaa1b16c64f1be",
+    "brand_id": "brd_3d8decd1f21ccff08d425f",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.33,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d5acde8aaa1a7dc687edae",
+    "brand_id": "brd_3d8decd1f21ccff08d425f",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.13,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_36d5b87ddaa167b29ffa60",
+    "brand_id": "brd_a30aae5fddb8a53aacc8a6",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.44,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_37d3aa5f2ed8446e3e938d",
+    "brand_id": "brd_a30aae5fddb8a53aacc8a6",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_24b4fe1e3d073677ea97b9",
+    "brand_id": "brd_a30aae5fddb8a53aacc8a6",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 1.98,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f7f8de93da1ec6eb6fd2f4",
+    "brand_id": "brd_8efe8acd1e0afb48b088c4",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 0.11,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_63e197b020767db5bd3e87",
+    "brand_id": "brd_8efe8acd1e0afb48b088c4",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.1,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6bbeeefcfdcb4deb96c48f",
+    "brand_id": "brd_8efe8acd1e0afb48b088c4",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 0.56,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_ecf1fee1d857b15d7dc115",
+    "brand_id": "brd_71beaabac6c22b164f23ff",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bde6364c1eb10333634202",
+    "brand_id": "brd_71beaabac6c22b164f23ff",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7efd8af352450b3bce8aee",
+    "brand_id": "brd_71beaabac6c22b164f23ff",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f095a9cd6b8adde8bc3be4",
+    "brand_id": "brd_8dd4107b4775d98fb694e5",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 2.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0fedef7f7f8790ce7d73c3",
+    "brand_id": "brd_8dd4107b4775d98fb694e5",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.42,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d31e1aee47dee50ef4ff49",
+    "brand_id": "brd_8dd4107b4775d98fb694e5",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e7c9ac7e2bd16eab7ae8d5",
+    "brand_id": "brd_8d6d92ab27bbd77ddfdfe1",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 2.33,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_de4b0da82bd2bbcddc8c6b",
+    "brand_id": "brd_8d6d92ab27bbd77ddfdfe1",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.68,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9a19e1bd6fffa186e77e1c",
+    "brand_id": "brd_8d6d92ab27bbd77ddfdfe1",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6afb308b1db906ccdddacd",
+    "brand_id": "brd_a38bdef7dfa0cdafb9e5f6",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.5,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c6ccde2cdc046f5dccffec",
+    "brand_id": "brd_a38bdef7dfa0cdafb9e5f6",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.73,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_d0eeeaa54f27ec1acbb2c8",
+    "brand_id": "brd_a38bdef7dfa0cdafb9e5f6",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.0,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bc4d6c8a6df4d0eac0a7ca",
+    "brand_id": "brd_037a3f9ddccbea8ee32cd8",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ca31dbd5a1abf84c546f0a",
+    "brand_id": "brd_037a3f9ddccbea8ee32cd8",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 0.26,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ab85aa2c5318d5bb6d193f",
+    "brand_id": "brd_037a3f9ddccbea8ee32cd8",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.65,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cfd5fdcf2134cad3c34740",
+    "brand_id": "brd_ca4d6ccc2147f23e0e26eb",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6b0f43e5f90febac386f13",
+    "brand_id": "brd_ca4d6ccc2147f23e0e26eb",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2ab649fd7d10cdbbb098cf",
+    "brand_id": "brd_ca4d6ccc2147f23e0e26eb",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.72,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_45ee53e7cffa7e099fb4ab",
+    "brand_id": "brd_3e7bce303b0ccd6a1f4f3e",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.59,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_acf3e48f9ac9e1bde02fcc",
+    "brand_id": "brd_3e7bce303b0ccd6a1f4f3e",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 0.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b59ee470b3b728fbedcb7f",
+    "brand_id": "brd_3e7bce303b0ccd6a1f4f3e",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_54a5bcfc5e7f01d1cdc9a1",
+    "brand_id": "brd_5fc56cdb0eca28da45015f",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 0.94,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ee951b83b8e2fdaa8e1777",
+    "brand_id": "brd_5fc56cdb0eca28da45015f",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7abff4b0db052f4ea0fbaa",
+    "brand_id": "brd_5fc56cdb0eca28da45015f",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aacf254daec99aad942beb",
+    "brand_id": "brd_9cffaac8db462ec5b1f0bd",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 0.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_85ed686103b32fd42a6b26",
+    "brand_id": "brd_9cffaac8db462ec5b1f0bd",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.82,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ffdeb3a8ffdbfb5cfae593",
+    "brand_id": "brd_9cffaac8db462ec5b1f0bd",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b403c7f11eb5cfffef8bcc",
+    "brand_id": "brd_defcc97e41b2dc7b99e2e3",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 2.45,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ecad00caa0be3abdd0de6b",
+    "brand_id": "brd_defcc97e41b2dc7b99e2e3",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1ddfcef7f8db56798ad3fe",
+    "brand_id": "brd_defcc97e41b2dc7b99e2e3",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.89,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_c57adbfcf9da6d8d9a449e",
+    "brand_id": "brd_eb534ccf52f9dfea9db77b",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 0.99,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_403c9ffe8bfeed61d8a35b",
+    "brand_id": "brd_eb534ccf52f9dfea9db77b",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.85,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_abca9873850d3d9d8ffbd2",
+    "brand_id": "brd_eb534ccf52f9dfea9db77b",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.52,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_23adf84e1b92b2c7fdc1cb",
+    "brand_id": "brd_cebc6b07cb3ff8b5eeaa8b",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.86,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f3fc2328e77f989aac9dd3",
+    "brand_id": "brd_cebc6b07cb3ff8b5eeaa8b",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 1.38,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_a0a167d2f70fbbcfbb95f7",
+    "brand_id": "brd_cebc6b07cb3ff8b5eeaa8b",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 2.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fd106ddc5bd8d82102653a",
+    "brand_id": "brd_2a225c6a41e8510fb7e59d",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.59,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_5aa2efee07dbf1abd3daf2",
+    "brand_id": "brd_2a225c6a41e8510fb7e59d",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.31,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_28de5dfd8aadda1254c3e9",
+    "brand_id": "brd_2a225c6a41e8510fb7e59d",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3917eeb87dadefcde36b81",
+    "brand_id": "brd_fdbd6ede87f2b84dcea0d1",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.33,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dce28cdadcaf3b0eba0de5",
+    "brand_id": "brd_fdbd6ede87f2b84dcea0d1",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8adbeea9fb09f0d2c3c51f",
+    "brand_id": "brd_fdbd6ede87f2b84dcea0d1",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 2.46,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f2e6b4bffa4af8da8eff4b",
+    "brand_id": "brd_d8cc45a0032e85ca781c41",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.09,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4dddbf70b47405fcf957bb",
+    "brand_id": "brd_d8cc45a0032e85ca781c41",
+    "objective": "conversion",
+    "daily_budget": 50.0,
+    "bid_amount": 2.04,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_57f1eacd25ea74eaeebdfa",
+    "brand_id": "brd_d8cc45a0032e85ca781c41",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.31,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fbfc9cefa7f856a5cfcaad",
+    "brand_id": "brd_1bbae6b9ae58e5efe4e82a",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e6a4eec0df7f0be881b767",
+    "brand_id": "brd_1bbae6b9ae58e5efe4e82a",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2c4c31c0f5f89fd4bdecbf",
+    "brand_id": "brd_1bbae6b9ae58e5efe4e82a",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.95,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b0d6d4ae2aeefaf3150dab",
+    "brand_id": "brd_ffa80ef5e6eaedbbcce23e",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.16,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_972cc0cca2b2cbbce0ea14",
+    "brand_id": "brd_ffa80ef5e6eaedbbcce23e",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.8,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cbbd8f7b3aa5ca5a1ea19e",
+    "brand_id": "brd_ffa80ef5e6eaedbbcce23e",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1b0ad75cfd88ea6f72aef3",
+    "brand_id": "brd_aaf20d5b46bac79e11b091",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_beac631ee0aef83e5d5b6b",
+    "brand_id": "brd_aaf20d5b46bac79e11b091",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.47,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_603f5dd95590592b1bccb1",
+    "brand_id": "brd_aaf20d5b46bac79e11b091",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 0.24,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dad5ebd16db0345e87c5b5",
+    "brand_id": "brd_e035a4ebf285b64c5fc23a",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d153cbd6ff6b113c4a1e52",
+    "brand_id": "brd_e035a4ebf285b64c5fc23a",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.43,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_bf4cae3ac26c1e87e89ab1",
+    "brand_id": "brd_e035a4ebf285b64c5fc23a",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 0.68,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e07e7bedea9dfa1dc5aab6",
+    "brand_id": "brd_dfe6bff9be9b6bdcb0fbc3",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.41,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a3c1cdaaefab7c9012b1e8",
+    "brand_id": "brd_dfe6bff9be9b6bdcb0fbc3",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.03,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_efcc96a2be837ecbdcb3bc",
+    "brand_id": "brd_dfe6bff9be9b6bdcb0fbc3",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.6,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_bdd2ada11fbd1037f5e0be",
+    "brand_id": "brd_f1608debdec195dd4d5d55",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 2.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_68eed3ac22f2f8f20b5ac2",
+    "brand_id": "brd_f1608debdec195dd4d5d55",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c5f22d48dbfed2cc737cef",
+    "brand_id": "brd_f1608debdec195dd4d5d55",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_af61e8a6c854c8bbd78dc6",
+    "brand_id": "brd_e4ecd6fced79a20ba2b82d",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.95,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d1af1c6d066f2eeed9ca29",
+    "brand_id": "brd_e4ecd6fced79a20ba2b82d",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.26,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8d50fcbe0fe0adcde7abef",
+    "brand_id": "brd_e4ecd6fced79a20ba2b82d",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.76,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a202fc406e4e5d83e5dbed",
+    "brand_id": "brd_fdfacf0e3bfcdadfde2cd3",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 2.07,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d8f858fb6f4a6e6edfadfd",
+    "brand_id": "brd_fdfacf0e3bfcdadfde2cd3",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 2.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ceb16f6bfb45d58ca1a4b0",
+    "brand_id": "brd_fdfacf0e3bfcdadfde2cd3",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1f42f9ef73bba84a5837df",
+    "brand_id": "brd_fab72edadba2aad2fbad49",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.69,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_89bc3ddcb70c6fbc276c38",
+    "brand_id": "brd_fab72edadba2aad2fbad49",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.45,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_8fbdfaf15f7cf3209bcb8e",
+    "brand_id": "brd_fab72edadba2aad2fbad49",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.46,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0e389e9aff52fb772375fe",
+    "brand_id": "brd_fca7becd13fa145c2cbd09",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.61,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c9ad2dbcc0ed8ceaaaeafd",
+    "brand_id": "brd_fca7becd13fa145c2cbd09",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.97,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d66ebdb3c3ce6e7f81598d",
+    "brand_id": "brd_fca7becd13fa145c2cbd09",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0c96e961afbfcc0a8e10c8",
+    "brand_id": "brd_17ca7e4919fff4f2bd50d9",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.3,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a87fb8b72cfdbbe0bf6fbf",
+    "brand_id": "brd_17ca7e4919fff4f2bd50d9",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 1.3,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6cddc2ba08e7af26ffdcc2",
+    "brand_id": "brd_17ca7e4919fff4f2bd50d9",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 1.04,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_632484b306bcd4eb9ce89e",
+    "brand_id": "brd_d33c937e5965a07b54ce17",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 0.36,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_da4f17ef99beabcbf195ec",
+    "brand_id": "brd_d33c937e5965a07b54ce17",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 2.22,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6fa9d94bfd8c6c6e1dd8e5",
+    "brand_id": "brd_d33c937e5965a07b54ce17",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.55,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_4f26c6cbbcf9c38fcf27bd",
+    "brand_id": "brd_f3a7f80dbbe597bfedde5b",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 2.19,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9d9a10a3e796eb7c8d6f81",
+    "brand_id": "brd_f3a7f80dbbe597bfedde5b",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b6819e0c6d4898916d5b37",
+    "brand_id": "brd_f3a7f80dbbe597bfedde5b",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 2.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ecc200f5f46c3c23b0d8c3",
+    "brand_id": "brd_fcea816c824ce30a576bae",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.94,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eedf6b68c5dce5bc34cd9e",
+    "brand_id": "brd_fcea816c824ce30a576bae",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_463f8e1d0a4339bb875576",
+    "brand_id": "brd_fcea816c824ce30a576bae",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.99,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_827c27c964ac9bc604bdfe",
+    "brand_id": "brd_dd8465ff3521dabd7e80c2",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.49,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a1aea3ccdcae884e14d22d",
+    "brand_id": "brd_dd8465ff3521dabd7e80c2",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_badbcf4b65aebaacafcbdf",
+    "brand_id": "brd_dd8465ff3521dabd7e80c2",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6b8ffaef1331ec4696ed18",
+    "brand_id": "brd_7cbefcef0e2543872ebf9e",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.26,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_54ed5a7f2272ccb61e8bfa",
+    "brand_id": "brd_7cbefcef0e2543872ebf9e",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_be0bfa5ddaaee095efcc1a",
+    "brand_id": "brd_7cbefcef0e2543872ebf9e",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.32,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bb83da4ccfecaec5d0db34",
+    "brand_id": "brd_7de71d5b017c59c86cc5cb",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dfdff5fbbbd9c20fdb92ad",
+    "brand_id": "brd_7de71d5b017c59c86cc5cb",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cbb20facd549ec2a5f8db7",
+    "brand_id": "brd_7de71d5b017c59c86cc5cb",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.63,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_76de7f1a33bad1dda18be8",
+    "brand_id": "brd_81ccded810fa8ffe4da1df",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.7,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6e94513a1fcb8f314aaded",
+    "brand_id": "brd_81ccded810fa8ffe4da1df",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a1644faeadda6942a90fef",
+    "brand_id": "brd_81ccded810fa8ffe4da1df",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.24,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bfb4cce2ca2da6c7f1bea2",
+    "brand_id": "brd_fa04fd2ea7b9cffaf43801",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eaafce0c36cd366f937ec6",
+    "brand_id": "brd_fa04fd2ea7b9cffaf43801",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.5,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b74d9f06faf9eadae4b98a",
+    "brand_id": "brd_fa04fd2ea7b9cffaf43801",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.35,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b12f2b19cfa6efa09ab079",
+    "brand_id": "brd_caa3b51b1873f9b48ae6cc",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.15,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_cc81d38d160a5df34bea4a",
+    "brand_id": "brd_caa3b51b1873f9b48ae6cc",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.54,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_7e92ef3ff6aa6ec42fd14f",
+    "brand_id": "brd_caa3b51b1873f9b48ae6cc",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.52,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_34da11daf7d71de447fea9",
+    "brand_id": "brd_febc3222e0fc9d3f93fe35",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e56eafd11f8547dc2afae0",
+    "brand_id": "brd_febc3222e0fc9d3f93fe35",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.52,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e2402d0fbec1e0a50aa971",
+    "brand_id": "brd_febc3222e0fc9d3f93fe35",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.75,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eebfc25faf9bf5c0f5d87d",
+    "brand_id": "brd_8db40b1d4425a3b437bb8f",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 0.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_dbea4e6389bc16dabdb7f1",
+    "brand_id": "brd_8db40b1d4425a3b437bb8f",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.62,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_944efd5d61d8f4f3f02f7b",
+    "brand_id": "brd_8db40b1d4425a3b437bb8f",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.05,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_adfa0dd6e6ffec8bb262ba",
+    "brand_id": "brd_cb6a23175ea504fcbc8758",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 2.09,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_a3ef6acf5308c27c4cd205",
+    "brand_id": "brd_cb6a23175ea504fcbc8758",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.78,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_eb4f0b1da376bbbf6cf748",
+    "brand_id": "brd_cb6a23175ea504fcbc8758",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.66,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0dbb4e2b3dfa02ebdc8d5c",
+    "brand_id": "brd_4ed1f4cc6cf7c8ae54c130",
+    "objective": "loyalty",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e75926cacce3faeda1bcee",
+    "brand_id": "brd_4ed1f4cc6cf7c8ae54c130",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cec8db52202d91bc821a46",
+    "brand_id": "brd_4ed1f4cc6cf7c8ae54c130",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.34,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c1e844d9ec2bdecbdbafba",
+    "brand_id": "brd_8f5b098efdc3bc389415fa",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.56,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f58eacfeb0f3cdb56a6aa4",
+    "brand_id": "brd_8f5b098efdc3bc389415fa",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.92,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_da33e7afe0cff3be6f7ecb",
+    "brand_id": "brd_8f5b098efdc3bc389415fa",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.52,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bf145463add23e66d0da08",
+    "brand_id": "brd_10c8098a8b6e1df2d2a9f1",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.61,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_4b4ddc1f9bbe254bdc4dae",
+    "brand_id": "brd_10c8098a8b6e1df2d2a9f1",
+    "objective": "retention",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.96,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b69cddce790dcc9c3f99ab",
+    "brand_id": "brd_10c8098a8b6e1df2d2a9f1",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 0.46,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9cc4adfe4042e8c2815fcb",
+    "brand_id": "brd_dbc9b574e30a1ea1cc6367",
+    "objective": "retention",
+    "daily_budget": 500.0,
+    "bid_amount": 0.29,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c7aff7fb6e650c3140bfc7",
+    "brand_id": "brd_dbc9b574e30a1ea1cc6367",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 2.28,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_3fda58fa8e672db88e5af9",
+    "brand_id": "brd_dbc9b574e30a1ea1cc6367",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 0.93,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_93ab0efb4eaddd2e0e2bc2",
+    "brand_id": "brd_78986a3359bbb3f4c55ac1",
+    "objective": "consideration",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.48,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_aabcbc0d8da99e8b0fc0ce",
+    "brand_id": "brd_78986a3359bbb3f4c55ac1",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.43,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_5c6b51da8f6e12ece2fe5f",
+    "brand_id": "brd_78986a3359bbb3f4c55ac1",
+    "objective": "retention",
+    "daily_budget": 50.0,
+    "bid_amount": 1.87,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f4d96cffe07f8cfe5cbb85",
+    "brand_id": "brd_0cd3b35330e067d7206552",
+    "objective": "conversion",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.39,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b055ddd3bdd0640efdbeaf",
+    "brand_id": "brd_0cd3b35330e067d7206552",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.0,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_10e9cc84af7c6aeff2d9a0",
+    "brand_id": "brd_0cd3b35330e067d7206552",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.18,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b52d6b37fb51bb0bd5f9ac",
+    "brand_id": "brd_ebd82be20ccc14cf6fbafa",
+    "objective": "conversion",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.77,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b5cd97f598441ac67fa8ef",
+    "brand_id": "brd_ebd82be20ccc14cf6fbafa",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 0.81,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_868a65eaccceab9c73eade",
+    "brand_id": "brd_ebd82be20ccc14cf6fbafa",
+    "objective": "awareness",
+    "daily_budget": 100.0,
+    "bid_amount": 1.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_e10cb501f321f4aa7b1bca",
+    "brand_id": "brd_fee8fffadfdcf1ddc305d9",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 1.79,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1a17b7c8bfadcfa0f5a7fb",
+    "brand_id": "brd_fee8fffadfdcf1ddc305d9",
+    "objective": "awareness",
+    "daily_budget": 250.0,
+    "bid_amount": 2.14,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_ecc3bbce2b57f7929b17d8",
+    "brand_id": "brd_fee8fffadfdcf1ddc305d9",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_cc4b49630ddcbf3ea9cddb",
+    "brand_id": "brd_bf0dc0abd5ccfc228eb3a5",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.6,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_28bb1771c0a6b3623650f2",
+    "brand_id": "brd_bf0dc0abd5ccfc228eb3a5",
+    "objective": "awareness",
+    "daily_budget": 500.0,
+    "bid_amount": 1.13,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_fcbf18dee6ebef2daabaec",
+    "brand_id": "brd_bf0dc0abd5ccfc228eb3a5",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 1.31,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b9c24cab4e35ef0b9aabe6",
+    "brand_id": "brd_b989c5e0fafc7cf815cc00",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 2.07,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1288d6354ef65b4c79b7da",
+    "brand_id": "brd_b989c5e0fafc7cf815cc00",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.88,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_41f5a3e6de99cbefdfaa4f",
+    "brand_id": "brd_b989c5e0fafc7cf815cc00",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.24,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_bbddda0c93d7ccf4c6fb3d",
+    "brand_id": "brd_ace00b2009e99ed0aac30d",
+    "objective": "consideration",
+    "daily_budget": 50.0,
+    "bid_amount": 1.26,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_be3acd484eeac2feab4951",
+    "brand_id": "brd_ace00b2009e99ed0aac30d",
+    "objective": "loyalty",
+    "daily_budget": 5000.0,
+    "bid_amount": 2.31,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_edcb59c3fefbc7bcdcf61b",
+    "brand_id": "brd_ace00b2009e99ed0aac30d",
+    "objective": "retention",
+    "daily_budget": 250.0,
+    "bid_amount": 2.46,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_faaa8bf32eb53ebd5e83d3",
+    "brand_id": "brd_0add78f532ca85b73cbf7a",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 2.12,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_d3a8e1859c1ad2d6ebefe1",
+    "brand_id": "brd_0add78f532ca85b73cbf7a",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.0,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_9cac02f347e536f2caf354",
+    "brand_id": "brd_0add78f532ca85b73cbf7a",
+    "objective": "loyalty",
+    "daily_budget": 250.0,
+    "bid_amount": 0.18,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_bb1becc1c5fffb9fe57316",
+    "brand_id": "brd_4b2d5fc93fdcfea1516525",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.48,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_9fd6d7e26ce1fa1daf0aa2",
+    "brand_id": "brd_4b2d5fc93fdcfea1516525",
+    "objective": "consideration",
+    "daily_budget": 100.0,
+    "bid_amount": 1.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_300c8bc03c38da7b0d0c33",
+    "brand_id": "brd_4b2d5fc93fdcfea1516525",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.27,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2b75ef81f47aa85a84ed5a",
+    "brand_id": "brd_22bebd415eacdeae7f4cb0",
+    "objective": "loyalty",
+    "daily_budget": 500.0,
+    "bid_amount": 1.9,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_0ed67d0f66eff0bccec071",
+    "brand_id": "brd_22bebd415eacdeae7f4cb0",
+    "objective": "conversion",
+    "daily_budget": 250.0,
+    "bid_amount": 1.06,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_11d46a62fdacaf50ad747e",
+    "brand_id": "brd_22bebd415eacdeae7f4cb0",
+    "objective": "consideration",
+    "daily_budget": 250.0,
+    "bid_amount": 1.91,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_c65cfb2cacf1dc58fee79b",
+    "brand_id": "brd_dcbfdf35fd8e41eeef6a78",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 0.88,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_afb83f0e054ea36c3b98ca",
+    "brand_id": "brd_dcbfdf35fd8e41eeef6a78",
+    "objective": "loyalty",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.14,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_1b6494ab75f222cb229e16",
+    "brand_id": "brd_dcbfdf35fd8e41eeef6a78",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 0.71,
+    "status": "paused"
+  },
+  {
+    "campaign_id": "cmp_29c4b7ea09cbd31fe0cd9b",
+    "brand_id": "brd_b8d9a45aec6bbc6ed87fcf",
+    "objective": "awareness",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.38,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_23df18410cea1d73caabeb",
+    "brand_id": "brd_b8d9a45aec6bbc6ed87fcf",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.59,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b3c5f328a3e44ce56abe04",
+    "brand_id": "brd_b8d9a45aec6bbc6ed87fcf",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.59,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_b66cbde30c58ff857ab3bb",
+    "brand_id": "brd_a255efa017d5eb8a06cdad",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 1.67,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ecf47c8ecdf88a7fcee5cb",
+    "brand_id": "brd_a255efa017d5eb8a06cdad",
+    "objective": "retention",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.77,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ba965c35bb9ebacb1b9863",
+    "brand_id": "brd_a255efa017d5eb8a06cdad",
+    "objective": "retention",
+    "daily_budget": 5000.0,
+    "bid_amount": 1.6,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_57aa0732a78b07897f36ae",
+    "brand_id": "brd_cecdda63e413be8151f861",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.89,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f2fea3c6df8c2fa1bbaaf6",
+    "brand_id": "brd_cecdda63e413be8151f861",
+    "objective": "consideration",
+    "daily_budget": 500.0,
+    "bid_amount": 0.97,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2eecc9eafb0e1594a1b77e",
+    "brand_id": "brd_cecdda63e413be8151f861",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.57,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ffb9ee7dadff0ecec3aa6a",
+    "brand_id": "brd_6c052f801c50b5b6ffb131",
+    "objective": "consideration",
+    "daily_budget": 2500.0,
+    "bid_amount": 0.4,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f10cb5e272b7dcbda6dcab",
+    "brand_id": "brd_6c052f801c50b5b6ffb131",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 0.77,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_44526ffec05adb3e4b0aca",
+    "brand_id": "brd_6c052f801c50b5b6ffb131",
+    "objective": "conversion",
+    "daily_budget": 500.0,
+    "bid_amount": 0.47,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_03ebffdaab3af7a35d94fe",
+    "brand_id": "brd_ccfdaffecfa38f15cffe71",
+    "objective": "consideration",
+    "daily_budget": 1000.0,
+    "bid_amount": 1.24,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f9caa9c6d473c250e05c3c",
+    "brand_id": "brd_ccfdaffecfa38f15cffe71",
+    "objective": "conversion",
+    "daily_budget": 100.0,
+    "bid_amount": 0.57,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_6d90840eeeb5edec3bd0c5",
+    "brand_id": "brd_ccfdaffecfa38f15cffe71",
+    "objective": "loyalty",
+    "daily_budget": 100.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_764dba1e7f4c7ddcd36f6f",
+    "brand_id": "brd_aba0d61acae3ed9c2e1ebd",
+    "objective": "awareness",
+    "daily_budget": 50.0,
+    "bid_amount": 0.08,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_caec7b1ce900f513a2cb3c",
+    "brand_id": "brd_aba0d61acae3ed9c2e1ebd",
+    "objective": "awareness",
+    "daily_budget": 5000.0,
+    "bid_amount": 0.24,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_2bfee8bc8eafb97ebaeece",
+    "brand_id": "brd_aba0d61acae3ed9c2e1ebd",
+    "objective": "conversion",
+    "daily_budget": 2500.0,
+    "bid_amount": 1.8,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_ab66af18f5adb98ed2aaf0",
+    "brand_id": "brd_a92bbfecd9dcdbbcca2a2f",
+    "objective": "retention",
+    "daily_budget": 100.0,
+    "bid_amount": 1.93,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_56a26c91de6ef4f703c8e1",
+    "brand_id": "brd_a92bbfecd9dcdbbcca2a2f",
+    "objective": "loyalty",
+    "daily_budget": 50.0,
+    "bid_amount": 1.64,
+    "status": "active"
+  },
+  {
+    "campaign_id": "cmp_f09a81bf6e3a421fd48a79",
+    "brand_id": "brd_a92bbfecd9dcdbbcca2a2f",
+    "objective": "awareness",
+    "daily_budget": 2500.0,
+    "bid_amount": 2.24,
+    "status": "active"
+  }
+]

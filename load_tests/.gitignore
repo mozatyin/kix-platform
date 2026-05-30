@@ -1,0 +1,3 @@
+# Per-run outputs; regenerate via run_tests.sh
+results/
+*.log

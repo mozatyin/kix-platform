@@ -1,0 +1,1402 @@
+[
+  {
+    "brand_id": "brd_4ed8d8a2308046cdf62bbc",
+    "name": "Toast Box",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_4ed8d8a2308046cdf62bbc.5vIvr47LGf8m5cO2uvuht1jDcMuNSARgDUnfMd8U"
+  },
+  {
+    "brand_id": "brd_074e79e0dcf5fcf8a6bbbf",
+    "name": "Ya Kun",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_074e79e0dcf5fcf8a6bbbf.DOyHO1XWypaQKBBa2QbCA6NfkYNBygGAMO1MwPyQ"
+  },
+  {
+    "brand_id": "brd_feba9d31efd0f6b0ac25c1",
+    "name": "Killiney",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_feba9d31efd0f6b0ac25c1.lXgo3yIDQrRL55DCM4XhEvfQXhVSErwG6nILuNaY"
+  },
+  {
+    "brand_id": "brd_5aee7f910f1b34e84cff07",
+    "name": "Wee Nam Kee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_5aee7f910f1b34e84cff07.CO436wRBCCxXVRJSFIZU8EykyWhtEMMlPSaV3rLu"
+  },
+  {
+    "brand_id": "brd_dfefab3fab8c930bcfc7dc",
+    "name": "Tian Tian",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_dfefab3fab8c930bcfc7dc.O7GHxjhCJaKvv7gOI0Ln7euDOJuMzF7RZ7ZnMOyd"
+  },
+  {
+    "brand_id": "brd_c43a6ef24b8e54f26b2bbd",
+    "name": "Maxwell Chicken Rice",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_c43a6ef24b8e54f26b2bbd.Y6CMPKqfZr4jCzcrI1OHLoKVslTp19ggmcaGVNy9"
+  },
+  {
+    "brand_id": "brd_fbaafdcff118fd89faf7c3",
+    "name": "Tiong Bahru Bakery",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_fbaafdcff118fd89faf7c3.klwxbV6PdyOgsJVvwx4mKtBpPSIM7mNP51PGjz4B"
+  },
+  {
+    "brand_id": "brd_cfa84e88af6ee12dae6f4a",
+    "name": "Old Chang Kee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_cfa84e88af6ee12dae6f4a.VvggCSC3YUIyINSFZZrXpu0tDdiWSHy7Zz0eRMw1"
+  },
+  {
+    "brand_id": "brd_130bcfa9c40bcee98fcedb",
+    "name": "BreadTalk",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_130bcfa9c40bcee98fcedb.eS9Es1wQewKwW027L6Jp57BjMdYGZbyFA48NDJYi"
+  },
+  {
+    "brand_id": "brd_ab1c75dbbfb8ce268a9bcf",
+    "name": "Crystal Jade",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_ab1c75dbbfb8ce268a9bcf.zR1riOVgTybh02iiNgqDntPPNm4ufbhEMmZKXABq"
+  },
+  {
+    "brand_id": "brd_6f2cffa2d9e9b56bd1fe3b",
+    "name": "Din Tai Fung",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_6f2cffa2d9e9b56bd1fe3b.gzaOJFukUKVgNfrHwpHlHB9BU0eY2kBEHm604cpz"
+  },
+  {
+    "brand_id": "brd_fd09ff8dc3fec12dc97ff5",
+    "name": "Ichiban Boshi",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_fd09ff8dc3fec12dc97ff5.LCixEY7gOxO6WgRHjd2ShHv0StRVIGFQXuUeN6rt"
+  },
+  {
+    "brand_id": "brd_2abe09cda42a7a0ea1ac0c",
+    "name": "Genki Sushi",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2abe09cda42a7a0ea1ac0c.zNBZ43dChn9P50zTGLViKDJkycOkIZ90r1OaUC4Z"
+  },
+  {
+    "brand_id": "brd_07e3d3acc3f8f88e2f3ca6",
+    "name": "Pepper Lunch",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_07e3d3acc3f8f88e2f3ca6.vKyDGkhFeBASuDuOgzjEqBmDWENwC8wxxNTtuqVz"
+  },
+  {
+    "brand_id": "brd_fc34dfe80cfc8aa8a1196c",
+    "name": "Saboten",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_fc34dfe80cfc8aa8a1196c.LDYUd0rUGlwq0H1YWajGRBLW6QLzPHNFtOZCuSyn"
+  },
+  {
+    "brand_id": "brd_e31eb5aac17ebfc7b0ab80",
+    "name": "Watami",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_e31eb5aac17ebfc7b0ab80.PlMP1CHl5Wp0uiPcrsllOixz6K7jB26CCUKrtACk"
+  },
+  {
+    "brand_id": "brd_dfad613ff5adf4fb75f5f1",
+    "name": "Sakae Sushi",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_dfad613ff5adf4fb75f5f1.oUDk4b1tAceM1I7c7k8kMs4kQ2VtOMc42ef9urGM"
+  },
+  {
+    "brand_id": "brd_0fb4abfb6c701c46bb2bb3",
+    "name": "Astons",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_0fb4abfb6c701c46bb2bb3.0kTQOIx6DmPJUc9VeQt68USnBQgrbHbsvZT9wOrj"
+  },
+  {
+    "brand_id": "brd_da9a8f04f56b4e3a8ddd26",
+    "name": "Swensens",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_da9a8f04f56b4e3a8ddd26.aRBS6ODYR6Sj5MiIb7M11OyyE8VWfpWMl4JCAyTV"
+  },
+  {
+    "brand_id": "brd_8c89afcdc1c519adca8c2c",
+    "name": "Botak Jones",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_8c89afcdc1c519adca8c2c.Ihr0Lu07lqyFURTAN3waXEu1AFSo3TAUYB5ldZVU"
+  },
+  {
+    "brand_id": "brd_e1adecbfb663bdc7fdbdad",
+    "name": "Encik Tan",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_e1adecbfb663bdc7fdbdad.1TBztQTJYIijM7Z1mhVVuLjlUCGQxnFTWSYccJQV"
+  },
+  {
+    "brand_id": "brd_520edbd50d591ffcfcb50a",
+    "name": "Han's",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_520edbd50d591ffcfcb50a.xJESKH7vt3ImbJ0CynW1Kg1tbMrgsAMCf7zCjPHO"
+  },
+  {
+    "brand_id": "brd_cea334a07abcd6aa9b8e25",
+    "name": "Toast Hub",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_cea334a07abcd6aa9b8e25.eQJdWD5Q5WpcvzhKd2gfNLyKVEBRmOUBQQVlFGsB"
+  },
+  {
+    "brand_id": "brd_3ae51e0ee3bab9fc5d530f",
+    "name": "Soup Restaurant",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_3ae51e0ee3bab9fc5d530f.VuiT87NLFMlh6tYWeOt8vy7N6gfWOxhvmRIwG1qC"
+  },
+  {
+    "brand_id": "brd_d0f860dbabc14edba994af",
+    "name": "No Signboard",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_d0f860dbabc14edba994af.zWVhUF7vx7Tzp2AG3hQBieHtsB2uGx9Td3fHanRD"
+  },
+  {
+    "brand_id": "brd_b9b5a242e5dcbe0a20ac55",
+    "name": "Long Beach",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_b9b5a242e5dcbe0a20ac55.yfn0V6z14LVUvfP5j0M2FHBEwtBIL5BrPhMbWwmh"
+  },
+  {
+    "brand_id": "brd_d8f829f342892b3c1b21fd",
+    "name": "Jumbo Seafood",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_d8f829f342892b3c1b21fd.JJJj0Y3qGjAb2fUQEMKrNpribNiJj2Yxo4z6SYcs"
+  },
+  {
+    "brand_id": "brd_5a5ea7c73ee3f1bcfcb568",
+    "name": "Ah Yat Abalone",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_5a5ea7c73ee3f1bcfcb568.uf2QEVv41eXFSvl8xWK67s6scrhf1hxAISfvHvcU"
+  },
+  {
+    "brand_id": "brd_dcab8c4027f53abf8fadf2",
+    "name": "Imperial Treasure",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_dcab8c4027f53abf8fadf2.M60s3XqJL2MYD57sbA72jAJHhEdeY9nkMXUUKjHM"
+  },
+  {
+    "brand_id": "brd_bb5dd477e967801f438060",
+    "name": "Paradise Dynasty",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_bb5dd477e967801f438060.13GXnkRXhXlsRNYqLUPeZKdKeyi30TRAXYhpTb5q"
+  },
+  {
+    "brand_id": "brd_2c9177ed434e5cd5db8260",
+    "name": "Putien",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2c9177ed434e5cd5db8260.u1DKUWdp5UhXHdwDqd12Hc2l1uRYiks6GwNdr6jH"
+  },
+  {
+    "brand_id": "brd_19eb9990dbb4c8b71ac88d",
+    "name": "Crystal Jade La Mian",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_19eb9990dbb4c8b71ac88d.Bq696FKA2pBZeetpccRDbXT9S9sEcGpOMqU6nzJW"
+  },
+  {
+    "brand_id": "brd_fce78aeaac16f8cac9aafb",
+    "name": "Hai Di Lao",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_fce78aeaac16f8cac9aafb.v8KbKxmOCfYyajD62X1Kbpncf5rYs0gbMdHHxZCt"
+  },
+  {
+    "brand_id": "brd_eb32ffe1b6c491adc6fc5e",
+    "name": "Beauty in the Pot",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_eb32ffe1b6c491adc6fc5e.lk8S07AzG0X4g0mwk1YLRjPeq07QcR51OH9OvOJj"
+  },
+  {
+    "brand_id": "brd_722aaa6f8bfccdc2f6f0ee",
+    "name": "Manhattan Fish Market",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_722aaa6f8bfccdc2f6f0ee.l0pksvXket683mUFMpEdnp4hPXAKNdJW3KrMKe3y"
+  },
+  {
+    "brand_id": "brd_28fb37ca7fedcbf8db7dba",
+    "name": "Fish & Co",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_28fb37ca7fedcbf8db7dba.3i3SVpMiqCWVDtmpoUz3jEM1tw18GZCC1RUUMaa1"
+  },
+  {
+    "brand_id": "brd_25780fca3073e5e84ff9f9",
+    "name": "Carl's Jr SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_25780fca3073e5e84ff9f9.gECqNnU3Eyk1ubvtaz52XH00uVVQtmyeNetZMBLA"
+  },
+  {
+    "brand_id": "brd_2bd8c87ec2f6e3be68134d",
+    "name": "Burger King SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2bd8c87ec2f6e3be68134d.OBMF2DGWhSqgc0U6EXG0p8KWFP77cSKVlstbC3rQ"
+  },
+  {
+    "brand_id": "brd_cc8e8cdfd17d3deae1efba",
+    "name": "McDonald's SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_cc8e8cdfd17d3deae1efba.HbmYDklBkdCaRAz7JyECTOsoR3WKUsQU0Dgn6y2Z"
+  },
+  {
+    "brand_id": "brd_60e027a9eb9ee0cd492e8f",
+    "name": "KFC SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_60e027a9eb9ee0cd492e8f.xOcwnn6v4Jq4Qur9zMMGUHVxCvhHdr98KpipIjCL"
+  },
+  {
+    "brand_id": "brd_3bcb0c2aea1b7abbbc6ee3",
+    "name": "Texas Chicken",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_3bcb0c2aea1b7abbbc6ee3.fiCAHFviIoc2VGXpxceaHVCoTnS5RI3pI0NyqYPP"
+  },
+  {
+    "brand_id": "brd_1154bdba9dd8e16ddfd37a",
+    "name": "Subway SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_1154bdba9dd8e16ddfd37a.afsPjO6XyQyDjDM7oax6IACloehzf9vIbb8iqBKu"
+  },
+  {
+    "brand_id": "brd_a0b1056f0ee3f6eb2af6dc",
+    "name": "Pizza Hut SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_a0b1056f0ee3f6eb2af6dc.b7l4oZWU8ppSC42jA2HdM7cPkcyI9IX0EejxRShH"
+  },
+  {
+    "brand_id": "brd_c1fb270bd4adffe1a0b7d7",
+    "name": "Domino's SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_c1fb270bd4adffe1a0b7d7.VFAZZj3l0XfmPfmyotNDAWP0LJDXDezD1gigUWtR"
+  },
+  {
+    "brand_id": "brd_5dd7cba24dde269aed6424",
+    "name": "Mos Burger SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_5dd7cba24dde269aed6424.ru7wz8av8wLqnQwdGAd1f8O6vl7bBxYh5KUXBPMT"
+  },
+  {
+    "brand_id": "brd_1affc5ace7ba057a12fece",
+    "name": "Lotteria SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_1affc5ace7ba057a12fece.MleQHayNU7MKdKpoqCImvgwAOk820Dvcp6eAN0lN"
+  },
+  {
+    "brand_id": "brd_bfea15cec6cceb7adbecd1",
+    "name": "Shake Shack SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_bfea15cec6cceb7adbecd1.t5FCF8BuzyQg0CUj88NaBK4H9SbotL72Sc2X3DAM"
+  },
+  {
+    "brand_id": "brd_8de1b96aa7dce45b2b31fc",
+    "name": "Five Guys SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_8de1b96aa7dce45b2b31fc.JbNJoqrBjQLoYqRjG0xiat8scpTyWoFkGP6kjY3D"
+  },
+  {
+    "brand_id": "brd_d097cdda3e1be2a487bcaf",
+    "name": "Wendy's SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_d097cdda3e1be2a487bcaf.PTFpdeayonwEcf9mNR2ZqdSDgTjuobRpWNOrxppi"
+  },
+  {
+    "brand_id": "brd_b0333d8173d0df86c17576",
+    "name": "Boost Juice SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_b0333d8173d0df86c17576.d4OGzuxiEBHFEmC54GAu1qRW0dralmU26adzo5Dt"
+  },
+  {
+    "brand_id": "brd_ce33f52817f845bbeee5e7",
+    "name": "Liho",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_ce33f52817f845bbeee5e7.trxw5xgPKurhKbIzJeeqJfe9NXQdGmy5jB8J3jBG"
+  },
+  {
+    "brand_id": "brd_b7b8e5eccb3be1eaf253a4",
+    "name": "Koi The",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_b7b8e5eccb3be1eaf253a4.YQekl0bq6syGY1yOLGeguDVqv8YaXuTYloPtovwd"
+  },
+  {
+    "brand_id": "brd_53fffb3dba9dcfde13ed00",
+    "name": "Gong Cha",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_53fffb3dba9dcfde13ed00.ruYyCYg9pp7Y9FZ5UDgokdq5lgZyBBeVtNutJ7rJ"
+  },
+  {
+    "brand_id": "brd_87adf1b7efbbdcc1aed593",
+    "name": "ChaTime",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_87adf1b7efbbdcc1aed593.bANEt4HjAQU1mS7k7qlrJba5QrP0etF6CHc8z5Ik"
+  },
+  {
+    "brand_id": "brd_733b730ccc1b04c3c0d77a",
+    "name": "Each-a-Cup",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_733b730ccc1b04c3c0d77a.d0ThTAYXGgSAithqHPOvXIgg7VyaXernJzzhU34Q"
+  },
+  {
+    "brand_id": "brd_221f0a88ffb3d7b5aad73a",
+    "name": "Playmade",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_221f0a88ffb3d7b5aad73a.Z6qgA6SoXva2Vy3i5F8JKPhBkq8L5tFPoAU6jK0E"
+  },
+  {
+    "brand_id": "brd_4cad11d92cdbf4ea75238a",
+    "name": "Mr Bean",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_4cad11d92cdbf4ea75238a.XnipAUXGkI3M0tRVFDyUx0FFZW3Ih5exvOfKdJYx"
+  },
+  {
+    "brand_id": "brd_ec2fc9bbe1d4aa1e39779a",
+    "name": "Old Town",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_ec2fc9bbe1d4aa1e39779a.UuVmrCNX2Bo0qyZQA9rV6RKWo9uAM3t1PvOAJ3ue"
+  },
+  {
+    "brand_id": "brd_5527ab8cb67e5714bbbb9d",
+    "name": "Coffee Bean SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_5527ab8cb67e5714bbbb9d.qg0rhKzwzxLYvdXeXeNvNg81gQTNwigsJ5T39AzK"
+  },
+  {
+    "brand_id": "brd_4bf208a2405bdabca5c13e",
+    "name": "Starbucks SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_4bf208a2405bdabca5c13e.ibvQIgv3iItm9ODn2S4M1fGzm1FTnrpfkBRGCz9k"
+  },
+  {
+    "brand_id": "brd_c88d1f5ed15b06cd0cc6ef",
+    "name": "Costa Coffee SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_c88d1f5ed15b06cd0cc6ef.961xkH2cXDJxxqX3KsZpzOkMiwIE85to7xdO7MSG"
+  },
+  {
+    "brand_id": "brd_f8b7c7e79bbaa17fa8ad85",
+    "name": "Bacha Coffee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_f8b7c7e79bbaa17fa8ad85.l4y8hHQFEUb4amaRUNCHu9oiS4hnaezF159Jen8S"
+  },
+  {
+    "brand_id": "brd_eee9ba0cef392fae3317af",
+    "name": "Common Man Coffee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_eee9ba0cef392fae3317af.DriviUMNJ1IzZrLXWBGPhX97qyusX3nkJlJnDIpn"
+  },
+  {
+    "brand_id": "brd_087ed061fac140ab5cbcb9",
+    "name": "Strangers' Reunion",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_087ed061fac140ab5cbcb9.NbDRejBOP8Cnj14xedO70p5MVV8K3QqieUhiATCD"
+  },
+  {
+    "brand_id": "brd_6b30fbade385da73ce58da",
+    "name": "Tiong Hoe",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_6b30fbade385da73ce58da.c0hO4Yli3KglcFacHEdmu7pNKoqDe0K09fYGfGUg"
+  },
+  {
+    "brand_id": "brd_7f280bd15453bd2c6b0e7a",
+    "name": "Nylon Coffee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_7f280bd15453bd2c6b0e7a.aGfwtpWpRX9NbgWMHxHQ9IP512I2svMT5hQzPiFn"
+  },
+  {
+    "brand_id": "brd_eeeacd9a42ce0fbf738e64",
+    "name": "Chye Seng Huat",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_eeeacd9a42ce0fbf738e64.9LpZT6sw4tXLhOeI3mfpVRnkyQE1rydwL14PCIsU"
+  },
+  {
+    "brand_id": "brd_f8979edf65c46eca4aabde",
+    "name": "Bukit Timah Roasters",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_f8979edf65c46eca4aabde.TdLFxL7U4uP7HuJTm0ARa2Ou2WlhrlzFJgNWRE5i"
+  },
+  {
+    "brand_id": "brd_ff7b0fd7e7f1a019faa0ba",
+    "name": "Apartment Coffee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_ff7b0fd7e7f1a019faa0ba.X95ife0nHSsFA1rx6iJO4Ab4Pq31NdejawMrrZYZ"
+  },
+  {
+    "brand_id": "brd_bdbcbc42fcaddf798baa9b",
+    "name": "Atlas Coffeehouse",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_bdbcbc42fcaddf798baa9b.kZhq1d8hj5fWOEFHQ1rbwjezGfu0YIToL3ECD9Fj"
+  },
+  {
+    "brand_id": "brd_cabdbb76cdaeb3c6f2ca32",
+    "name": "PPP Coffee",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_cabdbb76cdaeb3c6f2ca32.qvA8nooppP5JwrFpmy2PQqaYUhEEoQoOZEpWjM4B"
+  },
+  {
+    "brand_id": "brd_2afcabd2fe6ed45ad0dfa2",
+    "name": "Drury Lane",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2afcabd2fe6ed45ad0dfa2.FhqePwWMC4ENusc6eqXpv2QO06YlqoZirMktYSok"
+  },
+  {
+    "brand_id": "brd_2bcb0c775c8fb4fdaa480e",
+    "name": "Plain Vanilla",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2bcb0c775c8fb4fdaa480e.qsyxXCIg1LxJ9u3jVTXf1w5jVt3ojcoHNtgfkyhz"
+  },
+  {
+    "brand_id": "brd_dfd2fc2d34bac48afb87e2",
+    "name": "Tiger Sugar SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_dfd2fc2d34bac48afb87e2.l57dpbcREOQiyInlY8WU7CUStBuPlMWueRzig8Gl"
+  },
+  {
+    "brand_id": "brd_e4aaccaaa3b3eb52e443b1",
+    "name": "The Alley SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_e4aaccaaa3b3eb52e443b1.ecScpQXdyK7mJxAfnynLSRomNtdv68Rp7PqqiqLX"
+  },
+  {
+    "brand_id": "brd_95613c7561469d767d4fcb",
+    "name": "Hey Tea SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_95613c7561469d767d4fcb.ARDsO7Eo5N2E3Eix2G3Hl343h0qm1u8roOIi85LK"
+  },
+  {
+    "brand_id": "brd_ea218b7c36abdcaa3b2d5f",
+    "name": "HEYTEA",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_ea218b7c36abdcaa3b2d5f.rDF1BgfvlCdBohbmNxBrmLEOAnj4wZ9oALiPeaJM"
+  },
+  {
+    "brand_id": "brd_6fb95b508ff1dbb5baebb7",
+    "name": "Mixue SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_6fb95b508ff1dbb5baebb7.Dfc3aUyOS5bRI4cOzRSMYisBxLdcSG9zkQsPM15X"
+  },
+  {
+    "brand_id": "brd_de81e5f83e809c46021c53",
+    "name": "Luckin Coffee SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_de81e5f83e809c46021c53.lDJ7fWKiNFgjooH4kalO0NQaNn83nOO4m5fYE46x"
+  },
+  {
+    "brand_id": "brd_5cf8bdd9ac8f93a829cc10",
+    "name": "Tealive SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_5cf8bdd9ac8f93a829cc10.xatCRAc9Vx7AR3wh785oDx06TUpHRhiTj2MGaRcP"
+  },
+  {
+    "brand_id": "brd_efcc3cb51e9c3bbcc2377b",
+    "name": "TenRen's Tea",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_efcc3cb51e9c3bbcc2377b.DMG4HkYUD5sEcndHZvLeLLskNVFjRKeV8euuez8z"
+  },
+  {
+    "brand_id": "brd_5a7effc0aebadd45bbf2ca",
+    "name": "Sun Yi Tea",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_5a7effc0aebadd45bbf2ca.KggFvqgSE0mR5XAUNUgFL6JwcCZev5KjnrkEfGpM"
+  },
+  {
+    "brand_id": "brd_7b7e933f55b67bfbe25a01",
+    "name": "Each Cup",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_7b7e933f55b67bfbe25a01.oRWfCjbTcx2r2kiAF1rTThJEZGT8UAtH2CPpEt2b"
+  },
+  {
+    "brand_id": "brd_b6abae1bd3cad38e6cc0f8",
+    "name": "Rou Cha",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_b6abae1bd3cad38e6cc0f8.hzRMkDLoofgZOlKQFP1s5of6QvSGnZZYVcLCZ92U"
+  },
+  {
+    "brand_id": "brd_2d38d5acaf06e48a58f36f",
+    "name": "8 Tea House",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2d38d5acaf06e48a58f36f.DXaEjD6QZvnsigyR3Ev96v2g4fTDV3KXL9yZkAwO"
+  },
+  {
+    "brand_id": "brd_fbf8f110eb9d853683eea1",
+    "name": "Each",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_fbf8f110eb9d853683eea1.QMApyQPMT806KK3MYs1G5owoDEdPti6GxVjJwZU6"
+  },
+  {
+    "brand_id": "brd_dea0759cccbfa22bcca04d",
+    "name": "Loola SG",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_dea0759cccbfa22bcca04d.ZxEVLCeKPMWyPpVO2d7E9i7SWabD1pCAjHQCo3XM"
+  },
+  {
+    "brand_id": "brd_40bba7a1e5c5cbd22b261d",
+    "name": "Yong He",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_40bba7a1e5c5cbd22b261d.kqQcae5Qqkn2CYV4HqEHCFJSY7QmMnjOBAj1Bh4C"
+  },
+  {
+    "brand_id": "brd_eeaddccf220a1eaaabea60",
+    "name": "126 Eating House",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_eeaddccf220a1eaaabea60.sM2fAKzNQJgu5sBKLQZBjdV6LcLthpN96jZqSGsp"
+  },
+  {
+    "brand_id": "brd_49ca8d59bd9e0dfa773ec5",
+    "name": "328 Katong Laksa",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_49ca8d59bd9e0dfa773ec5.OJmA0GWKMhiEF8y9cAnS963HIqiBbeSJ2nSZb3u7"
+  },
+  {
+    "brand_id": "brd_6cee3becf860de5bb0c8c4",
+    "name": "Hill Street Tai Hwa",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_6cee3becf860de5bb0c8c4.OF1r7ZymildDlSsMjvump4tvLn2v6xcydfPZuKoi"
+  },
+  {
+    "brand_id": "brd_a59ae2245e0995761cdcbf",
+    "name": "Founder Bak Kut Teh",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_a59ae2245e0995761cdcbf.kyxmBmqfVfFCci5g5Rp4BsS9rY8P3flmdqFi34wS"
+  },
+  {
+    "brand_id": "brd_668e6a58b98ebac34c172f",
+    "name": "Song Fa Bak Kut Teh",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_668e6a58b98ebac34c172f.24d7OHTq0uW8X8hlrZ8wAoh84LFHRn7SQMZBXwzE"
+  },
+  {
+    "brand_id": "brd_cfa4e0edd30e153e6db1c9",
+    "name": "Tai Wah Pork Noodle",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_cfa4e0edd30e153e6db1c9.6egg7fRSSjwrJn4aBT6PgcQ8SZjjQZZOvu0FEXOO"
+  },
+  {
+    "brand_id": "brd_27eee13d95887aec6bf8fe",
+    "name": "Hong Kong Soya Sauce Chicken",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_27eee13d95887aec6bf8fe.sxReLYOc0WT1hz6JgyRv6rz72EDV1yh2ewhMNmC0"
+  },
+  {
+    "brand_id": "brd_2617ad1ac4a9a1459ccb98",
+    "name": "Liao Fan",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_2617ad1ac4a9a1459ccb98.EklRvigSpn8Qqti1jhHSfmLvLjwtXnCcv1a2rQMq"
+  },
+  {
+    "brand_id": "brd_b453da45d57efb21ecae2e",
+    "name": "A Noodle Story",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_b453da45d57efb21ecae2e.yF0zg8soX5OXmhCRmTQxxHDYZ5vzaukjOtZdjmlM"
+  },
+  {
+    "brand_id": "brd_e14c7810e398df6c220e4a",
+    "name": "Pasta Fresca",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_e14c7810e398df6c220e4a.jRtpzTrHE6g1oM0ZYuLAJdkD4gadr3qHfinP88dp"
+  },
+  {
+    "brand_id": "brd_7d658e2effaffe7a3afc0b",
+    "name": "Cedele",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_7d658e2effaffe7a3afc0b.4ajQVdWBqPya9xZv8luFyIg59PmTzlVLCwoEq4pX"
+  },
+  {
+    "brand_id": "brd_8c9e7fb4cbdc58b493aaf5",
+    "name": "Project Acai",
+    "region": "SG",
+    "category": "F&B",
+    "api_token": "mock.brd_8c9e7fb4cbdc58b493aaf5.DgxYtR0oxoyjBQ7FRQwRADpu76lvup6gzXvs1KMt"
+  },
+  {
+    "brand_id": "brd_ff9d8bdbc9e1be88a8d2ca",
+    "name": "Mangkok Sayur",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ff9d8bdbc9e1be88a8d2ca.vyKy3maCIv16MAv5Na6zE58NhaUJVa2wVoTtEoOv"
+  },
+  {
+    "brand_id": "brd_4eeba6f86181a0dea0a96b",
+    "name": "Warung Sederhana",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_4eeba6f86181a0dea0a96b.A98VKzXg4palV5kSPM8ggvcKtx6NR9y85equyFs0"
+  },
+  {
+    "brand_id": "brd_d4b2dd3b411c6748bf9c2d",
+    "name": "Sate Khas Senayan",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_d4b2dd3b411c6748bf9c2d.X9EgXIYff1SeGHw6uAGO45DbCKD9peTdQrhJVvSi"
+  },
+  {
+    "brand_id": "brd_9897ad7e9d0bfbbadb522a",
+    "name": "Bakmi GM",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_9897ad7e9d0bfbbadb522a.jNbDw6OuoG5CSppb9bTbsjfUoeRorpKIMMtDIqs7"
+  },
+  {
+    "brand_id": "brd_b00bdc05b3bd9fe591c378",
+    "name": "Solaria",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b00bdc05b3bd9fe591c378.EfLhWtbNeVHU2Hx7q226oFDUAwc7memVAsSsVwAE"
+  },
+  {
+    "brand_id": "brd_82c495d4cc6a9ce319cfb7",
+    "name": "HokBen",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_82c495d4cc6a9ce319cfb7.XKuxMoUMxCbDDbVyKUS1l1BV6kvqI9T40UOImSoE"
+  },
+  {
+    "brand_id": "brd_bbd7fc43dcdfb7327ef297",
+    "name": "Es Teler 77",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_bbd7fc43dcdfb7327ef297.HZXj9zVV1phoSLGowEt10RkTug7teHgWp7BQyyfW"
+  },
+  {
+    "brand_id": "brd_b711dbff69c3bef63a3de4",
+    "name": "Pizza Marzano",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b711dbff69c3bef63a3de4.f4DxCZT9YfOd4kXgikE2zYZentfqOrFheVTXnB7t"
+  },
+  {
+    "brand_id": "brd_128a9eeb6fb4ffb8ea6ce1",
+    "name": "PHD Pizza ID",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_128a9eeb6fb4ffb8ea6ce1.ekC6YqlVz1IziOTQQGah5cKEkb1kNDUmy23sdFXV"
+  },
+  {
+    "brand_id": "brd_ebc6a14202f63decfcb2dd",
+    "name": "Excelso",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ebc6a14202f63decfcb2dd.1m6UgP2nJoRkMWzJ1Ly3rvVzEL6TMI7fZdjTJmTN"
+  },
+  {
+    "brand_id": "brd_cec5de401a7a08da0327f3",
+    "name": "Anomali Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_cec5de401a7a08da0327f3.2md9etPPDEfMuOx5czSkDSDrMO30dZM5GPezv5s3"
+  },
+  {
+    "brand_id": "brd_b401fe60ba87bf9b0621ad",
+    "name": "Kopi Kenangan",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b401fe60ba87bf9b0621ad.dJRdOvxGQaytiOUNMLOAN07F6qfjulBlMv9D7cuh"
+  },
+  {
+    "brand_id": "brd_455100cc2ec23a1a8e8a1a",
+    "name": "Janji Jiwa",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_455100cc2ec23a1a8e8a1a.lhVTzhP0MLsYCaldZjL1cNrDXQb1gyy3DV3LDdFt"
+  },
+  {
+    "brand_id": "brd_4b0daaf9ce8cfdf5eb9f6b",
+    "name": "Fore Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_4b0daaf9ce8cfdf5eb9f6b.kSyYMsLCghg5AYdjkOvM1iJPjoxavcNVWucJHp6s"
+  },
+  {
+    "brand_id": "brd_43aa12d8b23b5f2dbcffef",
+    "name": "Tuku",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_43aa12d8b23b5f2dbcffef.Upt6wv3mWKovbAqHet1dSrpNtgGqNoPK1y6szNap"
+  },
+  {
+    "brand_id": "brd_b9cecae840d4a3efa94e78",
+    "name": "Tomoro Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b9cecae840d4a3efa94e78.uu62bg18ZLYhiVcw6uAy4rl5dCfEkQKFCFK4KNeO"
+  },
+  {
+    "brand_id": "brd_07ddcfbfaf4fdc1fc25b3d",
+    "name": "Flash Coffee TH",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_07ddcfbfaf4fdc1fc25b3d.ipioaWwHQcdpxvYLxNivnslSKRiTbNWnkffrR2i9"
+  },
+  {
+    "brand_id": "brd_c0f8df17d1755dfbc06bd2",
+    "name": "Cafe Amazon",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_c0f8df17d1755dfbc06bd2.Svp6dYIZ0XvEW7YdUGuqedRaROtNpUAjumdV1hDn"
+  },
+  {
+    "brand_id": "brd_aa1cdbe8ecdd8b4f4ebadf",
+    "name": "After You Dessert",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_aa1cdbe8ecdd8b4f4ebadf.KU5CZumeWSzM4RAuPhOCNX77DOpBymcBcAqVq2In"
+  },
+  {
+    "brand_id": "brd_e5fe3d455c218216bc054f",
+    "name": "Mango Tree Cafe",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_e5fe3d455c218216bc054f.2T88XX7mnRNHr50AMWE95A4reavUdC1YD96PjRtF"
+  },
+  {
+    "brand_id": "brd_affd3f9fa9dc58f8dc78df",
+    "name": "Som Tam Nua",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_affd3f9fa9dc58f8dc78df.ctCUVxI5cJ5xfucBzQyLpMu3IJO7mfE75CKnn4A1"
+  },
+  {
+    "brand_id": "brd_8dbaad3ae4f6231cbd5bdc",
+    "name": "Pad Thai Thip Samai",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_8dbaad3ae4f6231cbd5bdc.z8atacIRWfgQhc04J9YTDFEqVRZFldym0Jz0WOmA"
+  },
+  {
+    "brand_id": "brd_1eeec35df9ecca4fa0ccd4",
+    "name": "Wattana Panich",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_1eeec35df9ecca4fa0ccd4.IEcmowdmGktPQrjlmgrj5ohzM0M0W2t806HzMZrw"
+  },
+  {
+    "brand_id": "brd_e1babdd69bc3dede0a0c74",
+    "name": "Bangkok Bold Cafe",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_e1babdd69bc3dede0a0c74.Fwv6hZ7XRXDvqE0yElWmu6YM4f8SFujgFUtFko6I"
+  },
+  {
+    "brand_id": "brd_a0525da485f6012debe0df",
+    "name": "Roast",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_a0525da485f6012debe0df.V3MHMheuixWAc4IFpVp61CQbH0YaRBlQBQnvFDPC"
+  },
+  {
+    "brand_id": "brd_4e8f8f04af021fb75438b5",
+    "name": "Greyhound Cafe",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_4e8f8f04af021fb75438b5.l6J8OZbee9U3QZLOryWj9MmWrMYwwKGsv8moHWvu"
+  },
+  {
+    "brand_id": "brd_bba96f0cdf03ee1f21eedb",
+    "name": "Iberry",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_bba96f0cdf03ee1f21eedb.N8i8qmry6ITPe1JLQxqyqyI4slA9xqkbk9QwcRub"
+  },
+  {
+    "brand_id": "brd_d32267aeb6b1069635e86f",
+    "name": "Karmakamet Diner",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_d32267aeb6b1069635e86f.nhsEbYwe69D7VCsSe9GJWrkSm4xtiYGk9XGXf2iU"
+  },
+  {
+    "brand_id": "brd_b295c6ddc0ce7d1ae9fe3a",
+    "name": "Audrey Cafe",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b295c6ddc0ce7d1ae9fe3a.XVnFTRUdODQ3NAyEbJSPvKbpaKQQTHK1VnymH6gZ"
+  },
+  {
+    "brand_id": "brd_151c30fcee792f0275fef0",
+    "name": "Broccoli Revolution",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_151c30fcee792f0275fef0.aiNTBRFZ030Ch8pptWZoThKUsWIx8c4qOFLd9WUj"
+  },
+  {
+    "brand_id": "brd_2d0e3ad06fc38ab5bb1fd5",
+    "name": "Yenly Yours",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_2d0e3ad06fc38ab5bb1fd5.DtaItMTmgglGJfdSGan6D3W25pN8KjKLD28eXUSH"
+  },
+  {
+    "brand_id": "brd_d7ec887fa1a7f2f6bad7af",
+    "name": "Pickle Sandwich",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_d7ec887fa1a7f2f6bad7af.hbTyjZfT1f8J51s2AiL2byyVI2OCdaP29o7jzsTp"
+  },
+  {
+    "brand_id": "brd_c23cbccfdb26a9d7bac5e8",
+    "name": "Featherstone",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_c23cbccfdb26a9d7bac5e8.RRmK1NMqKepswpDjSLdAaUFzlSgzcLb4ZhepjeVV"
+  },
+  {
+    "brand_id": "brd_6db2e8bff18f1c846bdff2",
+    "name": "Toby's Estate TH",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_6db2e8bff18f1c846bdff2.boin7QWpMr8x2olJtQKXQQRO1YntbdmtHOvPRHDQ"
+  },
+  {
+    "brand_id": "brd_3bdaaaa5f08f249fedadcf",
+    "name": "Pacamara",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_3bdaaaa5f08f249fedadcf.Q1Hxgqdhy8Unu2SNRFprF4SKo3NcKN2Z63ad057z"
+  },
+  {
+    "brand_id": "brd_ee2cc21d24b7db6b6aa374",
+    "name": "Saw Roastery",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ee2cc21d24b7db6b6aa374.mV6junuDqv0rBx9hYdz25rG5O28vCP8Sbx03cEEN"
+  },
+  {
+    "brand_id": "brd_baefdd7f350f9ff34b92bf",
+    "name": "Brave Roasters",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_baefdd7f350f9ff34b92bf.eZCsWpZbHQmQWFZgJmSf1kwckbR5CGaVSX7Ok4fA"
+  },
+  {
+    "brand_id": "brd_3d8decd1f21ccff08d425f",
+    "name": "Roots Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_3d8decd1f21ccff08d425f.DIsl1nqbY7AokNlVSbrIu7BU838caNwzsUF6W62q"
+  },
+  {
+    "brand_id": "brd_a30aae5fddb8a53aacc8a6",
+    "name": "Phil Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_a30aae5fddb8a53aacc8a6.LC81IsnCFI7sJPUrB2466iZAdhUFIKJREIDRcxLx"
+  },
+  {
+    "brand_id": "brd_8efe8acd1e0afb48b088c4",
+    "name": "Bukruk",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_8efe8acd1e0afb48b088c4.o9BITNKcDjyF4WR5rqM8zao6FFvvAtsURtyuyElm"
+  },
+  {
+    "brand_id": "brd_71beaabac6c22b164f23ff",
+    "name": "Jojo Manila",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_71beaabac6c22b164f23ff.bsOAQXR3OGIXSSu4gMyyBBujB5JifRN0yRCaX8IZ"
+  },
+  {
+    "brand_id": "brd_8dd4107b4775d98fb694e5",
+    "name": "Jollibee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_8dd4107b4775d98fb694e5.DxNm2dMZBAiC6x9Iet7elrVZ3CvS7zzLaWuuSvnE"
+  },
+  {
+    "brand_id": "brd_8d6d92ab27bbd77ddfdfe1",
+    "name": "Mang Inasal",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_8d6d92ab27bbd77ddfdfe1.ZEHkGz3gXN1fVlCAVE2hueY3yqkkMlAuxikWHLKh"
+  },
+  {
+    "brand_id": "brd_a38bdef7dfa0cdafb9e5f6",
+    "name": "Greenwich PH",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_a38bdef7dfa0cdafb9e5f6.kHMIowq8yH8Fp61GCd5Flu7V4Pkw94z0KPP3DHVe"
+  },
+  {
+    "brand_id": "brd_037a3f9ddccbea8ee32cd8",
+    "name": "Chowking",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_037a3f9ddccbea8ee32cd8.1K8CyHYJfuCf2yhUC1XRioliT0QdEX4dvVWebN5y"
+  },
+  {
+    "brand_id": "brd_ca4d6ccc2147f23e0e26eb",
+    "name": "Goldilocks",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ca4d6ccc2147f23e0e26eb.H1m9ZvU2He9cy41JRSVGJxpgzDiMyPvOmDIGZEWV"
+  },
+  {
+    "brand_id": "brd_3e7bce303b0ccd6a1f4f3e",
+    "name": "Red Ribbon",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_3e7bce303b0ccd6a1f4f3e.JPSWEMpgDzrjuJ0yDToacXrvN4sSGC2ckDA9KHYt"
+  },
+  {
+    "brand_id": "brd_5fc56cdb0eca28da45015f",
+    "name": "Max's Restaurant",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_5fc56cdb0eca28da45015f.AzD43JinDRgxRXYSxE4U6Zt90QbTVl9yx2hpfJTr"
+  },
+  {
+    "brand_id": "brd_9cffaac8db462ec5b1f0bd",
+    "name": "Mary Grace",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_9cffaac8db462ec5b1f0bd.1b8EibyGwhSGxAZtJgKRlRK8SKmxsm95GGpVKfAy"
+  },
+  {
+    "brand_id": "brd_defcc97e41b2dc7b99e2e3",
+    "name": "UCC Cafe Terrace",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_defcc97e41b2dc7b99e2e3.fIsDDkGkVtM5nDoJ2E6yRtwWj6Ft0ORZMsInskn4"
+  },
+  {
+    "brand_id": "brd_eb534ccf52f9dfea9db77b",
+    "name": "Tim Ho Wan PH",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_eb534ccf52f9dfea9db77b.ViLeUvbdCmfUWCNCltiyZ04F6aOtS3qItiZ4tDYP"
+  },
+  {
+    "brand_id": "brd_cebc6b07cb3ff8b5eeaa8b",
+    "name": "Wee Nam Kee MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_cebc6b07cb3ff8b5eeaa8b.UXctcSSRVMcJaMGwrgPBeJDNIWpNGp9e7VnH0oXc"
+  },
+  {
+    "brand_id": "brd_2a225c6a41e8510fb7e59d",
+    "name": "Old Town MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_2a225c6a41e8510fb7e59d.NsdlixEEHKv2pbJ10g9vQhgvGvW7guv2zf1q05p7"
+  },
+  {
+    "brand_id": "brd_fdbd6ede87f2b84dcea0d1",
+    "name": "PappaRich MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fdbd6ede87f2b84dcea0d1.VYDmZYYjPwFTKiYNDqUzABEoNTwd0TRRFZdbvOz5"
+  },
+  {
+    "brand_id": "brd_d8cc45a0032e85ca781c41",
+    "name": "OldTown White Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_d8cc45a0032e85ca781c41.A9voCjT806CBACU54NVVDzC8HMXdO8XGRGlPIldi"
+  },
+  {
+    "brand_id": "brd_1bbae6b9ae58e5efe4e82a",
+    "name": "Secret Recipe",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_1bbae6b9ae58e5efe4e82a.FR9WXtL2cJbxvCyH3olnmo3kzX4HxMoDtnhMRezv"
+  },
+  {
+    "brand_id": "brd_ffa80ef5e6eaedbbcce23e",
+    "name": "Black Canyon MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ffa80ef5e6eaedbbcce23e.8eDE9VfvS2hgfv0XzfDdXvgXUsSog3qzRX1tpOdL"
+  },
+  {
+    "brand_id": "brd_aaf20d5b46bac79e11b091",
+    "name": "Kenny Rogers MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_aaf20d5b46bac79e11b091.saUYjM5AZjLnbxrR5OCZcfm0gmOiKS04a3ORe3bs"
+  },
+  {
+    "brand_id": "brd_e035a4ebf285b64c5fc23a",
+    "name": "Marrybrown",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_e035a4ebf285b64c5fc23a.or88oTGMQxq4CblIwW4nvjBBhjqQ1ZZmJYt6YhgA"
+  },
+  {
+    "brand_id": "brd_dfe6bff9be9b6bdcb0fbc3",
+    "name": "Texas Chicken MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_dfe6bff9be9b6bdcb0fbc3.FaPxqN059gVpBHD1mmBKmRsGC8OycWN6rofJ1QWM"
+  },
+  {
+    "brand_id": "brd_f1608debdec195dd4d5d55",
+    "name": "A&W MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_f1608debdec195dd4d5d55.tMiCwaqmAdppWCTLqtB3RjqcGS4eiX5UkFxVlC7p"
+  },
+  {
+    "brand_id": "brd_e4ecd6fced79a20ba2b82d",
+    "name": "Pizza Hut MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_e4ecd6fced79a20ba2b82d.jaXBQ21S9u2OyoWJAY6JfWPcJSobFjDrXQB9TfIB"
+  },
+  {
+    "brand_id": "brd_fdfacf0e3bfcdadfde2cd3",
+    "name": "Subway MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fdfacf0e3bfcdadfde2cd3.KaXrz7cu3NyQSViEL76hp8fggYVPn8O2a1ddWpA0"
+  },
+  {
+    "brand_id": "brd_fab72edadba2aad2fbad49",
+    "name": "Famous Amos MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fab72edadba2aad2fbad49.TMCm8GfvoGatgITluTeelXjCVuXep4JZMl3tUz1o"
+  },
+  {
+    "brand_id": "brd_fca7becd13fa145c2cbd09",
+    "name": "Beard Papa MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fca7becd13fa145c2cbd09.vwNq1OtiOYH1mlyF9bZ130G7HooLUf2GzMENMJSV"
+  },
+  {
+    "brand_id": "brd_17ca7e4919fff4f2bd50d9",
+    "name": "Bask Bear Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_17ca7e4919fff4f2bd50d9.2ibFqgHrrRvyP0vQFqCSjhmhIpLkJvkQEJfA7Evy"
+  },
+  {
+    "brand_id": "brd_d33c937e5965a07b54ce17",
+    "name": "Zus Coffee",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_d33c937e5965a07b54ce17.nuFCkQMm3kRpQX8GbVYfzk1fRxA8oMbp6q2PCaVE"
+  },
+  {
+    "brand_id": "brd_f3a7f80dbbe597bfedde5b",
+    "name": "Coffee Bean MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_f3a7f80dbbe597bfedde5b.IqTaSA4aCCHM51u7TMtIG69RdvFNE9xDAq3HyDDV"
+  },
+  {
+    "brand_id": "brd_fcea816c824ce30a576bae",
+    "name": "Starbucks MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fcea816c824ce30a576bae.a1DdJZlWqOFfStlArrN49BLe0u7fhbeL3ZxhdFG7"
+  },
+  {
+    "brand_id": "brd_dd8465ff3521dabd7e80c2",
+    "name": "Tealive MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_dd8465ff3521dabd7e80c2.ORE9XGclsh0acSPpy7hqXuga1133HqnkTpPlatx9"
+  },
+  {
+    "brand_id": "brd_7cbefcef0e2543872ebf9e",
+    "name": "Boost Juice MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_7cbefcef0e2543872ebf9e.MnkiWSg6uck3phjQWw7piHRx2pLdfLtbNbXUSUCV"
+  },
+  {
+    "brand_id": "brd_7de71d5b017c59c86cc5cb",
+    "name": "Chatime MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_7de71d5b017c59c86cc5cb.5nSBFdgAjWCUGatpwBQxPBpRp6SZQLliI8aYoQ2E"
+  },
+  {
+    "brand_id": "brd_81ccded810fa8ffe4da1df",
+    "name": "Each-a-Cup MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_81ccded810fa8ffe4da1df.PTake4YKivS8OuAWhRsojQ4cG0HtQ50peZu43xH3"
+  },
+  {
+    "brand_id": "brd_fa04fd2ea7b9cffaf43801",
+    "name": "Gong Cha MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fa04fd2ea7b9cffaf43801.tSqDtS1Rz3GkCxbLpJdi5dAaLKYP6SAE9IW8QS6B"
+  },
+  {
+    "brand_id": "brd_caa3b51b1873f9b48ae6cc",
+    "name": "Tiger Sugar MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_caa3b51b1873f9b48ae6cc.zhvaxvmHQhiXS2i9fawuGmRx0AvnDYikOIR9gaee"
+  },
+  {
+    "brand_id": "brd_febc3222e0fc9d3f93fe35",
+    "name": "The Alley MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_febc3222e0fc9d3f93fe35.T0clbppbSZ9KWLT1Yt6AOFiLCNRIScYqBv9lSrVd"
+  },
+  {
+    "brand_id": "brd_8db40b1d4425a3b437bb8f",
+    "name": "Daboba",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_8db40b1d4425a3b437bb8f.kzyBUXOEbL1hDZwAabqaIID9DqgVWt2X0Fz9brjS"
+  },
+  {
+    "brand_id": "brd_cb6a23175ea504fcbc8758",
+    "name": "Xing Fu Tang",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_cb6a23175ea504fcbc8758.y6TdjPedqSL7gMBekhWrjOtzuoDXUEV4CdmysJnx"
+  },
+  {
+    "brand_id": "brd_4ed1f4cc6cf7c8ae54c130",
+    "name": "JinJja Chicken",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_4ed1f4cc6cf7c8ae54c130.sDk8Dnv60prH5gjtJ6EPfAsLJESHnnZRUDvkWSp9"
+  },
+  {
+    "brand_id": "brd_8f5b098efdc3bc389415fa",
+    "name": "Korean Tofu House MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_8f5b098efdc3bc389415fa.M78chbcmx8oo6kkFDL8cwpF33MBnp0r5d3uUAiE2"
+  },
+  {
+    "brand_id": "brd_10c8098a8b6e1df2d2a9f1",
+    "name": "Seoul Garden MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_10c8098a8b6e1df2d2a9f1.ANc90CuTfHBgY8h9EwvR1sVxYKtgy4zRjSDFNJgc"
+  },
+  {
+    "brand_id": "brd_dbc9b574e30a1ea1cc6367",
+    "name": "Bonchon MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_dbc9b574e30a1ea1cc6367.aIXCC6TBgtcNDoFSP7YPVd88LvdUl2sB9UXgT4WX"
+  },
+  {
+    "brand_id": "brd_78986a3359bbb3f4c55ac1",
+    "name": "KyoChon MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_78986a3359bbb3f4c55ac1.B9nMgTzc87n2W5z8MY5ue50Qsu4sIqMAurk5y9Vc"
+  },
+  {
+    "brand_id": "brd_0cd3b35330e067d7206552",
+    "name": "BBQ Chicken MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_0cd3b35330e067d7206552.3LTvcUAdsm56M8ICsDgJx5kyKZD3WnVKCxP5bSJm"
+  },
+  {
+    "brand_id": "brd_ebd82be20ccc14cf6fbafa",
+    "name": "Tony Roma's MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ebd82be20ccc14cf6fbafa.JVYwVUM068dSK588WdqentCyNJUpmBQLkgVUHuKv"
+  },
+  {
+    "brand_id": "brd_fee8fffadfdcf1ddc305d9",
+    "name": "Italianni's MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_fee8fffadfdcf1ddc305d9.1VUCO083DISyWT5kT80CzR3E0zdHwz2NLBMfMaCy"
+  },
+  {
+    "brand_id": "brd_bf0dc0abd5ccfc228eb3a5",
+    "name": "Pizza Express MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_bf0dc0abd5ccfc228eb3a5.EM5dWutupT3FBGt3egjHIqn9Oq7Cy917zM4SL8bC"
+  },
+  {
+    "brand_id": "brd_b989c5e0fafc7cf815cc00",
+    "name": "Las Vacas",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b989c5e0fafc7cf815cc00.FcJ0gyU7sp9CWMlhIIs3VECbv03d1x91DALGO3nL"
+  },
+  {
+    "brand_id": "brd_ace00b2009e99ed0aac30d",
+    "name": "El Cerdo",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ace00b2009e99ed0aac30d.Du768kse7Vn6lzCyWMG2jBP0MCiAwP2brzGLROPn"
+  },
+  {
+    "brand_id": "brd_0add78f532ca85b73cbf7a",
+    "name": "Sushi King MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_0add78f532ca85b73cbf7a.W5tE07yXpfh0kgn3WT8YeyUyxmCYpukfIuZ1fHIk"
+  },
+  {
+    "brand_id": "brd_4b2d5fc93fdcfea1516525",
+    "name": "Sakae Sushi MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_4b2d5fc93fdcfea1516525.GoIbWNnz98qHjH6OSmeo54PLL1mszDgSq8B0Oi1x"
+  },
+  {
+    "brand_id": "brd_22bebd415eacdeae7f4cb0",
+    "name": "Sushi Mentai",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_22bebd415eacdeae7f4cb0.ggDFqMPLfLzVFSIvfEV4lq09bGYRFhBYo7y05RKB"
+  },
+  {
+    "brand_id": "brd_dcbfdf35fd8e41eeef6a78",
+    "name": "Sushi Tei MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_dcbfdf35fd8e41eeef6a78.P5llkPhx96vnwijdqjOgtgxL7cNET3vpUOaVrKsS"
+  },
+  {
+    "brand_id": "brd_b8d9a45aec6bbc6ed87fcf",
+    "name": "Aoki Tei",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_b8d9a45aec6bbc6ed87fcf.a68qkTC8dhY0FqUbpz3CFcT8XcFjQbdBbI7XOixF"
+  },
+  {
+    "brand_id": "brd_a255efa017d5eb8a06cdad",
+    "name": "Tomoe MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_a255efa017d5eb8a06cdad.19XPhUyknZTMms9LqTubbLgFMaRvknhGXDUjxl0X"
+  },
+  {
+    "brand_id": "brd_cecdda63e413be8151f861",
+    "name": "Sushi Zanmai",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_cecdda63e413be8151f861.bO3QpqsebH9gpjFEENHAO6GMPoM2kZ956azXD12i"
+  },
+  {
+    "brand_id": "brd_6c052f801c50b5b6ffb131",
+    "name": "Genki Sushi MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_6c052f801c50b5b6ffb131.GGJCEOeN72rMdSAlWhV3CUXun6zIQJSG8mbfT5hE"
+  },
+  {
+    "brand_id": "brd_ccfdaffecfa38f15cffe71",
+    "name": "Watami MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_ccfdaffecfa38f15cffe71.w0vcBGQn6kVXGqh85uagk1t6vxpsjUoaNh032qJR"
+  },
+  {
+    "brand_id": "brd_aba0d61acae3ed9c2e1ebd",
+    "name": "Pepper Lunch MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_aba0d61acae3ed9c2e1ebd.LYHTM2CpUgWtAjHJ7sw5L4E9QiADGdfEpgTp9xTr"
+  },
+  {
+    "brand_id": "brd_a92bbfecd9dcdbbcca2a2f",
+    "name": "Sushi Express MY",
+    "region": "SEA",
+    "category": "F&B",
+    "api_token": "mock.brd_a92bbfecd9dcdbbcca2a2f.GuRNkev5162sQ3GNJgn21KDof7MKeSomVPku1kwq"
+  }
+]
