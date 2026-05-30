@@ -471,6 +471,31 @@ async def grant_consent(
 
     await _audit(r, body.user_id, "grant", audit_detail)
 
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    # The legacy ``_audit`` helper writes to a cap-evicted Redis LIST.
+    # Mirror to the durable PG ``audit_log`` table here. Fire-and-
+    # forget — never breaks the grant path.
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=body.user_id,
+            actor_type="customer",
+            action="consent.grant",
+            target_type="user",
+            target_id=body.user_id,
+            ip_address=_client_ip(request),
+            result="success",
+            payload={
+                "granted": granted,
+                "policy_version": body.policy_version,
+                "regulated_scopes": regulated_in_request or None,
+            },
+        )
+    except Exception as exc:
+        logger.warning("audit_log (consent.grant) skipped: %s", exc)
+
     return {
         "user_id": body.user_id,
         "granted": granted,
@@ -543,6 +568,24 @@ async def revoke_consent(
         body.user_id,
         revoked,
     )
+
+    # ── Durable audit (PIPL §51 / GDPR Art. 30) ─────────────────────
+    try:
+        from app.services.audit_log_service import (
+            record_event_fire_and_forget,
+        )
+        await record_event_fire_and_forget(
+            actor_id=body.user_id,
+            actor_type="customer",
+            action="consent.revoke",
+            target_type="user",
+            target_id=body.user_id,
+            ip_address=_client_ip(request),
+            result="success",
+            payload={"revoked": revoked, "cascade": "queued"},
+        )
+    except Exception as exc:
+        logger.warning("audit_log (consent.revoke) skipped: %s", exc)
 
     return {
         "user_id": body.user_id,
