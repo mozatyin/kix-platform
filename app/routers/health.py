@@ -283,3 +283,58 @@ async def metrics() -> PlainTextResponse:
         content=_render_pool_metrics(),
         media_type="text/plain; version=0.0.4; charset=utf-8",
     )
+
+
+# ── Stripe live readiness ────────────────────────────────────────────────
+
+
+@router.get("/api/v1/health/stripe-mode")
+async def stripe_mode_health(
+    r: aioredis.Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Surface Stripe mode + day-91 charge cron health to ops.
+
+    Critical for production: if mode='mock' in prod, NO real money flows.
+    Day-91 cron count proves the auto-renewal loop is actually firing.
+    """
+    try:
+        from app.services.stripe_live import get_mode
+        mode = get_mode()
+    except Exception as exc:
+        mode = f"error:{exc}"
+
+    # Last 24h day-91 cron stats from Redis
+    try:
+        renewals = int(await r.get("billing_cron:day91:renewed_count_24h") or 0)
+        failures = int(await r.get("billing_cron:day91:failed_count_24h") or 0)
+        last_run_ts = await r.get("billing_cron:day91:last_run_ts")
+        last_run_ts = float(last_run_ts) if last_run_ts else None
+    except Exception:
+        renewals = failures = 0
+        last_run_ts = None
+
+    # Production warnings
+    warnings = []
+    is_production_region = CURRENT_REGION not in ("dev", "local", "test", None)
+    if is_production_region and mode == "mock":
+        warnings.append(
+            "CRITICAL: production region but Stripe in mock mode — "
+            "no real charges will flow. Set STRIPE_API_KEY=sk_live_*."
+        )
+    if last_run_ts is None:
+        warnings.append("day-91 cron has never run (or counter missing)")
+    elif last_run_ts and (time.time() - last_run_ts) > 86400 * 2:
+        warnings.append(
+            f"day-91 cron last ran {(time.time() - last_run_ts) / 3600:.1f}h ago "
+            f"(>48h — stale)"
+        )
+
+    return {
+        "mode": mode,  # live / test / mock
+        "production_region": is_production_region,
+        "day91_renewals_24h": renewals,
+        "day91_failures_24h": failures,
+        "last_run_ts": last_run_ts,
+        "warnings": warnings,
+        "is_ready_for_real_money": (mode != "mock" and not warnings),
+    }
