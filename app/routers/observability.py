@@ -131,6 +131,18 @@ async def viral_kfactor(
     """
     k_now = await obs.compute_kfactor_realtime(brand_id, window_days=window_days)
     trailing = await obs.kfactor_trailing(brand_id)
+    # Wave G #3 additive merge: Viral Amplifier per-trigger breakdown.
+    amplifier_block: dict[str, Any] = {}
+    try:
+        from app.services import viral_amplifier as va
+        from app.redis_client import get_redis as _get_r
+
+        _r = await _get_r()
+        amplifier_block = await va.kfactor_breakdown(
+            _r, brand_id, window_days=window_days
+        )
+    except Exception:  # noqa: BLE001 — never break the dashboard
+        amplifier_block = {}
     return {
         "brand_id": brand_id,
         "kfactor": k_now,
@@ -138,6 +150,9 @@ async def viral_kfactor(
         "trailing": trailing,
         "explosion_warning": k_now > obs.KFACTOR_EXPLOSION_THRESHOLD,
         "below_productive_floor": k_now < obs.KFACTOR_PRODUCTIVE_FLOOR,
+        "amplifier": amplifier_block,
+        "historical_baseline_k": 0.40,
+        "target_self_sustaining_k": 1.0,
     }
 
 
