@@ -211,6 +211,20 @@ and the shim helpers in `app.api_standards`.
     )
 
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+
+    # ── WhatsApp OTP auth (Wave E item 6) ──────────────────────────────
+    # Additive — coexists with the legacy device-sig flow on
+    # /api/v1/auth/token. SMB merchants + SEA consumers prefer phone-OTP
+    # over email; this router is the back-end for the WhatsApp Business
+    # Cloud API send. Mock mode is default when WHATSAPP_API_TOKEN is
+    # unset so dev/CI need zero extra config.
+    from app.routers import whatsapp_auth as _whatsapp_auth_router
+    app.include_router(
+        _whatsapp_auth_router.router,
+        prefix="/api/v1/auth/whatsapp",
+        tags=["auth-whatsapp"],
+    )
+
     app.include_router(game.router, prefix="/api/v1/game", tags=["game"])
     app.include_router(energy.router, prefix="/api/v1/energy", tags=["energy"])
     app.include_router(
@@ -261,6 +275,15 @@ and the shim helpers in `app.api_standards`.
         vouchers.cross_store_router,
         prefix="/api/v1/vouchers",
         tags=["vouchers-cross-store"],
+    )
+    # Cross-brand voucher pooling — KiX's killer network-effect lock-in.
+    # See app/services/voucher_pool.py for the data model + WATCH/MULTI
+    # atomicity contract.
+    from app.routers import voucher_pools
+    app.include_router(
+        voucher_pools.router,
+        prefix="/api/v1/voucher-pools",
+        tags=["voucher-pools"],
     )
     app.include_router(reward.router, prefix="/internal/reward", tags=["reward"])
     app.include_router(qr.router, prefix="/internal/qr", tags=["qr"])
@@ -416,6 +439,14 @@ and the shim helpers in `app.api_standards`.
         tags=["i18n"],
     )
 
+    # ── Retention Engine: streaks / habits / cohorts / churn / nudges ──
+    from app.routers import retention
+    app.include_router(
+        retention.router,
+        prefix="/api/v1/retention",
+        tags=["retention"],
+    )
+
     # ── Disputes + Refund: merchant challenges fraud/fake conversions ──
     from app.routers import disputes
     app.include_router(
@@ -484,6 +515,14 @@ and the shim helpers in `app.api_standards`.
     )
     app.include_router(
         auction.router, prefix="/api/v1/auction", tags=["auction"]
+    )
+
+    # ── Multi-week Campaign Arcs (Monopoly-style + advent + bracket) ───
+    from app.routers import campaign_arcs
+    app.include_router(
+        campaign_arcs.router,
+        prefix="/api/v1/campaign-arcs",
+        tags=["campaign-arcs"],
     )
 
     # ── Audiences: Custom + Lookalike for retargeting / exclusion ──────
@@ -754,6 +793,25 @@ and the shim helpers in `app.api_standards`.
             "psp webhook router not mounted: %s", _exc
         )
 
+    # ── POS Integration: Toast / Square / Loyverse / Foodzaps ──────────
+    try:
+        from app.routers import pos_integration
+        app.include_router(
+            pos_integration.router,
+            prefix="/api/v1/pos",
+            tags=["pos_integration"],
+        )
+        app.include_router(
+            pos_integration.webhook_router,
+            prefix="/api/v1/webhooks",
+            tags=["pos_webhooks"],
+        )
+    except Exception as _exc:  # pragma: no cover — never fail boot
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "pos integration router not mounted: %s", _exc
+        )
+
     # ── Merchant Dashboards: today / cumulative / leaderboard / insights ─
     from app.routers import dashboards
     app.include_router(
@@ -872,6 +930,23 @@ and the shim helpers in `app.api_standards`.
         _support_router.admin_router,
         prefix="/api/v1/admin/support",
         tags=["support-admin"],
+    )
+
+    # ── Prize fulfillment (Realtime Media / Merkle ePrize parity) ─────
+    # Instant-win + sweepstakes pools, per-jurisdiction legal compliance
+    # (US W-9 trigger, EU GDPR consent, SG prize cap, CN raffle ban),
+    # anti-fraud (rate limit + IP collision review queue), claim flow.
+    # Public routes under /api/v1/prizes; admin under /api/v1/admin/prizes.
+    from app.routers import prizes as _prizes_router
+    app.include_router(
+        _prizes_router.router,
+        prefix="/api/v1/prizes",
+        tags=["prizes"],
+    )
+    app.include_router(
+        _prizes_router.admin_router,
+        prefix="/api/v1/admin/prizes",
+        tags=["prizes-admin"],
     )
 
     # ── Trinity 3T iteration engine (meta-tooling, admin-only) ────────
