@@ -100,3 +100,27 @@ Original Bible. Marketing-heavy. Numbers drifted from code (claimed 38 routers /
 ---
 
 *Bible discipline: this changelog updates with every Bible edit. No silent rewrites.*
+
+---
+
+## v2.1 — 2026-05-31 · Wave G+H post-iteration sync
+
+**Author**: KiX window session
+
+**Changes**:
+- Appendix A numbers refreshed (HEAD 7554eac, all 6 code-surface metrics):
+  routers 94→123, endpoints 925→1064, workers 9→15, services 15→45,
+  migrations 7→10, tests 1006→1492, LOC 109.8k→135.1k.
+  `bible_check.py` now PASS at 0% drift on 6/11 metrics.
+- ADR #4 status note clarified: explicit `tests/test_auction_adr4_new_users_only.py`
+  (9 tests) shipped 2026-05-31 to lock the default behavior. Was implemented but
+  unproven; now formally tested.
+
+**Trinity context**: this update closes the Trinity Gap Analysis Section §2
+finding (Bible drift FAIL on 2/6 metrics, ADR #4 marked uncertain).
+
+**Net code added since v2.0**: Waves E/F/G/H shipped 25k LOC across 29 routers,
+6 workers, 30 services, 3 migrations, 486 tests. Major surfaces: country slots
+(Opp #3), wallet reconciliation, viral amplifier, retention engine, multi-week
+arcs, KiX ID SSO, WhatsApp OTP, POS framework, prize fulfillment, 5 PSPs, +20
+wavef_* promotion mechanics.

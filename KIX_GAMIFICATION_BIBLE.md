@@ -314,22 +314,22 @@ Alpha program scaffold is live (Chapter 1.13). Zero real merchants enrolled as o
 Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from these.
 
 ```
-HEAD                : 438fbd5
-Last commit         : tests: cover Tier 3 routers (game, social, p2p, multiplayer, modules, etc.)
-Generated           : 2026-05-30
+HEAD                : 7554eac
+Last commit         : feat(health): /api/v1/health/stripe-mode readiness surface (Wave H Opp #2)
+Generated           : 2026-05-31
 
-Code surface
-  routers           : 94            (ls app/routers/*.py | grep -v __init__)
-  endpoints         : 925           (grep '^@router' app/routers/*.py)
-  workers           : 9             (ls app/workers/*.py | grep -v __init__)
-  services          : 15            (ls app/services/*.py | grep -v __init__)
-  migrations        : 7             (ls migrations/versions/*.py)
-  total Python LOC  : ~109,800      (find app -name '*.py' | xargs wc -l)
+Code surface (after Wave G + H)
+  routers           : 123           (was 94; +29: country_slots, wavef_*, support, retention, prizes, ...)
+  endpoints         : 1,064         (was 925; +139)
+  workers           : 15            (was 9; +6: wallet_reconciliation, voucher_lifecycle, support_sla, ...)
+  services          : 45            (was 15; +30: wavef_*, retention, viral_amplifier, country_slots ...)
+  migrations        : 10            (was 7; +3: audit_log_0007, prizes_0008, whatsapp_auth_0009, country_slots_0010)
+  total Python LOC  : ~135,100      (was 109,800; +25k from Waves E/F/G/H)
 
 Test surface
-  test files        : 104           (find tests -name 'test_*.py')
-  test functions    : 1,006         (grep '^def test_\|^async def test_' tests/test_*.py)
-  test LOC          : ~20,800
+  test files        : 143           (was 104; +39 — Waves E/F/G/H added test discipline)
+  test functions    : 1,492         (was 1,006; +486)
+  test LOC          : ~31,700
 
 Data
   recipes           : 79            (len(app/data/recipes_seed.json))
@@ -396,7 +396,7 @@ For each P0/P1 gap, the current state, the fix path, and the Wave that owns it. 
 | 1 | TikTok/Google single-counterparty model, **not** Plenti two-sided alliance | R5 | Plenti $100M / 3-year shutdown; 60% alliances die within 10 years | ✅ |
 | 2 | 3-month trial, not 1-year | R11 | Apple Music strategy — accumulated switching cost > renewal cost | ✅ |
 | 3 | Credit card on file mandatory at signup | R11 | One card / one account anti-fraud + day-91 auto-charge | ✅ (pending Stripe live) |
-| 4 | Auction default `target_audience=new_users_only` | R5 | Don't buy back your own customers | ✅ |
+| 4 | Auction default `target_audience=new_users_only` | R5 | Don't buy back your own customers | ✅ (`auction.py:1310` enforced + 9 explicit tests in `tests/test_auction_adr4_new_users_only.py` 2026-05-31) |
 | 5 | KiX is the user's single front-end (KiX App) | R5 | Like Facebook Connect — KiX owns the user relationship | 🟡 (H5 only today) |
 | 6 | 7-day attribution default, configurable 1-365 days | R6 | F&B 7d, medical 365d, real estate 180d | ✅ |
 | 7 | 79 recipes / 26 industries | R8 | Merchants choose by industry, don't design from scratch | ✅ |
