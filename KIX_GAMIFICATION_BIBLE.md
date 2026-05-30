@@ -403,6 +403,8 @@ For each P0/P1 gap, the current state, the fix path, and the Wave that owns it. 
 | 8 | LLM for creative only, decisions deterministic | always | LLM non-determinism breaks money math + compliance evidence | ✅ |
 | 9 | Audit log durable in PostgreSQL, not Redis LIST | R12 | PIPL §51 + GDPR Art 30 require regulator-grade retention | ✅ (new) |
 | 10 | Bible auto-checked by `scripts/bible_check.py` | R12 | Documentation discipline contract-first, not post-hoc | ✅ (new) |
+| 11 | **First 100 merchants per country pay 0% take rate forever** | Wave H (2026-05-31) | Founding-merchant scarcity drives global Day-1 land grab; same offer every country (Tanzania, Cambodia, Philippines, Singapore) prevents per-region dynamics. Atomic claim via `UPDATE...RETURNING ... FOR UPDATE SKIP LOCKED` — no race possible. Public counter on `pricing.html` makes it credible. | ✅ (`migrations/0010_country_slots.py` + `app/services/country_slots.py` + `app/routers/country_slots.py` + 15 tests `tests/test_country_slots.py`) |
+| 12 | **Wallet ledger reconciliation worker** runs hourly to detect drift | Wave H (2026-05-31) | At 100m+ daily auction events, even 0.01% bookkeeping error = $millions silent loss. Worker computes expected = topups + auto-recharges − charges + refunds from durable HASHes; compares to live `wallet:{bid}:balance`. Severity tiers: ok / warn ($10) / alert ($100) / critical ($10k). Alerts to Redis LIST capped 1000. Never auto-repairs — humans review. | ✅ (`app/workers/wallet_reconciliation_worker.py` + 12 tests `tests/test_wallet_reconciliation.py`) |
 
 ---
 

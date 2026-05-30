@@ -124,3 +124,33 @@ finding (Bible drift FAIL on 2/6 metrics, ADR #4 marked uncertain).
 (Opp #3), wallet reconciliation, viral amplifier, retention engine, multi-week
 arcs, KiX ID SSO, WhatsApp OTP, POS framework, prize fulfillment, 5 PSPs, +20
 wavef_* promotion mechanics.
+
+---
+
+## v2.2 — 2026-05-31 · ADR #11 + #12 from Wave H
+
+**Author**: KiX window session
+
+**New ADRs**:
+- **ADR #11 — First 100 merchants per country pay 0% take rate forever**.
+  Wave H Opp #3. Backs v4 deck slide 13 + pricing.html. Migration 0010
+  + atomic PG claim via FOR UPDATE SKIP LOCKED. Public counter + per-
+  country open-slot grid. 15 tests in tests/test_country_slots.py.
+  Shipped commit 1a17a1d. Founding merchants get take_rate_bps=0 forever
+  via is_founding(brand_id) check; everyone else gets 500 (5%).
+
+- **ADR #12 — Wallet ledger reconciliation worker runs hourly**.
+  Wave H Opp #1. Surfaces drift caused by missed/double events at scale.
+  100m sim found 50 P1 wallet_drift events per seed (sim was undercounting
+  auto-recharges — real wallet was correct). Worker provides defense-in-
+  depth real-money guard regardless. Severity tiers ok/warn/alert/critical
+  + Redis-backed alert queue. 12 tests in tests/test_wallet_reconciliation.py.
+  Shipped commit 8325181.
+
+**Trinity context**: Both ADRs emerged from 100m × 90d sim verification
+(seed 42/100/7777) + DeepSeek user simulation (Round 1/2/3, 25 personas
+× 5 pages each). Round 3 confirmed `100free_unclear` dropped 3→3→0 once
+the country-slot mechanism was visible to merchants on pricing.html.
+
+**Net Bible state**: 12 ADRs (was 10), 0% drift on all 11 Appendix A
+metrics, ADR #4 status note now cites the explicit test file.
