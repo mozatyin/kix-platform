@@ -751,6 +751,25 @@ and the shim helpers in `app.api_standards`.
         tags=["portal"],
     )
 
+    # ── Portal Settings: profile / billing / PMs / team / notif / etc. ──
+    # See app/routers/portal_settings.py — read-mostly composition over
+    # wallet / payment_methods / invoices for the Settings view, plus the
+    # account switcher (/api/v1/portal/accounts/me).
+    from app.routers import portal_settings
+    app.include_router(
+        portal_settings.router,
+        prefix="/api/v1/portal",
+        tags=["portal-settings"],
+    )
+
+    # ── Portal Conversion Pixels: create / list / events / snippet ──────
+    from app.routers import portal_pixels
+    app.include_router(
+        portal_pixels.router,
+        prefix="/api/v1/portal",
+        tags=["portal-pixels"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
