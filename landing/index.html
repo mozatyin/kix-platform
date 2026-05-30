@@ -1,110 +1,122 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en-SG">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KiX — 游戏化版的 TikTok Ads</title>
-<meta name="description" content="KiX = TikTok Ads for Gamification. 所有游戏化功能免费，只为新用户付费。">
-<meta property="og:title" content="KiX — TikTok Ads for Gamification">
-<meta property="og:description" content="所有游戏化功能免费。只在我们为你交付一个新用户时才付费。">
+<title data-i18n="index:meta.title">KiX — The Gamification Marketing Platform</title>
+<meta name="description" data-i18n-attr="content:index:meta.description" content="Win customers through play. Free gamification SaaS — pay only when we deliver a new customer.">
+<meta property="og:title" data-i18n-attr="content:index:meta.og_title" content="KiX — Win Customers Through Play">
+<meta property="og:description" data-i18n-attr="content:index:meta.og_description" content="All gamification features are free. You only pay when a new customer arrives.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --green:#00FC00;
-  --green-dim:#00cc00;
-  --green-soft:rgba(0,252,0,.08);
-  --green-border:rgba(0,252,0,.18);
-  --dark:#0a0a0a;
-  --dark-2:#111;
-  --dark-3:#161616;
-  --border:#1e1e1e;
-  --border-light:#2a2a2a;
-  --text:#fff;
-  --text-dim:rgba(255,255,255,.62);
-  --text-muted:rgba(255,255,255,.38);
-  --font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-  --radius:16px;
-  --radius-sm:10px;
-  --max:1180px;
+  /* Brand */
+  --brand:#00B341;            /* WCAG-AA-safe KiX green (used sparingly) */
+  --brand-hover:#009335;
+  --brand-soft:rgba(0,179,65,.08);
+  --brand-border:rgba(0,179,65,.22);
+  --brand-hero:#00FC00;       /* Vibrant green reserved for hero accent only */
+  /* Neutrals */
+  --bg:#FFFFFF;
+  --bg-alt:#F7F8FA;
+  --bg-card:#FFFFFF;
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+  --text:#0F172A;
+  --text-dim:#475569;
+  --text-muted:#64748B;
+  /* Type */
+  --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  /* Geometry */
+  --radius:6px;
+  --radius-sm:4px;
+  --radius-lg:8px;
+  --max:1200px;
+  /* Shadow */
+  --shadow-sm:0 1px 2px rgba(15,23,42,.06);
+  --shadow:0 4px 12px rgba(15,23,42,.06);
 }
 html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;scroll-behavior:smooth}
-body{font-family:var(--font);background:var(--dark);color:var(--text);line-height:1.55;overflow-x:hidden;min-height:100vh}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.55;overflow-x:hidden;min-height:100vh;font-size:15px}
 a{text-decoration:none;color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--radius-sm)}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 img,svg{display:block;max-width:100%}
 .container{max-width:var(--max);margin:0 auto;padding:0 24px}
 
 /* ── Header ─────────────────────────────────────────────────── */
 header{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  background:rgba(10,10,10,.82);
-  backdrop-filter:saturate(180%) blur(20px);
-  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:saturate(180%) blur(12px);
+  -webkit-backdrop-filter:saturate(180%) blur(12px);
   border-bottom:1px solid var(--border);
 }
 .nav{display:flex;align-items:center;justify-content:space-between;height:60px;}
-.logo{font-size:22px;font-weight:800;letter-spacing:-.5px}
-.logo span{color:var(--green)}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
+.logo span{color:var(--brand)}
 .nav-links{display:flex;gap:28px;align-items:center}
-.nav-links a{font-size:14px;color:var(--text-dim);transition:color .2s}
+.nav-links a{font-size:14px;color:var(--text-dim);transition:color .15s;font-weight:500}
 .nav-links a:hover{color:var(--text)}
 .nav-cta{
-  padding:8px 16px;background:var(--green);color:#000 !important;
-  border-radius:8px;font-weight:600;font-size:14px;
-  transition:transform .2s, box-shadow .2s;
+  padding:8px 16px;background:var(--brand);color:#FFFFFF !important;
+  border-radius:var(--radius);font-weight:600;font-size:14px;
+  transition:background .15s;
 }
-.nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,252,0,.25)}
+.nav-cta:hover{background:var(--brand-hover)}
 @media(max-width:640px){.nav-links{gap:14px}.nav-links a:not(.nav-cta){display:none}}
 
-/* ── Hero ───────────────────────────────────────────────────── */
+/* ── Hero (sole gradient allowance) ─────────────────────────── */
 .hero{
-  padding:140px 0 100px;
+  padding:96px 0 80px;
   position:relative;overflow:hidden;
   background:
-    radial-gradient(900px 500px at 80% -10%, rgba(0,252,0,.10) 0%, transparent 60%),
-    radial-gradient(700px 400px at 10% 30%, rgba(0,252,0,.05) 0%, transparent 60%),
-    var(--dark);
+    radial-gradient(900px 500px at 80% -10%, rgba(0,252,0,.08) 0%, transparent 60%),
+    radial-gradient(700px 400px at 10% 30%, rgba(0,179,65,.04) 0%, transparent 60%),
+    var(--bg);
+  border-bottom:1px solid var(--border);
 }
 .hero-inner{text-align:center;max-width:880px;margin:0 auto}
 .hero-badge{
   display:inline-flex;align-items:center;gap:8px;
-  padding:6px 14px;background:var(--green-soft);
-  border:1px solid var(--green-border);border-radius:999px;
-  font-size:13px;color:var(--green);margin-bottom:28px;font-weight:500;
+  padding:6px 14px;background:var(--brand-soft);
+  border:1px solid var(--brand-border);border-radius:999px;
+  font-size:13px;color:var(--brand);margin-bottom:24px;font-weight:500;
 }
-.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green);
-  box-shadow:0 0 12px var(--green);animation:pulse 2s ease-in-out infinite}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--brand-hero);
+  box-shadow:0 0 12px rgba(0,252,0,.5);animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.5}}
 h1.hero-title{
-  font-size:clamp(40px,7vw,72px);font-weight:800;line-height:1.05;
-  letter-spacing:-2px;margin-bottom:24px;
+  font-size:clamp(36px,6vw,60px);font-weight:800;line-height:1.05;
+  letter-spacing:-1.5px;margin-bottom:20px;color:var(--text);
 }
-h1.hero-title em{font-style:normal;color:var(--green)}
-.hero-sub{font-size:clamp(17px,2vw,21px);color:var(--text-dim);max-width:680px;margin:0 auto 16px;line-height:1.5}
-.hero-sub-en{font-size:14px;color:var(--text-muted);margin-bottom:40px}
-.hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+h1.hero-title em{font-style:normal;color:var(--brand)}
+.hero-sub{font-size:clamp(16px,1.5vw,19px);color:var(--text-dim);max-width:680px;margin:0 auto 32px;line-height:1.5}
+.hero-sub strong{color:var(--brand);font-weight:700}
+.hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .btn{
   display:inline-flex;align-items:center;gap:8px;
-  padding:14px 28px;border-radius:12px;font-weight:600;font-size:16px;
-  transition:transform .2s, box-shadow .2s, background .2s;
+  padding:12px 22px;border-radius:var(--radius);font-weight:600;font-size:15px;
+  transition:background .15s, border-color .15s, color .15s;
 }
-.btn-primary{background:var(--green);color:#000}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,252,0,.3)}
-.btn-secondary{background:var(--dark-2);color:var(--text);border:1px solid var(--border-light)}
-.btn-secondary:hover{background:var(--dark-3);border-color:var(--green-border)}
+.btn-primary{background:var(--brand);color:#FFFFFF}
+.btn-primary:hover{background:var(--brand-hover)}
+.btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border-strong)}
+.btn-secondary:hover{border-color:var(--brand);color:var(--brand)}
 
 /* ── Sections ───────────────────────────────────────────────── */
-section{padding:96px 0}
-@media(max-width:640px){section{padding:64px 0}}
-.section-head{text-align:center;max-width:720px;margin:0 auto 56px}
+section{padding:80px 0}
+@media(max-width:640px){section{padding:56px 0}}
+.section-alt{background:var(--bg-alt);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.section-head{text-align:center;max-width:720px;margin:0 auto 48px}
 .section-tag{
-  display:inline-block;font-size:12px;font-weight:600;letter-spacing:1.5px;
-  text-transform:uppercase;color:var(--green);margin-bottom:14px;
+  display:inline-block;font-size:12px;font-weight:600;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--brand);margin-bottom:12px;
 }
-.section-title{font-size:clamp(28px,4vw,42px);font-weight:700;letter-spacing:-1px;margin-bottom:14px;line-height:1.15}
-.section-title em{font-style:normal;color:var(--green)}
-.section-sub{font-size:17px;color:var(--text-dim);line-height:1.55}
-.section-sub-en{font-size:13px;color:var(--text-muted);margin-top:6px}
+.section-title{font-size:clamp(26px,3.5vw,38px);font-weight:700;letter-spacing:-.8px;margin-bottom:12px;line-height:1.2;color:var(--text)}
+.section-title em{font-style:normal;color:var(--brand)}
+.section-sub{font-size:16px;color:var(--text-dim);line-height:1.55}
 
 /* ── Cards ──────────────────────────────────────────────────── */
 .card-grid{display:grid;gap:20px}
@@ -114,38 +126,34 @@ section{padding:96px 0}
 @media(max-width:880px){.cols-3,.cols-4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:540px){.cols-3,.cols-4,.cols-2{grid-template-columns:1fr}}
 .card{
-  background:var(--dark-2);border:1px solid var(--border);
-  border-radius:var(--radius);padding:28px;
-  transition:transform .25s, border-color .25s, background .25s;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:24px;
+  transition:border-color .15s, box-shadow .15s;
 }
-.card:hover{transform:translateY(-3px);border-color:var(--green-border);background:var(--dark-3)}
+.card:hover{border-color:var(--border-strong);box-shadow:var(--shadow)}
 .card-icon{
-  width:48px;height:48px;border-radius:12px;
-  background:var(--green-soft);border:1px solid var(--green-border);
+  width:40px;height:40px;border-radius:var(--radius);
+  background:var(--brand-soft);
   display:flex;align-items:center;justify-content:center;
-  font-size:24px;margin-bottom:18px;
+  font-size:20px;margin-bottom:14px;
 }
-.card-num{
-  font-size:13px;font-weight:700;color:var(--green);letter-spacing:1px;margin-bottom:10px;
-}
-.card-title{font-size:18px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+.card-title{font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-.2px;color:var(--text)}
 .card-body{font-size:14px;color:var(--text-dim);line-height:1.55}
-.card-body-en{font-size:12px;color:var(--text-muted);margin-top:6px}
-.card-stat{font-size:32px;font-weight:800;color:var(--green);margin-bottom:6px;letter-spacing:-1px}
+.card-stat{font-size:30px;font-weight:800;color:var(--brand);margin-bottom:6px;letter-spacing:-1px}
 
 /* ── How it works ───────────────────────────────────────────── */
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;position:relative}
 @media(max-width:880px){.steps{grid-template-columns:1fr}}
 .step{
-  background:var(--dark-2);border:1px solid var(--border);border-radius:var(--radius);
-  padding:32px 28px;position:relative;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:28px 24px;position:relative;
 }
 .step-num{
-  position:absolute;top:-18px;left:28px;
-  width:36px;height:36px;border-radius:50%;
-  background:var(--green);color:#000;
+  position:absolute;top:-16px;left:24px;
+  width:32px;height:32px;border-radius:50%;
+  background:var(--brand);color:#FFFFFF;
   display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:16px;
+  font-weight:700;font-size:14px;
 }
 
 /* ── Industries grid ────────────────────────────────────────── */
@@ -155,106 +163,104 @@ section{padding:96px 0}
 @media(max-width:880px){.industries{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:540px){.industries{grid-template-columns:repeat(3,1fr)}}
 .industry{
-  background:var(--dark-2);border:1px solid var(--border);
-  border-radius:var(--radius-sm);padding:18px 12px;text-align:center;
-  transition:border-color .2s, background .2s;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px 12px;text-align:center;
+  transition:border-color .15s, background .15s;
 }
-.industry:hover{border-color:var(--green-border);background:var(--dark-3)}
-.industry-icon{font-size:24px;margin-bottom:8px}
-.industry-name{font-size:12px;color:var(--text-dim);font-weight:500}
-.industry-en{font-size:10px;color:var(--text-muted);margin-top:2px}
+.industry:hover{border-color:var(--brand-border);background:var(--brand-soft)}
+.industry-icon{font-size:22px;margin-bottom:6px;line-height:1}
+.industry-name{font-size:13px;color:var(--text);font-weight:500}
 
 /* ── Pricing ────────────────────────────────────────────────── */
 .pricing{display:grid;grid-template-columns:1fr 1.4fr;gap:20px}
 @media(max-width:880px){.pricing{grid-template-columns:1fr}}
 .price-card{
-  background:var(--dark-2);border:1px solid var(--border);
-  border-radius:var(--radius);padding:36px 32px;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:32px 28px;
 }
 .price-card.featured{
-  background:linear-gradient(180deg, rgba(0,252,0,.06), rgba(0,252,0,.02));
-  border:1px solid var(--green-border);
+  border:1px solid var(--brand);
 }
-.price-label{font-size:13px;font-weight:600;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
-.price-amount{font-size:42px;font-weight:800;letter-spacing:-1.5px;margin-bottom:6px}
-.price-amount small{font-size:16px;color:var(--text-dim);font-weight:500}
-.price-desc{font-size:14px;color:var(--text-dim);margin-bottom:24px}
-.price-list{list-style:none;display:flex;flex-direction:column;gap:12px}
-.price-list li{font-size:14px;color:var(--text-dim);display:flex;gap:10px;align-items:flex-start}
+.price-label{font-size:12px;font-weight:600;color:var(--brand);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.price-amount{font-size:36px;font-weight:800;letter-spacing:-1.2px;margin-bottom:4px;color:var(--text)}
+.price-amount small{font-size:14px;color:var(--text-dim);font-weight:500}
+.price-desc{font-size:14px;color:var(--text-dim);margin-bottom:20px}
+.price-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.price-list li{font-size:14px;color:var(--text);display:flex;gap:10px;align-items:flex-start}
 .price-list li::before{
   content:"";flex:none;width:18px;height:18px;border-radius:50%;
-  background:var(--green-soft);border:1px solid var(--green-border);
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%2300FC00' d='M6.5 11.2 3.7 8.4l1-1L6.5 9.2l5-5 1 1z'/></svg>");
+  background:var(--brand-soft);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%2300B341' d='M6.5 11.2 3.7 8.4l1-1L6.5 9.2l5-5 1 1z'/></svg>");
   background-position:center;background-repeat:no-repeat;background-size:16px 16px;margin-top:2px;
 }
 .tier-row{
   display:flex;justify-content:space-between;align-items:center;
-  padding:12px 0;border-bottom:1px solid var(--border);
+  padding:11px 0;border-bottom:1px solid var(--border);gap:12px;
 }
 .tier-row:last-child{border-bottom:none}
-.tier-name{font-weight:600;font-size:14px}
-.tier-name span{color:var(--text-muted);font-weight:400;margin-left:8px}
-.tier-price{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--green)}
+.tier-name{font-weight:600;font-size:14px;color:var(--text)}
+.tier-name span{color:var(--text-muted);font-weight:400;margin-left:8px;font-size:13px}
+.tier-price{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--text);font-weight:600;white-space:nowrap}
 
 /* ── Testimonials ───────────────────────────────────────────── */
 .quote{
-  background:var(--dark-2);border:1px solid var(--border);
-  border-radius:var(--radius);padding:28px;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:24px;
 }
-.quote-stat{font-size:28px;font-weight:800;color:var(--green);margin-bottom:10px;letter-spacing:-.5px}
-.quote-text{font-size:15px;color:var(--text-dim);line-height:1.6;margin-bottom:18px}
+.quote-stat{font-size:24px;font-weight:800;color:var(--brand);margin-bottom:10px;letter-spacing:-.5px}
+.quote-text{font-size:14.5px;color:var(--text);line-height:1.6;margin-bottom:16px}
 .quote-author{font-size:13px;font-weight:600;color:var(--text)}
 .quote-role{font-size:12px;color:var(--text-muted)}
 
 /* ── For Users ─────────────────────────────────────────────── */
-.user-section{
-  background:linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
-  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-}
 .user-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
 @media(max-width:880px){.user-grid{grid-template-columns:1fr}}
-.app-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.app-ctas{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
 .app-btn{
   display:inline-flex;align-items:center;gap:10px;
-  padding:12px 18px;background:#000;border:1px solid var(--border-light);
-  border-radius:12px;transition:border-color .2s, transform .2s;
+  padding:10px 16px;background:var(--bg-card);border:1px solid var(--border-strong);
+  border-radius:var(--radius);transition:border-color .15s;
 }
-.app-btn:hover{border-color:var(--green-border);transform:translateY(-2px)}
-.app-btn-icon{font-size:22px}
+.app-btn:hover{border-color:var(--brand)}
+.app-btn-icon{font-size:20px}
 .app-btn-text{display:flex;flex-direction:column;line-height:1.1}
 .app-btn-text small{font-size:10px;color:var(--text-muted)}
-.app-btn-text strong{font-size:14px;font-weight:600}
+.app-btn-text strong{font-size:13px;font-weight:600;color:var(--text)}
 
 /* ── Investor strip ────────────────────────────────────────── */
-.investor-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+.investor-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center}
 @media(max-width:880px){.investor-grid{grid-template-columns:repeat(2,1fr)}}
 .investor-stat{
-  padding:24px 16px;background:var(--dark-2);
-  border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px 16px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:var(--radius-lg);
 }
-.investor-num{font-size:32px;font-weight:800;color:var(--green);letter-spacing:-1px}
+.investor-num{font-size:30px;font-weight:800;color:var(--brand);letter-spacing:-1px}
 .investor-label{font-size:12px;color:var(--text-dim);margin-top:6px}
 
 /* ── Footer ────────────────────────────────────────────────── */
-footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505}
-.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
+footer{padding:48px 0 32px;border-top:1px solid var(--border);background:var(--bg-alt)}
+.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;margin-bottom:32px}
 @media(max-width:880px){.footer-grid{grid-template-columns:1fr 1fr;gap:32px}}
-.footer-col h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;letter-spacing:.3px}
-.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
-.footer-col a{font-size:13px;color:var(--text-dim);transition:color .2s}
-.footer-col a:hover{color:var(--green)}
+.footer-col h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;letter-spacing:.2px}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.footer-col a{font-size:13px;color:var(--text-dim);transition:color .15s}
+.footer-col a:hover{color:var(--brand)}
 .footer-about{font-size:13px;color:var(--text-dim);line-height:1.6;margin-top:10px}
 .footer-bottom{
   display:flex;justify-content:space-between;align-items:center;
-  padding-top:24px;border-top:1px solid var(--border);
+  padding-top:20px;border-top:1px solid var(--border);
   font-size:12px;color:var(--text-muted);flex-wrap:wrap;gap:12px;
 }
 
 /* ── Reveal animation ──────────────────────────────────────── */
-.reveal{opacity:0;transform:translateY(20px);transition:opacity .7s ease, transform .7s ease}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .5s ease, transform .5s ease}
 .reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .hero-badge .dot{animation:none}
+}
 </style>
-<!-- KiX i18n infrastructure (Phase 1 — scaffolding; no visible strings replaced yet) -->
+<!-- KiX i18n -->
 <script src="i18n/i18next-runtime.js" defer></script>
 <script src="i18n/locale-switcher.js" defer></script>
 </head>
@@ -263,13 +269,13 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
 <!-- ═══ HEADER ═══ -->
 <header>
   <div class="container nav">
-    <a href="#" class="logo">Ki<span>X</span></a>
-    <nav class="nav-links">
-      <a href="#problem" data-i18n="landing.nav.problem">Problem</a>
-      <a href="#solution" data-i18n="landing.nav.solution">Solution</a>
-      <a href="#how" data-i18n="landing.nav.how">How</a>
-      <a href="#pricing" data-i18n="landing.nav.pricing">Pricing</a>
-      <a href="https://partner.letskix.com" class="nav-cta" data-i18n="landing.nav.get_started">Get started</a>
+    <a href="#" class="logo" aria-label="KiX home">Ki<span>X</span></a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#problem" data-i18n="index:nav.problem">Problem</a>
+      <a href="#solution" data-i18n="index:nav.solution">Solution</a>
+      <a href="#how" data-i18n="index:nav.how">How it works</a>
+      <a href="#pricing" data-i18n="index:nav.pricing">Pricing</a>
+      <a href="https://partner.letskix.com" class="nav-cta" data-i18n="index:nav.get_started">Get started</a>
     </nav>
   </div>
 </header>
@@ -277,12 +283,12 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
 <!-- ═══ HERO ═══ -->
 <section class="hero">
   <div class="container hero-inner">
-    <div class="hero-badge reveal" data-i18n="landing.hero.badge"><span class="dot"></span> Gamified Acquisition Platform</div>
-    <h1 class="hero-title reveal" data-i18n="landing.hero.title" data-i18n-html="true">KiX = Gamified <em>TikTok Ads</em></h1>
-    <p class="hero-sub reveal" data-i18n="landing.hero.sub" data-i18n-html="true">All gamification features <strong style="color:var(--green)">FREE</strong>. Only pay when we deliver a new user.</p>
+    <div class="hero-badge reveal" data-i18n="index:hero.badge"><span class="dot" aria-hidden="true"></span>The Gamification Marketing Platform</div>
+    <h1 class="hero-title reveal" data-i18n="index:hero.title" data-i18n-html="true">Win customers <em>through play</em></h1>
+    <p class="hero-sub reveal" data-i18n="index:hero.sub" data-i18n-html="true">All gamification features are <strong>free</strong>. You only pay when we deliver a new customer.</p>
     <div class="hero-ctas reveal">
-      <a href="https://partner.letskix.com" class="btn btn-primary" data-i18n="landing.hero.cta_primary">Get started →</a>
-      <a href="#how" class="btn btn-secondary" data-i18n="landing.hero.cta_secondary">How it works</a>
+      <a href="https://partner.letskix.com" class="btn btn-primary" data-i18n="index:hero.cta_primary">Get started</a>
+      <a href="#how" class="btn btn-secondary" data-i18n="index:hero.cta_secondary">How it works</a>
     </div>
   </div>
 </section>
@@ -291,72 +297,58 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
 <section id="problem">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">The Problem</div>
-      <h2 class="section-title">为什么<em>传统获客</em>正在崩塌？</h2>
-      <p class="section-sub">Why customer acquisition is broken</p>
+      <div class="section-tag" data-i18n="index:problem.tag">The problem</div>
+      <h2 class="section-title" data-i18n="index:problem.title">Customer acquisition is broken</h2>
+      <p class="section-sub" data-i18n="index:problem.sub">Three forces are pushing CAC up and retention down.</p>
     </div>
     <div class="card-grid cols-3">
       <div class="card reveal">
-        <div class="card-stat">+50%</div>
-        <div class="card-title">获客成本年增 50%</div>
-        <div class="card-body">广告竞价红海，每个新用户都在涨价。
-          <div class="card-body-en">Customer acquisition costs rose 50% YoY.</div>
-        </div>
+        <div class="card-stat" data-i18n="index:problem.card1.stat">+50%</div>
+        <div class="card-title" data-i18n="index:problem.card1.title">Acquisition costs up 50% YoY</div>
+        <div class="card-body" data-i18n="index:problem.card1.body">Auction-based ad markets keep raising the price of every new customer.</div>
       </div>
       <div class="card reveal">
-        <div class="card-stat">70%</div>
-        <div class="card-title">用户对广告麻木</div>
-        <div class="card-body">70% 的用户已经"广告盲"，刷一眼就跳过。
-          <div class="card-body-en">70% of users are blind to ads.</div>
-        </div>
+        <div class="card-stat" data-i18n="index:problem.card2.stat">70%</div>
+        <div class="card-title" data-i18n="index:problem.card2.title">Audiences are ad-blind</div>
+        <div class="card-body" data-i18n="index:problem.card2.body">Most users now skip past ads in a glance — banner blindness is the default.</div>
       </div>
       <div class="card reveal">
-        <div class="card-stat">&lt;25%</div>
-        <div class="card-title">Loyalty 留存率 &lt; 25%</div>
-        <div class="card-body">积分卡发出去就石沉大海。
-          <div class="card-body-en">Loyalty programs retain less than 25% of users.</div>
-        </div>
+        <div class="card-stat" data-i18n="index:problem.card3.stat">&lt;25%</div>
+        <div class="card-title" data-i18n="index:problem.card3.title">Loyalty retention under 25%</div>
+        <div class="card-body" data-i18n="index:problem.card3.body">Traditional points cards rarely earn a second visit.</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ═══ SOLUTION ═══ -->
-<section id="solution" style="background:#080808">
+<section id="solution" class="section-alt">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">The KiX Solution</div>
-      <h2 class="section-title">四大支柱，<em>重塑获客</em></h2>
-      <p class="section-sub">Four pillars that turn gamification into a growth engine</p>
+      <div class="section-tag" data-i18n="index:solution.tag">The KiX approach</div>
+      <h2 class="section-title" data-i18n="index:solution.title">Four pillars, one growth engine</h2>
+      <p class="section-sub" data-i18n="index:solution.sub">Gamification turns attention into acquisition — measurably.</p>
     </div>
     <div class="card-grid cols-4">
       <div class="card reveal">
-        <div class="card-icon">🎮</div>
-        <div class="card-title">Gamification</div>
-        <div class="card-body">你的用户 + 免费的 AI 生成游戏，零接入门槛。
-          <div class="card-body-en">Your users + free, AI-generated games.</div>
-        </div>
+        <div class="card-icon" aria-hidden="true">🎮</div>
+        <div class="card-title" data-i18n="index:solution.card1.title">Gamification</div>
+        <div class="card-body" data-i18n="index:solution.card1.body">AI-generated mini-games, free to deploy. Zero engineering lift.</div>
       </div>
       <div class="card reveal">
-        <div class="card-icon">🎯</div>
-        <div class="card-title">Smart Acquisition</div>
-        <div class="card-body">只为我们交付的"新"用户付费，无效流量零成本。
-          <div class="card-body-en">Pay only for NEW users we deliver.</div>
-        </div>
+        <div class="card-icon" aria-hidden="true">🎯</div>
+        <div class="card-title" data-i18n="index:solution.card2.title">Smart acquisition</div>
+        <div class="card-body" data-i18n="index:solution.card2.body">Pay only for the new customers we deliver. Wasted impressions cost nothing.</div>
       </div>
       <div class="card reveal">
-        <div class="card-icon">🔗</div>
-        <div class="card-title">Cross-brand Network</div>
-        <div class="card-body">算法将合适的用户匹配到合适的品牌，跨品牌网络效应。
-          <div class="card-body-en">Algorithm matches users to brands.</div>
-        </div>
+        <div class="card-icon" aria-hidden="true">🔗</div>
+        <div class="card-title" data-i18n="index:solution.card3.title">Cross-brand network</div>
+        <div class="card-body" data-i18n="index:solution.card3.body">Our matching engine routes the right user to the right brand across the network.</div>
       </div>
       <div class="card reveal">
-        <div class="card-icon">📊</div>
-        <div class="card-title">Real-time Analytics</div>
-        <div class="card-body">实时查看 CAC、ROAS、cohort 留存，每一分钱可追溯。
-          <div class="card-body-en">See CAC, ROAS, cohort retention live.</div>
-        </div>
+        <div class="card-icon" aria-hidden="true">📊</div>
+        <div class="card-title" data-i18n="index:solution.card4.title">Real-time analytics</div>
+        <div class="card-body" data-i18n="index:solution.card4.body">Track CAC, ROAS and cohort retention live — every cent is attributable.</div>
       </div>
     </div>
   </div>
@@ -366,57 +358,51 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
 <section id="how">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">How It Works</div>
-      <h2 class="section-title"><em>三步</em>开启你的获客飞轮</h2>
-      <p class="section-sub">Three steps from registration to first delivered user</p>
+      <div class="section-tag" data-i18n="index:how.tag">How it works</div>
+      <h2 class="section-title" data-i18n="index:how.title">Three steps to your first delivered customer</h2>
+      <p class="section-sub" data-i18n="index:how.sub">From registration to ROI in days, not quarters.</p>
     </div>
     <div class="steps">
       <div class="step reveal">
-        <div class="step-num">1</div>
-        <div class="card-title" style="margin-top:8px">Register Brand</div>
-        <div class="card-body">注册品牌账户，立即获得免费 SaaS 工作台 — 游戏、SDK、分析全套就绪。
-          <div class="card-body-en">Free SaaS instantly.</div>
-        </div>
+        <div class="step-num" aria-hidden="true">1</div>
+        <div class="card-title" style="margin-top:6px" data-i18n="index:how.step1.title">Register your brand</div>
+        <div class="card-body" data-i18n="index:how.step1.body">Create an account and get the full SaaS workspace — games, SDK and analytics — instantly and free.</div>
       </div>
       <div class="step reveal">
-        <div class="step-num">2</div>
-        <div class="card-title" style="margin-top:8px">Activate Acquisition Auction</div>
-        <div class="card-body">激活获客竞价，设定每个新用户的出价，KiX 算法自动匹配。
-          <div class="card-body-en">Set bid, KiX matches users.</div>
-        </div>
+        <div class="step-num" aria-hidden="true">2</div>
+        <div class="card-title" style="margin-top:6px" data-i18n="index:how.step2.title">Activate the auction</div>
+        <div class="card-body" data-i18n="index:how.step2.body">Set a bid per new customer and let the KiX algorithm match qualified users to your brand.</div>
       </div>
       <div class="step reveal">
-        <div class="step-num">3</div>
-        <div class="card-title" style="margin-top:8px">Pay per Delivered User</div>
-        <div class="card-body">按已交付的新用户付费，无浪费、无最低承诺。
-          <div class="card-body-en">Pay per delivered new user — no waste.</div>
-        </div>
+        <div class="step-num" aria-hidden="true">3</div>
+        <div class="card-title" style="margin-top:6px" data-i18n="index:how.step3.title">Pay per delivered customer</div>
+        <div class="card-body" data-i18n="index:how.step3.body">Only verified new customers are billable. No minimums, no long-term contracts.</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ═══ INDUSTRIES ═══ -->
-<section style="background:#080808" id="industries">
+<section class="section-alt" id="industries">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">Industries</div>
-      <h2 class="section-title">支持 <em>34 个垂直行业</em></h2>
-      <p class="section-sub">From F&amp;B to Real Estate — 34 verticals supported</p>
+      <div class="section-tag" data-i18n="index:industries.tag">Industries</div>
+      <h2 class="section-title" data-i18n="index:industries.title">34 verticals supported</h2>
+      <p class="section-sub" data-i18n="index:industries.sub">From F&amp;B to real estate — purpose-built playbooks per category.</p>
     </div>
     <div class="industries">
-      <div class="industry reveal"><div class="industry-icon">🍔</div><div class="industry-name">餐饮</div><div class="industry-en">F&amp;B</div></div>
-      <div class="industry reveal"><div class="industry-icon">🛍️</div><div class="industry-name">零售</div><div class="industry-en">Retail</div></div>
-      <div class="industry reveal"><div class="industry-icon">💪</div><div class="industry-name">健身</div><div class="industry-en">Fitness</div></div>
-      <div class="industry reveal"><div class="industry-icon">🎓</div><div class="industry-name">教育</div><div class="industry-en">Education</div></div>
-      <div class="industry reveal"><div class="industry-icon">🏥</div><div class="industry-name">医疗</div><div class="industry-en">Healthcare</div></div>
-      <div class="industry reveal"><div class="industry-icon">✈️</div><div class="industry-name">旅游</div><div class="industry-en">Travel</div></div>
-      <div class="industry reveal"><div class="industry-icon">📦</div><div class="industry-name">电商</div><div class="industry-en">E-commerce</div></div>
-      <div class="industry reveal"><div class="industry-icon">💄</div><div class="industry-name">美妆</div><div class="industry-en">Beauty</div></div>
-      <div class="industry reveal"><div class="industry-icon">🐶</div><div class="industry-name">宠物</div><div class="industry-en">Pet</div></div>
-      <div class="industry reveal"><div class="industry-icon">🏠</div><div class="industry-name">地产</div><div class="industry-en">Real Estate</div></div>
-      <div class="industry reveal"><div class="industry-icon">🚗</div><div class="industry-name">汽车</div><div class="industry-en">Auto</div></div>
-      <div class="industry reveal"><div class="industry-icon" style="font-size:14px;font-weight:700;color:var(--green)">+24</div><div class="industry-name">更多</div><div class="industry-en">+24 more</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🍔</div><div class="industry-name" data-i18n="index:industries.fnb">F&amp;B</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🛍️</div><div class="industry-name" data-i18n="index:industries.retail">Retail</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">💪</div><div class="industry-name" data-i18n="index:industries.fitness">Fitness</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🎓</div><div class="industry-name" data-i18n="index:industries.education">Education</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🏥</div><div class="industry-name" data-i18n="index:industries.healthcare">Healthcare</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">✈️</div><div class="industry-name" data-i18n="index:industries.travel">Travel</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">📦</div><div class="industry-name" data-i18n="index:industries.ecommerce">E-commerce</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">💄</div><div class="industry-name" data-i18n="index:industries.beauty">Beauty</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🐶</div><div class="industry-name" data-i18n="index:industries.pet">Pet</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🏠</div><div class="industry-name" data-i18n="index:industries.realestate">Real estate</div></div>
+      <div class="industry reveal"><div class="industry-icon" aria-hidden="true">🚗</div><div class="industry-name" data-i18n="index:industries.auto">Auto</div></div>
+      <div class="industry reveal"><div class="industry-icon" style="font-size:14px;font-weight:700;color:var(--brand)" aria-hidden="true">+23</div><div class="industry-name" data-i18n="index:industries.more">+23 more</div></div>
     </div>
   </div>
 </section>
@@ -425,101 +411,99 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
 <section id="pricing">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">Pricing</div>
-      <h2 class="section-title">透明定价 · <em>无订阅、无设置费</em></h2>
-      <p class="section-sub">Free SaaS — pay only for results</p>
+      <div class="section-tag" data-i18n="index:pricing.tag">Pricing</div>
+      <h2 class="section-title" data-i18n="index:pricing.title">Transparent pricing. No subscription, no setup fee.</h2>
+      <p class="section-sub" data-i18n="index:pricing.sub">Free SaaS. Pay only for results.</p>
     </div>
     <div class="pricing">
       <div class="price-card reveal">
-        <div class="price-label">Free Forever</div>
-        <div class="price-amount">¥0<small> / 月</small></div>
-        <div class="price-desc">所有游戏化能力，零费用</div>
+        <div class="price-label" data-i18n="index:pricing.free.label">Free forever</div>
+        <div class="price-amount"><span data-i18n="index:pricing.free.amount">$0</span><small data-i18n="index:pricing.free.period"> / month</small></div>
+        <div class="price-desc" data-i18n="index:pricing.free.desc">All gamification capabilities, at no cost.</div>
         <ul class="price-list">
-          <li>所有 AI 生成游戏 · All AI-generated games</li>
-          <li>完整分析与 cohort 报表</li>
-          <li>SDK · Web/iOS/Android</li>
-          <li>无品牌限制、无用户上限</li>
-          <li>无合约、无设置费</li>
+          <li data-i18n="index:pricing.free.item1">All AI-generated games</li>
+          <li data-i18n="index:pricing.free.item2">Full analytics and cohort reports</li>
+          <li data-i18n="index:pricing.free.item3">SDKs for Web, iOS and Android</li>
+          <li data-i18n="index:pricing.free.item4">No brand limits, no user caps</li>
+          <li data-i18n="index:pricing.free.item5">No contract, no setup fee</li>
         </ul>
       </div>
       <div class="price-card featured reveal">
-        <div class="price-label">Pay for Acquisition</div>
-        <div class="price-amount">按结果付费<small> · pay per delivered user</small></div>
-        <div class="price-desc">竞价制，多种结算方式</div>
+        <div class="price-label" data-i18n="index:pricing.paid.label">Pay for acquisition</div>
+        <div class="price-amount"><span data-i18n="index:pricing.paid.amount">Pay per result</span><small data-i18n="index:pricing.paid.period"> · per delivered customer</small></div>
+        <div class="price-desc" data-i18n="index:pricing.paid.desc">Auction-based bidding with flexible settlement.</div>
         <div style="margin-top:8px">
-          <div class="tier-row"><div class="tier-name">CPA <span>每新用户</span></div><div class="tier-price">¥10 – ¥100</div></div>
-          <div class="tier-row"><div class="tier-name">CPS <span>新客订单分成</span></div><div class="tier-price">5% – 15%</div></div>
-          <div class="tier-row"><div class="tier-name">CPM <span>每千次曝光</span></div><div class="tier-price">可选 · available</div></div>
-          <div class="tier-row"><div class="tier-name">CPV <span>每次到访</span></div><div class="tier-price">可选 · available</div></div>
-          <div class="tier-row"><div class="tier-name">CPE <span>每次互动</span></div><div class="tier-price">可选 · available</div></div>
+          <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cpa.name">CPA</span><span data-i18n="index:pricing.paid.cpa.label">per new customer</span></div><div class="tier-price" data-i18n="index:pricing.paid.cpa.value">$3 – $30</div></div>
+          <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cps.name">CPS</span><span data-i18n="index:pricing.paid.cps.label">share of new-customer revenue</span></div><div class="tier-price" data-i18n="index:pricing.paid.cps.value">5% – 15%</div></div>
+          <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cpm.name">CPM</span><span data-i18n="index:pricing.paid.cpm.label">per thousand impressions</span></div><div class="tier-price" data-i18n="index:pricing.paid.cpm.value">Available</div></div>
+          <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cpv.name">CPV</span><span data-i18n="index:pricing.paid.cpv.label">per store visit</span></div><div class="tier-price" data-i18n="index:pricing.paid.cpv.value">Available</div></div>
+          <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cpe.name">CPE</span><span data-i18n="index:pricing.paid.cpe.label">per engagement</span></div><div class="tier-price" data-i18n="index:pricing.paid.cpe.value">Available</div></div>
         </div>
-        <a href="https://partner.letskix.com" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center">立即开通 · Start Free</a>
+        <a href="https://partner.letskix.com" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center" data-i18n="index:pricing.paid.cta">Start free</a>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ═══ TESTIMONIALS ═══ -->
-<section style="background:#080808" id="proof">
+<section class="section-alt" id="proof">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">Social Proof</div>
-      <h2 class="section-title">早期客户在 <em>用 KiX 增长</em></h2>
-      <p class="section-sub">Real brands, real results</p>
+      <div class="section-tag" data-i18n="index:proof.tag">Customer outcomes</div>
+      <h2 class="section-title" data-i18n="index:proof.title">Early customers are growing with KiX</h2>
+      <p class="section-sub" data-i18n="index:proof.sub">Real brands. Real numbers.</p>
     </div>
     <div class="card-grid cols-3">
       <div class="quote reveal">
-        <div class="quote-stat">91% win rate</div>
-        <div class="quote-text">"10 家门店上线 KiX，竞价胜率 91%，首个 sprint 拿下 41 个新客转化。"</div>
-        <div class="quote-author">南洋茶饮 · Nanyang Tea</div>
-        <div class="quote-role">F&amp;B · 10 stores</div>
+        <div class="quote-stat" data-i18n="index:proof.q1.stat">91% win rate</div>
+        <div class="quote-text" data-i18n="index:proof.q1.text">Across ten stores, our KiX bids won 91% of auctions and delivered 41 new customers in the first sprint.</div>
+        <div class="quote-author" data-i18n="index:proof.q1.author">Nanyang Tea</div>
+        <div class="quote-role" data-i18n="index:proof.q1.role">F&amp;B · 10 stores</div>
       </div>
       <div class="quote reveal">
-        <div class="quote-stat">36% repeat</div>
-        <div class="quote-text">"通过 KiX 推送提醒，疗程复购率提升到 36% — 比短信提醒的 2.4 倍。"</div>
-        <div class="quote-author">Bare Beauty</div>
-        <div class="quote-role">Beauty · Treatment Repeat Rate</div>
+        <div class="quote-stat" data-i18n="index:proof.q2.stat">36% repeat</div>
+        <div class="quote-text" data-i18n="index:proof.q2.text">KiX reminders lifted our treatment repeat rate to 36% — about 2.4x our previous SMS programme.</div>
+        <div class="quote-author" data-i18n="index:proof.q2.author">Bare Beauty</div>
+        <div class="quote-role" data-i18n="index:proof.q2.role">Beauty · Treatment repeat</div>
       </div>
       <div class="quote reveal">
-        <div class="quote-stat">¥2M bookings</div>
-        <div class="quote-text">"7 个月的归因窗口让我们解锁了 200 万的蜜月订单 — 标准平台根本看不到这些转化。"</div>
-        <div class="quote-author">Worldwide Travel</div>
-        <div class="quote-role">Travel · Long Attribution Window</div>
+        <div class="quote-stat" data-i18n="index:proof.q3.stat">$280K bookings</div>
+        <div class="quote-text" data-i18n="index:proof.q3.text">A 7-month attribution window surfaced honeymoon bookings that standard ad platforms never see.</div>
+        <div class="quote-author" data-i18n="index:proof.q3.author">Worldwide Travel</div>
+        <div class="quote-role" data-i18n="index:proof.q3.role">Travel · Long attribution</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ═══ FOR USERS ═══ -->
-<section class="user-section" id="for-users">
+<section id="for-users">
   <div class="container">
     <div class="user-grid">
       <div class="reveal">
-        <div class="section-tag">For Users</div>
-        <h2 class="section-title">下载 <em>KiX App</em> — 玩游戏，赚奖励</h2>
-        <p class="section-sub">在任何 KiX 合作商家玩游戏，赢取专属奖励，发现新品牌。</p>
-        <p class="section-sub-en">Play games at any merchant, earn rewards, discover new brands.</p>
+        <div class="section-tag" data-i18n="index:users.tag">For users</div>
+        <h2 class="section-title" data-i18n="index:users.title">Download the KiX app — play games, earn rewards</h2>
+        <p class="section-sub" data-i18n="index:users.sub">Play at any KiX partner merchant, earn rewards and discover new brands.</p>
         <div class="app-ctas">
           <a href="#" class="app-btn">
-            <div class="app-btn-icon">🍎</div>
-            <div class="app-btn-text"><small>Download on</small><strong>App Store</strong></div>
+            <div class="app-btn-icon" aria-hidden="true">🍎</div>
+            <div class="app-btn-text"><small data-i18n="index:users.app_store_small">Download on</small><strong data-i18n="index:users.app_store">App Store</strong></div>
           </a>
           <a href="#" class="app-btn">
-            <div class="app-btn-icon">▶️</div>
-            <div class="app-btn-text"><small>Get it on</small><strong>Google Play</strong></div>
+            <div class="app-btn-icon" aria-hidden="true">▶</div>
+            <div class="app-btn-text"><small data-i18n="index:users.play_store_small">Get it on</small><strong data-i18n="index:users.play_store">Google Play</strong></div>
           </a>
           <a href="/app/" class="app-btn">
-            <div class="app-btn-icon">🌐</div>
-            <div class="app-btn-text"><small>Or use</small><strong>Web App</strong></div>
+            <div class="app-btn-icon" aria-hidden="true">🌐</div>
+            <div class="app-btn-text"><small data-i18n="index:users.web_small">Or use</small><strong data-i18n="index:users.web">Web app</strong></div>
           </a>
         </div>
       </div>
       <div class="reveal">
-        <div class="card" style="padding:36px">
-          <div style="font-size:48px;margin-bottom:18px">🎮</div>
-          <div class="card-title">玩游戏赚奖励</div>
-          <div class="card-body" style="margin-bottom:18px">从扫一扫开始，每个商家都有 AI 生成的迷你游戏。赢取真实奖励：折扣、免费商品、独家体验。</div>
-          <div class="card-body-en">Scan to play. Win real rewards: discounts, free items, exclusive experiences.</div>
+        <div class="card" style="padding:32px">
+          <div style="font-size:42px;margin-bottom:14px" aria-hidden="true">🎮</div>
+          <div class="card-title" data-i18n="index:users.card.title">Play to earn</div>
+          <div class="card-body" data-i18n="index:users.card.body">Scan a QR code at a participating merchant. Win real rewards — discounts, free items and exclusive experiences.</div>
         </div>
       </div>
     </div>
@@ -527,34 +511,34 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
 </section>
 
 <!-- ═══ INVESTOR / PRESS ═══ -->
-<section id="investor">
+<section class="section-alt" id="investor">
   <div class="container">
     <div class="section-head reveal">
-      <div class="section-tag">Investors &amp; Press</div>
-      <h2 class="section-title">用 <em>Trinity Protocol</em> 构建的下一代广告平台</h2>
-      <p class="section-sub">525-route ad platform built in 5 iteration rounds</p>
+      <div class="section-tag" data-i18n="index:investor.tag">Investors &amp; press</div>
+      <h2 class="section-title" data-i18n="index:investor.title">A next-generation acquisition platform</h2>
+      <p class="section-sub" data-i18n="index:investor.sub">Built with Trinity Protocol — 525 routes shipped in five iteration rounds.</p>
     </div>
     <div class="investor-grid">
       <div class="investor-stat reveal">
-        <div class="investor-num">525</div>
-        <div class="investor-label">路由 · routes</div>
+        <div class="investor-num" data-i18n="index:investor.stat1.num">525</div>
+        <div class="investor-label" data-i18n="index:investor.stat1.label">Routes shipped</div>
       </div>
       <div class="investor-stat reveal">
-        <div class="investor-num">5</div>
-        <div class="investor-label">迭代轮次 · iteration rounds</div>
+        <div class="investor-num" data-i18n="index:investor.stat2.num">5</div>
+        <div class="investor-label" data-i18n="index:investor.stat2.label">Iteration rounds</div>
       </div>
       <div class="investor-stat reveal">
-        <div class="investor-num">34</div>
-        <div class="investor-label">支持行业 · verticals</div>
+        <div class="investor-num" data-i18n="index:investor.stat3.num">34</div>
+        <div class="investor-label" data-i18n="index:investor.stat3.label">Verticals supported</div>
       </div>
       <div class="investor-stat reveal">
-        <div class="investor-num">∞</div>
-        <div class="investor-label">免费游戏 · AI games</div>
+        <div class="investor-num" data-i18n="index:investor.stat4.num">Unlimited</div>
+        <div class="investor-label" data-i18n="index:investor.stat4.label">AI-generated games</div>
       </div>
     </div>
-    <div style="text-align:center;margin-top:40px" class="reveal">
-      <a href="https://github.com/" class="btn btn-secondary" style="margin-right:8px">GitHub</a>
-      <a href="mailto:press@letskix.com" class="btn btn-secondary">Press · 媒体联系</a>
+    <div style="text-align:center;margin-top:32px" class="reveal">
+      <a href="https://github.com/" class="btn btn-secondary" style="margin-right:8px" data-i18n="index:investor.github">GitHub</a>
+      <a href="mailto:press@letskix.com" class="btn btn-secondary" data-i18n="index:investor.press">Press contact</a>
     </div>
   </div>
 </section>
@@ -564,40 +548,40 @@ footer{padding:56px 0 40px;border-top:1px solid var(--border);background:#050505
   <div class="container">
     <div class="footer-grid">
       <div class="footer-col">
-        <div class="logo" style="margin-bottom:12px">Ki<span>X</span></div>
-        <p class="footer-about">游戏化版的 TikTok Ads。让每个商家都拥有自己的获客飞轮 — 免费，按结果付费。</p>
+        <div class="logo" style="margin-bottom:10px">Ki<span>X</span></div>
+        <p class="footer-about" data-i18n="index:footer.about">The gamification marketing platform. Every merchant gets a free customer-acquisition engine — and only pays for results.</p>
       </div>
       <div class="footer-col">
-        <h4>Product · 产品</h4>
+        <h4 data-i18n="index:footer.product">Product</h4>
         <ul>
-          <li><a href="https://partner.letskix.com">Merchant Portal</a></li>
-          <li><a href="/app/">User App</a></li>
-          <li><a href="/landing/sdk/">SDK</a></li>
-          <li><a href="/api-docs">API Docs</a></li>
+          <li><a href="https://partner.letskix.com" data-i18n="index:footer.product.portal">Merchant portal</a></li>
+          <li><a href="/app/" data-i18n="index:footer.product.app">User app</a></li>
+          <li><a href="/landing/sdk/" data-i18n="index:footer.product.sdk">SDK</a></li>
+          <li><a href="/api-docs" data-i18n="index:footer.product.api">API docs</a></li>
         </ul>
       </div>
       <div class="footer-col">
-        <h4>Company · 公司</h4>
+        <h4 data-i18n="index:footer.company">Company</h4>
         <ul>
-          <li><a href="#investor">About · 关于</a></li>
-          <li><a href="#investor">Team · 团队</a></li>
-          <li><a href="mailto:hello@letskix.com">Contact · 联系</a></li>
-          <li><a href="mailto:press@letskix.com">Press · 媒体</a></li>
+          <li><a href="#investor" data-i18n="index:footer.company.about">About</a></li>
+          <li><a href="#investor" data-i18n="index:footer.company.team">Team</a></li>
+          <li><a href="mailto:hello@letskix.com" data-i18n="index:footer.company.contact">Contact</a></li>
+          <li><a href="mailto:press@letskix.com" data-i18n="index:footer.company.press">Press</a></li>
         </ul>
       </div>
       <div class="footer-col">
-        <h4>Legal · 法律</h4>
+        <h4 data-i18n="index:footer.legal">Legal</h4>
         <ul>
-          <li><a href="#">Privacy · 隐私</a></li>
-          <li><a href="#">Terms · 条款</a></li>
-          <li><a href="#">Status · 状态</a></li>
-          <li><a href="https://partner.letskix.com">Partner · 合作</a></li>
+          <li><a href="#" data-i18n="index:footer.legal.privacy">Privacy</a></li>
+          <li><a href="#" data-i18n="index:footer.legal.terms">Terms</a></li>
+          <li><a href="#" data-i18n="index:footer.legal.status">Status</a></li>
+          <li><a href="https://partner.letskix.com" data-i18n="index:footer.legal.partner">Partner</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <div>© 2026 KiX · letskix.com · 让游戏化为你打工</div>
-      <div>Built with Trinity Protocol · 525 routes · 5 rounds</div>
+      <div data-i18n="index:footer.copy">© 2026 KiX · letskix.com</div>
+      <div data-i18n="index:footer.built">Built with Trinity Protocol · 525 routes · 5 iteration rounds</div>
     </div>
   </div>
 </footer>

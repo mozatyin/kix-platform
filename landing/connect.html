@@ -1,170 +1,303 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en-SG">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>KiX Connect — 授权</title>
-  <meta name="description" content="授权商家访问你的 KiX 账户数据 — 你可随时撤销。">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="connect:meta.title">KiX Connect — Authorise</title>
+  <meta name="description" data-i18n-attr="content:connect:meta.description" content="Authorise a merchant to access your KiX account data. You can revoke at any time.">
   <meta name="robots" content="noindex,nofollow">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --brand:#00B341;
+      --brand-hover:#009335;
+      --brand-soft:rgba(0,179,65,.08);
+      --brand-border:rgba(0,179,65,.22);
+      --bg:#FFFFFF;
+      --bg-alt:#F7F8FA;
+      --border:#E5E7EB;
+      --border-strong:#D1D5DB;
+      --text:#0F172A;
+      --text-dim:#475569;
+      --text-muted:#64748B;
+      --danger:#B42318;
+      --danger-soft:#FEF3F2;
+      --danger-border:#FECDCA;
+      --radius:6px;
+      --radius-sm:4px;
+      --radius-lg:8px;
+      --max:1200px;
+      --font:'Inter',system-ui,-apple-system,sans-serif;
+    }
     html,body{
-      font-family:'Inter',system-ui,-apple-system,sans-serif;
+      font-family:var(--font);
       -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
     }
-    body {
-      background: linear-gradient(180deg, #0a0a0a 0%, #0d1d0d 60%, #0a0a0a 100%);
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      line-height: 1.5;
+    body{
+      background:var(--bg-alt);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;flex-direction:column;
+      line-height:1.55;
+      font-size:15px;
     }
-    .connect-card {
-      width: 100%;
-      max-width: 480px;
-      background: #1a1a1a;
-      border-radius: 18px;
-      padding: 28px 24px 24px;
-      border: 1px solid rgba(0,252,0,0.27);
-      box-shadow: 0 24px 80px rgba(0,252,0,0.06), 0 4px 24px rgba(0,0,0,0.4);
-      animation: fade-in .35s ease;
+    a{color:var(--text-dim);text-decoration:none}
+    a:hover{color:var(--text)}
+    a:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--radius-sm)}
+    button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+    /* ── Top nav ─────────────────────────────────────────────── */
+    header{
+      background:var(--bg);
+      border-bottom:1px solid var(--border);
+      position:sticky;top:0;z-index:50;
+    }
+    .nav-inner{
+      max-width:var(--max);margin:0 auto;
+      display:flex;align-items:center;justify-content:space-between;
+      height:60px;padding:0 24px;
+    }
+    .logo{font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
+    .logo span{color:var(--brand)}
+    .top-links{display:flex;gap:24px;align-items:center}
+    .top-links a{font-size:14px;font-weight:500}
+    @media(max-width:540px){.top-links{display:none}}
+
+    /* ── Main ────────────────────────────────────────────────── */
+    main{
+      flex:1;
+      display:flex;align-items:center;justify-content:center;
+      padding:48px 16px;
+    }
+    .connect-card{
+      width:100%;
+      max-width:520px;
+      background:var(--bg);
+      border-radius:var(--radius-lg);
+      padding:32px 28px 28px;
+      border:1px solid var(--border);
+      box-shadow:0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.04);
+      animation:fade-in .3s ease;
     }
     @keyframes fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-    .kix-mark {
-      display:flex;align-items:center;gap:8px;
-      font-weight:800;font-size:13px;letter-spacing:.5px;
-      color:#00FC00;margin-bottom:18px;
+    .kix-mark{
+      display:inline-flex;align-items:center;gap:8px;
+      font-weight:700;font-size:11px;letter-spacing:1.4px;
+      color:var(--brand);margin-bottom:20px;text-transform:uppercase;
     }
-    .kix-mark .dot{width:8px;height:8px;border-radius:50%;background:#00FC00;box-shadow:0 0 12px #00FC00}
+    .kix-mark .dot{
+      width:6px;height:6px;border-radius:50%;
+      background:var(--brand);
+    }
 
-    .brand-info {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 20px;
+    .brand-info{
+      display:flex;align-items:center;gap:14px;
+      margin-bottom:18px;
     }
-    .brand-logo {
-      width: 60px;
-      height: 60px;
-      border-radius: 14px;
-      background: rgba(0,252,0,0.14);
+    .brand-logo{
+      width:56px;height:56px;
+      border-radius:var(--radius-lg);
+      background:var(--brand-soft);
+      border:1px solid var(--border);
       flex-shrink:0;
       overflow:hidden;
       display:flex;align-items:center;justify-content:center;
-      font-size:22px;font-weight:800;color:#00FC00;
+      font-size:22px;font-weight:800;color:var(--brand);
     }
     .brand-logo img{width:100%;height:100%;object-fit:cover;display:block}
-    .brand-info h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
-    .brand-info .tagline{margin-top:4px;color:#9aa;font-size:13px;line-height:1.4}
+    .brand-info h2{font-size:18px;font-weight:700;letter-spacing:-.2px;color:var(--text)}
+    .brand-info .tagline{margin-top:4px;color:var(--text-muted);font-size:13px;line-height:1.4}
 
-    .intro {
-      font-size: 14px;
-      line-height: 1.55;
-      color: #cfd;
-      margin-bottom: 8px;
+    .intro{
+      font-size:14px;
+      line-height:1.55;
+      color:var(--text-dim);
+      margin-bottom:6px;
     }
-    .intro strong{color:#fff}
+    .intro strong{color:var(--text);font-weight:600}
 
-    .scopes-list {
-      background: #0a0a0a;
-      border: 1px solid #1f1f1f;
-      border-radius: 12px;
-      padding: 6px 14px;
-      margin: 14px 0 16px;
+    .scopes-list{
+      background:var(--bg-alt);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:6px 14px;
+      margin:12px 0 16px;
     }
-    .scope-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 12px 0;
-      border-bottom: 1px solid #1d1d1d;
+    .scope-item{
+      display:flex;align-items:flex-start;gap:12px;
+      padding:12px 0;
+      border-bottom:1px solid var(--border);
     }
-    .scope-item:last-child { border-bottom: none; }
-    .scope-icon {
-      font-size: 22px;
-      width: 28px;
-      text-align:center;
-      flex-shrink:0;
-      line-height:1.2;
+    .scope-item:last-child{border-bottom:none}
+    .scope-icon{
+      font-size:20px;width:24px;text-align:center;
+      flex-shrink:0;line-height:1.2;
     }
     .scope-text{flex:1;min-width:0}
-    .scope-title{font-weight:600;font-size:14px;color:#fff}
-    .scope-detail{margin-top:2px;color:#888;font-size:12.5px;line-height:1.4}
+    .scope-title{font-weight:600;font-size:14px;color:var(--text)}
+    .scope-detail{margin-top:2px;color:var(--text-muted);font-size:12.5px;line-height:1.4}
 
     .guarantees{
-      font-size:12.5px;color:#9ca29c;line-height:1.7;
-      padding:12px 14px;border-radius:10px;background:rgba(0,252,0,0.04);
-      border:1px solid rgba(0,252,0,0.12);
+      font-size:12.5px;color:var(--text-dim);line-height:1.7;
+      padding:14px;border-radius:var(--radius);
+      background:var(--brand-soft);
+      border:1px solid var(--brand-border);
     }
-    .guarantees .check{color:#00FC00;font-weight:700;margin-right:6px}
+    .guarantees .check{color:var(--brand);font-weight:700;margin-right:6px}
 
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 22px;
+    .actions{
+      display:flex;gap:10px;margin-top:22px;
     }
-    .actions button {
-      flex: 1;
-      padding: 13px 16px;
-      border-radius: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      font-size: 15px;
-      transition: transform .12s ease, opacity .15s ease, background .15s ease;
+    .actions button{
+      flex:1;
+      padding:11px 16px;
+      border-radius:var(--radius);
+      font-weight:600;
+      font-size:14px;
+      transition:background .15s, border-color .15s;
       font-family:inherit;
     }
-    .actions button:active{transform:scale(.97)}
     .actions button:disabled{opacity:.6;cursor:wait}
-    .deny-btn {
-      background: #2a2a2a;
-      color: #ddd;
-      border: 1px solid #3a3a3a;
+    .deny-btn{
+      background:var(--bg);
+      color:var(--text);
+      border:1px solid var(--border-strong);
     }
-    .deny-btn:hover{background:#333}
-    .allow-btn {
-      background: #00FC00;
-      color: #0a0a0a;
-      border: none;
-      box-shadow: 0 4px 16px rgba(0,252,0,0.25);
+    .deny-btn:hover:not(:disabled){background:var(--bg-alt);border-color:var(--text-muted)}
+    .allow-btn{
+      background:var(--brand);
+      color:#FFFFFF;
+      border:1px solid var(--brand);
     }
-    .allow-btn:hover{background:#1aff1a}
+    .allow-btn:hover:not(:disabled){background:var(--brand-hover);border-color:var(--brand-hover)}
 
-    .footer-note {
-      text-align: center;
-      color: #777;
-      font-size: 11.5px;
-      margin-top: 18px;
-      letter-spacing:.2px;
+    .footer-note{
+      text-align:center;color:var(--text-muted);
+      font-size:11.5px;margin-top:16px;letter-spacing:.2px;
     }
     .err-banner{
       display:none;
       margin:0 0 14px;padding:10px 14px;
-      background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.35);
-      border-radius:10px;color:#ff9a9a;font-size:13px;
+      background:var(--danger-soft);
+      border:1px solid var(--danger-border);
+      border-radius:var(--radius);
+      color:var(--danger);font-size:13px;
     }
     .err-banner.show{display:block}
 
+    /* ── Integrations panel ──────────────────────────────────── */
+    .integrations{
+      max-width:var(--max);
+      margin:0 auto 48px;
+      padding:0 16px;
+    }
+    .integrations-head{
+      text-align:center;
+      margin-bottom:24px;
+    }
+    .integrations-title{
+      font-size:18px;font-weight:700;color:var(--text);
+      letter-spacing:-.3px;
+    }
+    .integrations-sub{
+      font-size:13px;color:var(--text-muted);margin-top:4px;
+    }
+    .integrations-grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+    @media(max-width:880px){.integrations-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:480px){.integrations-grid{grid-template-columns:1fr}}
+    .integration-card{
+      background:var(--bg);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:16px;
+      display:flex;align-items:center;gap:12px;
+      transition:border-color .15s;
+    }
+    .integration-card:hover{border-color:var(--border-strong)}
+    .integration-logo{
+      width:36px;height:36px;
+      border-radius:var(--radius);
+      background:var(--bg-alt);
+      border:1px solid var(--border);
+      display:flex;align-items:center;justify-content:center;
+      font-size:16px;font-weight:700;color:var(--text);
+      flex-shrink:0;
+    }
+    .integration-body{flex:1;min-width:0}
+    .integration-name{font-size:13.5px;font-weight:600;color:var(--text)}
+    .integration-status{
+      font-size:11px;
+      margin-top:2px;
+      letter-spacing:.3px;
+    }
+    .integration-status.connected{color:var(--brand);font-weight:600}
+    .integration-status.available{color:var(--text-muted)}
+    .integration-status.coming{color:var(--text-muted);font-style:italic}
+    .integration-cta{
+      font-size:12px;font-weight:600;
+      padding:6px 10px;
+      border-radius:var(--radius-sm);
+      background:var(--bg-alt);
+      border:1px solid var(--border);
+      color:var(--text);
+      cursor:pointer;
+      transition:background .15s, border-color .15s;
+      white-space:nowrap;
+    }
+    .integration-cta:hover:not(:disabled){background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand)}
+    .integration-cta.connected{background:var(--brand);color:#FFFFFF;border-color:var(--brand)}
+    .integration-cta.connected:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+    .integration-cta:disabled{opacity:.45;cursor:not-allowed}
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer{
+      background:var(--bg);
+      border-top:1px solid var(--border);
+      padding:20px 24px;
+      text-align:center;
+      color:var(--text-muted);
+      font-size:12px;
+    }
+
     @media (max-width: 380px){
-      .connect-card{padding:22px 18px 20px}
-      .brand-info h2{font-size:17px}
-      .scope-icon{font-size:20px;width:24px}
-      .actions button{font-size:14px;padding:12px 12px}
+      .connect-card{padding:24px 20px 20px}
+      .brand-info h2{font-size:16px}
+      .scope-icon{font-size:18px;width:22px}
+      .actions button{font-size:13px;padding:10px 12px}
+    }
+    @media (prefers-reduced-motion: reduce){
+      .connect-card{animation:none}
     }
   </style>
-  <!-- KiX i18n infrastructure (Phase 1 — scaffolding; no visible strings replaced yet) -->
+  <!-- KiX i18n -->
   <script src="i18n/i18next-runtime.js" defer></script>
   <script src="i18n/locale-switcher.js" defer></script>
 </head>
 <body>
-  <div class="connect-card" role="dialog" aria-labelledby="brand-name">
-    <div class="kix-mark"><span class="dot"></span>KIX CONNECT</div>
 
-    <div class="err-banner" id="err-banner"></div>
+<header>
+  <div class="nav-inner">
+    <a href="/" class="logo" aria-label="KiX home">Ki<span>X</span></a>
+    <nav class="top-links" aria-label="Primary">
+      <a href="/" data-i18n="connect:nav.product">Product</a>
+      <a href="mailto:hello@letskix.com" data-i18n="connect:nav.help">Help</a>
+      <a href="#" data-i18n="connect:nav.privacy">Privacy</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="connect-card" role="dialog" aria-labelledby="brand-name">
+    <div class="kix-mark"><span class="dot" aria-hidden="true"></span><span data-i18n="connect:mark">KIX CONNECT</span></div>
+
+    <div class="err-banner" id="err-banner" role="alert"></div>
 
     <div class="brand-info">
       <div class="brand-logo" id="brand-logo-wrap">
@@ -173,49 +306,89 @@
       </div>
       <div style="min-width:0;flex:1">
         <h2 id="brand-name">—</h2>
-        <p class="tagline" id="brand-tagline">想接入你的 KiX 账户</p>
+        <p class="tagline" id="brand-tagline" data-i18n="connect:default_tagline">is requesting access to your KiX account</p>
       </div>
     </div>
 
     <p class="intro">
-      <strong id="brand-name-inline">—</strong> 想访问以下数据：
+      <strong id="brand-name-inline">—</strong>
+      <span data-i18n="connect:intro_prefix">wants to access the following data:</span>
     </p>
 
     <div class="scopes-list" id="scopes-list"></div>
 
     <div class="guarantees">
-      <div><span class="check">✓</span>你可以随时在 KiX App 撤销此授权</div>
-      <div><span class="check">✓</span>你的密码和个人识别信息不会分享给商家</div>
-      <div><span class="check">✓</span>商家只能在你授权的范围内访问数据</div>
+      <div><span class="check" aria-hidden="true">✓</span><span data-i18n="connect:guarantee.revoke">You can revoke this authorisation at any time in the KiX app.</span></div>
+      <div><span class="check" aria-hidden="true">✓</span><span data-i18n="connect:guarantee.privacy">Your password and personal identifiers are never shared with the merchant.</span></div>
+      <div><span class="check" aria-hidden="true">✓</span><span data-i18n="connect:guarantee.scope">The merchant can only access data within the scopes you approve.</span></div>
     </div>
 
     <div class="actions">
-      <button class="deny-btn" id="deny-btn" type="button">拒绝</button>
-      <button class="allow-btn" id="allow-btn" type="button">允许</button>
+      <button class="deny-btn" id="deny-btn" type="button" data-i18n="connect:action.deny">Decline</button>
+      <button class="allow-btn" id="allow-btn" type="button" data-i18n="connect:action.allow">Authorise</button>
     </div>
 
-    <p class="footer-note">
-      KiX 不卖广告 — 商家直接为效果付费
+    <p class="footer-note" data-i18n="connect:footer.note">
+      KiX does not sell ads — merchants pay only for results.
     </p>
   </div>
+</main>
+
+<!-- ═══ INTEGRATIONS DIRECTORY ═══ -->
+<section class="integrations" aria-labelledby="integrations-title">
+  <div class="integrations-head">
+    <div class="integrations-title" id="integrations-title">External integrations</div>
+    <div class="integrations-sub">Merchants connect KiX to their existing stack.</div>
+  </div>
+  <div class="integrations-grid" id="integrations-grid">
+    <!-- Populated by JS to keep markup compact and i18n-driven -->
+  </div>
+</section>
+
+<footer>
+  © 2026 KiX · letskix.com
+</footer>
 
   <script>
-    const SCOPE_DESCRIPTIONS = {
-      profile:   { icon: "👤", title: "查看你的基本资料", detail: "显示名 / 语言 / 国家" },
-      history:   { icon: "📊", title: "查看你在 KiX 上的活动", detail: "玩过的游戏、领过的券（不含密码）" },
-      location:  { icon: "📍", title: "在你附近时推送", detail: "用于附近商家的优惠通知" },
-      favorites: { icon: "❤️", title: "了解你的偏好", detail: "推荐你可能喜欢的活动" },
-      email:     { icon: "📧", title: "发送邮件给你", detail: "营销邮件 / 提醒" },
-      phone:     { icon: "📱", title: "发送短信给你", detail: "紧急通知 / 验证码" },
-      insights:  { icon: "🔍", title: "查看跨商户洞察", detail: "你的整体偏好分析（聚合，非具体购买）" },
+    // ─── Scope catalogue (icon only — text comes from i18n) ──────────
+    const SCOPE_ICONS = {
+      profile:   "👤",
+      history:   "📊",
+      location:  "📍",
+      favorites: "❤",
+      email:     "✉",
+      phone:     "📱",
+      insights:  "🔍",
     };
+
+    // ─── Integration catalogue ───────────────────────────────────────
+    const INTEGRATIONS = [
+      { id:"stripe",   name:"Stripe",   group:"Payments",  status:"available", initial:"S" },
+      { id:"square",   name:"Square",   group:"Payments",  status:"available", initial:"⬛" },
+      { id:"shopify",  name:"Shopify",  group:"Commerce",  status:"available", initial:"S" },
+      { id:"grabpay",  name:"GrabPay",  group:"Payments",  status:"available", initial:"G" },
+      { id:"ovo",      name:"OVO",      group:"Payments",  status:"coming",    initial:"O" },
+      { id:"meta",     name:"Meta",     group:"Social",    status:"available", initial:"M" },
+      { id:"google",   name:"Google",   group:"Social",    status:"available", initial:"G" },
+      { id:"tiktok",   name:"TikTok",   group:"Social",    status:"available", initial:"T" },
+    ];
+
+    function t(key, fallback) {
+      try {
+        if (window.i18next && typeof window.i18next.t === 'function') {
+          const out = window.i18next.t(key);
+          if (out && out !== key) return out;
+        }
+      } catch (_) {}
+      return fallback;
+    }
 
     function escapeHtml(s){
       return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
-    function showError(msg){
+    function showError(key, fallback){
       const e = document.getElementById('err-banner');
-      e.textContent = msg;
+      e.textContent = t(key, fallback);
       e.classList.add('show');
     }
 
@@ -225,17 +398,125 @@
     const redirectUri = params.get("redirect_uri") || "";
     const state = params.get("state") || "";
 
-    // Validate inputs early
+    // Defer error display until i18next is ready so we use localised copy.
+    let pendingError = null;
     if(!brandId){
-      showError("缺少 brand_id 参数");
+      pendingError = ['connect:error.missing_brand', 'Missing brand_id parameter.'];
     } else if(!scopes.length){
-      showError("缺少 scopes 参数");
+      pendingError = ['connect:error.missing_scopes', 'Missing scopes parameter.'];
     } else if(!redirectUri){
-      showError("缺少 redirect_uri 参数");
+      pendingError = ['connect:error.missing_redirect', 'Missing redirect_uri parameter.'];
     }
 
-    // Load brand info
-    if(brandId){
+    function renderScopes(){
+      const scopesList = document.getElementById("scopes-list");
+      if(!scopes.length){
+        scopesList.innerHTML = `<div class="scope-item"><div class="scope-text scope-detail">${escapeHtml(t('connect:scope.none', 'No scopes specified'))}</div></div>`;
+        return;
+      }
+      scopesList.innerHTML = scopes.map(scope => {
+        const icon = SCOPE_ICONS[scope] || "🔑";
+        const title = t(`connect:scope.${scope}.title`, scope);
+        const detail = t(`connect:scope.${scope}.detail`, "");
+        return `
+          <div class="scope-item">
+            <span class="scope-icon" aria-hidden="true">${icon}</span>
+            <div class="scope-text">
+              <div class="scope-title">${escapeHtml(title)}</div>
+              ${detail ? `<div class="scope-detail">${escapeHtml(detail)}</div>` : ''}
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function renderIntegrations(){
+      const wrap = document.getElementById('integrations-grid');
+      if(!wrap) return;
+      wrap.innerHTML = INTEGRATIONS.map(ig => {
+        const statusLabel =
+          ig.status === 'connected' ? t('connect:integration.status_connected', 'Connected') :
+          ig.status === 'coming'    ? t('connect:integration.status_coming',    'Coming soon') :
+                                      t('connect:integration.status_available', 'Available');
+        const ctaLabel =
+          ig.status === 'connected' ? t('connect:integration.cta_connected', 'Connected') :
+          ig.status === 'coming'    ? t('connect:integration.cta_coming',    'Notify me') :
+                                      t('connect:integration.cta_connect',   'Connect');
+        const disabled = ig.status === 'coming' ? 'disabled aria-disabled="true"' : '';
+        const ctaClass = ig.status === 'connected' ? 'integration-cta connected' : 'integration-cta';
+        return `
+          <div class="integration-card">
+            <div class="integration-logo" aria-hidden="true">${escapeHtml(ig.initial)}</div>
+            <div class="integration-body">
+              <div class="integration-name">${escapeHtml(ig.name)}</div>
+              <div class="integration-status ${ig.status}">${escapeHtml(statusLabel)}</div>
+            </div>
+            <button class="${ctaClass}" type="button" ${disabled} data-integration="${escapeHtml(ig.id)}">${escapeHtml(ctaLabel)}</button>
+          </div>`;
+      }).join("");
+    }
+
+    function safeRedirect(target){
+      if(!/^https?:\/\//i.test(target)){
+        showError('connect:error.invalid_redirect', 'redirect_uri is not valid.');
+        return;
+      }
+      window.location.href = target;
+    }
+
+    async function allow(){
+      const btn = document.getElementById('allow-btn');
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = t('connect:action.processing', 'Processing…');
+      try {
+        const kid = localStorage.getItem("kid") || localStorage.getItem("_kix_uid");
+        if (!kid) {
+          showError('connect:error.not_logged_in', 'Please sign in to KiX before authorising.');
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+          return;
+        }
+        const res = await fetch(`/api/v1/kix-id/connect/authorize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ brand_id: brandId, scopes, redirect_uri: redirectUri, kid, state }),
+        });
+        if (!res.ok) {
+          let msg = t('connect:error.authorise_failed', 'Authorisation failed');
+          try { const j = await res.json(); if(j.detail) msg += ': '+j.detail; } catch(_){}
+          const e = document.getElementById('err-banner');
+          e.textContent = msg;
+          e.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+          return;
+        }
+        const data = await res.json();
+        const url = new URL(redirectUri);
+        url.searchParams.set('code', data.code);
+        if(state) url.searchParams.set('state', state);
+        safeRedirect(url.toString());
+      } catch (e) {
+        showError('connect:error.network', 'Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
+
+    function deny(){
+      if(!redirectUri) return;
+      try {
+        const url = new URL(redirectUri);
+        url.searchParams.set('error', 'access_denied');
+        if(state) url.searchParams.set('state', state);
+        safeRedirect(url.toString());
+      } catch(_) {
+        showError('connect:error.invalid_redirect', 'redirect_uri is not valid.');
+      }
+    }
+
+    function loadBrand(){
+      if(!brandId) return;
       fetch(`/api/v1/storefront/${encodeURIComponent(brandId)}`)
         .then(r => r.ok ? r.json() : Promise.reject(new Error('brand_not_found')))
         .then(brand => {
@@ -246,6 +527,7 @@
           if (brand.logo_url) {
             const img = document.getElementById("brand-logo");
             img.src = brand.logo_url;
+            img.alt = name;
             img.onload = () => {
               img.style.display = 'block';
               document.getElementById("brand-initial").style.display = 'none';
@@ -254,7 +536,8 @@
           if (brand.bio) {
             document.getElementById("brand-tagline").textContent = brand.bio.slice(0, 80);
           }
-          document.title = `授权 ${name} — KiX Connect`;
+          const titleTpl = t('connect:meta.title_with_brand', 'Authorise {brand} — KiX Connect');
+          document.title = titleTpl.replace('{brand}', name);
         })
         .catch(() => {
           document.getElementById("brand-name").textContent = brandId;
@@ -263,83 +546,24 @@
         });
     }
 
-    // Render scopes
-    const scopesList = document.getElementById("scopes-list");
-    scopesList.innerHTML = scopes.map(scope => {
-      const def = SCOPE_DESCRIPTIONS[scope] || { icon: "🔑", title: scope, detail: "" };
-      return `
-        <div class="scope-item">
-          <span class="scope-icon">${def.icon}</span>
-          <div class="scope-text">
-            <div class="scope-title">${escapeHtml(def.title)}</div>
-            ${def.detail ? `<div class="scope-detail">${escapeHtml(def.detail)}</div>` : ''}
-          </div>
-        </div>`;
-    }).join("") || '<div class="scope-item"><div class="scope-text scope-detail">未指定权限范围</div></div>';
-
-    function safeRedirect(target){
-      // Only allow http(s) redirect to avoid javascript: scheme injection
-      if(!/^https?:\/\//i.test(target)){
-        showError("redirect_uri 不合法");
-        return;
-      }
-      window.location.href = target;
+    function init(){
+      if(pendingError){ showError(pendingError[0], pendingError[1]); }
+      renderScopes();
+      renderIntegrations();
+      loadBrand();
     }
 
-    async function allow() {
-      const btn = document.getElementById('allow-btn');
-      btn.disabled = true;
-      btn.textContent = '处理中…';
-      try {
-        const kid = localStorage.getItem("kid") || localStorage.getItem("_kix_uid");
-        if (!kid) {
-          showError("请先登录 KiX 后再授权");
-          btn.disabled = false;
-          btn.textContent = '允许';
-          return;
-        }
-        const res = await fetch(`/api/v1/kix-id/connect/authorize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            brand_id: brandId,
-            scopes,
-            redirect_uri: redirectUri,
-            kid,
-            state,
-          }),
-        });
-        if (!res.ok) {
-          let msg = '授权失败';
-          try { const j = await res.json(); if(j.detail) msg += ': '+j.detail; } catch(_){}
-          showError(msg);
-          btn.disabled = false;
-          btn.textContent = '允许';
-          return;
-        }
-        const data = await res.json();
-        const url = new URL(redirectUri);
-        url.searchParams.set('code', data.code);
-        if(state) url.searchParams.set('state', state);
-        safeRedirect(url.toString());
-      } catch (e) {
-        showError("网络错误，请重试");
-        btn.disabled = false;
-        btn.textContent = '允许';
-      }
-    }
-
-    function deny() {
-      if(!redirectUri) return;
-      try {
-        const url = new URL(redirectUri);
-        url.searchParams.set('error', 'access_denied');
-        if(state) url.searchParams.set('state', state);
-        safeRedirect(url.toString());
-      } catch(_) {
-        showError("redirect_uri 不合法");
-      }
-    }
+    // Run after i18next is ready so localised strings are available;
+    // also fall back after a short delay for offline / failed-CDN cases.
+    let initialised = false;
+    function safeInit(){ if(initialised) return; initialised = true; init(); }
+    document.addEventListener('kix:i18n-ready', () => { safeInit(); });
+    document.addEventListener('kix:locale-changed', () => {
+      // Re-render dynamic content on locale change.
+      renderScopes();
+      renderIntegrations();
+    });
+    setTimeout(safeInit, 1500);
 
     document.getElementById('allow-btn').addEventListener('click', allow);
     document.getElementById('deny-btn').addEventListener('click', deny);

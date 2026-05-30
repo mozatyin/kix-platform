@@ -1,0 +1,56 @@
+{
+  "meta.title": "KiX Connect — 授权",
+  "meta.title_with_brand": "授权 {brand} — KiX Connect",
+  "meta.description": "授权商家访问你的 KiX 账户数据，你可以随时撤销。",
+
+  "mark": "KIX CONNECT",
+  "default_tagline": "想接入你的 KiX 账户",
+  "intro_prefix": "想访问以下数据：",
+
+  "guarantee.revoke": "你可以随时在 KiX App 撤销此授权。",
+  "guarantee.privacy": "你的密码和个人识别信息不会分享给商家。",
+  "guarantee.scope": "商家只能在你授权的范围内访问数据。",
+
+  "action.deny": "拒绝",
+  "action.allow": "允许",
+  "action.processing": "处理中…",
+
+  "footer.note": "KiX 不卖广告 — 商家直接为效果付费。",
+
+  "scope.profile.title": "查看你的基本资料",
+  "scope.profile.detail": "显示名、语言、国家",
+  "scope.history.title": "查看你在 KiX 上的活动",
+  "scope.history.detail": "玩过的游戏、领过的券（不含密码）",
+  "scope.location.title": "在你附近时推送",
+  "scope.location.detail": "用于附近商家的优惠通知",
+  "scope.favorites.title": "了解你的偏好",
+  "scope.favorites.detail": "推荐你可能喜欢的活动",
+  "scope.email.title": "发送邮件给你",
+  "scope.email.detail": "营销邮件与提醒",
+  "scope.phone.title": "发送短信给你",
+  "scope.phone.detail": "紧急通知与验证码",
+  "scope.insights.title": "查看跨商户洞察",
+  "scope.insights.detail": "整体偏好分析（聚合，非具体购买）",
+  "scope.none": "未指定权限范围",
+
+  "error.missing_brand": "缺少 brand_id 参数。",
+  "error.missing_scopes": "缺少 scopes 参数。",
+  "error.missing_redirect": "缺少 redirect_uri 参数。",
+  "error.invalid_redirect": "redirect_uri 不合法。",
+  "error.not_logged_in": "请先登录 KiX 后再授权。",
+  "error.authorise_failed": "授权失败",
+  "error.network": "网络错误，请重试。",
+
+  "nav.product": "产品",
+  "nav.help": "帮助",
+  "nav.privacy": "隐私",
+
+  "integrations.title": "外部集成",
+  "integrations.sub": "商家把 KiX 接入现有系统。",
+  "integration.status_connected": "已连接",
+  "integration.status_available": "可用",
+  "integration.status_coming": "即将上线",
+  "integration.cta_connect": "连接",
+  "integration.cta_connected": "已连接",
+  "integration.cta_coming": "上线提醒"
+}

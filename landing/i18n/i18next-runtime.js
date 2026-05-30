@@ -20,7 +20,7 @@
   const QUERY_PARAM    = 'lang';
   const DEFAULT_LOCALE = 'en-SG';
   const SUPPORTED      = ['en-SG', 'zh-Hans-SG', 'en-US', 'zh-Hans-CN'];
-  const NAMESPACES     = ['common', 'portal', 'storefront', 'play'];
+  const NAMESPACES     = ['common', 'portal', 'storefront', 'play', 'portal-sdk', 'index', 'connect'];
   const RTL_LANGS      = ['ar', 'he', 'fa', 'ur']; // future Phase 3
 
   // ---------- CDN sources (with self-host fallback discovery) ----------
@@ -127,13 +127,26 @@
       const key = el.dataset.i18n;
       if (!key) return;
       const text = global.i18next.t(key, getDataI18nOptions(el));
-      if (text !== key) el.textContent = text;
+      if (text === key) return;
+      // Honour data-i18n-html="true" so translations can carry inline markup
+      // (e.g. <em>, <strong>). Translators must keep markup minimal.
+      if (el.dataset.i18nHtml === 'true') {
+        el.innerHTML = text;
+      } else {
+        el.textContent = text;
+      }
     });
     root.querySelectorAll('[data-i18n-attr]').forEach(el => {
       // Format: data-i18n-attr="title:tooltip.help; placeholder:form.email"
+      // Supports namespaced keys: data-i18n-attr="content:index:meta.description"
+      // (i.e. split only on the first colon to preserve the namespace separator).
       const spec = el.dataset.i18nAttr;
       spec.split(';').forEach(pair => {
-        const [attr, key] = pair.split(':').map(s => (s || '').trim());
+        const trimmed = (pair || '').trim();
+        const idx = trimmed.indexOf(':');
+        if (idx === -1) return;
+        const attr = trimmed.slice(0, idx).trim();
+        const key  = trimmed.slice(idx + 1).trim();
         if (!attr || !key) return;
         const text = global.i18next.t(key, getDataI18nOptions(el));
         if (text !== key) el.setAttribute(attr, text);
