@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en-SG">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>KiX Game Catalog — 15 Templates</title>
+<style>
+:root { --bg:#0b0d12; --fg:#fff; --muted:#9ca3af; --brand:#ff4081; --card:#161922; }
+* { box-sizing:border-box; }
+html, body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; }
+header { padding: 24px 20px 8px; border-bottom: 1px solid #232631; }
+h1 { margin:0; font-size: 22px; }
+.sub { color:var(--muted); margin-top:4px; font-size:13px; }
+.filters { display:flex; flex-wrap:wrap; gap:8px; padding:14px 20px; border-bottom:1px solid #232631; }
+.filter { background:#232631; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-size:13px; cursor:pointer; }
+.filter.on { background: var(--brand); }
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:14px; padding:18px; }
+.card { background:var(--card); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; box-shadow: 0 6px 14px rgba(0,0,0,.35); }
+.card iframe { width:100%; height:260px; border:none; background:#000; }
+.meta { padding:12px 14px 14px; }
+.meta h3 { margin: 0 0 4px; font-size: 16px; }
+.meta .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.tag { background:#262a36; color:#cbd5e1; padding: 3px 8px; border-radius:6px; font-size:11px; }
+.tag.brand { background: var(--brand); color:#fff; }
+.desc { color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.4; }
+.btn { background: var(--brand); color:#fff; border:none; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-top: 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>KiX Game Catalog Demo</h1>
+  <div class="sub">15 brand-ready game templates (5 legacy + 10 new). Live previews, brand-injectable, mobile-first.</div>
+</header>
+
+<div class="filters">
+  <button class="filter on" data-key="all">All</button>
+  <button class="filter" data-key="industry:fnb">F&amp;B</button>
+  <button class="filter" data-key="industry:beauty">Beauty</button>
+  <button class="filter" data-key="industry:retail">Retail</button>
+  <button class="filter" data-key="industry:education">Education</button>
+  <button class="filter" data-key="industry:fitness">Fitness</button>
+  <button class="filter" data-key="time:quick">Quick (≤15s)</button>
+  <button class="filter" data-key="time:mid">Medium (16-30s)</button>
+  <button class="filter" data-key="time:long">Long (31-60s)</button>
+</div>
+
+<div id="grid" class="grid"></div>
+
+<script>
+const TYPES = [
+  { type:"spin", name:"Spin the Wheel", desc:"Single-prize prize wheel; instant outcome.", industries:["fnb","retail","beauty"], t:8 },
+  { type:"scratch", name:"Scratch Card", desc:"Single scratch-off reveal.", industries:["fnb","retail"], t:10 },
+  { type:"match", name:"Match 3", desc:"Swap adjacent symbols to make 3+ in a row.", industries:["fnb","beauty"], t:35 },
+  { type:"quiz", name:"Brand Quiz", desc:"Multi-choice trivia about the brand.", industries:["education","fnb","retail"], t:30 },
+  { type:"shake", name:"Shake to Win", desc:"Shake the phone to score.", industries:["fnb","retail","fitness"], t:12 },
+  { type:"slot_machine", name:"Slot Machine", desc:"3-reel slot machine; win on three matching symbols.", industries:["retail","fnb"], t:10 },
+  { type:"wheel_of_fortune", name:"Wheel of Fortune", desc:"Multi-segment weighted prize wheel.", industries:["fnb","retail","beauty"], t:12 },
+  { type:"memory_match", name:"Memory Match", desc:"Flip cards to find matching pairs.", industries:["fnb","beauty","education"], t:40 },
+  { type:"whack_a_mole", name:"Whack-a-Mole", desc:"Tap moles, avoid bombs, in 20 seconds.", industries:["fnb","fitness","retail"], t:22 },
+  { type:"catch_falling", name:"Catch & Win", desc:"Catch falling items in a basket, avoid bombs.", industries:["beauty","retail","fnb"], t:30 },
+  { type:"bubble_pop", name:"Bubble Pop", desc:"Tap floating bubbles for points.", industries:["beauty","fnb"], t:28 },
+  { type:"target_shoot", name:"Target Shoot", desc:"Aim and tap targets within the time limit.", industries:["fitness","retail"], t:22 },
+  { type:"stack_tower", name:"Stack Tower", desc:"Stack blocks accurately to build the tallest tower.", industries:["retail","fitness"], t:30 },
+  { type:"lucky_dice", name:"Lucky Dice", desc:"Roll three dice for combinations; triples = jackpot.", industries:["retail","fnb"], t:8 },
+  { type:"scratch_galaxy", name:"Scratch Galaxy", desc:"Scratch three cards in succession; matching trio = jackpot.", industries:["fnb","retail"], t:45 },
+];
+
+const PREVIEW_BASE = "/api/v1/game-library/preview"; // requires backend endpoint; falls back to placeholder
+
+const grid = document.getElementById("grid");
+
+function timeBucket(t) {
+  if (t <= 15) return "quick";
+  if (t <= 30) return "mid";
+  return "long";
+}
+
+function render(filter) {
+  grid.innerHTML = "";
+  const filtered = TYPES.filter(t => {
+    if (filter === "all") return true;
+    const [k, v] = filter.split(":");
+    if (k === "industry") return t.industries.includes(v);
+    if (k === "time") return timeBucket(t.t) === v;
+    return true;
+  });
+  for (const t of filtered) {
+    const card = document.createElement("div"); card.className = "card";
+    card.innerHTML = `
+      <iframe loading="lazy" title="${t.name}" src="${PREVIEW_BASE}?type=${t.type}&locale=en-SG"
+        sandbox="allow-scripts allow-same-origin"></iframe>
+      <div class="meta">
+        <h3>${t.name}</h3>
+        <div class="row">
+          <span class="tag brand">${t.type}</span>
+          <span class="tag">${t.t}s</span>
+          ${t.industries.map(i => `<span class="tag">${i}</span>`).join("")}
+        </div>
+        <div class="desc">${t.desc}</div>
+        <button class="btn" onclick="window.open('${PREVIEW_BASE}?type=${t.type}&locale=en-SG','_blank')">Open full-screen</button>
+      </div>`;
+    grid.appendChild(card);
+  }
+}
+
+document.querySelectorAll(".filter").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    render(btn.dataset.key);
+  });
+});
+render("all");
+</script>
+</body>
+</html>
