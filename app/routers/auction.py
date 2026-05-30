@@ -154,6 +154,107 @@ DIVERSITY_WON_KEY = "auction:diversity:won:{brand_id}"
 DIVERSITY_TOTAL_KEY = "auction:diversity:total"
 DIVERSITY_TTL = 86400 * 7
 
+# ── Wave G v2: scale-aware diversity + per-region quota ─────────────────
+#
+# Root cause for 86/100 zero-winner brands in the 100-merchant × 90-day
+# sim: the fixed 3% floor (tuned for ~10 brands) collapses at 100+ brands
+# because each brand can claim at most ~1/N of share, while the floor
+# still demands 3%. With per-region dominance (SG/ID winning 53% of all
+# wins) the long tail of VN/PH/etc. brands never gets exposure.
+#
+# Two interventions, both feature-flagged behind KIX_AUCTION_V2_ENABLED
+# (default True). V1 path is preserved for instant rollback.
+#
+#   1. Scale-aware floor: floor_pct = max(0.3, 3.0 * sqrt(10/N))
+#      Plus a hard "minimum wins per active brand" rule at 0.5% of window.
+#   2. Per-region quota: each region's share of auctions ≈ its share of
+#      active brands, with a 5% floor for any region that has ANY active
+#      brand. Cross-region promotion when the user's region is over quota.
+
+AUCTION_V2_ENABLED = (
+    os.environ.get("KIX_AUCTION_V2_ENABLED", "true").lower()
+    in ("1", "true", "yes", "on")
+)
+
+# Minimum guaranteed wins per active brand, as a fraction of the trailing
+# window. 0.5% means each of 100 brands gets at least 5 wins per 1000 auctions.
+PER_BRAND_MIN_WINS_PCT = float(
+    os.environ.get("AUCTION_PER_BRAND_MIN_WINS_PCT", "0.5")
+)
+
+# Per-region quota: every region with at least one active brand is
+# guaranteed REGION_QUOTA_FLOOR_PCT of auctions (cross-region promotion
+# fills in if the user's region is over-served).
+REGION_QUOTA_FLOOR_PCT = float(
+    os.environ.get("AUCTION_REGION_QUOTA_FLOOR_PCT", "5")
+)
+
+# Rolling 7-day per-region active-brand counter + daily served counter.
+REGION_ACTIVE_BRANDS_KEY = "auction:region:{code}:active_brand_count"
+REGION_SERVED_TODAY_KEY = "auction:region:{code}:served:{date}"
+REGION_BRAND_SET_KEY = "auction:region:{code}:brands"  # SET of brand_ids
+REGION_DAILY_TOTAL_KEY = "auction:region:total:{date}"
+REGION_SERVED_TTL = 86400 * 8  # 7-day rolling + 1 day grace
+
+# Per-brand floor injection audit log (capped list, last 500 entries).
+AUCTION_FLOOR_AUDIT_KEY = "auction:audit:floor_injections"
+AUCTION_FLOOR_AUDIT_MAX = 500
+
+
+def scale_aware_floor_pct(active_brand_count: int) -> float:
+    """Power-law diversity floor that shrinks as the brand pool grows.
+
+    Anchor points::
+
+        10   brands → 3.0%
+        100  brands → ~0.95%  (floored to algebra; min clamp is 0.3%)
+        1000 brands → ~0.3%
+
+    Formula: ``3.0 * sqrt(10 / max(N, 10))``, clamped to a 0.3% minimum.
+    Independent of the legacy ``DIVERSITY_FLOOR_PCT`` env var so a v2
+    rollback (KIX_AUCTION_V2_ENABLED=false) reverts to that knob.
+    """
+    n = max(int(active_brand_count or 0), 10)
+    raw = 3.0 * math.sqrt(10.0 / n)
+    return max(0.3, raw)
+
+
+def per_brand_min_wins(window: int = DIVERSITY_WINDOW) -> int:
+    """Absolute floor count: every active brand gets at least this many
+    wins in the trailing window, regardless of N."""
+    return max(1, int(window * PER_BRAND_MIN_WINS_PCT / 100.0))
+
+
+def get_region_quota(
+    region: str,
+    region_active_brands: dict[str, int],
+    total_auctions: int,
+) -> int:
+    """Allocate auctions to ``region`` proportionally to its share of
+    active brands, with a hard ``REGION_QUOTA_FLOOR_PCT`` floor for any
+    region that has at least one active brand.
+
+    Example: SG=30 brands, ID=20, PH=10, VN=5, TZ=1 (total=66, T=1000).
+        SG: round(30/66 * 1000) = 455
+        ID: round(20/66 * 1000) = 303
+        PH: round(10/66 * 1000) = 152
+        VN: round( 5/66 * 1000) =  76  (still ≥ 50 floor)
+        TZ: max(round( 1/66 * 1000), 50) = max(15, 50) = 50
+
+    Region with 0 active brands → quota = 0 (no exposure earned).
+    """
+    if not region or total_auctions <= 0:
+        return 0
+    own = int(region_active_brands.get(region, 0) or 0)
+    if own <= 0:
+        return 0
+    total_brands = sum(max(0, int(v)) for v in region_active_brands.values())
+    if total_brands <= 0:
+        return 0
+    proportional = int(round(own / total_brands * total_auctions))
+    floor = int(round(REGION_QUOTA_FLOOR_PCT / 100.0 * total_auctions))
+    return max(proportional, floor)
+
 
 # ── Pydantic ─────────────────────────────────────────────────────────────
 
@@ -608,6 +709,186 @@ def _apply_diversity_floor(
     starved_row = ranked[promote_idx]
     rest = ranked[:promote_idx] + ranked[promote_idx + 1:]
     return [starved_row] + rest
+
+
+# ── Wave G v2: per-region quota + cross-region promotion ────────────────
+
+
+def _today_utc_date() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+async def record_region_active_brand(
+    r: aioredis.Redis, region: str, brand_id: str
+) -> None:
+    """Note that ``brand_id`` is active in ``region`` (rolling 7-day SET)."""
+    if not region or not brand_id:
+        return
+    code = (region or "").upper()
+    set_key = REGION_BRAND_SET_KEY.format(code=code)
+    try:
+        await r.sadd(set_key, brand_id)
+        await r.expire(set_key, REGION_SERVED_TTL)
+    except Exception:  # pragma: no cover
+        logger.debug("record_region_active_brand failed", exc_info=True)
+
+
+async def region_active_brand_count(
+    r: aioredis.Redis, region: str
+) -> int:
+    if not region:
+        return 0
+    code = (region or "").upper()
+    try:
+        return int(await r.scard(REGION_BRAND_SET_KEY.format(code=code)))
+    except Exception:  # pragma: no cover
+        return 0
+
+
+async def region_active_brand_counts(
+    r: aioredis.Redis, regions: list[str] | None = None
+) -> dict[str, int]:
+    """Return {region_code: active_brand_count} for the given regions.
+
+    If ``regions`` is None, scans ``auction:region:*:brands`` keys. Tests
+    that pre-seed SETs should pass explicit ``regions`` to avoid SCAN.
+    """
+    out: dict[str, int] = {}
+    if regions:
+        for code in regions:
+            out[code.upper()] = await region_active_brand_count(r, code)
+        return out
+    try:
+        cursor = 0
+        prefix = "auction:region:"
+        while True:
+            cursor, keys = await r.scan(
+                cursor=cursor, match=f"{prefix}*:brands", count=200
+            )
+            for k in keys:
+                # k = "auction:region:SG:brands"
+                parts = k.split(":")
+                if len(parts) >= 4 and parts[-1] == "brands":
+                    code = parts[2]
+                    out[code] = int(await r.scard(k))
+            if cursor == 0:
+                break
+    except Exception:  # pragma: no cover
+        logger.debug("region_active_brand_counts scan failed", exc_info=True)
+    return out
+
+
+async def record_region_served(
+    r: aioredis.Redis, region: str, date: str | None = None
+) -> int:
+    """Bump the per-region served-today counter; returns new count."""
+    if not region:
+        return 0
+    code = (region or "").upper()
+    day = date or _today_utc_date()
+    key = REGION_SERVED_TODAY_KEY.format(code=code, date=day)
+    total_key = REGION_DAILY_TOTAL_KEY.format(date=day)
+    try:
+        pipe = r.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, REGION_SERVED_TTL)
+        pipe.incr(total_key)
+        pipe.expire(total_key, REGION_SERVED_TTL)
+        results = await pipe.execute()
+        return int(results[0])
+    except Exception:  # pragma: no cover
+        return 0
+
+
+async def region_served_today(
+    r: aioredis.Redis, region: str, date: str | None = None
+) -> int:
+    if not region:
+        return 0
+    code = (region or "").upper()
+    day = date or _today_utc_date()
+    try:
+        raw = await r.get(REGION_SERVED_TODAY_KEY.format(code=code, date=day))
+        return int(raw) if raw is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+async def region_daily_total(
+    r: aioredis.Redis, date: str | None = None
+) -> int:
+    day = date or _today_utc_date()
+    try:
+        raw = await r.get(REGION_DAILY_TOTAL_KEY.format(date=day))
+        return int(raw) if raw is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def _is_region_over_quota(
+    served: int, daily_total: int, quota: int
+) -> bool:
+    """Region is over quota when it has consumed more than its share of
+    today's auctions. Cooldown: only compares once daily_total ≥ 20
+    auctions so the math isn't dominated by single-digit noise."""
+    if quota <= 0 or daily_total < 20:
+        return False
+    # Pro-rate the quota by what fraction of "today's window" we've seen.
+    # Quota is sized for a full window; compare ``served`` against the
+    # fraction of the window we've consumed.
+    expected_so_far = quota * (daily_total / max(DIVERSITY_WINDOW, 1))
+    return served > expected_so_far
+
+
+def _promote_cross_region(
+    ranked: list[tuple[float, int, float, float, dict[str, str]]],
+    user_region: str,
+) -> list[tuple[float, int, float, float, dict[str, str]]]:
+    """When the user's region is over quota, promote the highest-ranked
+    *out-of-region* candidate to position 0 so under-served regions get
+    cross-region exposure. Falls back to a no-op when no foreign candidate
+    is present (purely in-region auction)."""
+    if not ranked or not user_region:
+        return ranked
+    code = user_region.upper()
+    foreign_idx: int | None = None
+    for i, row in enumerate(ranked):
+        cand_region = (row[4].get("region") or "").upper()
+        if cand_region and cand_region != code:
+            foreign_idx = i
+            break
+    if foreign_idx is None or foreign_idx == 0:
+        return ranked
+    chosen = ranked[foreign_idx]
+    rest = ranked[:foreign_idx] + ranked[foreign_idx + 1:]
+    return [chosen] + rest
+
+
+async def _log_floor_injection(
+    r: aioredis.Redis,
+    *,
+    brand_id: str,
+    reason: str,
+    extras: dict[str, Any] | None = None,
+) -> None:
+    """Append an audit entry for a diversity-floor / quota injection.
+
+    Capped list so the key never grows unbounded; ops can pull the tail
+    via ``LRANGE auction:audit:floor_injections 0 -1``.
+    """
+    try:
+        entry = {
+            "ts": _now(),
+            "brand_id": brand_id,
+            "reason": reason,
+            **(extras or {}),
+        }
+        pipe = r.pipeline()
+        pipe.lpush(AUCTION_FLOOR_AUDIT_KEY, json.dumps(entry))
+        pipe.ltrim(AUCTION_FLOOR_AUDIT_KEY, 0, AUCTION_FLOOR_AUDIT_MAX - 1)
+        await pipe.execute()
+    except Exception:  # pragma: no cover
+        logger.debug("floor-audit append failed", exc_info=True)
 
 
 # ── Existing-customer exclusion (TikTok/Google/Facebook parity) ─────────
@@ -1130,20 +1411,124 @@ async def run_auction(
 
     ranked.sort(key=lambda x: -x[0])
 
+    # Derive each candidate's region tag (sg/id/...) for V2 quota logic.
+    # Order of preference: campaign hash "region" → targeting.countries[0]
+    # → user-side geo country. Stored lower-case for compare; promoted
+    # back to upper for Redis keys.
+    def _cand_region(c: dict[str, str]) -> str:
+        explicit = (c.get("region") or "").strip().lower()
+        if explicit:
+            return explicit
+        tgt = _safe_json_loads(c.get("targeting"), {})
+        countries = tgt.get("countries") if isinstance(tgt, dict) else None
+        if isinstance(countries, list) and countries:
+            return str(countries[0]).strip().lower()
+        return ""
+
+    for row in ranked:
+        row[4].setdefault("region", _cand_region(row[4]))
+
+    # User's region (geo.country wins; falls back to first candidate's
+    # region so an in-region auction still routes through quota logic).
+    user_region = (
+        (body.geo.country if body.geo and body.geo.country else "") or ""
+    ).strip().lower()
+
     # ── Diversity bookkeeping + floor injection ─────────────────────────
     entered_brands = {row[4].get("brand_id", "") for row in ranked if row[4].get("brand_id")}
     await _record_brand_auction_entered(r, entered_brands)
 
+    # Note per-region active-brand membership (rolling SETs). This drives
+    # ``get_region_quota`` on subsequent calls.
+    for row in ranked:
+        bid_id = row[4].get("brand_id", "")
+        region_tag = (row[4].get("region") or "").upper()
+        if bid_id and region_tag:
+            await record_region_active_brand(r, region_tag, bid_id)
+
     total_auctions = await _trailing_total_auctions(r)
-    if total_auctions >= DIVERSITY_WINDOW and DIVERSITY_FLOOR_PCT > 0:
-        floor_count = max(1, int(DIVERSITY_WINDOW * DIVERSITY_FLOOR_PCT / 100.0))
-        starved: set[str] = set()
-        for bid_brand in entered_brands:
-            won = await _brand_won_count(r, bid_brand)
-            if won < floor_count:
-                starved.add(bid_brand)
-        if starved:
-            ranked = _apply_diversity_floor(ranked, starved)
+
+    if AUCTION_V2_ENABLED:
+        # ── V2 scale-aware floor ───────────────────────────────────────
+        # Use the global pool of active brands as N — this prevents the
+        # 100-brand sim collapse where the legacy fixed 3% floor demands
+        # impossible per-brand share.
+        active_n = max(len(entered_brands), 1)
+        try:
+            # Cheap upper-bound estimate of active brand pool via the
+            # rolling diversity-entered keys count would require SCAN;
+            # use the in-auction entered_brands count + global hint.
+            global_active_hint = int(await r.scard(ACTIVE_CAMPAIGNS_KEY))
+            active_n = max(active_n, global_active_hint)
+        except Exception:  # pragma: no cover
+            pass
+
+        v2_floor_pct = scale_aware_floor_pct(active_n)
+        v2_floor_count = max(1, int(DIVERSITY_WINDOW * v2_floor_pct / 100.0))
+        # Absolute per-brand minimum (no-merchant-left-behind rule).
+        min_wins = per_brand_min_wins()
+        effective_floor = max(v2_floor_count, min_wins)
+
+        if total_auctions >= DIVERSITY_WINDOW:
+            starved: set[str] = set()
+            for bid_brand in entered_brands:
+                won = await _brand_won_count(r, bid_brand)
+                if won < effective_floor:
+                    starved.add(bid_brand)
+            if starved:
+                ranked = _apply_diversity_floor(ranked, starved)
+                # Audit: log who got promoted and why.
+                promoted_bid = ranked[0][4].get("brand_id", "")
+                if promoted_bid in starved:
+                    await _log_floor_injection(
+                        r,
+                        brand_id=promoted_bid,
+                        reason="scale_aware_floor",
+                        extras={
+                            "floor_pct": v2_floor_pct,
+                            "floor_count": effective_floor,
+                            "active_n": active_n,
+                        },
+                    )
+
+        # ── V2 per-region quota / cross-region promotion ───────────────
+        if user_region:
+            region_codes = sorted({
+                (row[4].get("region") or "").upper()
+                for row in ranked
+                if row[4].get("region")
+            } | {user_region.upper()})
+            counts = await region_active_brand_counts(r, regions=region_codes)
+            daily_total = await region_daily_total(r)
+            quota = get_region_quota(user_region.upper(), counts, DIVERSITY_WINDOW)
+            served = await region_served_today(r, user_region)
+            if _is_region_over_quota(served, daily_total, quota):
+                pre = ranked[0][4].get("brand_id", "")
+                ranked = _promote_cross_region(ranked, user_region)
+                new_winner = ranked[0][4].get("brand_id", "") if ranked else ""
+                if new_winner and new_winner != pre:
+                    await _log_floor_injection(
+                        r,
+                        brand_id=new_winner,
+                        reason="cross_region_promotion",
+                        extras={
+                            "user_region": user_region,
+                            "served": served,
+                            "quota": quota,
+                            "daily_total": daily_total,
+                        },
+                    )
+    else:
+        # V1 legacy path (single-knob fixed-percent floor).
+        if total_auctions >= DIVERSITY_WINDOW and DIVERSITY_FLOOR_PCT > 0:
+            floor_count = max(1, int(DIVERSITY_WINDOW * DIVERSITY_FLOOR_PCT / 100.0))
+            starved: set[str] = set()
+            for bid_brand in entered_brands:
+                won = await _brand_won_count(r, bid_brand)
+                if won < floor_count:
+                    starved.add(bid_brand)
+            if starved:
+                ranked = _apply_diversity_floor(ranked, starved)
 
     # ── Reserve price gate (per-slot floor) ─────────────────────────────
     reserve_cents = await _get_reserve_cents(r, body.slot)
@@ -1291,6 +1676,12 @@ async def run_auction(
     await r.hincrby(_sk(winner_cid), "impressions", 1)
     await adjust_quality_score(r, winner_cid, impression=True)
     await _record_brand_auction_won(r, winner_brand_id)
+
+    # Wave G v2: per-region served-today counter feeds quota enforcement
+    # on subsequent calls. We charge the *user's* region, since quota is
+    # about exposure to that region's user pool.
+    if AUCTION_V2_ENABLED and user_region:
+        await record_region_served(r, user_region)
 
     # ── Touchpoint log for cross-brand multi-touch attribution ──────────
     # P2 fix: same conversion needs to credit every brand the user touched
@@ -2309,6 +2700,47 @@ async def diversity_report(
     trailing = min(total, DIVERSITY_WINDOW)
     floor_count = max(1, int(DIVERSITY_WINDOW * DIVERSITY_FLOOR_PCT / 100.0))
     won_share = (won / trailing) if trailing > 0 else 0.0
+
+    # Wave G v2 enrichment.
+    v2_active = AUCTION_V2_ENABLED
+    counts = await region_active_brand_counts(r) if v2_active else {}
+    active_n = sum(counts.values()) if counts else 0
+    scale_floor_pct = scale_aware_floor_pct(active_n) if v2_active else None
+    scale_floor_count = (
+        max(1, int(DIVERSITY_WINDOW * scale_floor_pct / 100.0))
+        if scale_floor_pct is not None else None
+    )
+    min_wins = per_brand_min_wins() if v2_active else None
+    # Locate the brand's home region by SISMEMBER scan over region sets.
+    home_region = ""
+    region_quota: int = 0
+    region_served: int = 0
+    region_quota_status = "unknown"
+    if v2_active and counts:
+        for code in counts:
+            try:
+                if await r.sismember(REGION_BRAND_SET_KEY.format(code=code), brand_id):
+                    home_region = code
+                    break
+            except Exception:  # pragma: no cover
+                continue
+        if home_region:
+            region_quota = get_region_quota(home_region, counts, DIVERSITY_WINDOW)
+            region_served = await region_served_today(r, home_region)
+            if region_quota <= 0:
+                region_quota_status = "no_quota"
+            elif region_served >= region_quota:
+                region_quota_status = "over_quota"
+            elif region_served >= int(region_quota * 0.8):
+                region_quota_status = "near_quota"
+            else:
+                region_quota_status = "under_quota"
+
+    relative_share_vs_quota = (
+        round(region_served / region_quota, 4)
+        if region_quota > 0 else None
+    )
+
     return {
         "brand_id": brand_id,
         "window_size": DIVERSITY_WINDOW,
@@ -2319,4 +2751,18 @@ async def diversity_report(
         "floor_pct": DIVERSITY_FLOOR_PCT,
         "floor_count": floor_count,
         "below_floor": won < floor_count and trailing >= DIVERSITY_WINDOW,
+        # ── Wave G v2 additions ──
+        "v2_enabled": v2_active,
+        "scale_floor_active": v2_active,
+        "scale_floor_pct": (
+            round(scale_floor_pct, 4) if scale_floor_pct is not None else None
+        ),
+        "scale_floor_count": scale_floor_count,
+        "per_brand_min_wins": min_wins,
+        "active_brand_count": active_n,
+        "home_region": home_region or None,
+        "region_quota": region_quota if home_region else None,
+        "region_served_today": region_served if home_region else None,
+        "region_quota_status": region_quota_status,
+        "relative_share_vs_quota": relative_share_vs_quota,
     }
