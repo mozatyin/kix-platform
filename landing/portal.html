@@ -3317,6 +3317,37 @@ textarea.form-input{
               <button class="ebtn primary" onclick="if(window.showToast)showToast('Profile saved','success')" data-i18n="portal.actions.save">Save</button>
             </div>
           </div>
+
+          <!-- Demo Mode toggle -->
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.demoMode.title">Demo mode</h3></div>
+            <div class="set-row">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.demoMode.lbl">Show sample data</div>
+                <div class="desc" data-i18n="portal.settings.demoMode.desc">When ON, dashboards display realistic demo numbers and the onboarding wizard is hidden. Turn OFF to see your real account with empty states.</div>
+              </div>
+              <label class="switch" style="position:relative;display:inline-block;width:42px;height:24px">
+                <input type="checkbox" id="demo-mode-toggle" style="opacity:0;width:0;height:0" onchange="toggleDemoMode(event)">
+                <span style="position:absolute;cursor:pointer;inset:0;background:#CBD5E1;border-radius:24px;transition:.2s" id="demo-mode-track">
+                  <span style="position:absolute;height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s" id="demo-mode-thumb"></span>
+                </span>
+              </label>
+            </div>
+            <div class="set-row">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.onboarding.lbl">Re-run onboarding</div>
+                <div class="desc" data-i18n="portal.settings.onboarding.desc">Show the first-time setup wizard again.</div>
+              </div>
+              <button class="ebtn secondary sm" onclick="restartOnboarding()" data-i18n="portal.settings.onboarding.btn">Restart wizard</button>
+            </div>
+            <div class="set-row">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.shortcuts.lbl">Keyboard shortcuts</div>
+                <div class="desc" data-i18n="portal.settings.shortcuts.desc">Press <kbd style="background:var(--surface-subdued);border:1px solid var(--border-subdued);border-radius:3px;padding:1px 5px;font-size:11px">?</kbd> anywhere to see the cheat sheet.</div>
+              </div>
+              <button class="ebtn secondary sm" onclick="openShortcutsCheatsheet()" data-i18n="portal.settings.shortcuts.btn">View shortcuts</button>
+            </div>
+          </div>
         </div>
 
         <!-- Billing tab -->
@@ -3431,10 +3462,55 @@ textarea.form-input{
         <div class="settings-panel" data-panel="notifications">
           <div class="ecard">
             <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.notifications.title">Notifications</h3></div>
-            <div class="set-row"><div><div class="lbl">Campaign performance alerts</div><div class="desc">When CTR drops &gt;30% in 1 hour</div></div><label><input type="checkbox" checked></label></div>
-            <div class="set-row"><div><div class="lbl">Voucher inventory low</div><div class="desc">When pool falls below 20%</div></div><label><input type="checkbox" checked></label></div>
-            <div class="set-row"><div><div class="lbl">Daily summary email</div><div class="desc">Yesterday's spend &amp; conversions</div></div><label><input type="checkbox" checked></label></div>
-            <div class="set-row"><div><div class="lbl">Wallet low balance</div><div class="desc">When wallet drops below S$100</div></div><label><input type="checkbox" checked></label></div>
+            <div class="set-row">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.notif.digest">Email digest frequency</div>
+                <div class="desc" data-i18n="portal.settings.notif.digestDesc">Roll-up of yesterday's performance</div>
+              </div>
+              <select class="form-input" id="notif-digest-freq" style="width:140px;background:#fff;border-color:#CBD5E1;color:#0F172A" onchange="saveNotifPrefs()">
+                <option value="off" data-i18n="portal.settings.notif.off">Off</option>
+                <option value="daily" selected data-i18n="portal.settings.notif.daily">Daily</option>
+                <option value="weekly" data-i18n="portal.settings.notif.weekly">Weekly</option>
+              </select>
+            </div>
+            <div class="set-row"><div><div class="lbl" data-i18n="portal.settings.notif.perf">Campaign performance alerts</div><div class="desc" data-i18n="portal.settings.notif.perfDesc">When CTR drops &gt;30% in 1 hour</div></div><label class="switch"><input type="checkbox" id="notif-perf" checked onchange="saveNotifPrefs()"></label></div>
+            <div class="set-row"><div><div class="lbl" data-i18n="portal.settings.notif.wallet">Wallet alerts</div><div class="desc" data-i18n="portal.settings.notif.walletDesc">Low balance, auto-recharge failures</div></div><label class="switch"><input type="checkbox" id="notif-wallet" checked onchange="saveNotifPrefs()"></label></div>
+            <div class="set-row"><div><div class="lbl" data-i18n="portal.settings.notif.audience">New audience matches</div><div class="desc" data-i18n="portal.settings.notif.audienceDesc">When audiences cross size thresholds</div></div><label class="switch"><input type="checkbox" id="notif-audience" checked onchange="saveNotifPrefs()"></label></div>
+            <div class="set-row"><div><div class="lbl" data-i18n="portal.settings.notif.voucher">Voucher inventory low</div><div class="desc" data-i18n="portal.settings.notif.voucherDesc">When pool falls below 20%</div></div><label class="switch"><input type="checkbox" id="notif-voucher" checked onchange="saveNotifPrefs()"></label></div>
+            <div class="set-row"><div><div class="lbl" data-i18n="portal.settings.notif.product">Product updates</div><div class="desc" data-i18n="portal.settings.notif.productDesc">New features &amp; releases</div></div><label class="switch"><input type="checkbox" id="notif-product" onchange="saveNotifPrefs()"></label></div>
+          </div>
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.notif.quietTitle">Quiet hours</h3></div>
+            <div class="set-row">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.notif.quietLabel">Pause notifications overnight</div>
+                <div class="desc" data-i18n="portal.settings.notif.quietDesc">Default 10:00 PM – 7:00 AM (SGT)</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notif-quiet" checked onchange="saveNotifPrefs()"></label>
+            </div>
+            <div class="set-row" id="notif-quiet-range-row">
+              <div>
+                <div class="lbl" data-i18n="portal.settings.notif.quietRange">Quiet hours window</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="time" id="notif-quiet-from" value="22:00" class="form-input" style="width:110px;background:#fff;border-color:#CBD5E1;color:#0F172A" onchange="saveNotifPrefs()">
+                <span style="color:var(--text-subdued)">–</span>
+                <input type="time" id="notif-quiet-to" value="07:00" class="form-input" style="width:110px;background:#fff;border-color:#CBD5E1;color:#0F172A" onchange="saveNotifPrefs()">
+              </div>
+            </div>
+          </div>
+          <div class="ecard">
+            <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.settings.notif.webhookTitle">Webhook (power users)</h3></div>
+            <div class="set-row" style="align-items:flex-start;flex-direction:column;gap:8px">
+              <div style="width:100%">
+                <div class="lbl" data-i18n="portal.settings.notif.webhookLabel">POST events to your endpoint</div>
+                <div class="desc" data-i18n="portal.settings.notif.webhookDesc">We'll sign payloads with your account secret (HMAC-SHA256).</div>
+              </div>
+              <div style="display:flex;gap:8px;width:100%">
+                <input type="url" id="notif-webhook-url" class="form-input" placeholder="https://your-domain.com/kix/webhook" style="flex:1;background:#fff;border-color:#CBD5E1;color:#0F172A" onchange="saveNotifPrefs()">
+                <button class="ebtn secondary sm" onclick="testNotifWebhook()" data-i18n="portal.settings.notif.webhookTest">Send test</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -8910,6 +8986,850 @@ document.querySelectorAll('#view-redeem .mode-btn').forEach(btn=>{
   const el=document.getElementById(id);
   if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter') lookupVoucher(); });
 });
+</script>
+
+<!-- ═══ Round 6 Polish: Welcome / Help / Reports / Onboarding / Shortcuts / What's New ═══ -->
+<style>
+  /* Make standalone (Round 6) views inherit app-shell layout */
+  body > #view-welcome.active,
+  body > #view-help.active,
+  body > #view-reports.active{
+    display:block;
+    position:fixed; top:var(--topbar-h,52px); left:var(--sidebar-w,240px); right:0; bottom:0;
+    overflow-y:auto;
+    padding:var(--space-6,18px) var(--space-8,24px) var(--space-10,40px);
+    background:var(--surface-subdued,#F8FAFC);
+    z-index:20;
+  }
+  @media (max-width:900px){
+    body > #view-welcome.active,
+    body > #view-help.active,
+    body > #view-reports.active{ left:64px; }
+  }
+  @media (max-width:680px){
+    body > #view-welcome.active,
+    body > #view-help.active,
+    body > #view-reports.active{ left:0; }
+  }
+  /* Onboarding wizard */
+  #onb-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px}
+  #onb-overlay.open{display:flex}
+  #onb-card{width:min(680px,100%);max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(15,23,42,.25);position:relative}
+  #onb-card .onb-head{padding:22px 26px 8px;border-bottom:1px solid var(--border-subdued)}
+  #onb-card .onb-title{font-size:18px;font-weight:700;color:var(--text-strong);margin:0 0 4px}
+  #onb-card .onb-sub{font-size:13px;color:var(--text-subdued);margin:0}
+  #onb-card .onb-progress{display:flex;gap:6px;margin-top:14px}
+  #onb-card .onb-step{flex:1;height:4px;border-radius:2px;background:#E2E8F0;transition:.2s}
+  #onb-card .onb-step.done{background:var(--brand)}
+  #onb-card .onb-step.current{background:var(--brand)}
+  #onb-card .onb-body{padding:20px 26px}
+  #onb-card .onb-foot{padding:14px 26px 22px;display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border-subdued);background:#fafbfc;border-radius:0 0 16px 16px}
+  #onb-card .onb-skip{font-size:12px;color:var(--text-subdued);background:transparent;border:none;cursor:pointer;text-decoration:underline}
+  #onb-card .onb-close{position:absolute;top:14px;right:14px;background:transparent;border:none;font-size:20px;color:var(--text-subdued);cursor:pointer;line-height:1}
+  .onb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .onb-grid .onb-opt{border:2px solid var(--border-subdued);border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-strong);background:#fff;transition:.12s}
+  .onb-grid .onb-opt:hover{border-color:var(--brand)}
+  .onb-grid .onb-opt.sel{border-color:var(--brand);background:rgba(0,179,65,.06)}
+  .onb-grid .onb-opt .emoji{font-size:22px;display:block;margin-bottom:6px}
+  /* Help center */
+  .help-layout{display:grid;grid-template-columns:1fr 280px;gap:20px}
+  @media (max-width:900px){.help-layout{grid-template-columns:1fr}}
+  .help-cat{padding:12px 14px;border:1px solid var(--border-subdued);border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff;transition:.12s}
+  .help-cat:hover{border-color:var(--brand);background:rgba(0,179,65,.03)}
+  .help-cat .h{font-size:14px;font-weight:600;color:var(--text-strong)}
+  .help-cat .s{font-size:12px;color:var(--text-subdued);margin-top:2px}
+  .help-article{padding:10px 14px;border-bottom:1px solid var(--border-subdued);cursor:pointer;font-size:13px;color:var(--text-default)}
+  .help-article:hover{background:var(--surface-subdued);color:var(--brand)}
+  .help-article:last-child{border-bottom:none}
+  /* Reports tabs */
+  .reports-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border-subdued);margin-bottom:20px;overflow-x:auto;flex-wrap:wrap}
+  .reports-tab{padding:10px 16px;border:none;background:transparent;border-bottom:2px solid transparent;font-size:13px;font-weight:500;color:var(--text-subdued);cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+  .reports-tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+  .reports-tab:hover:not(.active){color:var(--text-default)}
+  .reports-panel{display:none}
+  .reports-panel.active{display:block}
+  /* Cohort matrix */
+  .cohort-cell{padding:6px;text-align:center;font-size:11px;font-variant-numeric:tabular-nums;border-radius:4px;font-weight:600;color:#fff}
+  /* Keyboard cheat sheet */
+  #ksheet-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9100;display:none;align-items:center;justify-content:center;padding:20px}
+  #ksheet-overlay.open{display:flex}
+  #ksheet-card{width:min(620px,100%);max-height:90vh;overflow-y:auto;background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
+  .ksheet-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-subdued);font-size:13px}
+  .ksheet-row:last-child{border-bottom:none}
+  .kbdc{background:var(--surface-subdued);border:1px solid var(--border-subdued);border-radius:4px;padding:2px 7px;font-size:11px;font-family:ui-monospace,monospace;color:var(--text-strong);margin-left:4px}
+  /* What's New rail */
+  #wn-rail{position:fixed;right:14px;bottom:14px;width:280px;background:#fff;border-radius:12px;border:1px solid var(--border-subdued);box-shadow:0 10px 30px rgba(15,23,42,.10);z-index:80;font-size:12px;overflow:hidden;transition:.2s}
+  #wn-rail.collapsed{transform:translateY(calc(100% - 34px))}
+  #wn-rail .wn-head{padding:8px 12px;background:var(--brand);color:#fff;font-weight:600;display:flex;justify-content:space-between;cursor:pointer;font-size:12px}
+  #wn-rail .wn-body{padding:10px 12px;max-height:240px;overflow-y:auto}
+  #wn-rail .wn-item{padding:6px 0;border-bottom:1px solid var(--border-subdued)}
+  #wn-rail .wn-item:last-child{border:none}
+  #wn-rail .wn-item .d{font-size:10px;color:var(--text-subdued);margin-bottom:2px}
+  #wn-rail .wn-item .t{font-weight:600;color:var(--text-strong);margin-bottom:2px}
+  /* Welcome */
+  #view-welcome .welcome-hero{background:linear-gradient(135deg,#00B341 0%,#00875F 100%);color:#fff;padding:48px 32px;border-radius:16px;text-align:center;margin-bottom:24px}
+  #view-welcome .welcome-hero h1{font-size:32px;margin:0 0 8px;font-weight:700;color:#fff}
+  #view-welcome .welcome-hero p{font-size:16px;opacity:.92;margin:0}
+  #view-welcome .welcome-stats{display:flex;gap:14px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+  #view-welcome .welcome-stat{background:rgba(255,255,255,.18);padding:10px 18px;border-radius:10px}
+  #view-welcome .welcome-stat .v{font-size:22px;font-weight:700}
+  #view-welcome .welcome-stat .l{font-size:11px;opacity:.85}
+  #view-welcome .welcome-paths{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:780px){#view-welcome .welcome-paths{grid-template-columns:1fr}}
+  #view-welcome .welcome-card{background:#fff;border:1px solid var(--border-subdued);border-radius:12px;padding:24px;cursor:pointer;transition:.15s}
+  #view-welcome .welcome-card:hover{border-color:var(--brand);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,179,65,.10)}
+  #view-welcome .welcome-card .icon{font-size:32px;margin-bottom:12px}
+  #view-welcome .welcome-card h3{font-size:16px;margin:0 0 6px;color:var(--text-strong)}
+  #view-welcome .welcome-card p{font-size:13px;color:var(--text-subdued);margin:0}
+  /* Help bubble */
+  .help-bubble{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--surface-subdued);color:var(--text-subdued);border:1px solid var(--border-subdued);font-size:10px;font-weight:700;cursor:help;margin-left:6px;vertical-align:middle}
+  .help-bubble:hover{background:var(--brand);color:#fff;border-color:var(--brand)}
+</style>
+
+<!-- ═══ Welcome (first-session) view ════════════════════════════════ -->
+<div id="view-welcome" class="view">
+  <div class="welcome-hero">
+    <h1 data-i18n="portal.welcome.hello">Welcome to KiX 🎉</h1>
+    <p data-i18n="portal.welcome.tagline">Singapore's gamified ads platform — turn impressions into loyal customers.</p>
+    <div class="welcome-stats">
+      <div class="welcome-stat"><div class="v" id="welcome-merchants">238</div><div class="l" data-i18n="portal.welcome.stat.merchants">Singapore merchants</div></div>
+      <div class="welcome-stat"><div class="v" id="welcome-roas">4.2×</div><div class="l" data-i18n="portal.welcome.stat.roas">Avg ROAS</div></div>
+      <div class="welcome-stat"><div class="v" id="welcome-impressions">12.4M</div><div class="l" data-i18n="portal.welcome.stat.impressions">Weekly impressions</div></div>
+    </div>
+  </div>
+  <h2 style="font-size:18px;font-weight:700;color:var(--text-strong);margin-bottom:16px" data-i18n="portal.welcome.choose">Pick your starting point</h2>
+  <div class="welcome-paths">
+    <div class="welcome-card" onclick="welcomeChoose('campaign')">
+      <div class="icon">🎯</div>
+      <h3 data-i18n="portal.welcome.path.campaign.t">Set up my first campaign</h3>
+      <p data-i18n="portal.welcome.path.campaign.s">Pick a goal, audience &amp; game template. Live in 5 minutes.</p>
+    </div>
+    <div class="welcome-card" onclick="welcomeChoose('pos')">
+      <div class="icon">🔌</div>
+      <h3 data-i18n="portal.welcome.path.pos.t">Connect my POS</h3>
+      <p data-i18n="portal.welcome.path.pos.s">Sync orders to attribute redemptions automatically.</p>
+    </div>
+    <div class="welcome-card" onclick="welcomeChoose('demo')">
+      <div class="icon">▶</div>
+      <h3 data-i18n="portal.welcome.path.demo.t">Watch the 2-min demo</h3>
+      <p data-i18n="portal.welcome.path.demo.s">See how Toast Box drove 312 customers in a week.</p>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:28px">
+    <button class="ebtn tertiary" onclick="skipWelcome()" style="font-size:12px;color:var(--text-subdued)" data-i18n="portal.welcome.skip">Skip — take me to my dashboard</button>
+  </div>
+</div>
+
+<!-- ═══ Help & Docs view ═══════════════════════════════════════════ -->
+<div id="view-help" class="view">
+  <div class="ent-page-head">
+    <div>
+      <h1 class="ent-page-title" data-i18n="portal.help.title">Help &amp; Docs</h1>
+      <p class="ent-page-subtitle" data-i18n="portal.help.subtitle">Search guides, FAQs, and contact support.</p>
+    </div>
+  </div>
+  <div style="position:relative;margin-bottom:18px">
+    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-subdued)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input id="help-search" type="search" placeholder="Search articles…" data-i18n-attr="placeholder:portal.help.searchPlaceholder" oninput="HelpCenter.search(this.value)" style="width:100%;padding:12px 14px 12px 36px;border:1px solid var(--border-subdued);border-radius:10px;font-size:14px;background:#fff">
+  </div>
+  <div class="help-layout">
+    <div>
+      <div id="help-categories">
+        <!-- Categories rendered by HelpCenter.render() -->
+      </div>
+      <div class="ecard" style="margin-top:18px">
+        <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.help.changelogTitle">What's new</h3></div>
+        <div id="help-changelog"></div>
+      </div>
+    </div>
+    <aside>
+      <div class="ecard">
+        <h3 class="ecard-title" data-i18n="portal.help.contactTitle">Need a human?</h3>
+        <p style="font-size:13px;color:var(--text-subdued);margin:8px 0 12px" data-i18n="portal.help.contactBody">Our team replies within 1 hour during SGT business hours.</p>
+        <button class="ebtn primary" style="width:100%;margin-bottom:8px" onclick="openSupportDrawer()" data-i18n="portal.help.contactCta">Contact support</button>
+        <button class="ebtn secondary" style="width:100%;margin-bottom:8px" onclick="window.open('https://wa.me/6588888888','_blank')" data-i18n="portal.help.whatsappCta">WhatsApp us</button>
+        <button class="ebtn tertiary" style="width:100%" onclick="window.open('https://status.kix.app','_blank')" data-i18n="portal.help.statusCta">System status</button>
+      </div>
+      <div class="ecard">
+        <h3 class="ecard-title" data-i18n="portal.help.resourcesTitle">Quick links</h3>
+        <ul style="list-style:none;padding:0;margin:0;font-size:13px">
+          <li style="padding:6px 0"><a href="https://docs.kix.app" target="_blank" rel="noopener" style="color:var(--brand)" data-i18n="portal.help.link.api">API Reference →</a></li>
+          <li style="padding:6px 0"><a href="https://docs.kix.app/sdk" target="_blank" rel="noopener" style="color:var(--brand)" data-i18n="portal.help.link.sdk">SDK Guide →</a></li>
+          <li style="padding:6px 0"><a href="https://docs.kix.app/pixel" target="_blank" rel="noopener" style="color:var(--brand)" data-i18n="portal.help.link.pixel">Pixel Setup →</a></li>
+          <li style="padding:6px 0"><a href="#" onclick="openShortcutsCheatsheet();return false" style="color:var(--brand)" data-i18n="portal.help.link.shortcuts">Keyboard shortcuts →</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══ Advanced Reports view ═════════════════════════════════════ -->
+<div id="view-reports" class="view">
+  <div class="ent-page-head">
+    <div>
+      <h1 class="ent-page-title" data-i18n="portal.reports2.title">Reports</h1>
+      <p class="ent-page-subtitle" data-i18n="portal.reports2.subtitle">Performance, audiences, conversions, cohorts &amp; custom views.</p>
+    </div>
+    <div class="ent-page-actions">
+      <button class="ebtn secondary" onclick="toggleDateRange(event)">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="reports2-daterange">Last 7 days</span>
+      </button>
+      <button class="ebtn secondary" onclick="exportReports2Csv()" data-i18n="portal.actions.export">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+      <button class="ebtn primary" onclick="saveReportTemplate()" data-i18n="portal.reports2.save">Save as template</button>
+    </div>
+  </div>
+
+  <div class="reports-tabs" role="tablist">
+    <button class="reports-tab active" data-rtab="performance" onclick="setReportsTab('performance')" data-i18n="portal.reports2.tab.perf">Performance</button>
+    <button class="reports-tab" data-rtab="audiences" onclick="setReportsTab('audiences')" data-i18n="portal.reports2.tab.aud">Audiences</button>
+    <button class="reports-tab" data-rtab="conversions" onclick="setReportsTab('conversions')" data-i18n="portal.reports2.tab.conv">Conversions</button>
+    <button class="reports-tab" data-rtab="cohort" onclick="setReportsTab('cohort')" data-i18n="portal.reports2.tab.cohort">Cohort analysis</button>
+    <button class="reports-tab" data-rtab="custom" onclick="setReportsTab('custom')" data-i18n="portal.reports2.tab.custom">Custom reports</button>
+  </div>
+
+  <div class="reports-panel active" data-rpanel="performance">
+    <div id="reports2-perf-host">
+      <p style="color:var(--text-subdued);font-size:13px;margin-bottom:14px" data-i18n="portal.reports2.perf.note">Same performance dashboard as before — moved here for consistency.</p>
+      <div class="ecard">
+        <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.reports2.perf.openLegacy">Open full performance dashboard →</h3></div>
+        <button class="ebtn primary" onclick="navigate('analytics')" data-i18n="portal.reports2.perf.openBtn">Open legacy Reports</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="reports-panel" data-rpanel="audiences">
+    <div class="metric-grid">
+      <div class="metric-card"><div class="label" data-i18n="portal.reports2.aud.ltv">Avg lifetime value</div><div class="value">S$48.20</div><div class="delta up">▲ 8.1% vs prev 30d</div></div>
+      <div class="metric-card"><div class="label" data-i18n="portal.reports2.aud.retention">30-day retention</div><div class="value">42%</div><div class="delta up">▲ 3.2%</div></div>
+      <div class="metric-card"><div class="label" data-i18n="portal.reports2.aud.repeat">Repeat purchase rate</div><div class="value">28%</div><div class="delta up">▲ 1.4%</div></div>
+      <div class="metric-card"><div class="label" data-i18n="portal.reports2.aud.churn">Churn (60d)</div><div class="value">18%</div><div class="delta down">▼ 2.1%</div></div>
+    </div>
+    <div class="ecard">
+      <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.reports2.aud.retentionCurve">Retention curve by signup week</h3></div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:160px;padding:14px 0" aria-label="Retention curve">
+        <div style="flex:1;background:var(--brand);height:100%;border-radius:4px 4px 0 0" title="W0 100%"></div>
+        <div style="flex:1;background:var(--brand);height:68%;border-radius:4px 4px 0 0" title="W1 68%"></div>
+        <div style="flex:1;background:var(--brand);height:54%;border-radius:4px 4px 0 0" title="W2 54%"></div>
+        <div style="flex:1;background:var(--brand);height:46%;border-radius:4px 4px 0 0" title="W3 46%"></div>
+        <div style="flex:1;background:var(--brand);height:42%;border-radius:4px 4px 0 0" title="W4 42%"></div>
+        <div style="flex:1;background:var(--brand);height:38%;border-radius:4px 4px 0 0" title="W6 38%"></div>
+        <div style="flex:1;background:var(--brand);height:34%;border-radius:4px 4px 0 0" title="W8 34%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-subdued)"><span>W0</span><span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W6</span><span>W8</span></div>
+    </div>
+  </div>
+
+  <div class="reports-panel" data-rpanel="conversions">
+    <div class="ecard">
+      <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.reports2.conv.funnelTitle">Conversion funnel</h3></div>
+      <div id="conv-funnel" style="display:flex;flex-direction:column;gap:8px;padding:14px 0">
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:120px;font-size:12px">Impressions</span><div style="flex:1;background:var(--brand);height:30px;border-radius:6px;display:flex;align-items:center;padding:0 12px;color:#fff;font-weight:600;font-size:12px">245,800</div><span style="width:60px;text-align:right;font-size:12px;color:var(--text-subdued)">100%</span></div>
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:120px;font-size:12px">Clicks</span><div style="width:62%;background:#10B981;height:30px;border-radius:6px;display:flex;align-items:center;padding:0 12px;color:#fff;font-weight:600;font-size:12px">152,396</div><span style="width:60px;text-align:right;font-size:12px;color:var(--text-subdued)">62%</span></div>
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:120px;font-size:12px">Registered</span><div style="width:18%;background:#06B6D4;height:30px;border-radius:6px;display:flex;align-items:center;padding:0 12px;color:#fff;font-weight:600;font-size:12px">44,244</div><span style="width:60px;text-align:right;font-size:12px;color:var(--text-subdued)">18%</span></div>
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:120px;font-size:12px">First purchase</span><div style="width:6%;background:#8B5CF6;height:30px;border-radius:6px;display:flex;align-items:center;padding:0 12px;color:#fff;font-weight:600;font-size:12px">14,748</div><span style="width:60px;text-align:right;font-size:12px;color:var(--text-subdued)">6%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reports-panel" data-rpanel="cohort">
+    <div class="ecard">
+      <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.reports2.cohort.title">Cohort retention matrix (signup week × weeks since signup)</h3></div>
+      <div id="cohort-matrix" style="overflow-x:auto;margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="reports-panel" data-rpanel="custom">
+    <div class="ecard">
+      <div class="ecard-head"><h3 class="ecard-title" data-i18n="portal.reports2.custom.title">Build a custom report</h3></div>
+      <p style="color:var(--text-subdued);font-size:13px;margin-bottom:12px" data-i18n="portal.reports2.custom.desc">Drag dimensions and metrics to compose a saved view.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text-subdued);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px" data-i18n="portal.reports2.custom.dim">Dimensions</div>
+          <div id="rep-dims" style="border:1px solid var(--border-subdued);border-radius:8px;padding:10px;min-height:200px;background:#fff;font-size:13px">
+            <div draggable="true" class="rep-pill" data-key="campaign">Campaign</div>
+            <div draggable="true" class="rep-pill" data-key="audience">Audience</div>
+            <div draggable="true" class="rep-pill" data-key="objective">Objective</div>
+            <div draggable="true" class="rep-pill" data-key="location">Store / location</div>
+            <div draggable="true" class="rep-pill" data-key="date">Date</div>
+            <div draggable="true" class="rep-pill" data-key="device">Device</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text-subdued);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px" data-i18n="portal.reports2.custom.metric">Metrics</div>
+          <div id="rep-metrics" style="border:1px solid var(--border-subdued);border-radius:8px;padding:10px;min-height:200px;background:#fff;font-size:13px">
+            <div draggable="true" class="rep-pill" data-key="spend">Spend</div>
+            <div draggable="true" class="rep-pill" data-key="imp">Impressions</div>
+            <div draggable="true" class="rep-pill" data-key="clicks">Clicks</div>
+            <div draggable="true" class="rep-pill" data-key="ctr">CTR</div>
+            <div draggable="true" class="rep-pill" data-key="conv">Conversions</div>
+            <div draggable="true" class="rep-pill" data-key="cpa">CPA</div>
+            <div draggable="true" class="rep-pill" data-key="roas">ROAS</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text-subdued);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px" data-i18n="portal.reports2.custom.canvas">Your report</div>
+          <div id="rep-canvas" ondrop="repCanvasDrop(event)" ondragover="event.preventDefault()" style="border:2px dashed var(--brand);border-radius:8px;padding:10px;min-height:200px;background:rgba(0,179,65,.03);font-size:13px;color:var(--text-subdued)">
+            <div data-i18n="portal.reports2.custom.empty">Drop dimensions &amp; metrics here…</div>
+          </div>
+        </div>
+      </div>
+      <style>
+        .rep-pill{padding:6px 10px;border:1px solid var(--border-subdued);border-radius:6px;background:var(--surface-subdued);margin-bottom:6px;cursor:grab;font-size:12px}
+        .rep-pill:active{cursor:grabbing}
+      </style>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Onboarding wizard ═════════════════════════════════════════ -->
+<div id="onb-overlay" role="dialog" aria-modal="true" aria-label="Onboarding wizard">
+  <div id="onb-card">
+    <button class="onb-close" type="button" onclick="onbDismiss()" aria-label="Dismiss">×</button>
+    <div class="onb-head">
+      <h2 class="onb-title" id="onb-title">Welcome to KiX</h2>
+      <p class="onb-sub" id="onb-sub">Let's get your account set up in 5 quick steps.</p>
+      <div class="onb-progress" id="onb-progress"></div>
+    </div>
+    <div class="onb-body" id="onb-body"></div>
+    <div class="onb-foot">
+      <button class="onb-skip" type="button" onclick="onbSkip()" data-i18n="portal.onb.skip">Skip for now</button>
+      <div style="display:flex;gap:8px">
+        <button class="ebtn secondary" id="onb-back" onclick="onbBack()" data-i18n="portal.onb.back">Back</button>
+        <button class="ebtn primary" id="onb-next" onclick="onbNext()" data-i18n="portal.onb.next">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Keyboard shortcuts cheat sheet ══════════════════════════════ -->
+<div id="ksheet-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div id="ksheet-card">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border-subdued);display:flex;justify-content:space-between;align-items:center">
+      <h3 style="font-size:16px;font-weight:700;color:var(--text-strong);margin:0" data-i18n="portal.shortcuts.title">Keyboard shortcuts</h3>
+      <button class="ebtn tertiary sm" onclick="closeShortcutsCheatsheet()">Close (esc)</button>
+    </div>
+    <div style="padding:18px 24px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-subdued);text-transform:uppercase;margin-bottom:6px" data-i18n="portal.shortcuts.cat.nav">Navigation</div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.dash">Go to Dashboard</span><span><kbd class="kbdc">g</kbd><kbd class="kbdc">d</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.camp">Go to Campaigns</span><span><kbd class="kbdc">g</kbd><kbd class="kbdc">c</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.aud">Go to Audiences</span><span><kbd class="kbdc">g</kbd><kbd class="kbdc">a</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.rep">Go to Reports</span><span><kbd class="kbdc">g</kbd><kbd class="kbdc">r</kbd></span></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-subdued);text-transform:uppercase;margin:14px 0 6px" data-i18n="portal.shortcuts.cat.action">Actions</div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.create">Create campaign</span><span><kbd class="kbdc">c</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.search">Focus search</span><span><kbd class="kbdc">/</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.notif">Open notifications</span><span><kbd class="kbdc">n</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.cmdk">Command palette</span><span><kbd class="kbdc">⌘</kbd><kbd class="kbdc">K</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.help">Open this cheat sheet</span><span><kbd class="kbdc">?</kbd></span></div>
+      <div class="ksheet-row"><span data-i18n="portal.shortcuts.close">Close any modal</span><span><kbd class="kbdc">esc</kbd></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Support drawer ══════════════════════════════════════════════ -->
+<div id="support-drawer" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:9050;background:rgba(15,23,42,.45)">
+  <div style="position:fixed;top:0;right:0;bottom:0;width:min(420px,100%);background:#fff;padding:24px;overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.10)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:16px;font-weight:700" data-i18n="portal.support.title">Contact support</h3>
+      <button class="ebtn tertiary sm" onclick="closeSupportDrawer()">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-subdued);margin-bottom:14px" data-i18n="portal.support.intro">Reply within 1 hour during SGT business hours.</p>
+    <div class="form-group"><label data-i18n="portal.support.subject">Subject</label><input class="form-input" id="sup-subject" type="text" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>
+    <div class="form-group"><label data-i18n="portal.support.cat">Category</label><select class="form-input" id="sup-cat" style="background:#fff;border-color:#CBD5E1;color:#0F172A"><option>Billing</option><option>Campaigns</option><option>Pixel</option><option>API</option><option>Other</option></select></div>
+    <div class="form-group"><label data-i18n="portal.support.msg">Message</label><textarea class="form-input" id="sup-msg" rows="6" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></textarea></div>
+    <button class="ebtn primary" style="width:100%" onclick="submitSupport()" data-i18n="portal.support.send">Send message</button>
+  </div>
+</div>
+
+<!-- ═══ What's New collapsible rail ═════════════════════════════════ -->
+<div id="wn-rail" class="collapsed" style="display:none">
+  <div class="wn-head" onclick="toggleWhatsNew()">
+    <span data-i18n="portal.wn.title">What's new</span>
+    <span id="wn-toggle">▲</span>
+  </div>
+  <div class="wn-body" id="wn-body"></div>
+</div>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════
+   Round 6 polish: Onboarding / Help / Reports / Welcome / Shortcuts
+   ═════════════════════════════════════════════════════════════════ */
+
+// ── Onboarding ───────────────────────────────────────────────────
+const ONB_KEY='kix_onboarded';
+const ONB_DRAFT='kix_onb_draft';
+const ONB_STEPS=5;
+let onbStep=1;
+let onbData={brand:'',btype:'',addr:'',primary:'#00B341',autorech:100};
+
+function shouldShowOnboarding(){
+  try{
+    if(localStorage.getItem(ONB_KEY)==='1') return false;
+    if(localStorage.getItem('kix_demo_mode')==='true') return false;
+    return true;
+  }catch(_){ return false; }
+}
+function openOnboarding(){
+  try{ const raw=localStorage.getItem(ONB_DRAFT); if(raw){ const d=JSON.parse(raw); onbStep=d.step||1; onbData=Object.assign(onbData,d.data||{}); } }catch(_){}
+  document.getElementById('onb-overlay').classList.add('open');
+  renderOnbStep();
+}
+function closeOnboarding(){ document.getElementById('onb-overlay').classList.remove('open'); }
+function onbDismiss(){ persistOnbDraft(); closeOnboarding(); }
+function onbSkip(){
+  try{ localStorage.setItem(ONB_KEY,'1'); }catch(_){}
+  closeOnboarding();
+  if(window.showToast) showToast('Onboarding skipped — you can restart it from Settings → Profile.','info');
+}
+function persistOnbDraft(){ try{ localStorage.setItem(ONB_DRAFT,JSON.stringify({step:onbStep,data:onbData})); }catch(_){} }
+function clearOnbDraft(){ try{ localStorage.removeItem(ONB_DRAFT); }catch(_){} }
+function restartOnboarding(){
+  try{ localStorage.removeItem(ONB_KEY); localStorage.removeItem(ONB_DRAFT); }catch(_){}
+  onbStep=1; onbData={brand:'',btype:'',addr:'',primary:'#00B341',autorech:100};
+  openOnboarding();
+}
+window.restartOnboarding=restartOnboarding;
+
+function renderOnbStep(){
+  const prog=document.getElementById('onb-progress');
+  prog.innerHTML='';
+  for(let i=1;i<=ONB_STEPS;i++){
+    const cls=i<onbStep?'done':(i===onbStep?'current':'');
+    prog.insertAdjacentHTML('beforeend','<div class="onb-step '+cls+'"></div>');
+  }
+  document.getElementById('onb-back').style.visibility=onbStep===1?'hidden':'visible';
+  document.getElementById('onb-next').textContent=onbStep===ONB_STEPS?'Finish':'Next →';
+  const titles=[
+    {t:'Welcome to KiX',s:"Tell us about your brand so we can tailor things.",body:onbStep1Body()},
+    {t:'Add your first store',s:"We'll use this to set up geofences and QR codes.",body:onbStep2Body()},
+    {t:'Brand your portal',s:"Logo and primary color — appears on customer-facing games.",body:onbStep3Body()},
+    {t:'Connect payments',s:"Top up your ads wallet via Stripe.",body:onbStep4Body()},
+    {t:'Auto-recharge &amp; first campaign',s:"Set a safety net and pick a starter campaign.",body:onbStep5Body()},
+  ];
+  const step=titles[onbStep-1];
+  document.getElementById('onb-title').innerHTML=step.t;
+  document.getElementById('onb-sub').innerHTML=step.s;
+  document.getElementById('onb-body').innerHTML=step.body;
+  // Re-wire option clicks for step 1
+  if(onbStep===1){
+    document.querySelectorAll('#onb-body .onb-opt').forEach(o=>{
+      o.addEventListener('click',()=>{
+        document.querySelectorAll('#onb-body .onb-opt').forEach(x=>x.classList.remove('sel'));
+        o.classList.add('sel'); onbData.btype=o.dataset.k;
+      });
+      if(o.dataset.k===onbData.btype) o.classList.add('sel');
+    });
+    const inp=document.getElementById('onb-brand-name');
+    if(inp){ inp.value=onbData.brand||''; inp.addEventListener('input',e=>{ onbData.brand=e.target.value; }); }
+  }
+  if(window.KiXi18n && window.KiXi18n.apply) window.KiXi18n.apply();
+}
+
+function onbStep1Body(){
+  return '<div class="form-group"><label>Brand name</label><input id="onb-brand-name" class="form-input" type="text" placeholder="e.g. Toast Box" style="background:#fff;border-color:#CBD5E1;color:#0F172A"></div>'+
+    '<label style="font-size:13px;font-weight:500;color:var(--text-strong);margin-top:8px;display:block">Business type</label>'+
+    '<div class="onb-grid">'+
+      '<div class="onb-opt" data-k="fnb"><span class="emoji">🍜</span>F&amp;B</div>'+
+      '<div class="onb-opt" data-k="retail"><span class="emoji">🛍</span>Retail</div>'+
+      '<div class="onb-opt" data-k="service"><span class="emoji">💆</span>Service</div>'+
+    '</div>';
+}
+function onbStep2Body(){
+  return '<div class="form-group"><label>Store name</label><input class="form-input" id="onb-store-name" type="text" placeholder="e.g. Toast Box · Tampines Mall" style="background:#fff;border-color:#CBD5E1;color:#0F172A" oninput="onbData.storeName=this.value" value="'+(onbData.storeName||'')+'"></div>'+
+    '<div class="form-group"><label>Address</label><input class="form-input" id="onb-store-addr" type="text" placeholder="4 Tampines Central 5, Singapore 529510" style="background:#fff;border-color:#CBD5E1;color:#0F172A" oninput="onbData.addr=this.value" value="'+(onbData.addr||'')+'"></div>'+
+    '<div class="form-group"><label>Geofence radius</label><select class="form-input" id="onb-radius" style="background:#fff;border-color:#CBD5E1;color:#0F172A" onchange="onbData.radius=this.value"><option value="250">250m (recommended)</option><option value="500">500m</option><option value="1000">1km</option></select></div>'+
+    '<div style="font-size:12px;color:var(--text-subdued);background:var(--surface-subdued);padding:10px;border-radius:8px;margin-top:8px">📍 Customers within this radius will see your games. You can adjust later in Locations.</div>';
+}
+function onbStep3Body(){
+  return '<div class="form-group"><label>Upload logo (PNG/SVG ≤ 2MB)</label><div style="display:flex;align-items:center;gap:14px"><div style="width:56px;height:56px;border-radius:10px;background:'+onbData.primary+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700">'+(onbData.brand?onbData.brand[0].toUpperCase():'K')+'</div><button class="ebtn secondary" onclick="if(window.showToast)showToast(\'Logo upload — coming in v2.\',\'info\')">Choose file…</button></div></div>'+
+    '<div class="form-group"><label>Primary brand color</label><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      ['#00B341','#F97316','#EA580C','#3B82F6','#8B5CF6','#EC4899','#0F172A'].map(c=>'<button type="button" onclick="onbData.primary=\''+c+'\';renderOnbStep()" style="width:36px;height:36px;border-radius:8px;background:'+c+';border:'+(onbData.primary===c?'3px solid #0F172A':'1px solid var(--border-subdued)')+';cursor:pointer"></button>').join('')+
+    '</div></div>';
+}
+function onbStep4Body(){
+  return '<div style="font-size:13px;color:var(--text-default);margin-bottom:14px">Connect a payment method so you can top up your ads wallet. We use Stripe — your card details never touch our servers.</div>'+
+    '<div style="border:1px solid var(--border-subdued);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+      '<div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:30px;background:#635BFF;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">Stripe</div><div><div style="font-weight:600">Credit / Debit card</div><div style="font-size:12px;color:var(--text-subdued)">Visa, Mastercard, Amex</div></div></div>'+
+      '<button class="ebtn primary sm" onclick="onbStripe()">Connect</button>'+
+    '</div>'+
+    '<button class="onb-skip" onclick="onbSkipPayment()" style="margin-top:8px">Skip — I\'ll connect later</button>';
+}
+function onbStep5Body(){
+  return '<div class="form-group"><label>Wallet auto-recharge threshold (S$)</label><input class="form-input" type="number" min="50" value="'+(onbData.autorech||100)+'" style="background:#fff;border-color:#CBD5E1;color:#0F172A" oninput="onbData.autorech=Number(this.value)||100"></div>'+
+    '<div style="font-size:12px;color:var(--text-subdued);background:var(--surface-subdued);padding:10px;border-radius:8px;margin-bottom:14px">When your wallet drops below this amount, we\'ll auto-charge S$500 to your default card.</div>'+
+    '<label style="font-size:13px;font-weight:500;color:var(--text-strong);display:block;margin-bottom:8px">Suggested first campaign</label>'+
+    '<div style="border:2px solid var(--brand);border-radius:10px;padding:14px;background:rgba(0,179,65,.05);cursor:pointer" onclick="onbData.firstCampaign=\'morning-combo\'">'+
+      '<div style="font-weight:600;color:var(--text-strong);margin-bottom:4px">☕ Morning Combo · Acquisition</div>'+
+      '<div style="font-size:12px;color:var(--text-subdued)">Spin-the-wheel game targeting commuters 7am-10am within 500m. Avg ROAS 4.2× for F&amp;B.</div>'+
+    '</div>';
+}
+function onbStripe(){
+  if(window.showToast) showToast('Redirecting to Stripe Checkout…','info');
+  onbData.paymentConnected=true;
+  setTimeout(()=>onbNext(),800);
+}
+function onbSkipPayment(){ onbNext(); }
+function onbNext(){
+  // Step validation
+  if(onbStep===1){
+    if(!onbData.brand){ if(window.showToast) showToast('Enter your brand name to continue.','warn'); return; }
+    if(!onbData.btype){ if(window.showToast) showToast('Pick a business type.','warn'); return; }
+  }
+  if(onbStep===2){ const n=document.getElementById('onb-store-name'); if(n) onbData.storeName=n.value; if(!onbData.storeName){ if(window.showToast) showToast('Add a store name.','warn'); return; } }
+  if(onbStep<ONB_STEPS){ onbStep++; persistOnbDraft(); renderOnbStep(); return; }
+  // Finish
+  finishOnboarding();
+}
+function onbBack(){ if(onbStep>1){ onbStep--; persistOnbDraft(); renderOnbStep(); } }
+function finishOnboarding(){
+  try{ localStorage.setItem(ONB_KEY,'1'); }catch(_){}
+  clearOnbDraft();
+  closeOnboarding();
+  // Update brand name in topbar
+  if(onbData.brand){
+    const el=document.getElementById('ent-brand-name'); if(el) el.textContent=onbData.brand;
+    const av=document.getElementById('ent-account-initial'); if(av) av.textContent=(onbData.brand[0]||'K').toUpperCase();
+  }
+  if(window.showToast) showToast('Setup complete! Let\'s create your first campaign.','success');
+  navigate('dashboard');
+  // Highlight create CTA
+  setTimeout(()=>{
+    const btn=document.querySelector('#view-dashboard .ebtn.primary');
+    if(btn){ btn.style.animation='pulse 1.8s ease infinite'; btn.style.boxShadow='0 0 0 4px rgba(0,179,65,.18)'; setTimeout(()=>{btn.style.animation='';btn.style.boxShadow='';},5000); }
+  },200);
+}
+
+// ── Help Center ───────────────────────────────────────────────────
+const HELP_CATEGORIES=[
+  {id:'getting-started',icon:'🚀',title:'Getting started',sub:'Account setup, first campaign, basics',articles:[
+    'Create your KiX merchant account','Set up your first store location','Launch your first campaign','Understanding the dashboard','Brand profile & logo upload'
+  ]},
+  {id:'campaigns',icon:'🎯',title:'Campaigns',sub:'Goals, audiences, budgets, creative',articles:[
+    'Choosing the right objective','Audience targeting basics','Setting daily &amp; lifetime budgets','Game templates explained','A/B testing creatives','Pausing &amp; resuming campaigns'
+  ]},
+  {id:'wallet',icon:'💳',title:'Wallet & billing',sub:'Top-ups, auto-recharge, invoices',articles:[
+    'How the wallet works','Setting up auto-recharge','Downloading invoices','GST &amp; Singapore tax handling','Refund policy'
+  ]},
+  {id:'pixels',icon:'📡',title:'Pixels & tracking',sub:'Conversion tracking, integrations',articles:[
+    'Install the KiX Pixel','Verify pixel installation','Track custom events','Connect Shopify / WooCommerce','Mirror events to Meta Pixel','Privacy & PDPA compliance'
+  ]},
+  {id:'api',icon:'🔧',title:'API & SDK',sub:'For developers',articles:[
+    'REST API quickstart','Authentication & tokens','Webhook signatures','Mobile SDK (iOS / Android)','Rate limits'
+  ]},
+  {id:'faq',icon:'❓',title:'FAQ',sub:'Top questions',articles:[
+    'Why isn\'t my pixel firing?','How long until campaigns go live?','Can I run KiX outside Singapore?','What if my wallet runs out mid-campaign?','How do vouchers attribute back to KiX?','Can I export raw event data?'
+  ]}
+];
+const CHANGELOG=[
+  {date:'2026-05-30',title:'Onboarding wizard & Help Center',body:'Self-serve setup in 5 steps + searchable docs in-app.'},
+  {date:'2026-05-28',title:'Advanced reporting',body:'Audiences, conversions, cohorts and custom report builder.'},
+  {date:'2026-05-27',title:'S$5K signed by 小王',body:'First major SMB deal — Round 5 closed.'},
+  {date:'2026-05-25',title:'Wallet auto-recharge live',body:'Stripe Checkout integration, default-card auto top-up.'},
+  {date:'2026-05-20',title:'Pixel test mode',body:'Validate event firing before going live.'},
+];
+window.HelpCenter={
+  render(){
+    const wrap=document.getElementById('help-categories');
+    if(wrap) wrap.innerHTML=HELP_CATEGORIES.map(c=>(
+      '<div class="help-cat" onclick="HelpCenter.openCat(\''+c.id+'\')">'+
+        '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">'+c.icon+'</span>'+
+        '<div><div class="h">'+c.title+'</div><div class="s">'+c.sub+'</div></div></div>'+
+      '</div>'
+    )).join('');
+    const cl=document.getElementById('help-changelog');
+    if(cl) cl.innerHTML=CHANGELOG.slice(0,5).map(e=>(
+      '<div style="padding:10px 0;border-bottom:1px solid var(--border-subdued)">'+
+        '<div style="font-size:11px;color:var(--text-subdued)">'+e.date+'</div>'+
+        '<div style="font-weight:600;color:var(--text-strong);font-size:13px;margin:2px 0">'+e.title+'</div>'+
+        '<div style="font-size:12px;color:var(--text-subdued)">'+e.body+'</div>'+
+      '</div>'
+    )).join('');
+  },
+  openCat(id){
+    const cat=HELP_CATEGORIES.find(c=>c.id===id);
+    if(!cat) return;
+    const wrap=document.getElementById('help-categories');
+    wrap.innerHTML='<div class="ecard"><div class="ecard-head"><h3 class="ecard-title">'+cat.icon+' '+cat.title+'</h3><button class="ebtn tertiary sm" onclick="HelpCenter.render()">← All categories</button></div>'+
+      cat.articles.map(a=>'<div class="help-article" onclick="HelpCenter.openArticle(\''+a.replace(/\'/g,"\\'")+'\')">'+a+'</div>').join('')+
+      '</div>';
+  },
+  openArticle(title){
+    if(window.showToast) showToast('Opening: '+title,'info');
+    setTimeout(()=>window.open('https://docs.kix.app','_blank'),300);
+  },
+  search(q){
+    q=(q||'').toLowerCase().trim();
+    if(!q){ HelpCenter.render(); return; }
+    const hits=[];
+    HELP_CATEGORIES.forEach(c=>{
+      c.articles.forEach(a=>{
+        if(a.toLowerCase().includes(q)) hits.push({cat:c.title,article:a,catId:c.id});
+      });
+    });
+    const wrap=document.getElementById('help-categories');
+    if(!hits.length){ wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-subdued)">No results for "'+q+'". <a href="#" onclick="openSupportDrawer();return false" style="color:var(--brand)">Ask support →</a></div>'; return; }
+    wrap.innerHTML='<div class="ecard"><div class="ecard-head"><h3 class="ecard-title">'+hits.length+' result(s) for "'+q+'"</h3></div>'+
+      hits.map(h=>'<div class="help-article" onclick="HelpCenter.openArticle(\''+h.article.replace(/\'/g,"\\'")+'\')"><span style="color:var(--text-subdued);font-size:11px">'+h.cat+' / </span>'+h.article+'</div>').join('')+'</div>';
+  }
+};
+function openSupportDrawer(){ document.getElementById('support-drawer').style.display='block'; }
+function closeSupportDrawer(){ document.getElementById('support-drawer').style.display='none'; }
+function submitSupport(){
+  if(window.showToast) showToast('Message sent. We\'ll reply within 1 hour.','success');
+  document.getElementById('sup-subject').value=''; document.getElementById('sup-msg').value='';
+  closeSupportDrawer();
+}
+window.openSupportDrawer=openSupportDrawer;
+window.closeSupportDrawer=closeSupportDrawer;
+window.submitSupport=submitSupport;
+
+// ── Welcome Screen ────────────────────────────────────────────────
+const WELCOME_KEY='kix_welcome_seen';
+function shouldShowWelcome(){
+  try{ return sessionStorage.getItem(WELCOME_KEY)!=='1'; }catch(_){ return true; }
+}
+function markWelcomeSeen(){ try{ sessionStorage.setItem(WELCOME_KEY,'1'); }catch(_){} }
+function welcomeChoose(path){
+  markWelcomeSeen();
+  if(path==='campaign'){ openCampaignWizard(); }
+  else if(path==='pos'){ navigate('settings'); setTimeout(()=>setSettingsTab('integrations'),60); }
+  else if(path==='demo'){ window.open('https://kix.app/demo-video','_blank'); navigate('dashboard'); }
+}
+function skipWelcome(){ markWelcomeSeen(); navigate('dashboard'); }
+window.WelcomeScreen={ render(){ /* static */ } };
+window.welcomeChoose=welcomeChoose;
+window.skipWelcome=skipWelcome;
+
+// ── Advanced Reports ──────────────────────────────────────────────
+function setReportsTab(tab){
+  document.querySelectorAll('.reports-tab').forEach(t=>t.classList.toggle('active',t.dataset.rtab===tab));
+  document.querySelectorAll('.reports-panel').forEach(p=>p.classList.toggle('active',p.dataset.rpanel===tab));
+  if(tab==='cohort') renderCohortMatrix();
+}
+window.setReportsTab=setReportsTab;
+
+function renderCohortMatrix(){
+  const host=document.getElementById('cohort-matrix');
+  if(!host) return;
+  const weeks=['W0','W1','W2','W3','W4','W5','W6'];
+  const cohorts=['Apr W1','Apr W2','Apr W3','Apr W4','May W1','May W2','May W3','May W4'];
+  // Synthetic retention values
+  const data=cohorts.map((_,r)=>weeks.map((__,c)=>{
+    if(c===0) return 100;
+    const decay=Math.max(0,100-(c*12)-(r*1.2)+Math.sin(r+c)*3);
+    return Math.round(decay);
+  }));
+  function color(v){
+    if(v>=70) return '#00875F';
+    if(v>=50) return '#10B981';
+    if(v>=35) return '#34D399';
+    if(v>=20) return '#6EE7B7';
+    return '#D1FAE5';
+  }
+  let html='<table style="border-collapse:separate;border-spacing:3px;font-size:12px;min-width:560px"><thead><tr><th style="text-align:left;padding:4px;color:var(--text-subdued);font-weight:600">Cohort</th>';
+  weeks.forEach(w=>html+='<th style="padding:4px;color:var(--text-subdued);font-weight:600;text-align:center;min-width:54px">'+w+'</th>');
+  html+='</tr></thead><tbody>';
+  cohorts.forEach((c,r)=>{
+    html+='<tr><td style="padding:4px;font-weight:500;color:var(--text-strong)">'+c+'</td>';
+    data[r].forEach(v=>html+='<td><div class="cohort-cell" style="background:'+color(v)+';color:'+(v>40?'#fff':'#0F172A')+'">'+v+'%</div></td>');
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  host.innerHTML=html;
+}
+function exportReports2Csv(){
+  if(window.exportReportsCsv) return exportReportsCsv();
+  const blob=new Blob(['metric,value\nspend,12486\nconversions,1420\nroas,4.2\n'],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kix-report.csv'; a.click();
+  if(window.showToast) showToast('Report exported','success');
+}
+function saveReportTemplate(){
+  const name=prompt('Name this report template:','My Custom Report');
+  if(!name) return;
+  try{
+    const list=JSON.parse(localStorage.getItem('kix_report_templates')||'[]');
+    list.push({name,saved:Date.now()});
+    localStorage.setItem('kix_report_templates',JSON.stringify(list));
+  }catch(_){}
+  if(window.showToast) showToast('Saved as "'+name+'"','success');
+}
+function repCanvasDrop(e){
+  e.preventDefault();
+  const canvas=document.getElementById('rep-canvas');
+  // Find dragged pill (using lastDragged fallback)
+  const drag=document.querySelector('.rep-pill[data-dragging="1"]');
+  if(drag){
+    const clone=drag.cloneNode(true);
+    clone.removeAttribute('draggable');
+    clone.style.background='#fff'; clone.style.border='1px solid var(--brand)'; clone.style.color='var(--brand)';
+    if(canvas.querySelector('[data-i18n="portal.reports2.custom.empty"]')) canvas.innerHTML='';
+    canvas.appendChild(clone);
+    drag.removeAttribute('data-dragging');
+  }
+}
+document.addEventListener('dragstart',e=>{ if(e.target && e.target.classList && e.target.classList.contains('rep-pill')) e.target.setAttribute('data-dragging','1'); });
+window.ReportsAdvanced={ render(){ setReportsTab('performance'); } };
+window.exportReports2Csv=exportReports2Csv;
+window.saveReportTemplate=saveReportTemplate;
+window.repCanvasDrop=repCanvasDrop;
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+function openShortcutsCheatsheet(){ document.getElementById('ksheet-overlay').classList.add('open'); }
+function closeShortcutsCheatsheet(){ document.getElementById('ksheet-overlay').classList.remove('open'); }
+window.openShortcutsCheatsheet=openShortcutsCheatsheet;
+window.closeShortcutsCheatsheet=closeShortcutsCheatsheet;
+
+let _shortcutBuffer='';
+let _shortcutTimer=null;
+function handleShortcuts(e){
+  const tag=(e.target.tagName||'').toLowerCase();
+  const isInput=tag==='input'||tag==='textarea'||tag==='select'||e.target.isContentEditable;
+  if(e.key==='Escape'){
+    closeShortcutsCheatsheet();
+    document.getElementById('onb-overlay')?.classList.remove('open');
+    closeSupportDrawer();
+    return;
+  }
+  if(isInput) return;
+  if(e.key==='?' || (e.shiftKey && e.key==='/')){ e.preventDefault(); openShortcutsCheatsheet(); return; }
+  if(e.key==='/'){ e.preventDefault(); document.getElementById('ent-search-input')?.focus(); return; }
+  if(e.key==='n' && !e.metaKey && !e.ctrlKey){ e.preventDefault(); if(window.toggleNotifications) toggleNotifications(); return; }
+  if(e.key==='c' && !e.metaKey && !e.ctrlKey){ e.preventDefault(); if(window.openCampaignWizard) openCampaignWizard(); return; }
+  if(e.key==='g'){
+    _shortcutBuffer='g';
+    if(_shortcutTimer) clearTimeout(_shortcutTimer);
+    _shortcutTimer=setTimeout(()=>{ _shortcutBuffer=''; },1200);
+    return;
+  }
+  if(_shortcutBuffer==='g'){
+    if(e.key==='d'){ navigate('dashboard'); _shortcutBuffer=''; }
+    else if(e.key==='c'){ navigate('ads'); _shortcutBuffer=''; }
+    else if(e.key==='a'){ navigate('primitives'); _shortcutBuffer=''; }
+    else if(e.key==='r'){ navigate('reports'); _shortcutBuffer=''; }
+    else if(e.key==='s'){ navigate('settings'); _shortcutBuffer=''; }
+    else if(e.key==='h'){ navigate('help'); _shortcutBuffer=''; }
+  }
+}
+document.addEventListener('keydown',handleShortcuts);
+
+// ── Demo mode toggle ──────────────────────────────────────────────
+function toggleDemoMode(e){
+  const on=e.target.checked;
+  try{ localStorage.setItem('kix_demo_mode',on?'true':'false'); }catch(_){}
+  // Update visual track
+  const track=document.getElementById('demo-mode-track');
+  const thumb=document.getElementById('demo-mode-thumb');
+  if(track) track.style.background=on?'var(--brand)':'#CBD5E1';
+  if(thumb) thumb.style.left=on?'21px':'3px';
+  if(window.applyDemoMode) applyDemoMode();
+  if(window.showToast) showToast('Demo mode '+(on?'ON — sample data':'OFF — your real account'),'info');
+}
+window.toggleDemoMode=toggleDemoMode;
+function syncDemoToggleUI(){
+  const cb=document.getElementById('demo-mode-toggle');
+  if(!cb) return;
+  let on=false; try{ on=localStorage.getItem('kix_demo_mode')==='true'; }catch(_){}
+  cb.checked=on;
+  const track=document.getElementById('demo-mode-track');
+  const thumb=document.getElementById('demo-mode-thumb');
+  if(track) track.style.background=on?'var(--brand)':'#CBD5E1';
+  if(thumb) thumb.style.left=on?'21px':'3px';
+}
+
+// ── Notification preferences ──────────────────────────────────────
+const NOTIF_PREFS_KEY='kix_notif_prefs';
+function loadNotifPrefs(){
+  try{
+    const raw=localStorage.getItem(NOTIF_PREFS_KEY); if(!raw) return;
+    const p=JSON.parse(raw);
+    const ids=['perf','wallet','audience','voucher','product','quiet'];
+    ids.forEach(k=>{ const el=document.getElementById('notif-'+k); if(el && typeof p[k]==='boolean') el.checked=p[k]; });
+    const f=document.getElementById('notif-digest-freq'); if(f && p.digest) f.value=p.digest;
+    const qf=document.getElementById('notif-quiet-from'); if(qf && p.quietFrom) qf.value=p.quietFrom;
+    const qt=document.getElementById('notif-quiet-to'); if(qt && p.quietTo) qt.value=p.quietTo;
+    const w=document.getElementById('notif-webhook-url'); if(w && p.webhook) w.value=p.webhook;
+  }catch(_){}
+}
+function saveNotifPrefs(){
+  const p={
+    digest:(document.getElementById('notif-digest-freq')||{}).value||'daily',
+    perf:!!(document.getElementById('notif-perf')||{}).checked,
+    wallet:!!(document.getElementById('notif-wallet')||{}).checked,
+    audience:!!(document.getElementById('notif-audience')||{}).checked,
+    voucher:!!(document.getElementById('notif-voucher')||{}).checked,
+    product:!!(document.getElementById('notif-product')||{}).checked,
+    quiet:!!(document.getElementById('notif-quiet')||{}).checked,
+    quietFrom:(document.getElementById('notif-quiet-from')||{}).value||'22:00',
+    quietTo:(document.getElementById('notif-quiet-to')||{}).value||'07:00',
+    webhook:(document.getElementById('notif-webhook-url')||{}).value||''
+  };
+  try{ localStorage.setItem(NOTIF_PREFS_KEY,JSON.stringify(p)); }catch(_){}
+  if(window.showToast) showToast('Preferences saved','success');
+}
+function testNotifWebhook(){
+  const url=(document.getElementById('notif-webhook-url')||{}).value||'';
+  if(!url){ if(window.showToast) showToast('Enter a webhook URL first.','warn'); return; }
+  if(window.showToast) showToast('Test event sent to '+url,'success');
+}
+window.saveNotifPrefs=saveNotifPrefs;
+window.testNotifWebhook=testNotifWebhook;
+
+// ── What's New rail ───────────────────────────────────────────────
+const WN_KEY='kix_wn_seen';
+function renderWhatsNew(){
+  const body=document.getElementById('wn-body');
+  if(!body) return;
+  body.innerHTML=CHANGELOG.slice(0,3).map(e=>(
+    '<div class="wn-item"><div class="d">'+e.date+'</div><div class="t">'+e.title+'</div><div>'+e.body+'</div></div>'
+  )).join('')+'<button class="ebtn tertiary sm" style="width:100%;margin-top:8px" onclick="navigate(\'help\');toggleWhatsNew(true)">See all →</button>';
+}
+function toggleWhatsNew(forceCollapse){
+  const r=document.getElementById('wn-rail');
+  if(!r) return;
+  const open=!r.classList.contains('collapsed');
+  if(forceCollapse===true || open){ r.classList.add('collapsed'); document.getElementById('wn-toggle').textContent='▲'; }
+  else { r.classList.remove('collapsed'); document.getElementById('wn-toggle').textContent='▼'; try{ localStorage.setItem(WN_KEY, CHANGELOG[0].date); }catch(_){} }
+}
+window.toggleWhatsNew=toggleWhatsNew;
+function maybeShowWhatsNew(){
+  const r=document.getElementById('wn-rail');
+  if(!r) return;
+  renderWhatsNew();
+  r.style.display='block';
+  // Auto-open if user hasn't seen latest
+  try{
+    const seen=localStorage.getItem(WN_KEY);
+    if(seen!==CHANGELOG[0].date){ setTimeout(()=>toggleWhatsNew(false), 1800); }
+  }catch(_){}
+}
+
+// ── Bootstrap on app shown ────────────────────────────────────────
+function _round6Boot(){
+  try{ syncDemoToggleUI(); loadNotifPrefs(); maybeShowWhatsNew(); }catch(e){ console.warn('round6Boot',e); }
+  // Trigger flows for first-time users
+  if(shouldShowOnboarding()){ setTimeout(()=>openOnboarding(), 600); }
+  else if(shouldShowWelcome() && !localStorage.getItem('kix_demo_mode')){
+    // Only show welcome once per session for non-demo accounts that have onboarded
+    if(localStorage.getItem(ONB_KEY)==='1'){
+      try{
+        const hash=(location.hash||'').replace('#','');
+        if(!hash || hash==='dashboard') navigate('welcome');
+      }catch(_){}
+    }
+  }
+}
+// Hook into showApp via observer (showApp toggles app-shell class)
+(function(){
+  const orig=window.showApp;
+  if(typeof orig==='function'){
+    window.showApp=function(){ const r=orig.apply(this,arguments); setTimeout(_round6Boot,150); return r; };
+  } else {
+    document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>{ if(document.getElementById('app-shell')?.classList.contains('active')) _round6Boot(); },800); });
+  }
+})();
 </script>
 
 <!-- ─── Tutorial Engine Overlay ─────────────────────────────────────── -->
