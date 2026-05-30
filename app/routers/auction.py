@@ -85,6 +85,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Wave C: TriSoul auction boost (additive ±10% rank multiplier, behind
+# per-user flag). Identity no-op when the integration module is missing
+# or the flag is off.
+try:  # pragma: no cover — best-effort
+    from app.routers.trisoul_integration import (  # type: ignore
+        maybe_boost_auction as _trisoul_boost_auction,
+    )
+except ImportError:  # pragma: no cover
+    async def _trisoul_boost_auction(  # type: ignore[misc]
+        uid: str | None, bid: str, base_rank: float, r: aioredis.Redis,
+    ) -> tuple[float, dict[str, Any]]:
+        return base_rank, {"trisoul": "unavailable"}
+
 
 # ── Constants ────────────────────────────────────────────────────────────
 
@@ -1100,6 +1113,16 @@ async def run_auction(
 
         boost = _learning_boost(c)
         rank = bid * qs * pacing * boost
+
+        # Wave C: TriSoul affinity multiplier (additive ±10%, flag-gated).
+        # Cannot invert ranking by itself (max swing 0.9× ↔ 1.1×) but adds
+        # personalisation when the per-user flag is set.
+        cand_brand_id = c.get("brand_id", "")
+        if cand_brand_id:
+            rank, _trisoul_meta = await _trisoul_boost_auction(
+                body.user_id, cand_brand_id, rank, r,
+            )
+
         ranked.append((rank, bid, qs, pacing, c))
 
     if not ranked:
