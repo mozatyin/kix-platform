@@ -431,38 +431,86 @@ async def run_one_auction(
                 )
             except Exception:
                 pass
-            # viral
+            # viral — Wave G amplifier: 7-trigger orchestrator
+            # 50% legacy 2-trigger / 50% new 7-trigger amplifier (gradual rollout)
             if rng.random() < 0.06:
-                trig = rng.choice(["share_to_win", "friend_challenge"])
-                try:
-                    ir = await post(
-                        client,
-                        f"/api/v1/network/trigger/{trig}/init",
-                        json={
-                            "user_id": user_id,
-                            "brand_id": wb,
-                            "context": {"score": rng.randint(100, 999)},
-                        },
-                    )
-                    if ir.status_code == 200:
-                        st.viral_invites_issued += 1
-                        tok = ir.json().get("invite_token")
-                        if tok and rng.random() < 0.30:
-                            new_uid = f"v_{wb}_{rng.randint(0, 10_000_000)}"
-                            rr = await post(
-                                client,
-                                "/api/v1/network/redeem",
-                                json={
-                                    "invite_token": tok,
-                                    "new_user_id": new_uid,
-                                    "brand_id": wb,
+                if rng.random() < 0.5:
+                    # Wave G amplifier — full 7-trigger orchestrator (new path)
+                    candidates = rng.sample([
+                        "game_completion", "voucher_won", "brand_discovery",
+                        "achievement_unlock", "birthday", "re_engagement",
+                        "geofence_friend",
+                    ], k=rng.randint(2, 4))
+                    try:
+                        ir = await post(
+                            client,
+                            "/api/v1/network/amplifier/emit",
+                            json={
+                                "user_id": user_id,
+                                "brand_id": wb,
+                                "candidate_triggers": candidates,
+                                "context": {
+                                    "score": rng.randint(100, 999),
+                                    "voucher_amount": rng.choice([5_00, 10_00, 25_00]),
                                 },
-                            )
-                            if rr.status_code == 200:
-                                st.viral_redemptions += 1
-                                st.users_total += 1
-                except Exception:
-                    pass
+                            },
+                        )
+                        if ir.status_code == 200:
+                            payload = ir.json()
+                            if payload.get("emitted"):
+                                st.viral_invites_issued += 1
+                                tok = payload.get("invite_token")
+                                # higher redemption rate per trigger (~30-65%)
+                                if tok and rng.random() < 0.40:
+                                    new_uid = (
+                                        f"vamp_{wb}_{rng.randint(0, 10_000_000)}"
+                                    )
+                                    rr = await post(
+                                        client,
+                                        "/api/v1/network/amplifier/redeem",
+                                        json={
+                                            "invite_token": tok,
+                                            "new_user_id": new_uid,
+                                            "brand_id": wb,
+                                        },
+                                    )
+                                    if rr.status_code == 200:
+                                        st.viral_redemptions += 1
+                                        st.users_total += 1
+                    except Exception:
+                        pass
+                else:
+                    # Legacy 2-trigger path (backward compat)
+                    trig = rng.choice(["share_to_win", "friend_challenge"])
+                    try:
+                        ir = await post(
+                            client,
+                            f"/api/v1/network/trigger/{trig}/init",
+                            json={
+                                "user_id": user_id,
+                                "brand_id": wb,
+                                "context": {"score": rng.randint(100, 999)},
+                            },
+                        )
+                        if ir.status_code == 200:
+                            st.viral_invites_issued += 1
+                            tok = ir.json().get("invite_token")
+                            if tok and rng.random() < 0.30:
+                                new_uid = f"v_{wb}_{rng.randint(0, 10_000_000)}"
+                                rr = await post(
+                                    client,
+                                    "/api/v1/network/redeem",
+                                    json={
+                                        "invite_token": tok,
+                                        "new_user_id": new_uid,
+                                        "brand_id": wb,
+                                    },
+                                )
+                                if rr.status_code == 200:
+                                    st.viral_redemptions += 1
+                                    st.users_total += 1
+                    except Exception:
+                        pass
 
 
 # ── Daily cycle ─────────────────────────────────────────────────────────
