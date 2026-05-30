@@ -1080,6 +1080,17 @@ and the shim helpers in `app.api_standards`.
         import logging as _logging
         _logging.getLogger(__name__).warning("wavef-06 skipped: %s", _exc)
 
+    try:
+        from app.routers import wavef_flash_promo as _wf07
+        app.include_router(
+            _wf07.router,
+            prefix="/api/v1/wavef/flash",
+            tags=["wavef", "flash-promo"],
+        )
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning("wavef-07 skipped: %s", _exc)
+
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os
     _landing_dir = _os.path.join(_os.path.dirname(__file__), "..", "landing")
