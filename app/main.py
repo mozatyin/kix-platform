@@ -967,6 +967,25 @@ and the shim helpers in `app.api_standards`.
     from app.routers import observability as _obs_router
     app.include_router(_obs_router.router, tags=["observability"])
 
+    # ── Wave-E Step 5: Re-engagement (Return funnel step) ──────────────
+    # Multi-channel cascade (WhatsApp/push/email) when users go quiet.
+    # Backed by app.services.reengagement_orchestrator + the
+    # reengagement_worker cron. Brand-scoped routes mount under
+    # /api/v1/reengagement; the admin test-cascade route lives at
+    # /api/v1/admin/reengagement so ops scripts can fire it without
+    # discovering a brand id.
+    from app.routers import reengagement as _reeng_router
+    app.include_router(
+        _reeng_router.router,
+        prefix="/api/v1/reengagement",
+        tags=["reengagement"],
+    )
+    app.include_router(
+        _reeng_router.admin_router,
+        prefix="/api/v1/admin/reengagement",
+        tags=["reengagement-admin"],
+    )
+
     # ── Root redirect to Landing Page ──────────────────────────────────
     @app.get("/")
     async def root_to_landing():
@@ -1003,6 +1022,49 @@ and the shim helpers in `app.api_standards`.
             f"/landing/app/{path}" if path else "/landing/app/index.html"
         )
         return RedirectResponse(url=f"{target}{qs}")
+
+    # ── Wave F: competitor-mined obvious wins (additive, no overlap) ────
+    # See /Users/mozat/a-docs/9-competitor-feature-mining-master-backlog.md
+    # for the per-competitor Trinity rationale. Each router is in
+    # app/routers/wavef_*.py and is fully NEW (no existing module touched).
+    try:
+        from app.routers import (
+            wavef_sweepstakes,
+            wavef_daily_checkin,
+            wavef_brand_color,
+            wavef_poll,
+            wavef_certificate,
+        )
+        app.include_router(
+            wavef_sweepstakes.router,
+            prefix="/api/v1/wavef/sweepstakes",
+            tags=["wavef", "sweepstakes"],
+        )
+        app.include_router(
+            wavef_daily_checkin.router,
+            prefix="/api/v1/wavef/daily-checkin",
+            tags=["wavef", "daily-checkin"],
+        )
+        app.include_router(
+            wavef_brand_color.router,
+            prefix="/api/v1/wavef/brand-color",
+            tags=["wavef", "brand-color"],
+        )
+        app.include_router(
+            wavef_poll.router,
+            prefix="/api/v1/wavef/poll",
+            tags=["wavef", "poll"],
+        )
+        app.include_router(
+            wavef_certificate.router,
+            prefix="/api/v1/wavef/certificate",
+            tags=["wavef", "certificate"],
+        )
+    except Exception as _exc:  # pragma: no cover — never fail boot
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "wave-f routers skipped: %s", _exc
+        )
 
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os
