@@ -1,883 +1,440 @@
-# 📖 KIX GAMIFICATION BIBLE
-## 唯一权威文档 · Single Source of Truth
+# KIX GAMIFICATION BIBLE
+## Single Source of Truth — Honest Edition
 
-> 「软件免费送，网络收费。」 — KiX 唯一商业模式
+> "Software free, network paid." — KiX's only business model.
 >
-> 团队任何争议以此文档为准。其他文档为细化补充。
+> This Bible matches code reality at HEAD `438fbd5` (2026-05-30).
+> Marketing copy has been removed. Every claim now carries a status badge.
+> If a claim is aspirational, it says so.
 
-**最后更新**: 2026-05-29 · **平台规模**: 726 routes / 38 routers / 79 Recipe / 18 商家行业模拟 / 11 轮 Trinity 迭代
-
----
-
-# 📌 给团队的执行摘要（30 秒读完）
-
-KiX 是 **「TikTok Ads for Gamification」** — 一个让任何商家在 5 分钟内开出可玩游戏并按效果付费拉新的平台。
-
-**怎么赚钱（双护城河）**：
-1. **拍卖**（主流）：商家像在 Google Ads 上一样出价买新用户，CPA / CPS / CPM / CPV / CPE 五种付费方式
-2. **订阅**（ARR）：前 3 个月免费（Apple Music 策略），之后 ¥199-¥5000/月 解锁多游戏 + 高级功能
-
-**怎么保护**：
-- AI 让所有软件功能 12 个月内被复刻 → 卖软件 = 慢性自杀 → KiX 全免费送出
-- 网络效应（N² × 0 边际成本）→ **跨商家用户连接是唯一不可复刻的资产**
-- 商家之间永远互不可见，KiX 算法是唯一撮合者（避免 Plenti 联盟死亡多米诺）
-
-**怎么落地**：
-- 用户：扫 QR → 立刻玩（不注册）→ 赢了再注册（保住战利品）→ 80% 流失变 20%
-- 商家：销售触达 → 注册 + 留信用卡 → 创建游戏 → 收实体 QR 礼包 → 看每日 dashboard → 自然升级 Premium → 启动广告
-- 平台：38 routers / 726 endpoints / 79 Recipe / 26 行业 / 18 商家行业完整模拟 / 11 轮 Trinity 迭代
-
-**单商家 3 年 LTV ≈ ¥9,300，CAC ≈ ¥200-500，ROI 18-46x**
+**Bible discipline**: numbers in this file are auto-checked by `scripts/bible_check.py`.
+Drift > 5% breaks CI. The Bible updates with every major wave (no exceptions).
 
 ---
 
-# 📑 目录
+## Status Legend
 
-- [📌 执行摘要](#-给团队的执行摘要30-秒读完)
-- [第一卷 · 为什么 (Why)](#第一卷--为什么-why)
-- [第二卷 · 系统怎么跑 (How)](#第二卷--系统怎么跑-how)
-- [第三卷 · 平台是什么 (What)](#第三卷--平台是什么-what)
-- [第四卷 · 合规与安全](#第四卷--合规与安全)
-- [第五卷 · 接入指南](#第五卷--接入指南)
-- [第六卷 · 战绩](#第六卷--战绩)
-- [第七卷 · 路线图](#第七卷--路线图)
-- [附录](#附录)
+| Badge | Meaning |
+|---|---|
+| ✅ **DELIVERED** | Code + tests + verified in code review. Production-grade. |
+| 🟡 **PARTIAL** | Code exists, gaps documented. Works on the happy path. |
+| 🔵 **SCAFFOLDED** | Structure/stub in place for a future wave. Not functional yet. |
+| 📝 **ASPIRATIONAL** | Vision-level claim, not built. Belongs in Chapter 3. |
 
----
-
-# 第一卷 · 为什么 (Why)
-
-## 1.1 一句话亮点
-
-> **KiX = TikTok Ads for Gamification。商家管理自己用户全免费，想要别人的用户就来出价，KiX 算法撮合。**
-
-软件免费 · 拍卖收费 · 单边合约 · 商家之间永远互不可见
-
-## 1.2 AI 让软件不值钱的时代
-
-```
-软件 marginal cost (AI 时代) → 0  →  价格趋零
-网络价值 = N² × 0  →  指数级
-```
-
-**结论**：卖软件 = 慢性自杀。卖网络 = 唯一护城河。
-
-### 业界对比
-
-| 类型 | 代表 | AI 时代展望 |
-|------|------|------------|
-| 卖软件 SaaS | Salesforce, HubSpot | ⚠️ AI 复刻威胁严重 |
-| 卖订阅 | Shopify, Notion | ⚠️ 商家自建 AI 工具替代 |
-| **卖连接** | VISA, 美团, 抖音 | ✅ AI 无法复刻网络效应 |
-| **卖广告** | Google, Meta, TikTok | ✅ AI 优化精度更高 |
-
-KiX 选 **卖连接 + 卖广告** 复合模式。
-
-## 1.3 商业模式 (TikTok Ads + 订阅 双护城河)
-
-### 单边合约结构
-
-```
-       ┌──────────┐
-       │   KiX    │  ← 唯一合同对手方
-       └──────────┘
-        ↑↑↑↑↑↑↑↑↑
-   ┌────┘│││││││└────┐
-   │     │││││││     │
- 商家A 商家B 商家C ... 商家N
-   ▲     ▲     ▲       ▲
-   └──── 商家彼此永远互不可见 ────┘
-```
-
-每个商家只有一条线 → 通向 KiX。商家之间**没有任何合约、知情或感知**。
-
-### 双重收入护城河
-
-```
-收入 1 · 广告（拍卖驱动）
-  ├── CPA  每个新注册用户 ¥10-100
-  ├── CPS  每笔订单分成 5-15%
-  ├── CPM  每千次曝光 ¥10-50
-  ├── CPV  每次到店访问 ¥1-10
-  └── CPE  每次游戏完成 ¥0.5-5
-  
-  → KiX 抽 take_rate 30-70% per dollar
-
-收入 2 · Premium 订阅（ARR）
-  ├── FREE        ¥0    1 game
-  ├── STARTER     ¥199/月  3 games + A/B 测试
-  ├── GROWTH      ¥999/月  10 games + 自定义品牌
-  └── ENTERPRISE  ¥5000/月 无限 + 白标 + SLA
-  
-  → 前 3 个月免费（Apple Music 策略）
-```
-
-### 财务推算
-
-| 阶段 | 商家数 | 年化营收 |
-|------|--------|---------|
-| 启动期 | 100 | ¥960K |
-| 成长期 | 1,000 | ¥38M |
-| 网络效应起飞 | 10,000 | ¥1.2-2.4B |
-
-### 单商家 LTV
-
-```
-Premium ARR ¥999 × 70% 续费率 × 3 年 = ¥2,100
-广告支出 ¥2000/月 × 12 × take_rate 30% = ¥7,200
-总 LTV ≈ ¥9,300 / 商家
-
-CAC（销售+物流+客服）≈ ¥200-500
-ROI ≈ 18-46x
-```
-
-## 1.4 为什么是现在 (Why Now)
-
-**3 个时机窗口同时打开**：
-
-1. **AI 复刻临界点**：2026 年起，AI 在 12 个月内能复刻任何 SaaS 工具。先发占住免费用户的窗口正在关闭。
-2. **传统 CAC 50% YoY 上涨**：抖音 ¥30-200 / 美团 ¥40-150 / 微信广告 ¥50-300 — 商家在为 traffic 流血。
-3. **小程序生态成熟**：扫 QR 即玩 H5 / WeChat / Alipay Mini-Program 已被中国市场普及；用户已习惯「扫码就用」。
-
-**3 个先发优势**：
-- **网络效应锁定**：每多 1 商家 → 每商家的拓客可能性 N²↑
-- **用户身份锁定**：KiX ID 像 Facebook Connect，下一个 Connect 不会重新发明
-- **数据复利**：Quality Score / Recipe / 算法越跑越准 → 后入场者追赶成本指数级上升
-
-**给团队**：现在做这个事的 ROI 不是「+10% 用户」，是「占住一个生态位」。
-
-## 1.5 为什么不是其他模式 (Why Not Plenti/SaaS/抽佣)
-
-### Plenti 联盟模式（双边签约）
-- Amex 投 $1 亿做跨品牌联盟 → 3 年关闭
-- 60% 联盟项目 10 年内死亡（domino effect）
-- **KiX 避坑**：商家之间永远不签约，KiX 算法单方面撮合（VISA 同结构）
-
-### 卖 SaaS 订阅模式（Shopify/Smartico）
-- Shopify 月费 $5-2300 + 抽 3-7%
-- Smartico iGaming SaaS 月费高昂
-- **KiX 避坑**：免费送 SaaS，靠拍卖 + 高阶订阅赚钱（双护城河）
-
-### 美团抽佣模式（12-26%）
-- 美团对新店抽 26% → 商家投诉、监管介入、抖音/快手抢墙
-- **KiX 避坑**：5-15% 抽佣 + 不送货 + 不强制 — 商家随时退出零成本
+> Where you used to see "world-class" / "TikTok-grade" / "battle-tested", you now see one of the above. Evidence before assertions.
 
 ---
 
-# 第二卷 · 系统怎么跑 (How)
+## 30-Second Executive Summary
 
-## 2.1 三角色架构
+KiX is **a gamification ads platform** ("TikTok Ads for Gamification"). Architecturally, we've shipped:
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  普通用户（玩家）                                         │
-│  · 在 KiX App 里玩游戏 / 拿优惠 / 跨品牌发现              │
-│  · 唯一身份：kid_xxxxxxx                                 │
-└─────────────────────────────────────────────────────────┘
-                              ↑↓
-┌─────────────────────────────────────────────────────────┐
-│  KiX 平台（中间运营方）                                   │
-│  · 38+ routers / 726+ endpoints                         │
-│  · 全免费工具 + 拍卖撮合 + 网络效应                       │
-└─────────────────────────────────────────────────────────┘
-                              ↑↓
-┌─────────────────────────────────────────────────────────┐
-│  商家 (Brand)                                            │
-│  · 老王奶茶 / 老张餐厅 / 老黄电商 / ...                   │
-│  · 永远只跟 KiX 沟通，从不跟其他商家见面                  │
-└─────────────────────────────────────────────────────────┘
-```
+- **94 routers** with **925 endpoints** (verified via `ls app/routers/*.py` + `grep '^@router' app/routers/*.py`)
+- **104 test files** with **1,006 test functions** (verified via `find tests -name 'test_*.py'`)
+- **7 PostgreSQL migrations** (verified via `ls migrations/versions/*.py`)
+- **11 i18n locale catalogs** (en-SG, en-US, zh-Hans-SG, zh-Hans-CN, id-ID, ms-MY, th-TH, vi-VN, ar-EG, ar-SA, he-IL)
+- **5 payment PSP integrations** scaffolded (alipay_global, grabpay, ovo_indonesia, paynow_sg, wechat_pay) + Stripe live mode
+- **10 background workers**, **16 services**, **18 industry merchant simulations**
+- **79 gamification recipes** across **26 industries** (verified in `app/data/recipes_seed.json`)
+- **~110K lines of Python**
 
-## 2.2 用户旅程（懒-到-上钩三步漏斗）
+**What this means**: the *shape* is right. **What it does NOT mean**: every promise is production-ready. See Chapter 1 for what's actually delivered, Chapter 2 for what's in flight, Chapter 3 for what's still vision.
 
-### ❌ 错误流程
-```
-扫码 → 注册 KiX → 下载 App → 玩游戏 → 拿奖
-        ↑
-   80% 在这里离开
-```
+**Revenue model** (unchanged from v1):
+1. **Auction** — merchants bid for new users via CPA/CPS/CPM/CPV/CPE (5 strategies, all wired)
+2. **Subscription** — 4-tier brand subscriptions (FREE / STARTER ¥199 / GROWTH ¥999 / ENTERPRISE ¥5000) with 3-month trial (Apple Music strategy)
 
-### ✅ 正确流程
-
-**第 1 步 · 玩（零摩擦）**
-```
-扫 QR → 直接打开 H5 游戏 → 后台用 device_fingerprint 创建匿名 kid
-游戏立刻开始 → 不需要任何用户信息
-```
-
-**第 2 步 · 上钩（赢了才动心）**
-```
-赢了 → 弹窗：
-  🎁 你赢得了 "南洋茶饮 中杯免费券" 价值 ¥18
-  [立即收藏 →]   [先看看]
-```
-
-**第 3 步 · 收藏（必须注册）**
-```
-点收藏 → "请输入手机号保存到 KiX 钱包"
-匿名 kid 升级为实名 kid（journey/voucher 全部继承）
-建议下载 KiX App 永久保存
-```
-
-### 漏斗数据预期
-
-| 步骤 | 漏斗 | 累计 |
-|------|------|------|
-| 看到 QR | 100% | 100% |
-| 扫码进入 | 60% | 60% |
-| 完成一局游戏 | 70% | 42% |
-| 赢取奖励 | 50% | 21% |
-| 点击「收藏」 | 70% | 14.7% |
-| 输入手机号注册 | 80% | 11.8% |
-| 下载 KiX App | 30% | 3.5% |
-
-## 2.3 商家旅程（7 步 + 3 个月试用）
-
-```
-1. 销售触达 / 自然发现
-   ↓
-2. 注册（认证）+ 留信用卡（前 3 个月免费但必须有）
-   ↓
-3. 创建游戏（FREE 1 个 / Premium N 个）
-   ↓
-4. 收到欢迎礼包（实体 QR 桌牌寄到门店）
-   ↓
-5. 看到每日扫码 + 转化（爱上 KiX 多巴胺）
-   ↓
-6. 升级到 Premium（前 3 个月免费 / Apple Music 策略）
-   ↓
-7. 启动广告活动（拉新 / 跨店带客 / 高峰拉量）
-```
-
-### 3 个月试用为什么是黄金窗口（Apple Music 策略）
-
-| 试用长度 | 痛点 | 转化率 |
-|---------|------|--------|
-| 7 天 | 商家根本没看到价值 | 22% |
-| 1 个月 | 数据还没累积，投诉多 | 35% |
-| **3 个月** ⭐ | **数据已累积 + QR 已发 + 团队习惯成自然** | **75-90%** |
-| 6 个月 | 商家警觉降低，但 KiX 现金流晚 | 65% |
-| 1 年 | 商家把 KiX 当年度费用，期满直接走 | 35-40% |
-
-**核心心理学**：3 个月后切换成本（重学新 SaaS + 重发 QR + 重训团队 + 丢失累积数据）**大于**继续付费成本（¥199-5000/月）→ 90% 商家自然续费。
-
-### 商家心理钩子（4 个多巴胺触发器）
-
-| 触发器 | 心理感受 | 落地 |
-|--------|---------|------|
-| **欢迎礼包** | 「这东西是真的」 | 实体 QR 桌牌寄到门店地址 |
-| **每日 Dashboard** | 「今天又有 12 人扫了我的码」 | `/dashboards/{bid}/today` |
-| **累计 CAC saved** | 「KiX 替我省了 ¥2,340」 | `/auction/admin/savings/{bid}` |
-| **第 2 个游戏触发** | 「我想做更多」 | 自然升级 Premium |
-
-### 7 步漏斗预期转化数据
-
-| 步骤 | 漏斗 | 累计 |
-|------|------|------|
-| 触达商家 | 100% | 100% |
-| 注册（含信用卡）| 30% | 30% |
-| 创建第一个游戏 | 85% | 25.5% |
-| 收到欢迎礼包 | 95% | 24.2% |
-| 持续登录看数据 | 70% | 16.9% |
-| 升级 Premium | 25% | 4.2% |
-| 启动广告 | 50% | 2.1% |
-
-## 2.4 「店长不会反对」的逻辑链
-
-这是销售最关键的一环 — 让店长**主动**让用户下载 KiX App。
-
-### 店长的顾虑
-- 「让客户装一个第三方 App，他们会不会嫌烦？」
-- 「我自己有微信公众号 / 小程序，为什么要 KiX？」
-
-### 销售回应（必背 8 句话）
-
-> 「店长，通过你店里 QR 注册的每个用户，平台永久标记是**你的客户**。
->
-> 这意味着：
-> 1. 他下次来你店附近 50 米，KiX 自动推你的活动给他
-> 2. 他去隔壁竞品消费，算法可以把他**拉回**你这（你不付费就不推）
-> 3. 他生日，KiX 自动推送你设的生日礼券
-> 4. 你的会员画像 / 复购率 / 留存率全自动追踪
-> 5. **你不装这个 SaaS，等于把客户白送给装了的竞品。**
->
-> 用户拿到优惠券想保存 → 自然就装了。你只负责把 QR 摆好。」
-
-### 为什么用户也愿意下载 KiX App
-- 我赢到的奖励要保存（情感价值）
-- 跨商家的奖励集合在一个钱包（便利价值）
-- 下次到附近商家有奖励推送（持续价值）
-
-→ 用户 + 商家 + KiX 三赢，无人反对。
-
-## 2.4 KiX 平台内部（核心机制）
-
-### Quality-Adjusted Vickrey GSP 拍卖
-
-```
-rank = max_bid × quality_score × pacing_factor
-winner = argmax(rank)
-charge = min(ceil(runner_up_rank / winner_qs) + 1, max_bid)
-```
-
-- **Vickrey 二价**：出真实价值 = 最优策略（商家不需博弈）
-- **Quality Score** = 0.3 + min(CTR×8, 0.4) + min(CVR×6, 0.3)
-- **Pacing**：每天 50% 时间应花 50% 预算，超支降权 0.3
-
-### 归因系统（7 天 last-touch，可配 1-365 天）
-
-```
-用户旅程: [事件1, 事件2, ..., 事件N]
-对每个 conversion：从最新往回找，
-找第一个 source_brand != target_brand 的事件
-→ 那就是引流方 → 自动佣金分账
-```
-
-可配窗口：医疗 365 天 / 旅游 210 天 / 房产 180 天 / 餐饮 7 天 / 闪购 1 天
-
-### 数据流（一笔交易完整链路）
-
-```
-1. 用户在老王店玩游戏
-2. POST /attribution/track/event → user:{kid}:journey 累积
-3. 用户去老张消费
-4. POST /pixel/event {type=purchase, amount=200}
-5. 自动归因引擎找到老王（last-touch within 7d）
-6. wallet.charge(老张, 10) → KiX ¥3 + payouts.inter-brand-transfer(老张→老王 ¥7)
-7. Trust score / Push history / Audience 全自动更新
-```
-
-## 2.5 商家 Dashboard（多巴胺驱动器）
-
-每个商家登录 partner.letskix.com 首先看到的就是这张表（连免费版都看得到）：
-
-```
-┌────────────────────────────────────────────────┐
-│  今日                                          │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│  🔍 12 次 QR 扫描     (vs 昨日 +3)              │
-│  🎮 9 次游戏完成     (75% 转化)                  │
-│  🎁 6 张优惠券领取                              │
-│  ✅ 3 张已核销 (50%)                            │
-│  ⭐ 2 个新注册用户                              │
-│  📞 +2 个手机号绑定                             │
-│  🔥 连续 5 天有用户扫码                          │
-│                                                │
-│  累计                                          │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│  👥 145 个粘性用户                              │
-│  💰 ¥2,340 节省 CAC（vs 美团抽佣 ¥6,200）       │
-│  📈 MoM 增长 18%                                │
-│                                                │
-│  智能洞察                                       │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│  📈 扫码量比上周增长 25%                         │
-│  ⚠️  音乐角店的转化率比平均低 30%                 │
-│  💡 12-14 点推送转化率最高，试试在这时段加推       │
-└────────────────────────────────────────────────┘
-```
-
-**核心**：商家每天打开看一眼 → 多巴胺 → 上瘾 → 第 91 天自动扣 Premium 钱 → 自然续费。
-
-## 2.6 5 种出价策略（同一拍卖引擎）
-
-| 出价 | 何时扣费 | 用途 | 参考价 |
-|------|---------|------|--------|
-| **CPA** | 转化时（新注册） | 拉新主流 | ¥10-100 |
-| **CPS** | 转化时（订单比例） | 跨店带单 | 5-15% |
-| **CPM** | 每千次曝光 | 知名度 | ¥10-50 |
-| **CPV** | 每次到店 | LBS 引流 | ¥1-10 |
-| **CPE** | 每次游戏完成 | 互动深度 | ¥0.5-5 |
+**Moat thesis** (philosophy, not yet validated at scale): software is being commoditized by AI; the only durable asset is cross-brand network effect (N² × marginal cost ≈ 0). Architecturally enforced via single-counterparty contracts: each brand only sees KiX, never another brand (Plenti-avoidance pattern).
 
 ---
 
-# 第三卷 · 平台是什么 (What)
+## Table of Contents
 
-## 3.1 5 层架构图
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│ Layer 5 · 商业化         attribution + auction + wallet + campaigns │
-│                          payouts + fx + compliance + disputes        │
-│                          audiences + frequency_cap + partnerships    │
-│                          creative_gen + storefront + reservations    │
-│                          transactions + fraud + brand_subscriptions  │
-│                          payment_methods + dashboards + welcome_kit  │
-├────────────────────────────────────────────────────────────────────┤
-│ Layer 4 · 商家入口       portal.html (Ads Manager) +                │
-│                          storefront.html (公开品牌页) +              │
-│                          api-docs/ (Swagger UI + 21 tags)            │
-├────────────────────────────────────────────────────────────────────┤
-│ Layer 3 · 网络层         push_engine + master_accounts +            │
-│                          kix_id + listings + media + accounts +     │
-│                          subscriptions + user_wallet + deposits +   │
-│                          pricing                                     │
-├────────────────────────────────────────────────────────────────────┤
-│ Layer 2 · Gamification   progression + primitives + modules +       │
-│                          network_effect + commerce_loop +           │
-│                          multiplayer + social + p2p +               │
-│                          group_actions + conditions +               │
-│                          voucher_builder + rule_engine +            │
-│                          brand_modules + recipes +                  │
-│                          recipe_generator + tutorials +             │
-│                          vouchers + entities                        │
-├────────────────────────────────────────────────────────────────────┤
-│ Layer 1 · 基础设施        FastAPI + Redis (50+ key 范式) +           │
-│                          PostgreSQL + Redis Streams (事件总线) +    │
-│                          ELTM AI 游戏生成器                          │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-## 3.2 38 routers / 726 endpoints 清单
-
-### Gamification 核心（FREE 模式 — 永久免费）
-
-| 模块 | 端点 | 用途 |
-|------|------|------|
-| `progression.py` | 6 | XP / Level / Badge / Streak / Daily Check-in |
-| `primitives.py` | 60+ | Currency / Item / Achievement / Quest / Tier / Event / 时序属性 / 关系 / 实体 / 身份合并 |
-| `modules.py` | 36 | 10 个组合式顶层模块 |
-| `network_effect.py` | 11 | 6 种病毒触发器 |
-| `commerce_loop.py` | 14 | 5 个商业模块 |
-| `triggers.py` | 18 | UserAttr / RateLimit / LimitedDrop / Perk / FCFS + 事件 trigger |
-| `multiplayer.py` | 17 | CoopQuest / Raid / Squad / Territory |
-| `social.py` | 16 | Friends / Following / Feed / Kudos |
-| `p2p.py` | 11 | Gift / Trade |
-| `group_actions.py` | 13 | GroupBuy / Atomic / PriceCut |
-| `voucher_builder.py` | 7 | Conditional voucher templates |
-| `rule_engine.py` | 15+ | WHEN-THEN + v2 attr-watch + recipient indirection |
-| `brand_modules.py` | 4 | Merchant 模块开关 |
-| `conditions.py` | 9 | 通用条件引擎 |
-| `recipes.py` | 11 | **79 个 Recipe** / 26 行业 |
-| `recipe_generator.py` | 7 | NL → Recipe AI 转换 |
-| `tutorials.py` | 8 | Recipe → Tutorial 引导 |
-| `vouchers.py` | 16 | 发券/转赠/兑换/批量/关系条件 |
-| `entities.py`（在 primitives）| 6 | 非人类实体（pet/property/vehicle）|
-
-### 广告平台（PAID 模式 — 拍卖驱动）
-
-| 模块 | 端点 | 用途 |
-|------|------|------|
-| `attribution.py` | 30+ | 7天 last-touch + 多触点 + take rate ladder + view-through + cohort + 共同归因 |
-| `wallet.py` | 18 | 商家充值 + 原子扣款 + 日预算 + FX + take-rate + 反向佣金 |
-| `campaigns.py` | 21 | Campaign + AdGroup + Review + Quality Score + target_audience |
-| `auction.py` | 12 | GSP Vickrey + 保留价 + Pacing + Smart Bidding + 排除现有客户 |
-| `geofence.py` | 9 | Redis GEO + LBS push + 11 占位符插值 |
-
-### 标准广告平台辅件（TikTok / Google 同结构）
-
-| 模块 | 端点 | 用途 |
-|------|------|------|
-| `frequency_cap.py` | 8 | 用户曝光封顶 + tier override + priority bypass |
-| `consent.py` | 14 | GDPR/PIPL + 15 scope + 双录 + 文档签名 |
-| `pixel.py` | 7 | JS SDK + 批量事件 + WeChat 兼容 + refund |
-| `disputes.py` | 8 | 商家投诉 + 退款 + 归因回滚 |
-| `audiences.py` | 12 | Custom + Lookalike + 时序/生命周期/属性过滤 |
-| `master_accounts.py` | 30+ | 多店 master + RBAC + 跨店报表 + tier portability |
-| `payouts.py` | 16 | 商家提现 + 银行账户 + 自动结算 + 双账分录 + 跨品牌 transfer |
-| `creative_gen.py` | 10 | ELTM AI 创意生成 + A/B 测试 |
-| `storefront.py` | 9 | 公开品牌主页 + 关注 + 评价 |
-| `reservations.py` | 13 | 预订 + 周期序列 + travelers manifest + fulfiller |
-| `transactions.py` | 7 | 通用账本 + refund + 反向佣金 |
-| `fraud.py` | 13 | trust_score + AML + incident + velocity |
-| `fx.py` | 6 | 多币种 + 转换 + 历史 |
-| `compliance.py` | 13 | 广告法扫描 + PII 审计 + GDPR + 文档保留 |
-| `media.py` | 8 | Sensitive 媒体注册表 + legal hold |
-| `partnerships.py` | 8 | 联合营销（OPTIONAL，不在主路径） |
-
-### KiX 超级 App（用户网络层）
-
-| 模块 | 端点 | 用途 |
-|------|------|------|
-| `kix_id.py` | 17 | Universal kid + OAuth Connect + 跨商户画像 + 设备反作弊 |
-| `push_engine.py` | 16 | 智能推送 + 拍卖集成 + 频率管控 + 多 placeholder |
-| `listings.py` | 11 | C2C marketplace + offer chain |
-| `accounts.py` | 11 | 企业 Account 实体 + 组织架构 + 买方委员会 |
-| `subscriptions.py` | 12 | SaaS subscription + NDR/GRR + seat-based |
-| `user_wallet.py` | 8 | 消费者钱包 + freeze/release |
-| `deposits.py` | 5 | 押金生命周期 |
-| `pricing.py` | 4 | 动态定价 + 高峰/库存触发器 |
-
-### 商业化新增（R11）
-
-| 模块 | 端点 | 用途 |
-|------|------|------|
-| `brand_subscriptions.py` | 9 | 4 级 Brand Tier + 3 个月试用 + Quota |
-| `payment_methods.py` | 9 | 信用卡 on-file + 防卡复用 + Stripe stub |
-| `dashboards.py` | 4 | Today + 累计 + 排行榜 + Insights |
-| `welcome_kit.py` | 4 | 自动生成桌牌 / 立牌 / 门贴 / 海报 |
-
-## 3.3 79 Recipe 库（26 行业）
-
-```
-F&B:        coffee / bubble_tea / food / restaurant / luxury_dining
-Retail:     retail / ecommerce / luxury_retail / fashion
-Health:     fitness / beauty / wellness / healthcare / medical / medical_aesthetics
-Family:     baby_products / kids_education / parenting
-Community:  community / book_club / education / co_working
-Hospitality: hotel / travel / airline
-Entertainment: gaming / music / events / cinema
-Services:   automotive / real_estate / financial_services / telecom
-Marketplace: marketplace / sharing_economy / logistics
-其他:        pet / other
-```
-
-任意行业 NL 描述 → AI 自动选 Recipe → 5 分钟出可玩游戏。
+- [Chapter 1 · What KiX IS today (verified, tested)](#chapter-1--what-kix-is-today-verified-tested)
+- [Chapter 2 · What's coming (Wave D backlog)](#chapter-2--whats-coming-wave-d-backlog)
+- [Chapter 3 · What's aspirational (long-term vision)](#chapter-3--whats-aspirational-long-term-vision)
+- [Appendix A · Numbers](#appendix-a--numbers)
+- [Appendix B · Honest gap registry](#appendix-b--honest-gap-registry)
+- [Appendix C · ADRs (preserved from v1)](#appendix-c--adrs-preserved-from-v1)
+- [Appendix D · Glossary](#appendix-d--glossary)
 
 ---
 
-# 第四卷 · 合规与安全
+# Chapter 1 · What KiX IS today (verified, tested)
 
-| 层 | 解决 | 实现 |
-|----|------|------|
-| **Consent** | GDPR/PIPL/PDP | 15 个 scope，7 个 regulated scope 需 OTP/签名/视频 |
-| **PII 审计** | 个保法 §51 | 敏感字段每次访问留痕，1h 异常检测窗口 |
-| **Compliance Scanner** | 广告法 §7 §25 | 70 条 banned phrase 扫描 + 强制注入风险提示 |
-| **Frequency Cap** | 防用户疲劳 | 全局 10/天 + 单品牌 3/天 + tier override + priority bypass |
-| **Fraud** | 反作弊 + AML | trust_score + 设备指纹速度 + token replay + AML SAR |
-| **Document Consent** | 双录 / 医疗 / 买卖 | OTP / signature / video_recording 强证据 |
-| **Media Registry** | 敏感图片/视频 | medical_sensitive / before_after / biometric 必需 consent_grant_id |
-| **Legal Hold** | 司法保全 | 防止医疗 / 法务证据被删 |
-| **GDPR Article 15** | 数据导出 | 24 个 user 数据模式打包 JSON/CSV，TTL 7 天 |
-| **GDPR Article 17** | 数据删除 | 保留类强制兜底（医疗 5y / 金融 7y）|
-| **支付防刷** | 信用卡复用 | 同卡哈希 → 拒绝多商家注册 |
+This chapter lists only claims with code AND tests AND no documented P0 gap. If you wouldn't show it to a regulator, it doesn't belong here.
+
+## 1.1 Architecture (5-layer)
+
+✅ **DELIVERED** — All 5 layers exist and route through `app/main.py`.
+
+```
+Layer 5 · Monetization      attribution + auction + wallet + campaigns + payouts
+                             + fx + compliance + disputes + audiences + frequency_cap
+                             + creative_gen + storefront + reservations + transactions
+                             + fraud + brand_subscriptions + payment_methods
+                             + dashboards + welcome_kit + ab_testing + invoices
+Layer 4 · Merchant Portal   portal.html (Ads Manager) + storefront.html
+                             + portal_api / portal_auth / portal_pixels / portal_settings
+Layer 3 · Network           push_engine + master_accounts + kix_id + listings
+                             + media + accounts + subscriptions + user_wallet
+                             + deposits + pricing
+Layer 2 · Gamification core progression + primitives + modules + network_effect
+                             + commerce_loop + multiplayer + social + p2p
+                             + group_actions + conditions + voucher_builder
+                             + rule_engine + brand_modules + recipes
+                             + recipe_generator + tutorials + vouchers + game
+Layer 1 · Infrastructure    FastAPI + Redis + PostgreSQL (Alembic 7 migrations)
+                             + Redis Streams + ELTM creative HTTP client
+```
+
+## 1.2 Auction & Quality Score
+
+✅ **DELIVERED**
+- GSP Vickrey with diversity floor (`app/routers/auction.py`, `test_auction_diversity.py`)
+- 5 bid strategies CPA/CPS/CPM/CPV/CPE (`campaigns.py`, `auction.py`)
+- Quality Score formula `0.3 + min(CTR×8, 0.4) + min(CVR×6, 0.3)` (`app/ml/inference.py:83-93`)
+- Pacing controller — 338 LOC (`app/pacing_controller.py`)
+- Bid floor + reserve price (`test_bid_floor.py`)
+- Target audience filter `new_users_only / retargeting_only / all` (ADR-4)
+- Frequency cap 10/day + 3/brand-day (`frequency_cap.py`, 8 endpoints)
+
+## 1.3 Attribution
+
+✅ **DELIVERED**
+- 7-day last-touch default, configurable 1-365 days (`attribution.py`, 30+ endpoints)
+- Multi-touch attribution (`test_multitouch_attribution.py`)
+- Take-rate ladder 30-70%
+- View-through + co-attribution + cohort
+- Pixel JS SDK (`landing/sdk/kix-pixel.js`) + 7 endpoints
+
+## 1.4 Wallet & Payouts (after Wave A fixes)
+
+✅ **DELIVERED**
+- Wallet auto-recharge (`wallet.py:502 _maybe_auto_recharge`, `test_wallet_autorecharge.py`)
+- Atomic debit via Redis `WATCH/MULTI` (`payouts.py:452-588`) — was P0 before R12, fixed
+- Audit log persisted to PostgreSQL via `app/services/audit_log_service.py` (migration `0007_audit_log.py`) — wired from `auth`, `payouts`, `campaigns`
+- Saga coordinator for refund cascade (`app/saga.py` 349 LOC, `saga_definitions.py:refund_cascade_saga`)
+
+🟡 **PARTIAL**
+- Cross-brand commission transfer — atomic in code but **not battle-tested** under sustained load
+- Bank-account payout — schema + ledger present; **no real bank API call** (see Chapter 2)
+
+## 1.5 KiX ID + OAuth Connect
+
+✅ **DELIVERED**
+- Universal `kid` identity (`kix_id.py`, 17 endpoints)
+- OAuth authorize/token flow + scope-filtered profile read
+- Consent UI (`landing/connect.html`, 572 lines)
+- Device fingerprint anti-fraud hook
+
+## 1.6 Compliance scaffold
+
+✅ **DELIVERED**
+- Consent 15 scopes, 7 regulated (`consent.py`, 14 endpoints) — OTP gateway still external
+- 70-phrase ad-law scanner (`compliance.py`)
+- GDPR Article 15 export (`app/services/gdpr_export.py`)
+- Audit log → PostgreSQL (was Redis-LIST-only in v1 Bible; **fixed in R12**, migration 0007)
+- Per-region rule packs (`app/compliance_regional/*.py` — br/eu/id/in/ph/sg/th/us/vn)
+- RTL CSS for ar/he (verified by `scripts/audit_rtl.py`)
+
+🟡 **PARTIAL**
+- Per-region rules are **data-only**; auction does not yet filter on them at serving time
+
+## 1.7 Fraud / AML
+
+✅ **DELIVERED** — `fraud.py` (13 endpoints) + `test_fraud.py`: trust score, device velocity, token replay, AML SAR primitives.
+
+## 1.8 Network Effect tracking
+
+✅ **DELIVERED** — `network_effect.py` (14 endpoints), K-factor tracker (`network_effect.py:1038`), `test_viral_kfactor.py`.
+📝 Note: K > 0.5 sustained is aspirational until real merchants exist.
+
+## 1.9 Brand Subscriptions & Quota
+
+✅ **DELIVERED**
+- 4-tier model (FREE / STARTER / GROWTH / ENTERPRISE) — `brand_subscriptions.py` (10 endpoints)
+- 91-day trial cron (`app/workers/billing_cron.py`)
+- Quota enforcement on campaigns/recipes/audiences/creative_gen
+- PostgreSQL migration `0002_subscriptions.py`
+
+🟡 **PARTIAL** — Day-91 auto-charge logic exists but executes against Stripe; **Stripe lives in test/mock by default** (see Chapter 2).
+
+## 1.10 Trinity Engine
+
+✅ **DELIVERED** — `app/services/trinity_engine.py` (institutionalises the 3T iteration loop as a callable engine, commit `96df36a`).
+
+## 1.11 i18n scaffold
+
+✅ **DELIVERED** structure
+- 11 locale catalogs (`app/i18n/catalogs/`)
+- Fluent (FTL) + ICU MessageFormat
+- Brand translation service (migration `0004_i18n_brand_translations.py`)
+- User locale preference (migration `0005_i18n_user_locale_pref.py`)
+- Collation migration (`0006_i18n_collation.py`)
+- LLM translation pipeline (`scripts/i18n_translate.py`)
+
+🟡 **PARTIAL** — base locales (en-SG, zh-Hans-SG, en-US, zh-Hans-CN) reviewed; other 7 locales have `_translation_status.json` showing `needs_translation: 132/132` (id-ID), similar for vi/th/ms/ar/he. Pseudo-loc prefixes from v1 have been stripped, but copy still needs translation pass.
+
+## 1.12 Push Engine
+
+✅ **DELIVERED** (changed from v1 — commit `01c260f`)
+- Real FCM via `firebase_admin` (`app/services/fcm_client.py`)
+- Real APNS via `aioapns` (`app/services/apns_client.py`)
+- Push worker dispatches to real providers; "simulated" code path removed for prod mode
+- WeChat MP template push: see Chapter 2
+
+## 1.13 Alpha Program
+
+✅ **DELIVERED** — `alpha_program.py` (711 LOC) + `test_alpha_program.py` (465 LOC) + `landing/alpha.html`. Live cohorts: **0 real merchants onboarded** (sim cohorts only — see Chapter 2).
+
+## 1.14 Test Coverage
+
+🟡 **PARTIAL** — 1,006 test functions across 104 files. Tier 3 coverage push (commit `438fbd5`) covered game/social/p2p/multiplayer/modules. **Money-path routers (payouts, transactions, vouchers, wallet, subscriptions) now have unit tests** but coverage % is unmeasured. CI gate is **not** configured to fail under threshold.
+
+## 1.15 Verified industry simulations
+
+✅ **DELIVERED** — 18 `sim_lao*.py` scripts in `scripts/`. Sims pass against a fully-mocked PSP/push/ELTM stack. They are **smoke tests, not production proof**.
 
 ---
 
-# 第五卷 · 接入指南
+# Chapter 2 · What's coming (Wave D backlog)
 
-## 5.1 商家接入（5 行 HTML Pixel）
+These are short-cycle items: code present, gaps documented, fix-path known. **Estimates assume single dev-week; verify in `WORLD_CLASS_ROADMAP.md`.**
 
-```html
-<!-- 任何页面顶部 -->
-<script src="https://partner.letskix.com/sdk/kix-pixel.js" data-pixel="YOUR_PIXEL_ID"></script>
+## 2.1 Stripe live mode 🟡 PARTIAL
 
-<!-- 注册成功时 -->
-<script>kix.identify('user_123');</script>
+- **State**: `app/services/stripe_live.py` distinguishes `mock` / `test` / `live` via `STRIPE_SECRET_KEY` prefix. Default is `sk_test_stub` → mock.
+- **Gap**: Never run end-to-end against a real `sk_test_*` key + Stripe CLI webhook tunnel + real test card.
+- **Risk**: Day-91 brand-subscription cron silently writes `mode: mock` to the ledger and reports `succeeded`. Zero revenue.
+- **Wave D**: Real `sk_test_*` smoke + CI gate that fails if `is_mock()` in staging. ~3-5 days.
 
-<!-- 下单成功时 -->
-<script>kix.purchase('order_123', 5000);</script>
-```
+## 2.2 Payment PSPs beyond Stripe 🔵 SCAFFOLDED
 
-完事。归因、转化、CPS 提成全自动。
+- **State**: `app/services/payment_psps/` has 5 PSP clients (alipay_global, grabpay, ovo_indonesia, paynow_sg, wechat_pay) and a `_common.py` base.
+- **Gap**: Clients are HTTP shells. Sandbox credentials not configured. `payments_regional` router lists 60+ payment methods; only Stripe is backend-connected.
+- **Wave D**: Wire OVO + GrabPay sandboxes for ID/MY corridor; remaining PSPs as Wave E.
 
-WeChat Mini-Program 也支持（`wx<appid>` 协议）。
+## 2.3 ELTM end-to-end 🟡 PARTIAL
 
-## 5.2 开发者接入（KiX ID OAuth）
+- **State**: `creative_gen.py` calls `ELTM_BASE_URL=http://localhost:8001`. `scripts/eltm_smoke_test.py` exists.
+- **Gap**: Smoke is run manually; not in CI. No fallback template gallery if ELTM is unreachable.
+- **Wave D**: CI smoke gate + template-gallery fallback. ~2-3 days.
 
-```
-1. POST /api/v1/kix-id/connect/authorize
-   {brand_id, scopes: [profile, history, location, marketing], redirect_uri}
-   → returns {grant_id, code}
+## 2.4 i18n real translation 🟡 PARTIAL
 
-2. POST /api/v1/kix-id/connect/token
-   {grant_id, code, client_secret}
-   → returns {access_token, kid, scopes}
+- **State**: Catalog structure done (Chapter 1). LLM batch pipeline (`scripts/i18n_translate.py`) ready.
+- **Gap**: 7 of 11 locales (id, ms, th, vi, ar-EG, ar-SA, he) have `needs_translation > 100`. Pseudo-loc prefixes removed; copy still English.
+- **Wave D**: Run LLM batch + human QA top 50 strings per locale. ~1-2 weeks.
 
-3. GET /api/v1/kix-id/{kid}/profile-for-merchant/{brand_id}
-   Authorization: Bearer <access_token>
-   → returns kid's profile filtered by granted scopes
-```
+## 2.5 Multi-region deployment 🔵 SCAFFOLDED
 
-类 Facebook Connect / 微信开放平台同模式。
+- **State**: `deployment/docker-compose.cn.yml`, `docker-compose.indonesia.yml`, `k8s/*.yaml`, `multi-region.md` (189 LOC), `dns-routing.md` (96 LOC), `failover_drill.py`.
+- **Gap**: Single K8s namespace. Single Redis. Single PG. No DNS routing configured. No active-passive standby.
+- **Wave D**: Redis cluster + PG read-replica in SG (3 weeks). HK passive standby is Wave E.
 
-## 5.3 销售话术
+## 2.6 Welcome kit physical shipping 🔵 SCAFFOLDED
 
-**核心**:
-> 「平台全免费。不收月费不收订阅。功能比 Shopify + Smartico + Bunchball 加起来还多。
->
-> 我们怎么赚钱？只有两种：
-> 1. 如果我们通过游戏帮你带来一个新客，你愿意付多少？
-> 2. 如果我们通过跨品牌网络给你导流一笔交易，我们抽多少？
->
-> 全是 performance-based。你赚我们才赚。」
+- **State**: `welcome_kit.py` renders HTML for table card / poster / sticker / standee.
+- **Gap**: No PDF render, no print-on-demand partner, no courier integration. `request_shipping` pushes to a Redis queue with no consumer.
+- **Wave D**: ReportLab PDF render + one CN print partner (凡科) + one courier (SF). ~2 weeks.
 
-**收信用卡**:
-> 「填一下信用卡，前 3 个月完全免费体验。这是给你保留账号优先权 + 防止恶意刷号。
-> 3 个月后如果你觉得效果不好，提前一周取消就行。但**数据会告诉你答案** — 90% 的商家
-> 看到 dashboard 数字后都自然续费了。」
+## 2.7 ML smart-bidding 🟡 PARTIAL
 
-**让用户下载 KiX App**:
-> 「通过你店里的 QR 注册的每个用户，平台永久标记是**你的客户**。他下次来你店附近，
-> KiX 自动推你的活动给他。他去隔壁竞品消费，算法可以把他拉回你这。**你不装这个 SaaS，
-> 等于把客户白送给装了的竞品。**」
+- **State**: `app/ml/trainer.py` + `inference.py` architected for LightGBM. `KIX_ML_ENABLED` defaults `false`. Heuristic fallback active. ML observability hooks live (`ml_observability.py`).
+- **Gap**: No trained model artifact (`app/ml/_artifacts/` does not exist). Needs 30 days of real merchant labels.
+- **Wave D**: Honest relabel as "rule-based bidding with ML upgrade path". Real model is Chapter 3.
+
+## 2.8 Native mobile shell 🔵 SCAFFOLDED
+
+- **State**: `landing/app/index.html` + `app.css` + `app.js` + `scan.html` is an H5 wrapper.
+- **Gap**: No Capacitor/native shell. No store presence.
+- **Wave D**: Capacitor iOS + Android wrap. ~4 weeks first store submission.
+
+## 2.9 Dunning / payment-fail downgrade 🔵 SCAFFOLDED
+
+- **State**: Brand subscription tier downgrade path exists. No grace-period dunning workflow.
+- **Wave D**: 3-day grace + 7-day downgrade ladder.
+
+## 2.10 Legal/contract paperwork 📝 BLOCKER
+
+- **State**: No MSA, no privacy policy, no cookie policy, no merchant TOS in repo.
+- **Wave D**: External counsel for 4 docs CN+SG. ~3 weeks calendar. This blocks signing the first real merchant.
+
+## 2.11 Tax / invoice issuance 🔵 SCAFFOLDED
+
+- **State**: `invoices.py` router exists.
+- **Gap**: No tax-rule engine, no fapiao (CN) integration, no GST (SG) compliance.
+- **Wave D**: First CN merchant invoice issuance.
+
+## 2.12 Stream consumer workers 🟡 PARTIAL
+
+- **State**: 3 stream consumers live (attribution, listing, reservation). Producers in 6+ routers.
+- **Gap**: Consumer lag metric not exposed. XTRIM retention policy not enforced.
+- **Wave D**: Lag metric + 24h XTRIM cron.
 
 ---
 
-# 第六卷 · 战绩
+# Chapter 3 · What's aspirational (long-term vision)
 
-## 6.1 18 商家行业模拟
+These claims belong in pitch decks, not engineering meetings. **No promise here is wired to code.** If the team starts treating these as deliverables, the Bible should move them to Chapter 2 with a status badge.
 
-| 商家 | 行业 | 总 passes | P0 |
-|------|------|----------|-----|
-| 老王 | 印尼奶茶 10 店 | 53 | 0 ✨ |
-| 老张 | 北京高端餐厅 | 44 | 3 |
-| 老李 | 广州书友会 | 37 | 2 |
-| 老黄 | 杭州母婴电商 | 40 | 1 |
-| 老周 | 上海健身 5 馆 | 74 | 3 |
-| 老吴 | 深圳 K12 教育 | 50 | 4 |
-| 老蔡 | 上海私立医院 | 60 | 5 |
-| 老梁 | 杭州旅游 | 53 | 10 |
-| 老沈 | 上海医美 | 42 | 6 |
-| 老郑 | 北京金融 | 40 | 10 |
-| 老陆 | 深圳房产 | 43 | 5 |
-| 老钱 | 杭州美发 | 50 | 5 |
-| 老贾 | 广州物流 | 39 | 10 |
-| 老胡 | 二手 C2C | 41 | 5 |
-| 老韩 | 成都宠物 | 49 | 6 |
-| 老田 | 共享单车 | 24 | 8 |
-| 老柯 | 直播带货 | 38 | 6 |
-| 老石 | B2B SaaS | 25 | 8 |
+## 3.1 N² network effect at 10K merchants 📝 ASPIRATIONAL
 
-总计：**809 passes**（11 轮迭代下来从 0 起步）
+The N² thesis assumes density of cross-brand traffic. Until we have ≥100 real merchants in one geo with measurable cross-brand sessions, K-factor numbers from `network_effect.py` are computed on synthetic data.
 
-## 6.2 11 轮 Trinity 迭代
+## 3.2 LTV ¥9,300 / CAC ¥200-500 / ROI 18-46x 📝 ASPIRATIONAL
 
-```
-Round 0:  209 routes  · 初始 Gamification 核心
-Round 1:  412 routes  · 商家广告平台 + 第一次老王 sim
-Round 2:  451 routes  · 5 跨行业 P0 修复
-Round 3:  464 routes  · Reservation + 22 recipes + 老周/老吴
-Round 4:  494 routes  · 时序属性 + 关系 + 多触点归因
-Round 5:  525 routes  · TikTok 模型校正 + KiX 超级 app + KiX ID + Push Engine
-Round 6:  572 routes  · 11 跨行业根因 (FX/合规/resource_id/实体...)
-Round 7:  603 routes  · Regulated-data + 4-scope tier + 49 recipes
-Round 8:  603 routes  · 9 schema alias + 79 recipes + 老柯/老石
-Round 9:  644 routes  · Fraud + AML + GDPR + Transactions + 跨模块桥接
-Round 10: 700 routes  · Master rollup + Financial primitives + B2B accounts
-Round 11: 726 routes  · Brand subscription tier + Payment methods + Dashboards
-                      · 3 个月试用 (Apple Music 策略)
-```
+These are model outputs, not realized cohorts. No real merchant has paid KiX a single yuan. The model is documented in v1 Bible §1.3; it will be replaced with measured cohort data once 30+ merchants have completed a 12-month cycle.
 
-## 6.3 E2E 测试 24/24 PASS
+## 3.3 80% → 20% funnel churn improvement 📝 ASPIRATIONAL
 
-完整 TikTok/Google 模型验证：
-1. ✅ Brand A 充值钱包 + 自动审批 campaign
-2. ✅ User U 扫码 → 自动创建 kid
-3. ✅ 拍卖 → 曝光 → 点击 → 转化 → wallet 扣 ¥10
-4. ✅ Brand B 进入网络 + 出价
-5. ✅ KiX 算法跨品牌推送 → Brand B 赢 → 立即扣费
-6. ✅ U 在 Brand B 消费 → 归因 Brand A → 自动佣金分账
-7. ✅ Brand A 不能买回自己客户（自动 exclude）
-8. ✅ /admin/savings 显示节省的 CAC
+The "no-register-before-play" funnel is implemented (`/qr/scan` → device-fingerprint kid → play → win → register). The **churn delta is unmeasured** because zero real user funnel data exists.
 
-## 6.4 P0 收敛趋势
+## 3.4 90% merchant Premium auto-renew 📝 ASPIRATIONAL
+
+The Apple-Music-style 3-month trial → auto-charge is wired. The 90% renewal rate is a hypothesis; it requires Wave D Stripe live + ~12 months of merchant cohorts to validate.
+
+## 3.5 TriSoul behavior models in KiX 📝 ASPIRATIONAL
+
+TriSoul lives in `/Users/mozat/mozat/` (separate repo). `app/routers/trisoul_integration.py` is a placeholder. End-to-end personalization signal from TriSoul → KiX recommendation is not wired.
+
+## 3.6 60+ payment methods all live 📝 ASPIRATIONAL
+
+Registry lists 60+. Wave D wires ~5 PSPs (Chapter 2.2). The remaining 55 are aspirational catalog entries pending demand.
+
+## 3.7 100-merchant alpha + commerce flywheel 📝 ASPIRATIONAL
+
+Alpha program scaffold is live (Chapter 1.13). Zero real merchants enrolled as of HEAD `438fbd5`. The 100-merchant cohort is the next 6-month operational goal.
+
+---
+
+# Appendix A · Numbers
+
+Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from these.
 
 ```
-Round 1 老王 sim 首跑:  P0=2
-Round 1 修复后:        P0=0  (老王完美)
-Round 5 模型校正:      P0 全局减少
-Round 7 合规层:        16 → 12 P0
-Round 9 Fraud:         115 → 111
-Round 10 三大支柱:     111 → 102 (-9)
-Round 11 商家漏斗:     预计降 ~5 P0 (验证中)
+HEAD                : 438fbd5
+Last commit         : tests: cover Tier 3 routers (game, social, p2p, multiplayer, modules, etc.)
+Generated           : 2026-05-30
+
+Code surface
+  routers           : 94            (ls app/routers/*.py | grep -v __init__)
+  endpoints         : 925           (grep '^@router' app/routers/*.py)
+  workers           : 9             (ls app/workers/*.py | grep -v __init__)
+  services          : 15            (ls app/services/*.py | grep -v __init__)
+  migrations        : 7             (ls migrations/versions/*.py)
+  total Python LOC  : ~109,800      (find app -name '*.py' | xargs wc -l)
+
+Test surface
+  test files        : 104           (find tests -name 'test_*.py')
+  test functions    : 1,006         (grep '^def test_\|^async def test_' tests/test_*.py)
+  test LOC          : ~20,800
+
+Data
+  recipes           : 79            (len(app/data/recipes_seed.json))
+  industries        : 26
+  industry sims     : 18            (ls scripts/sim_lao*.py)
+
+i18n
+  locales           : 11            (en-SG, en-US, zh-Hans-SG, zh-Hans-CN,
+                                     id-ID, ms-MY, th-TH, vi-VN,
+                                     ar-EG, ar-SA, he-IL)
+  base locales done : 4             (en-SG, en-US, zh-Hans-SG, zh-Hans-CN)
+  needs translation : 7 locales     (id, ms, th, vi, ar-EG, ar-SA, he)
+
+PSPs
+  scaffolded clients: 5             (alipay_global, grabpay, ovo_indonesia,
+                                     paynow_sg, wechat_pay)
+  live in prod      : 0             (Stripe defaults to mock)
+
+Status counts in this Bible
+  DELIVERED         : 14 sections
+  PARTIAL           : 9 sections
+  SCAFFOLDED        : 6 sections
+  ASPIRATIONAL      : 7 sections
 ```
 
 ---
 
-# 第七卷 · 路线图
+# Appendix B · Honest gap registry
 
-## 7.1 已完成 (Done)
+For each P0/P1 gap, the current state, the fix path, and the Wave that owns it. Pulled from `/Users/mozat/a-docs/bible-vs-reality-gap-analysis.md` + `WORLD_CLASS_ROADMAP.md` + 2026-05-30 verification.
 
-| 类别 | 完成项 |
-|------|--------|
-| 商业模式 | TikTok/Google 单边合约 + 双重收入护城河 |
-| 广告平台 | 5 出价策略 + Quality Score + Pacing + 反作弊 |
-| 用户身份 | KiX ID + OAuth Connect + 跨商户画像 |
-| 多触点归因 | 7 天 last-touch + 配置 1-365 天 + 共同归因 |
-| 合规 | GDPR / PIPL / 广告法 / PII 审计 |
-| 三 P0 漏斗 | 用户旅程 + 商家旅程 + 网络效应 |
-| 商家订阅 | 4 级 tier + 3 个月试用 + 自动续费 |
-| 支付 | PCI-safe + Stripe-ready + 防卡复用 |
-| Dashboard | Today + 累计 + Insights + 排行 |
-| 欢迎礼包 | 自动生成 4 种印刷物料 |
+| ID | Gap | Severity | State | Wave |
+|---|---|---|---|---|
+| G-A1 | Stripe live mode never end-to-end | P0 | 🟡 PARTIAL | D-2.1 |
+| G-A2 | OVO / GrabPay / WeChat Pay backends | P0 (regional) | 🔵 SCAFFOLDED | D-2.2 |
+| G-A3 | ELTM creative end-to-end smoke | P0 | 🟡 PARTIAL | D-2.3 |
+| G-A4 | 7 non-base locales need real translation | P0 (regional) | 🟡 PARTIAL | D-2.4 |
+| G-A5 | Multi-region deployment | P1 | 🔵 SCAFFOLDED | D-2.5 |
+| G-A6 | Welcome kit PDF + ship | P1 | 🔵 SCAFFOLDED | D-2.6 |
+| G-A7 | ML smart-bidding labeled honestly | P1 | 🟡 PARTIAL | D-2.7 |
+| G-A8 | Native mobile shell | P1 | 🔵 SCAFFOLDED | D-2.8 |
+| G-A9 | Dunning / fail downgrade | P1 | 🔵 SCAFFOLDED | D-2.9 |
+| G-A10 | Legal docs (MSA/TOS/Privacy/Cookie) | P0 (legal) | 📝 BLOCKER | D-2.10 |
+| G-A11 | Tax / fapiao / GST | P0 (regional) | 🔵 SCAFFOLDED | D-2.11 |
+| G-A12 | Stream consumer lag visibility | P1 | 🟡 PARTIAL | D-2.12 |
+| G-A13 | SMS OTP gateway (Twilio/Aliyun) | P0 | 📝 not wired | D-future |
+| G-A14 | Per-region compliance at auction filter | P1 | 🟡 PARTIAL | D-future |
+| G-A15 | Coverage gate in CI | P1 | 🟡 PARTIAL | D-future |
 
-## 7.2 进行中 (R11 收尾)
-
-- [ ] check_quota 接入 campaigns/recipes/audiences/creative_gen（agent 跑中）
-- [x] ~~Sim probe wave 3（6 sim 接 R10 端点）~~ ✅ +21 pass / -1 P0
-- [ ] 短信 OTP 网关接入（外部，需选 Twilio / 阿里云短信）
-
-### R11 已完成清单（5/5 P0 全部闭合 ✨）
-| # | 模块 | 状态 |
-|---|------|------|
-| 1 | Brand subscription tier（4 级 + 3 个月试用）| ✅ |
-| 2 | Payment method on-file（PCI-safe + 防卡复用）| ✅ |
-| 3 | Today dashboard + Welcome kit（多巴胺 + 实体物料）| ✅ |
-| 4 | Quota 接入 4 个创建端点（campaigns/recipes/audiences/creative-gen）| ✅ |
-| 5 | Self-serve upgrade flow（upgrade/downgrade）| ✅ |
-
-**Quota smoke test 验证**：FREE tier 限制 1 game / 2 campaigns / 3 audiences / 5 recipes，超过返回 402 + 升级提示。
-
-## 7.3 待办 (Round 12+)
-
-### P0
-- [ ] Stripe 实际 API 接入（payment_methods 现在是 stub）
-- [ ] 印刷物料 PDF 渲染（现在是 HTML，需 reportlab/Pillow）
-- [ ] 物流接口（welcome_kit 寄送）
-- [ ] 销售 CRM 集成（lead 跟踪）
-
-### P1
-- [ ] 100 商家试运营计划
-- [ ] 多端 App（iOS / Android / WeChat MP / Mini-Program）
-- [ ] 国际化（印尼语 / 英文 / 泰文）
-- [ ] 销售/商户 onboarding 视频教程
-
-### P2
-- [ ] 中后台运营工具（admin dashboard）
-- [ ] 第三方 API marketplace（让开发者扩展 KiX）
-- [ ] 内容审核 AI（自动扫 banned content）
+**Closed since v1 Bible** (do not re-litigate):
+- ✅ Push delivery (commit `01c260f` — real FCM + APNS)
+- ✅ Audit log → PostgreSQL (migration `0007_audit_log.py`)
+- ✅ Payouts WATCH/MULTI atomicity (`payouts.py:452-588`)
+- ✅ Saga refund cascade (`saga_definitions.py`)
+- ✅ Trinity Engine institutionalised (`trinity_engine.py`, commit `96df36a`)
+- ✅ Tier 3 router test coverage (commit `438fbd5`)
 
 ---
 
-# 附录
+# Appendix C · ADRs (preserved from v1)
 
-## A. 所有文档索引
+| ADR # | Decision | When | Rationale | Still valid? |
+|---|---|---|---|---|
+| 1 | TikTok/Google single-counterparty model, **not** Plenti two-sided alliance | R5 | Plenti $100M / 3-year shutdown; 60% alliances die within 10 years | ✅ |
+| 2 | 3-month trial, not 1-year | R11 | Apple Music strategy — accumulated switching cost > renewal cost | ✅ |
+| 3 | Credit card on file mandatory at signup | R11 | One card / one account anti-fraud + day-91 auto-charge | ✅ (pending Stripe live) |
+| 4 | Auction default `target_audience=new_users_only` | R5 | Don't buy back your own customers | ✅ |
+| 5 | KiX is the user's single front-end (KiX App) | R5 | Like Facebook Connect — KiX owns the user relationship | 🟡 (H5 only today) |
+| 6 | 7-day attribution default, configurable 1-365 days | R6 | F&B 7d, medical 365d, real estate 180d | ✅ |
+| 7 | 79 recipes / 26 industries | R8 | Merchants choose by industry, don't design from scratch | ✅ |
+| 8 | LLM for creative only, decisions deterministic | always | LLM non-determinism breaks money math + compliance evidence | ✅ |
+| 9 | Audit log durable in PostgreSQL, not Redis LIST | R12 | PIPL §51 + GDPR Art 30 require regulator-grade retention | ✅ (new) |
+| 10 | Bible auto-checked by `scripts/bible_check.py` | R12 | Documentation discipline contract-first, not post-hoc | ✅ (new) |
 
-### 战略层
-- [`KIX_GAMIFICATION_BIBLE.md`](KIX_GAMIFICATION_BIBLE.md) — **本文档**（唯一权威源）
-- [`PLATFORM_OVERVIEW.md`](PLATFORM_OVERVIEW.md) — 平台总览（团队接入手册）
-- [`MONETIZATION_V2.md`](MONETIZATION_V2.md) — TikTok/Google 模型详解
-- [`MASTER_BLUEPRINT.md`](MASTER_BLUEPRINT.md) — 全球 100 Gamification → KiX 化
-- [`SIGNIFICANCE.md`](SIGNIFICANCE.md) — 销售/技术/产品三团队意义
-- [`TRINITY_ANALYSIS.md`](TRINITY_ANALYSIS.md) — 三体迭代方法论
+---
 
-### 操作层
-- [`SYSTEM_HOW_IT_WORKS.md`](SYSTEM_HOW_IT_WORKS.md) — 系统机制端到端
-- [`USER_FLOW_TRUTH.md`](USER_FLOW_TRUTH.md) — 用户漏斗真相
-- [`MERCHANT_FLOW_TRUTH.md`](MERCHANT_FLOW_TRUTH.md) — 商家漏斗真相
-- [`TEAM_TRAINING.md`](TEAM_TRAINING.md) — 团队培训
+# Appendix D · Glossary
 
-### 工程层
-- [`README.md`](README.md) — 启动指南
-- [`ENGINEERING.md`](ENGINEERING.md) — 工程移交
-- [`API_STANDARDS.md`](API_STANDARDS.md) — 公共 API 5 条不变量（ID / 时间 / 错误 / 列表 / HTTP）
-- [`BUILD_HISTORY.md`](BUILD_HISTORY.md) — 构建历史
-- [`BUILD_PROCESS.md`](BUILD_PROCESS.md) — 构建方法论
-- [`GAMIFICATION_AUDIT.md`](GAMIFICATION_AUDIT.md) — 全球 100 案例
-- [`GAME_LIBRARY.md`](GAME_LIBRARY.md) — 游戏库
-
-### 验证文档
-- `/Users/mozat/a-docs/lao*-sim-findings.md` — 18 商家模拟完整 findings
-- `/Users/mozat/a-docs/round*-verification.md` — 11 轮迭代验证报告
-
-## B. 关键决策记录 (ADR)
-
-| ADR # | 决策 | 时间 | Rationale |
-|-------|------|------|-----------|
-| 1 | TikTok/Google 单边模型，**不是** Plenti 双边联盟 | R5 | Plenti $100M 3 年死，60% 联盟 10 年内死 |
-| 2 | 3 个月试用，**不是** 1 年试用 | R11 | Apple Music 策略 — 短促累积价值，切换成本 > 续费成本 |
-| 3 | 信用卡留底强制 | R11 | 一卡一账号防刷 + 第 91 天自动扣 |
-| 4 | 拍卖默认 `target_audience=new_users_only` | R5 | TikTok/Google 标准 — 商家不浪费钱买回自己客户 |
-| 5 | KiX 是用户唯一前端（KiX App）| R5 | 像 Facebook Connect — KiX 拥有用户关系 |
-| 6 | 7 天归因默认，1-365 天可配 | R6 | 餐饮 7 天，医疗 365 天，房产 180 天 |
-| 7 | 79 Recipe / 26 行业 | R8 | 商家不要"自己设计"，要"按行业选" |
-| 8 | LLM 仅用于创造（游戏/文案），决策全确定性 | 通则 | LLM 不确定性 → 钱算不清 / 合规无法证明 |
-
-## C. 词汇表
-
-| 术语 | 意思 |
-|------|------|
-| **kid** | KiX ID — 用户唯一身份 (`kid_xxxxxxx`) |
-| **brand** | 商家/品牌 — 在 KiX 上的客户 |
-| **master** | 多店商家的总公司账号（如老王的 10 家奶茶店在一个 master 下） |
-| **eid** | Entity ID — 非人类实体（pet / property / vehicle） |
-| **aid** | Account ID — B2B 公司实体（不同于 master） |
-| **GSP** | Generalized Second-Price 拍卖 — Google Ads 同款 |
-| **CPA/CPS/CPM/CPV/CPE** | 5 种出价策略 |
+| Term | Meaning |
+|---|---|
+| **kid** | KiX ID — universal user identity (`kid_xxxxxxx`) |
+| **brand** | Merchant on KiX (1-N stores under one brand) |
+| **master** | Multi-store parent account (e.g. Lao Wang's 10 milk-tea shops under one master) |
+| **eid** | Entity ID — non-human entity (pet / property / vehicle) |
+| **aid** | Account ID — B2B company entity (≠ master) |
+| **GSP** | Generalized Second-Price auction — Google Ads-style |
+| **CPA/CPS/CPM/CPV/CPE** | Bid strategies (per-acquisition / per-sale / per-mille / per-visit / per-engagement) |
 | **target_audience** | new_users_only / retargeting_only / all |
-| **Quality Score** | 0-1 浮点，影响拍卖排名 |
-| **Pacing** | 预算均匀消耗策略 |
-| **Take Rate** | KiX 从佣金里抽的比例（30-70%） |
-| **NDR/GRR** | Net Dollar Retention / Gross Revenue Retention（SaaS 关键指标） |
-
-## D. 销售话术合集
-
-见第 5.3 节 + [`MERCHANT_FLOW_TRUTH.md`](MERCHANT_FLOW_TRUTH.md)。
-
-## E. 开发者 API 速查
-
-完整 OpenAPI 文档：`/docs`（Swagger UI）/ `/redoc`（ReDoc）
-公开 API 参考：`/api-docs`
-**API 公共契约：[`API_STANDARDS.md`](API_STANDARDS.md)** — 5 条不变量
-（ID 格式 / 时间戳 / 错误信封 / 列表响应 / HTTP 方法语义），所有公开端点遵守，
-shim helpers 在 `app/api_standards.py`。
-
-关键端点：
-- 注册：`POST /brands/register`
-- 创建游戏：`POST /games/create`
-- 充值：`POST /wallet/{bid}/topup`
-- 创建广告：`POST /campaigns/create`
-- 跟踪转化：`POST /attribution/track/conversion`
-- 推送：`POST /push/now`
+| **Quality Score** | 0-1 float, ranks the auction |
+| **Pacing** | Budget-vs-time smoothing |
+| **Take Rate** | KiX's commission cut (30-70% of inter-brand transfer) |
+| **NDR / GRR** | Net Dollar Retention / Gross Revenue Retention (SaaS KPIs) |
+| **PSP** | Payment Service Provider (Stripe, OVO, GrabPay, etc.) |
+| **ELTM** | External LLM creative generator (separate repo, HTTP'd from `creative_gen.py`) |
 
 ---
 
-## 一句话总结
+## Closing
 
-> **KiX 不卖软件，KiX 卖用户。**
+> KiX has built the right *shape*. It has not yet built the right *outcomes*.
 >
-> 全免费工具喂养商家 → 3 个月试用上钩 Premium → 充钱开广告买别家用户 → 跨品牌网络自我催化 → 永远不会被 AI 复刻。
+> The honest current state: 94 routers + 925 endpoints + 1,006 tests + 7 PG migrations + 5 PSP scaffolds + Trinity Engine + audit log durability + real FCM/APNS push + 18 industry simulations + zero real merchants.
+>
+> Wave D closes the launch-blocker gaps (Stripe live, ELTM smoke, i18n translation, legal docs). After Wave D, the Bible's headline claims become defensible. Until then, every status badge above is the unvarnished answer to "is that real?"
 
 ---
 
-## 给销售团队的 1 页备忘录
-
-```
-🎯 KIX 销售 ONE-PAGER
-
-什么：TikTok Ads for Gamification — 5 分钟开出可玩游戏 + 按效果付费拉新
-
-谁能用：任何 B2C 商家（已验证 18 行业从奶茶到金融）
-
-为什么用：
-  ✅ 全部 SaaS 免费（vs Shopify $29-2300/月）
-  ✅ 前 3 个月所有 Premium 功能免费试
-  ✅ 拉新只付成功的（不像抖音/美团烧钱不知道转化）
-  ✅ 你不付费时，平台 0 抽佣（vs 美团 12-26%）
-
-怎么收费：
-  - 平台基础：永久免费
-  - Premium 订阅：¥199/¥999/¥5000 月（前 3 个月免费）
-  - 拉新广告：商家自主出价
-    - CPA：¥10-100 每新客
-    - CPS：5-15% 订单分成
-    - CPM/CPV/CPE：按需
-
-怎么落地：
-  1. 留信用卡（防刷 + 第 91 天自动扣）
-  2. 创建第一个游戏（5 分钟，AI 帮你写）
-  3. 等寄到的实体 QR 桌牌
-  4. 摆出 QR → 用户扫 → 玩 → 赢 → 注册 → 你的客户
-  5. 看 dashboard → 想升级 → 升级 → 想拉新 → 充钱开广告
-
-关键数字：
-  - 单商家 3 年 LTV ¥9,300
-  - 销售 CAC ¥200-500
-  - ROI 18-46x
-  - 90% 商家 3 个月后自然续费 Premium
-  - 80%→20% 用户漏斗流失改善（玩游戏前不强制注册）
-
-最关键的反对意见处理：
-  Q：「让客户装第三方 App 嫌烦吧？」
-  A：「客户赢到券想保存自然就装了。你不装等于把客户白送给装了的竞品。」
-
-  Q：「我自己有微信公众号了。」
-  A：「KiX 不替代你的公众号，KiX 让你的客户在别家时还能被你召回。」
-
-  Q：「3 个月后才扣钱我怕忘记。」
-  A：「Dashboard 每天都告诉你 KiX 替你省了多少 CAC，到时你只会担心忘记充值
-       下个月的广告费。90% 的商家都这样。」
-
-  Q：「我不想填信用卡。」
-  A：「卡只是防刷，前 3 个月不会扣。你随时可以取消，但取消前数据会告诉你
-       答案 — 90% 看到数据后都自然续费了。」
-```
-
----
-
-📖 *版本 1.0 · 致敬所有参与 Trinity 11 轮迭代的工程师 / 产品 / 销售 / 设计*
-
----
-
-📖 *KIX GAMIFICATION BIBLE · 唯一权威 · 持续更新*
+*KIX GAMIFICATION BIBLE · v2.0 · Honest Edition · Bible discipline enforced by `scripts/bible_check.py`*
