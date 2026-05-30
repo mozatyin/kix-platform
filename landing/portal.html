@@ -2263,7 +2263,7 @@ textarea.form-input{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h6a4 4 0 014 4v6"/></svg>
         <span data-i18n="portal.nav.automations">Automations</span>
       </div>
-      <div class="ent-nav-item" data-view="pixels" onclick="navigate('pixels')" role="link" tabindex="0" aria-label="Pixels &amp; tracking">
+      <div class="ent-nav-item" data-view="pixels" onclick="navigate('pixels')" role="link" tabindex="0" title="Tiny snippet you paste on your shop website to track conversions / 装在网站上追踪转化的小代码片段">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6m11-11h-6M7 12H1"/></svg>
         <span data-i18n="portal.nav.pixels">Pixels &amp; tracking</span>
       </div>
@@ -2562,9 +2562,9 @@ textarea.form-input{
               <thead><tr>
                 <th data-i18n="portal.table.name">Name</th>
                 <th class="numeric" data-i18n="portal.table.spend">Spend</th>
-                <th class="numeric" data-i18n="portal.table.ctr">CTR</th>
+                <th class="numeric"><span class="kpi-tooltip" data-tooltip="Click-Through Rate: of 100 people who saw your ad, how many clicked. Higher = better. / 点击率: 100 人看到广告中有几人点击" data-i18n="portal.table.ctr">CTR</span></th>
                 <th class="numeric" data-i18n="portal.table.customers">Customers</th>
-                <th class="numeric" data-i18n="portal.table.costPerConv">Cost/Conv</th>
+                <th class="numeric"><span class="kpi-tooltip" data-tooltip="Money spent per new customer (CPA: Cost per Acquisition). Lower = better. / 获客成本: 每个新客户花多少钱, 越低越好" data-i18n="portal.table.costPerConv">Cost/Conv</span></th>
               </tr></thead>
               <tbody>
                 <tr><td class="col-name" data-label="Name">Toast Box · Morning Combo</td><td class="numeric tnum" data-label="Spend">S$1,840</td><td class="numeric tnum" data-label="CTR" style="color:#00B341">2.94%</td><td class="numeric tnum" data-label="Customers">312</td><td class="numeric tnum" data-label="Cost/Conv">S$5.90</td></tr>
@@ -2911,7 +2911,7 @@ textarea.form-input{
           </svg>
         </div>
         <div class="metric-card">
-          <div class="label"><span data-i18n="portal.kpi.roas">ROAS</span></div>
+          <div class="label"><span class="kpi-tooltip" data-tooltip="Return On Ad Spend: $4.2 earned for every $1 spent. Above 3× is healthy. / 广告投资回报: 花 1 元赚回 4.2 元, 3× 以上算健康" data-i18n="portal.kpi.roas">ROAS</span></div>
           <div class="value">4.2×</div>
           <div class="delta up">▲ 0.6× <span class="vs" data-i18n="portal.kpi.vsPrev">vs prev 7d</span></div>
           <svg class="sparkline spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
