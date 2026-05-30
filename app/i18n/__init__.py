@@ -60,6 +60,16 @@ SUPPORTED_LOCALES: Final[list[str]] = [
     "zh-Hans-SG",
     "en-US",
     "zh-Hans-CN",
+    # Phase 2 SEA expansion (Wave 3) — see app/region.py + PRODUCTION.md.
+    "id-ID",
+    "ms-MY",
+    "th-TH",
+    "vi-VN",
+    # Phase 3 RTL launch (Wave 4) — ar-* + he-*. See
+    # /Users/mozat/a-docs/rtl-launch-arabic-hebrew.md for the milestone plan.
+    "ar-EG",
+    "ar-SA",
+    "he-IL",
 ]
 
 # Terminal fallback when nothing else resolves.
@@ -68,9 +78,15 @@ ULTIMATE_FALLBACK: Final[str] = "en-US"
 # Per-language regional fallback (the "base" locale for a language).
 # This lets ``en-SG`` fall back to ``en-US`` and ``zh-Hans-SG`` fall back
 # to ``zh-Hans-CN`` without hard-coding pair tables in callers.
+#
+# Arabic: ``ar-EG`` is the "base" (largest Arabic-speaking population by
+# volume; SG launch corpus targets MSA-with-EG flavour) so ``ar-SA``
+# (Saudi) falls back to Egyptian Arabic before English. ``he`` has no
+# regional siblings on the platform — falls straight through to en-US.
 _LANGUAGE_REGIONAL_FALLBACK: Final[dict[str, str]] = {
     "en": "en-US",
     "zh-Hans": "zh-Hans-CN",
+    "ar": "ar-EG",
 }
 
 _CATALOG_DIR: Final[Path] = Path(__file__).parent / "catalogs"

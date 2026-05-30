@@ -310,7 +310,10 @@ psql -U kix -d kix -c "\d+ geofences"
 The platform ships with a Project Fluent runtime under `app/i18n/`.
 
 - **Locale registry** — `app.i18n.SUPPORTED_LOCALES` (currently
-  `en-SG`, `zh-Hans-SG`, `en-US`, `zh-Hans-CN`).
+  `en-SG`, `zh-Hans-SG`, `en-US`, `zh-Hans-CN`, plus Phase 2 SEA:
+  `id-ID` (Indonesian), `ms-MY` (Malay), `th-TH` (Thai), `vi-VN`
+  (Vietnamese)). New regions `id`, `my`, `th`, `vn` registered in
+  `app/region.py` with currencies IDR / MYR / THB / VND.
 - **Per-request resolution** — `LanguageMiddleware` reads
   `?lang=` → JWT user pref → `Accept-Language` → region default →
   `en-SG`. Result is exposed as `request.state.locale`, on the

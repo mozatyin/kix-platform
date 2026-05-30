@@ -3,7 +3,8 @@
  * ------------------------------------------------------------
  * Scope (Phase 1 — Infrastructure only):
  *   - Loads i18next + plugins from CDN (with optional self-host fallback in landing/vendor/).
- *   - Configures BCP 47 locales: en-SG, zh-Hans-SG, en-US, zh-Hans-CN.
+ *   - Configures BCP 47 locales: en-SG, zh-Hans-SG, en-US, zh-Hans-CN,
+ *     id-ID, ms-MY, th-TH, vi-VN (Phase 2 SEA expansion).
  *   - ICU MessageFormat via i18next-icu plugin.
  *   - Detection: ?lang= → localStorage("kix_locale") → navigator.language → default.
  *   - HTTP backend loads landing/i18n/locales/{lng}/{ns}.json.
@@ -19,9 +20,17 @@
   const STORAGE_KEY    = 'kix_locale';
   const QUERY_PARAM    = 'lang';
   const DEFAULT_LOCALE = 'en-SG';
-  const SUPPORTED      = ['en-SG', 'zh-Hans-SG', 'en-US', 'zh-Hans-CN'];
+  const SUPPORTED      = [
+    'en-SG', 'zh-Hans-SG', 'en-US', 'zh-Hans-CN',
+    // Phase 2 SEA additions:
+    'id-ID', 'ms-MY', 'th-TH', 'vi-VN',
+    // Phase 3 RTL launch (Wave 4) — Arabic + Hebrew.
+    'ar-EG', 'ar-SA', 'he-IL',
+  ];
+  // Public alias — tests + consumers expect SUPPORTED_LOCALES.
+  const SUPPORTED_LOCALES = SUPPORTED;
   const NAMESPACES     = ['common', 'portal', 'storefront', 'play', 'portal-sdk', 'index', 'connect'];
-  const RTL_LANGS      = ['ar', 'he', 'fa', 'ur']; // future Phase 3
+  const RTL_LANGS      = ['ar', 'he', 'fa', 'ur']; // Arabic + Hebrew live in Phase 3; fa/ur are Phase 4.
 
   // ---------- CDN sources (with self-host fallback discovery) ----------
   const CDN = {
@@ -94,6 +103,10 @@
       const primary = nl.split('-')[0].toLowerCase();
       if (primary === 'zh') return 'zh-Hans-SG';
       if (primary === 'en') return 'en-SG';
+      if (primary === 'id') return 'id-ID';
+      if (primary === 'ms') return 'ms-MY';
+      if (primary === 'th') return 'th-TH';
+      if (primary === 'vi') return 'vi-VN';
     }
 
     // 4) default
@@ -108,15 +121,26 @@
   function applyHtmlAttrs(locale) {
     const html = document.documentElement;
     html.setAttribute('lang', locale);
-    html.setAttribute('dir', isRTL(locale) ? 'rtl' : 'ltr');
-    // Lazy-load rtl.css when needed
-    if (isRTL(locale) && !document.getElementById('kix-rtl-css')) {
-      const link = document.createElement('link');
-      link.id = 'kix-rtl-css';
-      link.rel = 'stylesheet';
-      link.href = scriptBaseUrl() + 'rtl.css';
-      document.head.appendChild(link);
+    const rtl = isRTL(locale);
+    html.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+    // Lazy-load RTL stylesheet stack when entering RTL for the first time.
+    // We ship three sheets: rtl.css (Phase 1 utilities, always-on patterns),
+    // rtl-base.css (Phase 2 page-level patches) and rtl-overrides.css
+    // (Phase 3 P0 audit fixes — float→flex, position swaps, icon mirror).
+    if (rtl) {
+      ensureRtlSheet('kix-rtl-css',           'rtl.css');
+      ensureRtlSheet('kix-rtl-base-css',      'rtl-base.css');
+      ensureRtlSheet('kix-rtl-overrides-css', 'rtl-overrides.css');
     }
+  }
+
+  function ensureRtlSheet(id, file) {
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = scriptBaseUrl() + file;
+    document.head.appendChild(link);
   }
 
   // ---------- data-i18n attribute helper ----------
@@ -210,6 +234,16 @@
         'zh-Hans-CN': ['zh-Hans', 'en-SG'],
         'en-SG':      ['en', 'en-US'],
         'en-US':      ['en', 'en-SG'],
+        // Phase 2 SEA — each new locale falls back to en-SG then en-US.
+        'id-ID':      ['id', 'en-SG', 'en-US'],
+        'ms-MY':      ['ms', 'en-SG', 'en-US'],
+        'th-TH':      ['th', 'en-SG', 'en-US'],
+        'vi-VN':      ['vi', 'en-SG', 'en-US'],
+        // Phase 3 RTL — ar-SA falls back to ar-EG first (shared MSA base),
+        // then English. he-IL has no regional sibling — straight to en-SG.
+        'ar-EG':      ['ar', 'en-SG', 'en-US'],
+        'ar-SA':      ['ar-EG', 'ar', 'en-SG', 'en-US'],
+        'he-IL':      ['he', 'en-SG', 'en-US'],
         default:      ['en-SG'],
       },
       supportedLngs: SUPPORTED,
@@ -243,6 +277,7 @@
   // ---------- Expose ----------
   global.KixI18n = {
     SUPPORTED,
+    SUPPORTED_LOCALES,
     NAMESPACES,
     DEFAULT_LOCALE,
     STORAGE_KEY,
