@@ -144,15 +144,68 @@
       </div>
     </div>
 
-    <!-- First 100 free per country -->
+    <!-- First 100 free per country (live counter) -->
     <div class="first100">
-      <div class="first100-num">100</div>
+      <div class="first100-num" id="slot-counter">100</div>
       <div class="first100-text">
-        <h3>First 100 merchants free, every country.</h3>
-        <p>Sign up before your country's 100-slot quota is full and never pay any CPA/CPS take rate. Founding merchants get permanent 0% commission. <strong>Tanzania, Cambodia, Philippines, Singapore — same offer everywhere.</strong></p>
+        <h3 id="slot-headline">First 100 merchants free, every country.</h3>
+        <p id="slot-detail">Sign up before your country's 100-slot quota is full and never pay any CPA/CPS take rate. Founding merchants get permanent 0% commission. <strong>Tanzania, Cambodia, Philippines, Singapore — same offer everywhere.</strong></p>
       </div>
       <a href="/alpha.html" class="btn btn-primary">Claim slot</a>
     </div>
+
+    <!-- Live per-country open-slot grid -->
+    <div id="open-countries-grid" style="margin-top:32px;display:grid;
+         grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
+
+    <script>
+      // Detect visitor country via timezone heuristic (no IP geolocation needed for v1)
+      function guessCountryFromTz() {
+        const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').toLowerCase();
+        const map = {
+          'singapore':'SG','jakarta':'ID','manila':'PH','bangkok':'TH','ho_chi_minh':'VN',
+          'kuala_lumpur':'MY','hong_kong':'HK','taipei':'TW','tokyo':'JP','seoul':'KR',
+          'dubai':'AE','riyadh':'SA','kolkata':'IN','dhaka':'BD','karachi':'PK',
+          'london':'GB','paris':'FR','berlin':'DE','madrid':'ES','rome':'IT',
+          'sydney':'AU','auckland':'NZ','new_york':'US','los_angeles':'US','chicago':'US',
+          'sao_paulo':'BR','mexico_city':'MX','phnom_penh':'KH','yangon':'MM',
+          'dar_es_salaam':'TZ','colombo':'LK',
+        };
+        for (const [city, cc] of Object.entries(map)) {
+          if (tz.includes(city)) return cc;
+        }
+        return 'SG';  // default
+      }
+      const userCountry = guessCountryFromTz();
+
+      // Load this country's counter
+      fetch(`/api/v1/country-slots/${userCountry}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          document.getElementById('slot-counter').textContent = data.remaining;
+          if (data.remaining === 0) {
+            document.getElementById('slot-headline').textContent = `${userCountry}: all 100 founding slots taken`;
+            document.getElementById('slot-detail').innerHTML = `Standard CPA/CPS rates apply for new <strong>${userCountry}</strong> merchants. Other countries still have founding slots — see grid below.`;
+          } else {
+            document.getElementById('slot-headline').textContent = `${userCountry}: ${data.remaining} of 100 founding slots remaining`;
+          }
+        }).catch(() => {});
+
+      // Load top-12 open countries
+      fetch('/api/v1/country-slots/?limit=12')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data || !data.countries) return;
+          const grid = document.getElementById('open-countries-grid');
+          data.countries.forEach(c => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#FFFFFF;border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center';
+            card.innerHTML = `<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${c.country_code}</div><div style="font-size:24px;font-weight:800;color:var(--brand);line-height:1">${c.remaining}</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">free / 100</div>`;
+            grid.appendChild(card);
+          });
+        }).catch(() => {});
+    </script>
 
   </div>
 </section>

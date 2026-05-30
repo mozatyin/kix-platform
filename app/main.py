@@ -1254,6 +1254,16 @@ and the shim helpers in `app.api_standards`.
             "wavef-spec-15 splash skipped: %s", _exc
         )
 
+    # ── 100-free-per-country mechanic (Wave H Opp #3) ───────────────────
+    try:
+        from app.routers import country_slots as _cs
+        app.include_router(_cs.router, tags=["country-slots"])
+    except Exception as _exc:  # pragma: no cover
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "country_slots router skipped: %s", _exc
+        )
+
     # ── Static files: Portal + generated games ──────────────────────────
     import os as _os
     _landing_dir = _os.path.join(_os.path.dirname(__file__), "..", "landing")
