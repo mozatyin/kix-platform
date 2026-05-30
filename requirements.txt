@@ -29,3 +29,11 @@ babel>=2.14
 # Same de-facto standard used by Stripe / Shopify / Twilio for E.164
 # parsing & country-aware phone validation.
 phonenumbers>=8.13
+
+# Push notifications — Firebase Cloud Messaging (FCM v1 API). Industry
+# standard for cross-platform mobile push. iOS/APNS delivery is routed
+# through FCM (single client, single auth path), so we don't need a
+# separate APNS SDK. Optional at runtime: when FIREBASE_SERVICE_ACCOUNT
+# is unset OR firebase-admin is not installed, fcm_client falls back to
+# mock mode so dev + CI work without credentials.
+firebase-admin>=6.0

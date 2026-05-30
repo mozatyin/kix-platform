@@ -90,8 +90,27 @@ import time
 from typing import Any
 
 from app.redis_client import close_redis, get_redis, init_redis
+from app.services import fcm_client
 
 logger = logging.getLogger("push_worker")
+
+# Per-call retry policy for transient gateway failures (separate from the
+# at-least-once retry queue, which handles cross-cycle backoff). These
+# retries happen inline inside a single delivery attempt.
+INLINE_RETRY_ATTEMPTS = 3
+INLINE_RETRY_BASE_SLEEP = 0.2  # seconds, exponential: 0.2, 0.4, 0.8
+
+# Per-push delivery-state key. Separate from push:{id} (which carries the
+# campaign-level fields) so the worker can update fine-grained delivery
+# status without racing with the dispatcher.
+DELIVERY_KEY = "push:delivery:{push_id}"
+DELIVERY_TTL = 86400 * 7  # 7-day delivery state retention
+
+# Idempotency guard: refuse to send the same push_id twice within this
+# window even if it shows up on the queue again (network duplication,
+# replay of a retry envelope, etc.).
+IDEMPOTENCY_KEY = "push:sent:{push_id}"
+IDEMPOTENCY_TTL = 86400
 
 # ── Tunables ──────────────────────────────────────────────────────────────
 POLL_INTERVAL_SECONDS = 5
@@ -218,41 +237,107 @@ async def _hydrate_payloads_pipelined(
 async def _send_to_platform(
     platform: str, token: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
-    """Stub for actual gateway send. Replace with real SDK calls in prod.
+    """Send a single push through the appropriate gateway.
 
-    In production this is the single seam where we wire in:
+    Routing:
+      * ``ios`` / ``android`` / ``web`` → FCM (via firebase-admin). FCM
+        transparently forwards iOS to APNS for tokens registered against
+        a Firebase iOS app, so a single client covers all three.
+      * ``wechat``  → WeChat template send (still stubbed — see TODO).
 
-    * ``ios``      → ``APNsClient(...).send_notification(token, ...)``
-    * ``android``  → ``messaging.send(messaging.Message(token=token, ...))``
-    * ``wechat``   → ``wechat_api.send_template_message(openid=token, ...)``
-    * ``web``      → ``pywebpush.webpush(subscription_info=..., data=...)``
-
-    All branches return the same envelope so the caller can treat them
-    uniformly.
+    The function carries an inline retry loop (``INLINE_RETRY_ATTEMPTS``)
+    with exponential backoff for transient errors. Permanent failures
+    (invalid token, rate-limit, stale registration) short-circuit out.
+    Returns the same envelope shape regardless of mode (live / mock):
+        {success, platform, mode, message_id?, error?, stale?, attempts}
     """
     if not platform:
-        return {"success": False, "error": "missing_platform"}
+        return {"success": False, "error": "missing_platform", "attempts": 0}
     if not token:
-        return {"success": False, "error": "missing_token", "platform": platform}
-
-    # MVP: simulate a tiny amount of network latency so the metrics look
-    # roughly realistic in dev/staging dashboards.
-    await asyncio.sleep(0.05)
+        return {
+            "success": False,
+            "error": "missing_token",
+            "platform": platform,
+            "attempts": 0,
+        }
 
     title = payload.get("title", "")
     body = payload.get("body", "")
+    push_id = payload.get("push_id", "")
+    deep_link = payload.get("deep_link", "")
+    image_url = payload.get("image_url", "")
+
+    # Data payload — included so the receiving app can navigate
+    # deep-links / display imagery without re-fetching from API.
+    data: dict[str, str] = {}
+    if push_id:
+        data["push_id"] = str(push_id)
+    if deep_link:
+        data["deep_link"] = str(deep_link)
+    if image_url:
+        data["image_url"] = str(image_url)
+    brand_id = payload.get("brand_id")
+    if brand_id:
+        data["brand_id"] = str(brand_id)
+
+    plat = platform.lower()
+    last_result: dict[str, Any] = {}
+    for attempt in range(1, INLINE_RETRY_ATTEMPTS + 1):
+        try:
+            if plat in ("ios", "android", "web"):
+                last_result = await fcm_client.send_to_token(
+                    token=token,
+                    title=title,
+                    body=body,
+                    data=data or None,
+                    badge=1 if plat == "ios" else None,
+                    sound="default" if plat == "ios" else None,
+                    platform=plat,
+                )
+            elif plat == "wechat":
+                # TODO: wire wechat template send when WeChat router lands.
+                last_result = {
+                    "success": True,
+                    "mode": "mock",
+                    "platform": "wechat",
+                    "note": "wechat_send_not_implemented",
+                }
+            else:
+                # Unknown platform — surface a permanent error.
+                return {
+                    "success": False,
+                    "platform": plat,
+                    "error": f"unknown_platform:{plat}",
+                    "attempts": attempt,
+                }
+        except Exception as exc:  # noqa: BLE001 — treat as transient
+            last_result = {
+                "success": False,
+                "error": f"exception:{type(exc).__name__}:{exc}",
+            }
+
+        if last_result.get("success"):
+            break
+
+        # Don't retry permanent failures.
+        err = str(last_result.get("error") or "")
+        if last_result.get("stale") or "invalid_token" in err or "rate_limited" in err:
+            break
+
+        # Exponential backoff before next attempt.
+        if attempt < INLINE_RETRY_ATTEMPTS:
+            await asyncio.sleep(INLINE_RETRY_BASE_SLEEP * (2 ** (attempt - 1)))
+
     logger.info(
-        "push.deliver platform=%s token=%s… push_id=%s title=%r",
-        platform, token[:8], payload.get("push_id"), title[:40],
+        "push.deliver platform=%s token=%s… push_id=%s title=%r ok=%s mode=%s",
+        plat, token[:8], push_id, title[:40],
+        bool(last_result.get("success")), last_result.get("mode"),
     )
 
     return {
-        "success": True,
-        "platform": platform,
-        "simulated": True,
-        "title": title,
-        "body_preview": body[:64],
-        "ts": time.time(),
+        "platform": plat,
+        "attempts": attempt,
+        **last_result,
     }
 
 
@@ -261,14 +346,48 @@ async def deliver_push(payload: dict[str, Any]) -> dict[str, Any]:
 
     Pipelines ``HGETALL push_device:{id}`` across all the kid's devices so
     we issue one RTT per push instead of N (was N+1).
+
+    Side-effects (all best-effort, never fatal):
+      * Sets ``push:delivery:{push_id}`` = ``sent`` / ``failed`` for
+        downstream observability.
+      * Sets ``push:sent:{push_id}`` as an idempotency marker (TTL 24h)
+        so a duplicate enqueue is rejected.
+      * Marks any device whose FCM token comes back ``stale=True`` as
+        ``active=0`` in the push_device hash, and removes it from the
+        kid's push_devices set so we stop sending to it.
     """
     kid = payload.get("kid")
     if not kid:
         return {"success": False, "error": "no_kid"}
 
+    push_id = payload.get("push_id") or ""
+
     r = await get_redis()
+
+    # Idempotency check — refuse to re-deliver an already-sent push_id.
+    if push_id:
+        already = await r.set(
+            IDEMPOTENCY_KEY.format(push_id=push_id),
+            "1",
+            nx=True,
+            ex=IDEMPOTENCY_TTL,
+        )
+        if not already:
+            return {
+                "success": False,
+                "error": "duplicate_push_id",
+                "push_id": push_id,
+                "idempotent": True,
+            }
+
     devices = await r.smembers(f"kid:{kid}:push_devices")
     if not devices:
+        if push_id:
+            await r.set(
+                DELIVERY_KEY.format(push_id=push_id),
+                "failed:no_devices",
+                ex=DELIVERY_TTL,
+            )
         return {"success": False, "error": "no_devices_registered", "kid": kid}
 
     device_ids = list(devices)
@@ -294,19 +413,89 @@ async def deliver_push(payload: dict[str, Any]) -> dict[str, Any]:
             logger.debug("stale-device cleanup failed kid=%s: %s", kid, exc)
 
     results: list[dict[str, Any]] = []
+    stale_devices: list[str] = []
     for device_id, device_info in zip(device_ids, device_infos):
         if not device_info:
+            continue
+        # Respect the per-device active flag so we don't keep poking
+        # tokens already marked dead by an earlier cycle.
+        if device_info.get("active") == "0":
             continue
         platform = device_info.get("platform")
         token = device_info.get("token")
         result = await _send_to_platform(platform, token, payload)
         results.append({"device_id": device_id, "platform": platform, **result})
+        if result.get("stale"):
+            stale_devices.append(device_id)
+
+    # Mark stale device records inactive — single pipeline, fire-and-forget.
+    if stale_devices:
+        cleanup = r.pipeline()
+        for device_id in stale_devices:
+            cleanup.hset(
+                f"push_device:{device_id}",
+                mapping={
+                    "active": "0",
+                    "stale_at": str(time.time()),
+                },
+            )
+            cleanup.srem(f"kid:{kid}:push_devices", device_id)
+        try:
+            await cleanup.execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("stale-token cleanup failed: %s", exc)
 
     if not results:
+        if push_id:
+            await r.set(
+                DELIVERY_KEY.format(push_id=push_id),
+                "failed:no_live_devices",
+                ex=DELIVERY_TTL,
+            )
         return {"success": False, "error": "no_live_devices", "kid": kid}
 
     success = any(item.get("success") for item in results)
-    return {"success": success, "deliveries": results}
+
+    # Record fine-grained delivery state for observability/click-tracking.
+    if push_id:
+        await r.set(
+            DELIVERY_KEY.format(push_id=push_id),
+            "sent" if success else "failed",
+            ex=DELIVERY_TTL,
+        )
+
+    return {
+        "success": success,
+        "deliveries": results,
+        "stale_cleaned": len(stale_devices),
+    }
+
+
+async def record_click(push_id: str, ts: float | None = None) -> bool:
+    """Mark a push as clicked in the delivery-state log.
+
+    Called from the push_engine ``/mark`` handler so the worker has a
+    consistent place to surface end-to-end delivery state alongside
+    sent/failed.
+    """
+    if not push_id:
+        return False
+    try:
+        r = await get_redis()
+        await r.set(
+            DELIVERY_KEY.format(push_id=push_id),
+            "clicked",
+            ex=DELIVERY_TTL,
+        )
+        await r.set(
+            f"push:click:{push_id}",
+            str(ts or time.time()),
+            ex=DELIVERY_TTL,
+        )
+        return True
+    except Exception as exc:  # pragma: no cover
+        logger.debug("record_click failed for %s: %s", push_id, exc)
+        return False
 
 
 # ── Queue processing ─────────────────────────────────────────────────────
@@ -549,9 +738,19 @@ async def device_register(
     record is upserted in place (handy for re-registering after token
     rotation on the same physical device). Otherwise we mint a stable id
     by hashing the token.
+
+    Token validity is checked structurally for ``ios``/``android``/``web``
+    (FCM-compatible formats). WeChat openids are passed through untouched
+    — they have their own format we don't gate here.
     """
     if not kid or not platform or not token:
         raise ValueError("kid, platform, token are all required")
+    plat = platform.lower()
+    if plat not in ("ios", "android", "web", "wechat"):
+        raise ValueError(f"unsupported platform: {platform}")
+    if plat in ("ios", "android", "web") and not fcm_client.validate_token(token):
+        raise ValueError("invalid push token format")
+
     if not device_id:
         device_id = f"pd_{int(time.time())}_{hash(token) & 0xFFFFFFFF:x}"
 
@@ -559,9 +758,10 @@ async def device_register(
         f"push_device:{device_id}",
         mapping={
             "kid": kid,
-            "platform": platform,
+            "platform": plat,
             "token": token,
             "registered_at": str(time.time()),
+            "active": "1",
         },
     )
     await r.sadd(f"kid:{kid}:push_devices", device_id)
