@@ -3125,3 +3125,288 @@ async def attach_template_commission_split(
         "template_id": body.template_id,
         "commission_split": split_dump,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Cross-brand voucher-pool integration hook (Wave E item 4)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# This is the **minimal** integration surface between the legacy
+# single-brand / intra-master voucher module above and the new
+# cross-brand pooling module in ``app.services.voucher_pool``. We keep
+# the hook one-way and read-only: the voucher card UI can ask "which
+# cross-brand pools is the issuing brand part of, and what extra shops
+# does that imply?" without touching any of the existing voucher
+# state or redeem semantics. The pooling module owns its own minted
+# vouchers (``pool_voucher:{vid}``) and never overwrites the legacy
+# ``voucher:{vid}`` hash.
+
+@cross_store_router.get(
+    "/{voucher_id}/pool-context",
+    summary="(Hook) report the cross-brand pools the issuer participates in",
+)
+async def voucher_pool_context_hook(
+    voucher_id: str,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Surface cross-brand pool membership for a legacy voucher's issuer.
+
+    This is a *read-only* hook into ``app.services.voucher_pool`` —
+    we never mutate pool state from here, and the legacy voucher's
+    redemption path is unchanged. Returning the issuer's pool IDs +
+    member counts gives the storefront UI enough to display "also
+    redeemable at N nearby shops" without coupling the redeem path
+    to pooling rules.
+    """
+    state = await _load_voucher(r, voucher_id)
+    voucher = _voucher_to_dict(state)
+    issuer = voucher.get("issuer_brand_id")
+    if not issuer:
+        return {"voucher_id": voucher_id, "pools": []}
+
+    # Local import keeps the legacy module's import graph hermetic when
+    # voucher_pool isn't loaded (e.g. in some test isolates).
+    from app.services import voucher_pool as _vp
+
+    pool_ids = await _vp.list_brand_pools(r, issuer)
+    pools: list[dict[str, Any]] = []
+    for pid in pool_ids:
+        p = await _vp.get_pool(r, pid)
+        if p and p.get("status") == "active":
+            pools.append({
+                "pool_id": pid,
+                "name": p["name"],
+                "district": p["district"],
+                "member_count": len(p["members"]),
+            })
+    return {
+        "voucher_id": voucher_id,
+        "issuer_brand_id": issuer,
+        "pool_count": len(pools),
+        "pools": pools,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Voucher lifecycle endpoints  (paired with voucher_lifecycle_worker.py)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# These endpoints expose the worker's state to the mobile client and to
+# brand-portal admins:
+#
+#   * POST /{vid}/extend-grace          — manual grace extension by user
+#   * GET  /expiring/{user_id}          — upcoming-expiry list
+#   * GET  /expired/{user_id}/winback-offers — pending win-back offers
+#   * GET  /admin/vouchers/expiration-stats  — per-brand dashboard counters
+#
+# The hourly worker (app.workers.voucher_lifecycle_worker.run_once) is
+# the canonical writer of these keys; the endpoints below are pure reads
+# (or one explicit user-initiated write for ``extend-grace``).
+
+
+class ExtendGraceRequest(BaseModel):
+    grace_hours: int = Field(24, ge=1, le=168)  # 1 h – 7 d max
+    reason: str = Field("", max_length=200)
+
+
+def _k_voucher_grace_applied(vid: str) -> str:
+    return f"voucher:{vid}:grace_applied"
+
+
+def _k_voucher_winback_offered(vid: str) -> str:
+    return f"voucher:{vid}:winback_offered"
+
+
+def _k_user_winback_offers(uid: str) -> str:
+    return f"user:{uid}:voucher_winback_offers"
+
+
+def _k_brand_expiration_stats(bid: str) -> str:
+    return f"brand:{bid}:voucher_expiration_stats"
+
+
+def _k_voucher_lifecycle_audit(vid: str) -> str:
+    return f"voucher:{vid}:lifecycle_audit"
+
+
+@cross_store_router.post(
+    "/{voucher_id}/extend-grace",
+    summary="Manually extend a voucher's expiry by a grace window",
+)
+async def extend_grace(
+    voucher_id: str,
+    body: ExtendGraceRequest,
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Apply a one-shot grace-period extension to a voucher.
+
+    The hourly worker already auto-extends $20+ vouchers by 24 h and
+    $50+ vouchers by 72 h after they expire. This endpoint is for the
+    rarer case where the user explicitly asks for extra time (support
+    ticket, in-app "extend" button) before or just after expiry.
+
+    Returns 409 if grace has already been applied (idempotent).
+    """
+    key = _k_voucher(voucher_id)
+    voucher = await r.hgetall(key)
+    if not voucher:
+        raise HTTPException(status_code=404, detail="voucher_not_found")
+    if voucher.get("status") not in ("issued", "claimed", "expired"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"cannot_extend_status={voucher.get('status')}",
+        )
+    if await r.exists(_k_voucher_grace_applied(voucher_id)):
+        raise HTTPException(status_code=409, detail="grace_already_applied")
+
+    try:
+        old_expires_at = int(voucher.get("expires_at", "0") or 0)
+    except ValueError:
+        old_expires_at = 0
+    if not old_expires_at:
+        raise HTTPException(status_code=422, detail="voucher_has_no_expiry")
+    new_expires_at = max(old_expires_at, _now()) + body.grace_hours * 3600
+
+    pipe = r.pipeline()
+    pipe.hset(
+        key,
+        mapping={
+            "expires_at": str(new_expires_at),
+            "status": "issued",  # revive if it had flipped to expired
+            "grace_extended_at": str(_now()),
+            "grace_hours": str(body.grace_hours),
+            "grace_reason": body.reason,
+        },
+    )
+    pipe.set(
+        _k_voucher_grace_applied(voucher_id),
+        str(_now()),
+        ex=365 * 86400,
+    )
+    pipe.hincrby(
+        _k_brand_expiration_stats(voucher.get("issuer_brand_id", "")),
+        "grace_extensions_manual",
+        1,
+    )
+    pipe.rpush(
+        _k_voucher_lifecycle_audit(voucher_id),
+        _dumps({
+            "event": "manual_grace_extend",
+            "grace_hours": body.grace_hours,
+            "reason": body.reason,
+            "old_expires_at": old_expires_at,
+            "new_expires_at": new_expires_at,
+            "ts": _now(),
+        }),
+    )
+    pipe.ltrim(_k_voucher_lifecycle_audit(voucher_id), -200, -1)
+    await pipe.execute()
+
+    return {
+        "ok": True,
+        "voucher_id": voucher_id,
+        "old_expires_at": old_expires_at,
+        "new_expires_at": new_expires_at,
+        "grace_hours": body.grace_hours,
+    }
+
+
+@cross_store_router.get(
+    "/expiring/{user_id}",
+    summary="List the user's vouchers expiring in the upcoming window",
+)
+async def list_expiring(
+    user_id: str,
+    within_days: int = Query(14, ge=1, le=90),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Surface every voucher the user holds that will expire inside
+    ``within_days``. Mobile uses this for the "expiring soon" badge.
+    """
+    cutoff = _now() + within_days * 86400
+    vids = await r.zrevrange(_k_user_vouchers(user_id), 0, -1) or []
+    out: list[dict[str, Any]] = []
+    for vid in vids:
+        v = await r.hgetall(_k_voucher(vid))
+        if not v:
+            continue
+        if v.get("status") not in ("issued", "claimed"):
+            continue
+        exp_raw = v.get("expires_at") or ""
+        if not exp_raw:
+            continue
+        try:
+            exp = int(exp_raw)
+        except ValueError:
+            continue
+        if exp <= 0 or exp > cutoff:
+            continue
+        out.append({
+            "voucher_id": vid,
+            "issuer_brand_id": v.get("issuer_brand_id"),
+            "value_cents": int(v.get("value_cents", 0) or 0),
+            "expires_at": exp,
+            "expires_at_iso": _iso(exp),
+            "seconds_to_expiry": max(0, exp - _now()),
+        })
+    # Sort by closest-expiry first.
+    out.sort(key=lambda x: x["expires_at"])
+    return {
+        "user_id": user_id,
+        "within_days": within_days,
+        "count": len(out),
+        "vouchers": out,
+    }
+
+
+@cross_store_router.get(
+    "/expired/{user_id}/winback-offers",
+    summary="List the user's pending win-back offers for expired vouchers",
+)
+async def list_winback_offers(
+    user_id: str,
+    include_claimed: bool = Query(False),
+    limit: int = Query(50, ge=1, le=200),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Each entry is a 50%-credit offer minted when a voucher's grace
+    window lapsed without redemption. The mobile client can use these to
+    let users one-tap re-issue.
+    """
+    raw_offers = await r.lrange(_k_user_winback_offers(user_id), 0, limit - 1)
+    out: list[dict[str, Any]] = []
+    for raw in raw_offers or []:
+        try:
+            offer = json.loads(raw)
+        except (ValueError, TypeError):
+            continue
+        if not include_claimed and offer.get("claimed"):
+            continue
+        out.append(offer)
+    return {"user_id": user_id, "count": len(out), "offers": out}
+
+
+@cross_store_router.get(
+    "/admin/expiration-stats",
+    summary="Admin: per-brand voucher expiration dashboard counters",
+)
+async def admin_expiration_stats(
+    brand_id: str = Query(...),
+    r: aioredis.Redis = Depends(get_redis),
+):
+    """Return reminders-sent / grace-extensions / expired / winback counters
+    for a single brand. Trinity dashboard reads this. Open endpoint (no
+    admin token required for now — wire to the global admin guard when
+    the admin auth layer is unified across all routers).
+    """
+    raw = await r.hgetall(_k_brand_expiration_stats(brand_id))
+    stats = {k: int(v) for k, v in (raw or {}).items() if v.isdigit()}
+    return {
+        "brand_id": brand_id,
+        "reminders_sent": stats.get("reminders_sent", 0),
+        "grace_extensions": stats.get("grace_extensions", 0),
+        "grace_extensions_manual": stats.get("grace_extensions_manual", 0),
+        "expired": stats.get("expired", 0),
+        "winback_offered": stats.get("winback_offered", 0),
+        "ts": _now(),
+    }
