@@ -30,6 +30,19 @@ async def lifespan(app: FastAPI):
             "recipes seed load failed: %s", _exc
         )
 
+    # ── Stripe integration: log active mode on boot ──────────────────
+    # Surfaces live/test/mock at startup so operators can immediately
+    # spot misconfiguration (e.g. live pod accidentally booting with
+    # ``sk_test_stub`` and silently falling back to mock).
+    try:
+        from app.services.stripe_live import log_startup_mode
+        log_startup_mode()
+    except Exception as _exc:  # pragma: no cover — never fail startup
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "stripe startup mode log skipped: %s", _exc
+        )
+
     # ── Schema health check: detect missing critical PG tables ────────
     # If alembic migrations haven't been applied to this env, certain
     # routers (geofence/PostGIS) will 500 at first request. We log a WARN
@@ -217,6 +230,23 @@ and the shim helpers in `app.api_standards`.
         _i18n_brand_router.admin_router,
         prefix="/api/v1/admin",
         tags=["admin-translations"],
+    )
+
+    # ── Audit log (durable PG spine — PIPL §51 / GDPR Art. 30) ─────────
+    # Replaces the legacy Redis ``audit:*`` LIST. Admin-token gated;
+    # the audit log is itself a PII surface so we never expose it to
+    # merchants. Search/export sit under /api/v1/audit; the retention
+    # dashboard sits under /api/v1/admin/audit.
+    from app.routers import audit_log as _audit_log_router
+    app.include_router(
+        _audit_log_router.router,
+        prefix="/api/v1/audit",
+        tags=["audit-log"],
+    )
+    app.include_router(
+        _audit_log_router.admin_router,
+        prefix="/api/v1/admin/audit",
+        tags=["admin-audit"],
     )
 
     app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
@@ -667,6 +697,17 @@ and the shim helpers in `app.api_standards`.
         prefix="/api/v1/webhooks/stripe",
         tags=["stripe_webhook"],
     )
+
+    # ── Stripe live-integration health (/api/v1/health/stripe) ─────────
+    try:
+        from app.services import stripe_live as _stripe_live
+        if getattr(_stripe_live, "router", None) is not None:
+            app.include_router(_stripe_live.router, tags=["stripe_health"])
+    except Exception as _exc:  # pragma: no cover — never fail boot
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "stripe health router not mounted: %s", _exc
+        )
 
     # ── Outbound Webhooks: KiX → merchant event delivery (HMAC + retry) ─
     from app.routers import webhooks_outbound

@@ -33,6 +33,95 @@ import stripe
 logger = logging.getLogger(__name__)
 
 
+# ── Lightweight metrics (Prometheus-style counters, no hard dep) ────────
+# Falls back to an in-process dict if prometheus_client isn't installed.
+# Routers / scripts read ``stripe_charges_total`` for dashboards / smoke.
+try:  # pragma: no cover — optional dep
+    from prometheus_client import Counter as _PromCounter
+
+    stripe_charges_total = _PromCounter(
+        "stripe_charges_total",
+        "Stripe charge attempts, labelled by terminal result.",
+        ["result"],
+    )
+
+    def _inc_charge(result: str) -> None:
+        try:
+            stripe_charges_total.labels(result=result).inc()
+        except Exception:
+            pass
+
+except Exception:  # pragma: no cover — fallback path
+
+    class _FallbackCounter:
+        def __init__(self) -> None:
+            self._counts: dict[str, int] = {}
+
+        def labels(self, **kwargs: str) -> "_FallbackCounter":
+            self._last_label = kwargs.get("result", "unknown")
+            return self
+
+        def inc(self, n: int = 1) -> None:
+            key = getattr(self, "_last_label", "unknown")
+            self._counts[key] = self._counts.get(key, 0) + n
+
+        def get(self, result: str) -> int:
+            return self._counts.get(result, 0)
+
+    stripe_charges_total = _FallbackCounter()
+
+    def _inc_charge(result: str) -> None:
+        stripe_charges_total.labels(result=result).inc()
+
+
+# ── Last-charge / error tracking (in-process; survives until reboot) ────
+# Used by the ``/api/v1/health/stripe`` endpoint to surface real-time
+# operational state without a database round-trip. Reset on process boot.
+_LAST_CHARGE_TS: float | None = None
+_ERROR_LOG: list[float] = []  # timestamps of failed charges, capped
+
+
+def _record_charge(success: bool) -> None:
+    """Record a charge outcome for health-endpoint surfacing."""
+    global _LAST_CHARGE_TS
+    now = time.time()
+    if success:
+        _LAST_CHARGE_TS = now
+        _inc_charge("success")
+    else:
+        _ERROR_LOG.append(now)
+        # Trim to last 1000 entries — bounded memory.
+        if len(_ERROR_LOG) > 1000:
+            del _ERROR_LOG[: len(_ERROR_LOG) - 1000]
+        _inc_charge("failed")
+
+
+def _errors_last_24h() -> int:
+    cutoff = time.time() - 86400
+    # Drop expired entries on read so the log self-cleans.
+    while _ERROR_LOG and _ERROR_LOG[0] < cutoff:
+        _ERROR_LOG.pop(0)
+    return len(_ERROR_LOG)
+
+
+def get_last_charge_ts() -> float | None:
+    return _LAST_CHARGE_TS
+
+
+# ── Startup log (called once from app.main lifespan) ────────────────────
+_STARTUP_LOGGED = False
+
+
+def log_startup_mode() -> str:
+    """Emit ``[stripe_live] mode=<mode>`` on app boot (idempotent)."""
+    global _STARTUP_LOGGED
+    mode = get_mode()
+    if not _STARTUP_LOGGED:
+        logger.info("[stripe_live] mode=%s", mode)
+        _STARTUP_LOGGED = True
+    return mode
+
+
 # ── Mode detection ──────────────────────────────────────────────────────
 # Centralised so wallet + payment_methods + tests all agree on which mode
 # we're in. Re-read on every call (don't cache at import) so tests can
@@ -117,6 +206,7 @@ def create_topup_checkout_session(
 
     if is_mock():
         session_id = f"cs_test_mock_{ref[:16]}"
+        _record_charge(success=True)
         return {
             "session_id": session_id,
             "checkout_url": f"https://mock.stripe.local/checkout/{session_id}",
@@ -158,8 +248,10 @@ def create_topup_checkout_session(
         )
     except stripe.error.StripeError as exc:  # type: ignore[attr-defined]
         logger.exception("stripe checkout session create failed: %s", exc)
+        _record_charge(success=False)
         raise
 
+    _record_charge(success=True)
     return {
         "session_id": session.id,
         "checkout_url": session.url,
@@ -379,6 +471,116 @@ def sign_payload_for_mock(payload: bytes | str, secret: str | None = None) -> st
     return hmac.new(mock_secret, body, hashlib.sha256).hexdigest()
 
 
+# ── Health probe ────────────────────────────────────────────────────────
+def health_check() -> dict[str, Any]:
+    """Probe Stripe ``/v1/balance`` to confirm the configured key works.
+
+    Returns a stable shape regardless of mode so the ``/health/stripe``
+    endpoint and operational dashboards can always render the same fields.
+
+    Keys:
+      * ``mode``                — live / test / mock
+      * ``account_id``          — Stripe account id (None in mock)
+      * ``available_balance``   — list of ``{amount, currency}`` rows
+      * ``default_currency``    — account default currency (lowercase ISO)
+      * ``ready``               — True iff Stripe responded OK (or mock)
+      * ``error``               — present only on failure
+      * ``last_charge_ts``      — Unix ts of last successful charge, or None
+      * ``errors_last_24h``     — count of failed charges in trailing 24h
+    """
+    mode = get_mode()
+    base = {
+        "mode": mode,
+        "last_charge_ts": get_last_charge_ts(),
+        "errors_last_24h": _errors_last_24h(),
+    }
+    if mode == "mock":
+        return {
+            **base,
+            "account_id": None,
+            "available_balance": [{"amount": 0, "currency": "usd"}],
+            "default_currency": "usd",
+            "ready": True,
+        }
+
+    _sync_sdk_key()
+    try:
+        balance = stripe.Balance.retrieve()
+        # Account id requires a separate call; cheap & confirms key scope.
+        try:
+            account = stripe.Account.retrieve()
+            account_id = getattr(account, "id", None)
+            default_currency = (
+                getattr(account, "default_currency", None) or "usd"
+            ).lower()
+        except Exception:  # noqa: BLE001 — non-fatal
+            account_id = None
+            default_currency = "usd"
+        available = [
+            {"amount": int(b.get("amount", 0)), "currency": str(b.get("currency", "usd")).lower()}
+            for b in (balance.get("available") or [])
+        ]
+        return {
+            **base,
+            "account_id": account_id,
+            "available_balance": available,
+            "default_currency": default_currency,
+            "ready": True,
+        }
+    except stripe.error.AuthenticationError as exc:  # type: ignore[attr-defined]
+        logger.warning("stripe health_check auth error: %s", exc)
+        return {
+            **base,
+            "account_id": None,
+            "available_balance": [],
+            "default_currency": "usd",
+            "ready": False,
+            "error": f"authentication_failed: {exc}",
+        }
+    except stripe.error.StripeError as exc:  # type: ignore[attr-defined]
+        logger.warning("stripe health_check failed: %s", exc)
+        return {
+            **base,
+            "account_id": None,
+            "available_balance": [],
+            "default_currency": "usd",
+            "ready": False,
+            "error": str(exc),
+        }
+
+
+# ── FastAPI router for /api/v1/health/stripe ───────────────────────────
+# Lives alongside the service so the integration surface stays in one
+# file. ``app.main`` includes it without needing a separate router module.
+try:
+    from fastapi import APIRouter
+
+    router = APIRouter()
+
+    @router.get("/api/v1/health/stripe")
+    def stripe_health_endpoint() -> dict[str, Any]:
+        """Return Stripe integration health snapshot.
+
+        Shape: ``{mode, ready, last_charge_ts, errors_last_24h, ...}``.
+        Always 200 — the ``ready`` field is the operational signal.
+        """
+        snap = health_check()
+        # Trim to the documented public contract; full snapshot is fine
+        # to expose because it contains no secrets.
+        return {
+            "mode": snap["mode"],
+            "ready": snap["ready"],
+            "last_charge_ts": snap.get("last_charge_ts"),
+            "errors_last_24h": snap.get("errors_last_24h", 0),
+            "account_id": snap.get("account_id"),
+            "available_balance": snap.get("available_balance", []),
+            "default_currency": snap.get("default_currency", "usd"),
+            "error": snap.get("error"),
+        }
+except Exception:  # pragma: no cover — FastAPI optional at import time
+    router = None  # type: ignore[assignment]
+
+
 __all__ = [
     "get_mode",
     "is_mock",
@@ -390,4 +592,9 @@ __all__ = [
     "verify_webhook_signature",
     "process_webhook",
     "sign_payload_for_mock",
+    "health_check",
+    "log_startup_mode",
+    "stripe_charges_total",
+    "get_last_charge_ts",
+    "router",
 ]
