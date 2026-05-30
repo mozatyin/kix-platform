@@ -1,0 +1,21 @@
+# i18n_lint whitelist
+# Format:  RULE:path_glob[:line]
+# - lines starting with `#` are comments
+# - `*` allowed in any field
+# - examples:
+#     R-002:app/region.py:*
+#     R-005:scripts/*.py
+#
+# Whitelisted entries are silently dropped from lint output.
+# Keep this file small; prefer fixing the underlying issue.
+
+# region.py is a region-truth file; currency glyphs live in formatting helpers
+R-002:app/region.py:*
+R-002:app/i18n/*
+
+# Compliance regulator data — banned-phrase lists, kept CN-only by policy
+R-006:app/routers/compliance.py:*
+R-001:app/routers/compliance.py:*
+
+# Formatting modules are allowed to construct date format strings
+R-005:app/i18n/*
