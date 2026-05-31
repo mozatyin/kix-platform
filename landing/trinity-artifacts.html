@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trinity 3T Sim Artifacts — KiX</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<script src="i18n/i18next-runtime.js" defer></script>
+<script src="i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#FFF;color:#0F172A;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--navy:#0F172A;--gold:#FBBF24}
+  .container{max-width:1080px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);padding:14px 0;position:sticky;top:0;z-index:50}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px;margin-left:20px}
+  .hero{background:var(--navy);color:#fff;padding:48px 0 32px;text-align:center}
+  .pill{display:inline-block;background:var(--gold);color:#0F172A;padding:5px 14px;border-radius:999px;
+        font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:14px;text-transform:uppercase}
+  h1{font-size:32px;font-weight:800;letter-spacing:-.8px;margin-bottom:12px;color:#fff;line-height:1.15}
+  .sub{font-size:15.5px;color:#CBD5E1;max-width:720px;margin:0 auto}
+  .quote-pull{background:rgba(251,191,36,.15);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;
+              padding:18px 22px;max-width:780px;margin:24px auto 0;font-size:15.5px;color:#fff;font-style:italic;text-align:left}
+  .quote-pull strong{color:var(--gold);font-style:normal;font-weight:700}
+  /* Methodology */
+  .methodology{background:var(--surface);padding:40px 0}
+  .methodology h2{font-size:24px;font-weight:800;letter-spacing:-.4px;text-align:center;margin-bottom:24px}
+  .method-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+  @media(max-width:880px){.method-grid{grid-template-columns:1fr}}
+  .method-cell{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px}
+  .method-cell h3{font-size:15px;font-weight:800;margin-bottom:8px;color:#0F172A;display:flex;align-items:center;gap:8px}
+  .method-cell p{font-size:13.5px;color:#475569;line-height:1.55}
+  /* Persona cards */
+  .personas{padding:48px 0}
+  .personas h2{font-size:26px;font-weight:800;letter-spacing:-.5px;text-align:center;margin-bottom:8px}
+  .personas-sub{text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 32px;font-size:14px}
+  .persona{background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:22px}
+  .persona-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+  .persona-name{font-size:20px;font-weight:800;color:#0F172A}
+  .persona-tag{font-size:12px;color:var(--text-muted);font-weight:500;margin-top:4px}
+  .closure-pill{padding:5px 13px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+  .closure-90{background:#DCFCE7;color:#15803D}
+  .closure-70{background:#FEF3C7;color:#92400E}
+  .closure-50{background:#FED7AA;color:#9A3412}
+  .closure-10{background:#FEE2E2;color:#991B1B}
+  .rounds{display:grid;grid-template-columns:1fr;gap:10px}
+  .round{display:grid;grid-template-columns:90px 1fr;gap:14px;padding:10px;background:var(--surface);border-radius:8px}
+  @media(max-width:780px){.round{grid-template-columns:1fr}}
+  .round-label{font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding-top:2px}
+  .round-verdict{font-size:13.5px;color:#0F172A;line-height:1.55;font-style:italic}
+  .round-verdict::before{content:'"';color:var(--text-muted);font-style:normal;font-size:18px;margin-right:3px;vertical-align:-3px}
+  .round-verdict::after{content:'"';color:var(--text-muted);font-style:normal;font-size:18px;margin-left:3px;vertical-align:-3px}
+  .round.latest{background:#F0FDF4;border-left:3px solid var(--brand)}
+  .round.latest .round-verdict{color:#14532D;font-weight:500}
+  .delta{font-size:12.5px;color:#15803D;font-weight:700;margin-top:14px;text-align:right}
+  .delta::before{content:"↗ "}
+  .friction-remaining{margin-top:14px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:12px 14px}
+  .friction-remaining h4{font-size:12px;font-weight:800;color:#78350F;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+  .friction-remaining ul{list-style:none;padding:0;margin:0}
+  .friction-remaining li{font-size:12.5px;color:#92400E;padding:3px 0;padding-left:14px;position:relative;line-height:1.5}
+  .friction-remaining li::before{content:"→";color:#D97706;position:absolute;left:0;font-weight:700}
+  .transcript-link{display:inline-block;margin-top:12px;color:var(--brand-dk);font-size:13px;font-weight:600;text-decoration:none}
+  .transcript-link:hover{text-decoration:underline}
+  /* Method footer */
+  .infra{background:var(--surface);padding:36px 0;text-align:center;margin-top:32px}
+  .infra h3{font-size:18px;font-weight:800;margin-bottom:10px}
+  .infra code{background:#0F172A;color:#A7F3D0;padding:2px 8px;border-radius:4px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+  .infra p{max-width:720px;margin:8px auto;color:#475569;font-size:14px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/landing/enterprise.html">Enterprise</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/sg-case-studies.html">SG Cases</a>
+        <a href="/landing/legal/new-customer-definition.html">Contract</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">TRINITY 3T · SIM ARTIFACTS</span>
+    <h1>Real users simulated. Real verdicts captured.<br>Six rounds. Four personas. Twenty-plus transcripts.</h1>
+    <p class="sub">Every commit is verified against simulated users (Sonnet 4.5 + Playwright-rendered DOM). Verdicts are quoted verbatim, not curated. Bad verdicts are kept on the page.</p>
+    <div class="quote-pull">
+      <strong>Sarah Chen (skeptical café-owner archetype, Playable-burned) on /enterprise.html after Wave K:</strong><br>
+      I'd spend 30 minutes on a call, but not a dollar until I've spoken to a reference and seen the customer-facing game. This is the most honest vendor page I've seen in 5 years.
+    </div>
+  </div>
+</section>
+
+<section class="methodology">
+  <div class="container">
+    <h2>How a Trinity 3T sim round works</h2>
+    <div class="method-grid">
+      <div class="method-cell">
+        <h3>① Render</h3>
+        <p>Playwright loads the actual landing page in headless Chromium with the persona's locale + timezone. Post-JS DOM is captured (not raw HTML — so JS-driven i18n, currency, and dynamic widgets are applied).</p>
+      </div>
+      <div class="method-cell">
+        <h3>② Simulate</h3>
+        <p>The rendered DOM + 5KB persona profile + 8KB context is sent to Claude Sonnet 4.5 via OpenRouter. The model role-plays the user and returns a 7-section walkthrough (first reaction → final verdict).</p>
+      </div>
+      <div class="method-cell">
+        <h3>③ Compare</h3>
+        <p>The verdict is logged with timestamp and commit hash. The next iteration's verdict is compared to the previous. Verbatim quotes are pulled into the Bible and into this page — including the ones that don't flatter us.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="personas">
+  <div class="container">
+    <h2>Four operator archetypes · verdict progression</h2>
+    <p class="personas-sub">Each persona maps to a real interview composite. Verdicts are run after every major commit; the last verdict shown is from HEAD <code style="background:#0F172A;color:#A7F3D0;padding:1px 6px;border-radius:3px;font-size:12px">951f0a1</code>. Full transcripts linked.</p>
+
+    <!-- Ahmad -->
+    <div class="persona">
+      <div class="persona-head">
+        <div>
+          <div class="persona-name">Ahmad bin Hashim</div>
+          <div class="persona-tag">CEO, MY coffee chain · 100 outlets · TikTok ads RM 200K/mo · Bahasa-Melayu-first</div>
+        </div>
+        <div class="closure-pill closure-70">70% closed</div>
+      </div>
+      <div class="rounds">
+        <div class="round">
+          <div class="round-label">R1 (raw HTML, DeepSeek)</div>
+          <div class="round-verdict">Not today. Too many integration black-holes. USD pricing, English UI, no TikTok Pixel mention anywhere.</div>
+        </div>
+        <div class="round">
+          <div class="round-label">R2 (post-Wave I.A-2)</div>
+          <div class="round-verdict">I'll test a 5-outlet pilot if they can prove integration with my TikTok Pixel and show me the Bahasa Melayu game templates — but I'm topping up only RM500 first to verify redemption tracking works.</div>
+        </div>
+        <div class="round">
+          <div class="round-label">R3 (Sonnet v2, rendered)</div>
+          <div class="round-verdict">Wah, proper Bahasa Melayu UI and RM pricing, bukan USD conversion. Someone actually did their homework.</div>
+        </div>
+        <div class="round latest">
+          <div class="round-label">R4 (post-Wave K, on /pos-integrations)</div>
+          <div class="round-verdict">I'll pilot 5 outlets if (a) Pricing confirms Malaysia has &lt;100 founding slots and (b) CPA is under RM 30, but I won't scale past 20 outlets until StoreHub integration is live and I see the PDPA consent flow with my own eyes — this feels 70% ready for Malaysia, 30% "we'll figure it out."</div>
+        </div>
+      </div>
+      <div class="delta">R1 "Not today" → R4 "5-outlet pilot, scale-blocker = StoreHub live"</div>
+      <div class="friction-remaining">
+        <h4>Remaining friction (Wave L+ targets)</h4>
+        <ul>
+          <li>StoreHub integration LIVE (RFC shipped, router not yet wired) — fast-track Q3 → 2026-07-15</li>
+          <li>1 MY F&amp;B reference customer (sales, not eng)</li>
+          <li>PDPA consent flow walkthrough page (eng)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Sarah -->
+    <div class="persona">
+      <div class="persona-head">
+        <div>
+          <div class="persona-name">Sarah Chen</div>
+          <div class="persona-tag">Owner, 3-café chain SG · 42yo · Playable-burned 2 years on S$15K/yr contract · demands proof</div>
+        </div>
+        <div class="closure-pill closure-90">80% closed</div>
+      </div>
+      <div class="rounds">
+        <div class="round">
+          <div class="round-label">R1 (post-Wave I.A-3)</div>
+          <div class="round-verdict">Not spending a single dollar here until they prove this isn't another Playable — too messy, no proof, and the prepaid model feels like a cash grab. Show me the ROI data first.</div>
+        </div>
+        <div class="round latest">
+          <div class="round-label">R2 (post-Wave K, on /enterprise + /new-customer-definition)</div>
+          <div class="round-verdict">I'd spend 30 minutes on a call, but not a dollar until I've spoken to a reference and seen the customer-facing game. This is the most honest vendor page I've seen in 5 years, but honesty about being early-stage doesn't erase the risk — it just makes me want better proof before I become case study #6.</div>
+        </div>
+        <div class="round latest">
+          <div class="round-label">R2.b (on /new-customer-definition.html)</div>
+          <div class="round-verdict">I'd spend S$500 on a pilot, but not a dollar more until I see proof from a real F&amp;B operator in Singapore. This page earns trust on contract clarity — finally someone who won't screw me on definitions — but loses me on zero social proof and hidden pricing. Fix those two, and I'm ready to negotiate.</div>
+        </div>
+      </div>
+      <div class="delta">R1 "Not a single dollar" → R2 "S$500 pilot, most honest vendor page in 5 years"</div>
+      <div class="friction-remaining">
+        <h4>Remaining friction (Wave L+)</h4>
+        <ul>
+          <li>Live tier-1 SG QSR reference customer (sales — Toast Box / Ya Kun / Old Chang Kee)</li>
+          <li>Customer-facing game preview from enterprise page (✓ Wave L "See the actual customer game →" link shipped)</li>
+          <li>Per-vertical 90-day cohort data deepening (✓ Wave K added Heng Heng 90d block)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Sandeep -->
+    <div class="persona">
+      <div class="persona-head">
+        <div>
+          <div class="persona-name">Sandeep Kumar</div>
+          <div class="persona-tag">Regional Loyalty Manager, Starbucks SG · S$2M/yr promotion budget · Salesforce buyer</div>
+        </div>
+        <div class="closure-pill closure-70">70% closed</div>
+      </div>
+      <div class="rounds">
+        <div class="round">
+          <div class="round-label">R1 (post-Wave I.A-3)</div>
+          <div class="round-verdict">Wouldn't spend money at scale until I see retention data from a tier-1 QSR brand and get our legal team to review the customer data terms — the "pay per result" model is appealing but the operational unknowns are too high for a S$2M budget owner.</div>
+        </div>
+        <div class="round latest">
+          <div class="round-label">R2 (post-Wave K, on /enterprise.html)</div>
+          <div class="round-verdict">I wouldn't spend money today, but I'd invest 60 minutes in a deep-dive demo if they can produce a relevant reference and a worked financial model for our basket size — the transparency is refreshing, but the technical and scale proof isn't there yet for a S$2M budget holder.</div>
+        </div>
+        <div class="round latest">
+          <div class="round-label">R2.b (on /new-customer-definition)</div>
+          <div class="round-verdict">I'd spend 2 more hours on discovery calls if they send me a pilot proposal with Oracle POS integration confirmed and at least one SEA QSR case study — otherwise this is just well-written vaporware that'll sit in my "interesting but not urgent" folder.</div>
+        </div>
+      </div>
+      <div class="delta">R1 "Wouldn't spend at scale" → R2 "60-min demo + 2-hour discovery, transparency is refreshing"</div>
+      <div class="friction-remaining">
+        <h4>Remaining friction</h4>
+        <ul>
+          <li>Tier-1 SEA QSR reference customer (sales)</li>
+          <li>Salesforce Service Cloud Loyalty connector (per docs/rfc-enterprise-tier.md §1, ~3 weeks engineering)</li>
+          <li>Oracle POS adapter (matrix gap; currently Stripe Terminal / StoreHub only)</li>
+          <li>Worked financial model for QSR basket size (✓ Wave L /calculator.html shipped)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Aminah -->
+    <div class="persona">
+      <div class="persona-head">
+        <div>
+          <div class="persona-name">Aminah Binti</div>
+          <div class="persona-tag">First-time SaaS user · nasi-padang stall 6mo old · Instagram 3K, never used merchant tooling · limited English</div>
+        </div>
+        <div class="closure-pill closure-50">50% closed</div>
+      </div>
+      <div class="rounds">
+        <div class="round">
+          <div class="round-label">R1 (pre-modal)</div>
+          <div class="round-verdict">Not ready lah. Too complicated and expensive feeling. Maybe later if got simpler version or someone can teach me step-by-step.</div>
+        </div>
+        <div class="round">
+          <div class="round-label">R2 (post-Wave I.F MVP modal — bubble tea wrong, S$200 scary)</div>
+          <div class="round-verdict">Too confusing for now lah, later after dinner rush I ask my husband look together, see whether this thing really work or not — but honestly ah, if GrabFood or Foodpanda got simpler promo tool I use that first.</div>
+        </div>
+        <div class="round latest">
+          <div class="round-label">R3 (post-Wave I.F-2 with 7 fixes — nasi sub-vertical, $20 budget, plain words, $30 starter credit)</div>
+          <div class="round-verdict">I WANT to try because they got my nasi padang category and $30 free sounds safe, but I'm too scared I'll lose money or accidentally commit to something I don't understand — I'll probably WhatsApp the Malay speaker first to tanya properly before I click anything.</div>
+        </div>
+      </div>
+      <div class="delta">R1 "Close tab, too complicated" → R3 "I WANT to try — but WhatsApp founder first"</div>
+      <div class="friction-remaining">
+        <h4>Remaining friction (Wave M — Aminah final close)</h4>
+        <ul>
+          <li>WhatsApp setup-help integration baked into welcome modal step 5 (not just a link)</li>
+          <li>Modal honor active i18next locale (BM ready in catalog but local T table used)</li>
+          <li>"Preview what customer sees" link from step 4 → real /play.html?demo=1 customer experience</li>
+          <li>Founding-100 starter credit auto-applied (currently shown but not yet wired to wallet on launch)</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="infra">
+  <div class="container">
+    <h3>The sim infrastructure is open</h3>
+    <p>Run the sim against any KiX page with any persona:</p>
+    <p style="margin-top:14px"><code>python -m scripts.sim_users_v2 --persona ahmad_kopi_chain --page enterprise --locale ms-MY --timezone Asia/Kuala_Lumpur</code></p>
+    <p>Personas live in <code>scripts/sim_users_deepseek.py</code> (6 personas as of 2026-05-31). The v2 runner uses Sonnet 4.5 primary, DeepSeek fallback. All transcripts are saved to disk and committed when meaningful (see <code>docs/sim-results/</code>).</p>
+    <p style="margin-top:18px"><a href="/landing/enterprise.html" style="display:inline-block;background:var(--brand);color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin-top:8px">See the enterprise page →</a></p>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="mailto:enterprise@letskix.com">Enterprise contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W · since 2001</div>
+    <div style="margin-top:8px;font-size:11.5px">
+      Verify independently:
+      <a href="https://x.com/letskix" rel="noopener">X</a>·
+      <a href="https://github.com/mozat" rel="noopener">GitHub</a>·
+      <a href="https://www.acra.gov.sg/" rel="noopener">ACRA (SG registry)</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

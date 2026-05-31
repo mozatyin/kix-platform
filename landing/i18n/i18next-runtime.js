@@ -147,14 +147,46 @@
   }
 
   // ---------- data-i18n attribute helper ----------
+  // Resolve a key against the right namespace. Two legacy shapes exist:
+  //   (a) "ns:rest"           — explicit colon (modern landing pages)
+  //   (b) "ns.rest..."        — implicit, key stored in NS bundle as full
+  //                              string (portal.json keys are LITERALLY
+  //                              "portal.register.country", redundant prefix).
+  //   (c) "rest..."           — defaults to 'common' namespace.
+  // Fix shipped 2026-05-31 — portal.html + storefront.html use (b) shape.
+  function resolveI18n(rawKey, opts) {
+    if (!rawKey) return rawKey;
+    // (a) explicit colon — let i18next handle as-is
+    if (rawKey.indexOf(':') !== -1) {
+      return global.i18next.t(rawKey, opts);
+    }
+    // (b) implicit ns-prefix — try lookup in that namespace with full key
+    const firstDot = rawKey.indexOf('.');
+    if (firstDot !== -1) {
+      const ns = rawKey.slice(0, firstDot);
+      if (NAMESPACES.indexOf(ns) !== -1) {
+        // Pass the FULL raw key (incl. prefix) + explicit ns option
+        const merged = Object.assign({}, opts || {}, { ns: ns });
+        const t = global.i18next.t(rawKey, merged);
+        if (t !== rawKey) return t;
+        // Fallback: try with prefix stripped (in case JSON shape changes later)
+        const t2 = global.i18next.t(rawKey.slice(firstDot + 1), merged);
+        if (t2 !== rawKey.slice(firstDot + 1)) return t2;
+        return rawKey;
+      }
+    }
+    // (c) default namespace
+    return global.i18next.t(rawKey, opts);
+  }
+
   function applyI18n(root) {
     root = root || document;
     if (!global.i18next || !global.i18next.t) return;
     root.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.dataset.i18n;
-      if (!key) return;
-      const text = global.i18next.t(key, getDataI18nOptions(el));
-      if (text === key) return;
+      const rawKey = el.dataset.i18n;
+      if (!rawKey) return;
+      const text = resolveI18n(rawKey, getDataI18nOptions(el));
+      if (text === rawKey) return;
       // Honour data-i18n-html="true" so translations can carry inline markup
       // (e.g. <em>, <strong>). Translators must keep markup minimal.
       if (el.dataset.i18nHtml === 'true') {
@@ -175,7 +207,7 @@
         const attr = trimmed.slice(0, idx).trim();
         const key  = trimmed.slice(idx + 1).trim();
         if (!attr || !key) return;
-        const text = global.i18next.t(key, getDataI18nOptions(el));
+        const text = resolveI18n(key, getDataI18nOptions(el));
         if (text !== key) el.setAttribute(attr, text);
       });
     });
@@ -265,6 +297,11 @@
       },
       interpolation: { escapeValue: false },
       returnEmptyString: false,
+      // Catalog keys are FLAT strings with literal dots (e.g.,
+      // "portal.register.country" stored as one key, not nested).
+      // Without this, i18next treats dot as nested-path separator and lookup fails.
+      keySeparator: false,
+      nsSeparator: ':',
       debug: false,
     });
 

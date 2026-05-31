@@ -2362,7 +2362,7 @@ textarea.form-input{
       <button class="ent-wallet" type="button" onclick="openWalletDrawer()" aria-label="Wallet balance">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M16 12h2"/><path d="M2 10h20"/></svg>
         <span data-i18n="portal.wallet.label">Wallet:</span>
-        <span class="tnum" id="wallet-balance">S$1,234.56</span>
+        <span class="tnum" id="wallet-balance">—</span>
         <span class="topup" data-i18n="portal.wallet.topup">Top up</span>
       </button>
       <button class="ent-lang" type="button" onclick="kixToggleLocale()" aria-label="Language">
@@ -2453,7 +2453,7 @@ textarea.form-input{
     <div class="ent-drawer-body">
       <div style="background:var(--brand-soft);border:1px solid rgba(0,179,65,.2);border-radius:12px;padding:18px;margin-bottom:16px">
         <div style="font-size:12px;color:var(--text-subdued);font-weight:600;text-transform:uppercase;letter-spacing:.04em" data-i18n="portal.wallet.balance">Current balance</div>
-        <div style="font-size:32px;font-weight:700;color:var(--text-strong);margin:4px 0" id="wallet-balance-detail">S$1,234.56</div>
+        <div style="font-size:32px;font-weight:700;color:var(--text-strong);margin:4px 0" id="wallet-balance-detail">—</div>
         <div style="display:flex;gap:8px;margin-top:12px">
           <button class="ebtn primary" onclick="openTopupModal()" data-i18n="portal.wallet.topup">Top up</button>
           <button class="ebtn secondary" onclick="navigate('settings');closeWalletDrawer()" data-i18n="portal.wallet.autoRecharge">Auto-recharge</button>
@@ -5866,12 +5866,13 @@ function formatMoneyByCountry(amountSGD, country){
   catch(_) { return c.symbol + local.toFixed(2); }
 }
 function updateWalletDisplayCountry(){
-  // Re-render placeholder demo wallet according to country
-  const c = kixCurrencyFor();
-  const demoAmt = 1234.56 * c.fxFromSGD;
+  // Render placeholder demo wallet in the user's currency.
+  // Wave M (2026-05-31): HTML default is "—" so currency-flash never shows wrong code.
   const fmt = formatMoneyByCountry(1234.56);
-  const el = document.getElementById('wallet-balance'); if(el && /S\$|RM|HK\$|Rp|฿|₫/.test(el.textContent||'')) el.textContent = fmt;
-  const elD = document.getElementById('wallet-balance-detail'); if(elD && /S\$|RM|HK\$|Rp|฿|₫/.test(elD.textContent||'')) elD.textContent = fmt;
+  const el = document.getElementById('wallet-balance');
+  if (el) { const t=(el.textContent||'').trim(); if (t === '—' || /S\$|RM|HK\$|Rp|฿|₫/.test(t)) el.textContent = fmt; }
+  const elD = document.getElementById('wallet-balance-detail');
+  if (elD) { const t=(elD.textContent||'').trim(); if (t === '—' || /S\$|RM|HK\$|Rp|฿|₫/.test(t)) elD.textContent = fmt; }
 }
 async function refreshWalletBalance(){
   try{
@@ -6078,7 +6079,7 @@ function updateWizRuntimeEstimate(){
   const budget=parseFloat(budgetEl&&budgetEl.value)||0;
   const balEl=document.getElementById('wallet-balance');
   let balText=balEl?balEl.textContent:'';
-  // Extract numeric from "S$1,234.56"
+  // Extract numeric from "—"
   const m=(balText||'').match(/([\d,]+\.?\d*)/);
   const balance=m?parseFloat(m[1].replace(/,/g,'')):0;
   const wbEl=document.getElementById('wiz-wallet-balance');

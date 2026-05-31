@@ -27,16 +27,16 @@ Drift > 5% breaks CI. The Bible updates with every major wave (no exceptions).
 
 ## 30-Second Executive Summary
 
-KiX is **a gamification ads platform** ("TikTok Ads for Gamification"). Architecturally, we've shipped:
+KiX is **a gamification ads platform** for offline merchants. Architecturally, we've shipped:
 
-- **94 routers** with **925 endpoints** (verified via `ls app/routers/*.py` + `grep '^@router' app/routers/*.py`)
-- **104 test files** with **1,006 test functions** (verified via `find tests -name 'test_*.py'`)
-- **7 PostgreSQL migrations** (verified via `ls migrations/versions/*.py`)
-- **11 i18n locale catalogs** (en-SG, en-US, zh-Hans-SG, zh-Hans-CN, id-ID, ms-MY, th-TH, vi-VN, ar-EG, ar-SA, he-IL)
-- **5 payment PSP integrations** scaffolded (alipay_global, grabpay, ovo_indonesia, paynow_sg, wechat_pay) + Stripe live mode
-- **10 background workers**, **16 services**, **18 industry merchant simulations**
+- **123 routers** with **1,064 endpoints** (verified via `ls app/routers/*.py` + `grep '^@router' app/routers/*.py`)
+- **145 test files** with **1,530 test functions** (verified via `find tests -name 'test_*.py'`)
+- **11 PostgreSQL migrations** (verified via `ls migrations/versions/*.py`)
+- **11 i18n locale catalogs** with **REAL translations** (en-SG, en-US, zh-Hans-SG, zh-Hans-CN, id-ID, ms-MY, th-TH, vi-VN, ar-EG, ar-SA, he-IL) — Wave I.B shipped 7 SEA+RTL translations via OpenRouter; no stub strings
+- **5 payment PSP clients** (alipay_global, grabpay, ovo_indonesia, paynow_sg, wechat_pay) + Stripe live mode + Stripe Terminal POS (deck claims of "60+ payment methods" reflect the regional-route registry, NOT 60 wired backends — see §2.2 + §3.6)
+- **15 background workers**, **47 services**, **18 industry merchant simulations**
 - **79 gamification recipes** across **26 industries** (verified in `app/data/recipes_seed.json`)
-- **~110K lines of Python**
+- **~135K lines of Python** (per Appendix A drift check)
 
 **What this means**: the *shape* is right. **What it does NOT mean**: every promise is production-ready. See Chapter 1 for what's actually delivered, Chapter 2 for what's in flight, Chapter 3 for what's still vision.
 
@@ -211,9 +211,21 @@ These are short-cycle items: code present, gaps documented, fix-path known. **Es
 
 ## 2.2 Payment PSPs beyond Stripe 🔵 SCAFFOLDED
 
-- **State**: `app/services/payment_psps/` has 5 PSP clients (alipay_global, grabpay, ovo_indonesia, paynow_sg, wechat_pay) and a `_common.py` base.
-- **Gap**: Clients are HTTP shells. Sandbox credentials not configured. `payments_regional` router lists 60+ payment methods; only Stripe is backend-connected.
+- **State**: `app/services/payment_psps/` has 5 PSP clients (alipay_global, grabpay, ovo_indonesia, paynow_sg, wechat_pay) and a `_common.py` base. Stripe Terminal POS integration is live (Wave L).
+- **Gap**: PSP clients are HTTP shells. Sandbox credentials not configured. `payments_regional` router exposes route entries for 60+ payment methods; only **5 PSPs + Stripe + Stripe Terminal** are backend-connected. Roadmap to **12 PSPs** by Q4: + FPX (MY), GCash (PH), Razorpay (IN), PromptPay (TH), TrueMoney (TH), DANA (ID), DuitNow (MY), MoMo (VN), ZaloPay (VN).
+- **Truth-up note (2026-05-31)**: Deck v1/v4 phrase "60+ payment methods" refers to the catalog registry shape, NOT 60 wired backends. This Bible counts wired PSPs only (Appendix A · `psp clients = 5`).
 - **Wave D**: Wire OVO + GrabPay sandboxes for ID/MY corridor; remaining PSPs as Wave E.
+
+## 2.2a POS integrations 🟡 PARTIAL  (added 2026-05-31)
+
+| Provider | Status | Notes |
+|---|---|---|
+| Stripe Terminal | ✅ Live | Wave L — full webhook + reconciliation |
+| StoreHub (MY focus) | 🔵 Skeleton | `app/services/storehub_adapter.py` + 25 tests pass (Wave L). FastAPI router not yet wired — see `docs/rfc-storehub-fasttrack.md`. Target ship 2026-07-15. |
+| Square | 📝 Aspirational | Listed in `/landing/integrations/pos-integrations.html` matrix; no router code yet. |
+| Shopify | 📝 Aspirational | Listed; no router code. |
+| Toast (US) | 📝 Aspirational | Listed; no router code. |
+| Generic webhook bridge | ✅ Live | Stripe Webhook receiver supports custom JSON shapes via `psp_webhooks.py`. |
 
 ## 2.3 ELTM end-to-end 🟡 PARTIAL
 

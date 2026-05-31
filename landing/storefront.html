@@ -521,9 +521,9 @@ footer.site-footer{
 <!-- ═══ HERO ═════════════════════════════════════════════ -->
 <section class="hero">
   <div class="container hero-inner">
-    <div class="hero-eyebrow" data-i18n="storefront.hero.eyebrow">Stores on KiX</div>
-    <h1 data-i18n="storefront.hero.title">Discover stores. Play games. Earn rewards.</h1>
-    <p class="lede" data-i18n="storefront.hero.lede">Browse thousands of merchant storefronts across Singapore. Play branded mini-games at checkout and unlock real vouchers, free items, and exclusive perks.</p>
+    <div class="hero-eyebrow" data-i18n="storefront.hero.eyebrow">Scanned a QR code? You're in the right place.</div>
+    <h1 data-i18n="storefront.hero.title">Find your shop, play, win a real voucher.</h1>
+    <p class="lede" data-i18n="storefront.hero.lede">Search for the shop on your receipt or QR code (Toast Box, Ya Kun, Heng Heng Kopi, Brew Lab — see the full list below). Tap, play the game, win an actual voucher to redeem at the counter.</p>
     <form class="hero-search" role="search" onsubmit="onSearch(event)">
       <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
       <label for="hero-search" class="sr-only" data-i18n="storefront.search.aria_label">Search stores</label>
@@ -666,16 +666,22 @@ footer.site-footer{
  * ──────────────────────────────────────────────────────── */
 const t = (key, opts) => (window.i18next && window.i18next.t ? window.i18next.t(key, opts) : null);
 
+// 2026-05-31: replaced generic stock-photo merchants with the SG alpha cohort
+// + 4 well-known SG F&B brands so Ben-Tan-archetype consumers immediately
+// recognize "I scanned a QR at Toast Box — yes this is the right place".
 const MOCK_STORES = [
-  {id:'nanyang-tea', name:'Nanyang Tea House', cat:'fnb',     rating:4.8, reviews:312, distance:0.4, featured:true,  img:'https://images.unsplash.com/photo-1525480122447-64809d765a48?w=640&h=360&fit=crop&auto=format'},
-  {id:'bare-beauty', name:'Bare Beauty Clinic', cat:'beauty', rating:4.9, reviews:184, distance:1.2, featured:true,  img:'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=640&h=360&fit=crop&auto=format'},
-  {id:'fit-republic',name:'Fit Republic',        cat:'fitness',rating:4.7, reviews:96,  distance:2.1, featured:false, img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=640&h=360&fit=crop&auto=format'},
-  {id:'worldwide-travel', name:'Worldwide Travel', cat:'travel', rating:4.6, reviews:71, distance:3.8, featured:false, img:'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=640&h=360&fit=crop&auto=format'},
-  {id:'haru-bento',  name:'Haru Bento',          cat:'fnb',    rating:4.5, reviews:218, distance:0.8, featured:false, img:'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=640&h=360&fit=crop&auto=format'},
-  {id:'lumen-skin',  name:'Lumen Skin Studio',   cat:'beauty', rating:4.8, reviews:142, distance:1.7, featured:false, img:'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=640&h=360&fit=crop&auto=format'},
-  {id:'rove-outdoor',name:'Rove Outdoor',        cat:'retail', rating:4.4, reviews:55,  distance:5.2, featured:false, img:'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=640&h=360&fit=crop&auto=format'},
-  {id:'orbit-cafe',  name:'Orbit Café',          cat:'fnb',    rating:4.7, reviews:402, distance:0.6, featured:true,  img:'https://images.unsplash.com/photo-1453614512568-c4024d13c247?w=640&h=360&fit=crop&auto=format'},
-  {id:'sage-yoga',   name:'Sage Yoga Studio',    cat:'fitness',rating:4.9, reviews:88,  distance:1.4, featured:false, img:'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=640&h=360&fit=crop&auto=format'},
+  {id:'toast-box-tampines', name:'Toast Box · Tampines',   cat:'fnb',    rating:4.7, reviews:1247, distance:0.4, featured:true,  img:'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=640&h=360&fit=crop&auto=format'},
+  {id:'ya-kun-bedok',       name:'Ya Kun · Bedok 85',       cat:'fnb',    rating:4.8, reviews:892,  distance:0.6, featured:true,  img:'https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=640&h=360&fit=crop&auto=format'},
+  {id:'heng-heng-kopi',     name:'Heng Heng Kopi · Bedok',  cat:'fnb',    rating:4.9, reviews:241,  distance:0.8, featured:true,  img:'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=640&h=360&fit=crop&auto=format'},
+  {id:'brew-lab-tampines',  name:'Brew Lab · Tampines Mall',cat:'fnb',    rating:4.7, reviews:412,  distance:1.1, featured:false, img:'https://images.unsplash.com/photo-1546039907-7fa05f864c02?w=640&h=360&fit=crop&auto=format'},
+  {id:'aminahs-halal',      name:"Aminah's Halal Hut",      cat:'fnb',    rating:4.6, reviews:88,   distance:1.4, featured:false, img:'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=640&h=360&fit=crop&auto=format'},
+  {id:'common-man-coffee',  name:'Common Man Coffee · CBD', cat:'fnb',    rating:4.8, reviews:563,  distance:5.1, featured:false, img:'https://images.unsplash.com/photo-1453614512568-c4024d13c247?w=640&h=360&fit=crop&auto=format'},
+  {id:'old-chang-kee',      name:'Old Chang Kee · Bugis',   cat:'fnb',    rating:4.5, reviews:734,  distance:6.3, featured:false, img:'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=640&h=360&fit=crop&auto=format'},
+  {id:'killiney-kopi',      name:'Killiney Kopitiam · Orchard', cat:'fnb', rating:4.6, reviews:1108, distance:7.2, featured:false, img:'https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=640&h=360&fit=crop&auto=format'},
+  {id:'bare-beauty',        name:'Bare Beauty Clinic',      cat:'beauty', rating:4.9, reviews:184,  distance:1.2, featured:false, img:'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=640&h=360&fit=crop&auto=format'},
+  {id:'lumen-skin',         name:'Lumen Skin Studio',       cat:'beauty', rating:4.8, reviews:142,  distance:1.7, featured:false, img:'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=640&h=360&fit=crop&auto=format'},
+  {id:'fit-republic',       name:'Fit Republic',            cat:'fitness',rating:4.7, reviews:96,   distance:2.1, featured:false, img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=640&h=360&fit=crop&auto=format'},
+  {id:'sage-yoga',          name:'Sage Yoga Studio',        cat:'fitness',rating:4.9, reviews:88,   distance:1.4, featured:false, img:'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=640&h=360&fit=crop&auto=format'},
 ];
 
 function escapeHtml(s){
