@@ -62,6 +62,11 @@ JOURNEY_START = {
     "ben_consumer_play": "/landing/brands/consumer/index.html",   # R17 CLASS-QQ fix
     "cross_border_merchant": "/landing/brands/kix_for_enterprise/index.html",   # R26 · enterprise page has cross-border SGD↔HKD section
     "sg_imda_regulator": "/landing/brands/compliance/index.html",   # R25 · land directly on compliance hub
+    # R28 · 4 new buyer types
+    "singpass_auth_dev": "/landing/brands/kix_for_enterprise/details.html",   # IT eval starts at spec sheet
+    "stripe_atlas_officer": "/landing/brands/kix_for_enterprise/details.html",
+    "eltm_brand_manager": "/landing/brands/default/details.html",
+    "storehub_bd_partner": "/landing/integrations/pos-matrix.html",   # POS partner starts at integration spec
 }
 
 # Pages the persona MAY navigate to next (whitelist for the LLM)
@@ -128,9 +133,34 @@ CONVERSION_TARGETS = {
     },
     "sg_imda_regulator": {
         "label": "GREEN compliance flag · safe to operate in SG (regulator sign-off)",
-        "value_sgd": 0,    # regulator value · not direct $
+        "value_sgd": 0,
         "accept_actions": {"bookmark", "talk_to_sales", "contact_enterprise_sales"},
         "intent_required": 60,
+    },
+    # R28 · 4 new buyer-type targets
+    "singpass_auth_dev": {
+        "label": "Integration security checklist PASS · bookmark for procurement",
+        "value_sgd": 0,
+        "accept_actions": {"bookmark", "talk_to_sales", "contact_enterprise_sales"},
+        "intent_required": 55,
+    },
+    "stripe_atlas_officer": {
+        "label": "Stripe-claim discrepancy logged · bookmark for next ops sync",
+        "value_sgd": 0,
+        "accept_actions": {"bookmark"},
+        "intent_required": 50,
+    },
+    "eltm_brand_manager": {
+        "label": "Library-vs-landing match approved · bookmark for product review",
+        "value_sgd": 0,
+        "accept_actions": {"bookmark"},
+        "intent_required": 50,
+    },
+    "storehub_bd_partner": {
+        "label": "Partnership intro call accepted (split-revenue integration)",
+        "value_sgd": 0,   # partnership value indirect (12K merchants)
+        "accept_actions": {"contact_enterprise_sales", "talk_to_sales"},
+        "intent_required": 55,
     },
 }
 

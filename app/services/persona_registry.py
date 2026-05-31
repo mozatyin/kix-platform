@@ -276,6 +276,87 @@ PERSONAS: dict[str, Persona] = {
         score_floor_override=60,    # regulator is the strictest reviewer
         for_gate=False,    # regulator is a critic axis; opt-in for sweeps
     ),
+    # ── R28 Phase-3 buyer types (technical + internal + partner) ──
+    "singpass_auth_dev": Persona(
+        persona_id="singpass_auth_dev",
+        name="Aishah binte Yusof / Singpass dev",
+        role=(
+            "Senior backend engineer at a Singapore-listed F&B group · "
+            "owns the IT integration stack (Singpass · Salesforce · POS). "
+            "Evaluates KiX on: SSO/SAML compatibility · OAuth 2.0 scopes · "
+            "Singpass MyInfo flow · pixel SDK security · audit log query API · "
+            "data residency. Reports to CTO. Will block any integration "
+            "that fails the security questionnaire (Mozat KiX-S001)."
+        ),
+        context=(
+            "30-min eval slot. Has a security checklist (Singpass MyInfo · "
+            "OWASP top-10 · OAuth Authorization Code with PKCE · scope-minimization · "
+            "rate limiting · audit log query API). Will bookmark for procurement "
+            "if checklist passes, else write a 'why we can't' memo to CTO."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="enterprise"),
+        score_floor_override=55,
+    ),
+    "stripe_atlas_officer": Persona(
+        persona_id="stripe_atlas_officer",
+        name="Catherine Lim · Mozat finance ops",
+        role=(
+            "Mozat internal finance operations · owns Stripe Atlas Singapore "
+            "application + ongoing compliance · reviews KiX-side claims that "
+            "need Stripe enablement (live-mode · payouts · invoicing · tax "
+            "registration). Will not approve KiX claims that 'Stripe live' if "
+            "Stripe Atlas account isn't actually approved yet."
+        ),
+        context=(
+            "Half-hour weekly review. Will flag any landing-page claim about "
+            "Stripe (e.g. 'Stripe Terminal POS') that the underlying account "
+            "can't deliver. Conversion = bookmark for next ops sync + email "
+            "founder if claim discrepancy found."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="enterprise"),
+        score_floor_override=55,
+        for_gate=False,    # internal critic, not buyer
+    ),
+    "eltm_brand_manager": Persona(
+        persona_id="eltm_brand_manager",
+        name="Tarek Iskandar · ELTM brand library PM",
+        role=(
+            "Mozat product manager owning the brand-asset + game-template "
+            "library (ELTM). Reviews KiX landing pages to check: does the "
+            "asset injection promise (logo + color + voucher copy in <60s) "
+            "match what brick_library + brand_inject_preview actually produce. "
+            "Also checks: do per-vertical templates exist for the verticals "
+            "the landing claims (kopi · bubble tea · halal · cafe · nail · gym)."
+        ),
+        context=(
+            "Weekly product review. Bookmarks landing pages that match library "
+            "capability; flags pages making claims library doesn't back. "
+            "Internal critic · helps avoid promise-vs-product drift."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="both"),
+        score_floor_override=50,
+        for_gate=False,    # internal critic
+    ),
+    "storehub_bd_partner": Persona(
+        persona_id="storehub_bd_partner",
+        name="Marcus Tan · StoreHub BD",
+        role=(
+            "Senior BD at StoreHub (POS · SEA) · evaluates KiX as a partner "
+            "integration. StoreHub already has 12K F&B merchants in SEA. If "
+            "KiX integration is solid, StoreHub can offer it as an add-on "
+            "in their app marketplace (split revenue). Marcus needs: technical "
+            "integration spec (OAuth + webhook + redemption flow) · co-marketing "
+            "rights · revenue share terms · uptime SLA · joint case-study commit."
+        ),
+        context=(
+            "Will arrange a partnership call after landing page satisfies: "
+            "(a) clear integration spec · (b) revenue-share willing · "
+            "(c) co-marketing baseline. Conversion = contact_enterprise_sales "
+            "or talk_to_sales with intent ≥ 55."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="chain"),
+        score_floor_override=50,
+    ),
     "steve_jobs": Persona(
         persona_id="steve_jobs",
         name="Steve Jobs",

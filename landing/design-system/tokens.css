@@ -135,6 +135,18 @@
   --kix-z-modal:    1000;
   --kix-z-toast:    1100;
   --kix-z-tooltip:  1200;
+
+  /* ── Landing-page compat aliases (R28 token unification) ──────────────
+     landing_gen.py emits CSS using short names · these alias to canonical
+     --kix-* tokens so portal + landings share one source of truth. */
+  --brand:           #00B341;
+  --brand-dk:        #008A33;
+  --accent:          #FBBF24;
+  --surface:         var(--kix-surface-subdued);
+  --border:          var(--kix-border-subdued);
+  --text:            var(--kix-text-default);
+  --text-dim:        var(--kix-text-secondary);
+  --text-muted:      var(--kix-text-tertiary);
 }
 
 /* =============================================================================

@@ -574,8 +574,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 85d1c69
-Last commit         : feat(i18n+portal-api): all 11 locales × 35 keys · portal_admin REST scaffold · Lim CFO fix
+HEAD                : d0b5dea
+Last commit         : feat(r25-r27): IMDA compliance hub + 4 regulator proof stubs + persona reroutes
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -584,7 +584,7 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 139,914
+  total Python LOC  : 139,995
 
 Test surface
   test files        : 157
