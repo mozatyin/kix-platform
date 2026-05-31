@@ -65,6 +65,24 @@ load-baseline:
 		echo "No load_tests/ directory"; exit 1; \
 	fi
 
+# Wave N · wallet cross-brand load SLA
+load-smoke:
+	$(PY) -m scripts.load_test_wallet --mode smoke --duration 30 --ops-per-sec 2000 --json /tmp/load-smoke.json
+
+load-staging:
+	@echo "Running soak test against staging Redis (requires REDIS_URL set)..."
+	@test -n "$$REDIS_URL" || (echo "REDIS_URL not set"; exit 1)
+	$(PY) -m scripts.load_test_wallet --mode soak --duration 3600 --ops-per-sec 10000 --json /tmp/load-staging.json
+
+journey-sim:
+	$(PY) -m scripts.buyer_journey_sim --rounds 1 --json /tmp/journey-r1.json
+
+journey-sim-iterate:
+	@for i in 1 2 3; do \
+	  echo "=== Round $$i ==="; \
+	  $(PY) -m scripts.buyer_journey_sim --rounds 1 --round-id $$i --json /tmp/journey-r$$i.json; \
+	done
+
 build:
 	docker build -t $(IMAGE):$(TAG) -t $(IMAGE):latest .
 

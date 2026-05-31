@@ -1,0 +1,89 @@
+# Wave N · load_test_wallet SLA gate on every PR.
+#
+# Smoke mode (60s @ 5k ops/sec, simulated wallet) runs on every PR.
+# Soak mode (3600s @ 10k ops/sec, real Redis) is manual/staging only —
+# see `make load-staging`.
+#
+# Fails the PR if SLA failures > 0.
+
+name: load-sla-gate
+
+on:
+  pull_request:
+    paths:
+      - "app/services/wallet.py"
+      - "app/services/payouts.py"
+      - "app/saga.py"
+      - "app/services/wallet_reconciliation_worker.py"
+      - "scripts/load_test_wallet.py"
+      - ".github/workflows/load-sla-gate.yml"
+
+jobs:
+  smoke-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run smoke load test
+        id: load
+        run: |
+          set +e
+          python -m scripts.load_test_wallet \
+            --mode smoke --duration 30 --ops-per-sec 2000 \
+            --json /tmp/load-report.json > /tmp/load.out 2>&1
+          rc=$?
+          cat /tmp/load.out
+          echo "rc=$rc" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Upload load report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-report
+          path: /tmp/load-report.json
+          retention-days: 30
+
+      - name: Comment on PR with SLA verdict
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## ⚡ Wave N · Load-SLA Gate\n\n';
+            try {
+              const report = JSON.parse(fs.readFileSync('/tmp/load-report.json', 'utf8'));
+              const verdict = report.passed_sla ? '✅ PASS' : '✗ FAIL';
+              body += `**Verdict**: ${verdict}\n\n`;
+              body += '| Metric | Actual | SLA |\n|---|---|---|\n';
+              body += `| Throughput | ${report.actual_ops_per_sec.toFixed(0)}/sec | ${report.sla.sustained_ops_per_sec}/sec |\n`;
+              body += `| p50 latency | ${report.p50_latency_ms}ms | — |\n`;
+              body += `| p99 latency | ${report.p99_latency_ms}ms | ${report.sla.p99_latency_ms}ms |\n`;
+              body += `| p99.9 latency | ${report.p99_9_latency_ms}ms | ${report.sla.p99_9_latency_ms}ms |\n`;
+              body += `| Error rate | ${report.error_rate_pct}% | ${report.sla.max_error_rate_pct}% |\n`;
+              body += `| Deadlocks | ${report.deadlock_count} | ${report.sla.max_deadlocks} |\n`;
+              if (report.sla_failures.length) {
+                body += '\n### Failures\n';
+                report.sla_failures.forEach(f => body += `- ${f}\n`);
+              }
+            } catch (e) {
+              body += `Error reading report: ${e.message}\n`;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+      - name: Fail if SLA missed
+        run: |
+          if [ "${{ steps.load.outputs.rc }}" != "0" ]; then
+            echo "Load SLA missed — PR blocked. See report artifact + PR comment."
+            exit 1
+          fi

@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en" data-theme="light" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KiX Design System — Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="components.css" />
+  <style>
+    body { margin: 0; }
+    .demo-section { margin-block-end: var(--kix-space-1200); }
+    .demo-section h2.kix-h2 { margin-block-end: var(--kix-space-400); padding-block-end: var(--kix-space-200); border-block-end: 1px solid var(--kix-border-subdued); }
+    .demo-row { display: flex; flex-wrap: wrap; gap: var(--kix-space-400); align-items: flex-start; margin-block-end: var(--kix-space-400); }
+    .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--kix-space-400); }
+    .demo-label { font-size: var(--kix-fs-caption); color: var(--kix-text-subdued); text-transform: uppercase; letter-spacing: 0.05em; margin-block-end: var(--kix-space-200); }
+    .demo-block { background: var(--kix-surface-canvas); border: 1px solid var(--kix-border-subdued); border-radius: var(--kix-radius-300); padding: var(--kix-space-500); }
+  </style>
+</head>
+<body class="kix-app">
+  <!-- icon sprite -->
+  <div id="kix-icons-mount"></div>
+
+  <div class="kix-shell">
+    <!-- ===== Sidebar ===== -->
+    <aside class="kix-sidebar" id="sidebar">
+      <div class="kix-sidebar__brand">
+        <svg class="kix-icon kix-icon--lg" aria-hidden="true"><use href="icons.svg#icon-dashboard"/></svg>
+        <span class="kix-sidebar__label">KiX Portal</span>
+      </div>
+      <nav class="kix-sidebar__nav" aria-label="Main navigation">
+        <a class="kix-sidebar__item is-active" href="#overview"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-home"/></svg><span class="kix-sidebar__label">Overview</span></a>
+        <a class="kix-sidebar__item" href="#campaigns"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-campaigns"/></svg><span class="kix-sidebar__label">Campaigns</span></a>
+        <a class="kix-sidebar__item" href="#audiences"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-audiences"/></svg><span class="kix-sidebar__label">Audiences</span></a>
+        <a class="kix-sidebar__item" href="#creative"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-creative"/></svg><span class="kix-sidebar__label">Creative library</span></a>
+        <a class="kix-sidebar__item" href="#rewards"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-rewards"/></svg><span class="kix-sidebar__label">Rewards</span></a>
+        <a class="kix-sidebar__item" href="#reports"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-reports"/></svg><span class="kix-sidebar__label">Reports</span></a>
+        <a class="kix-sidebar__item" href="#integrations"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-integrations"/></svg><span class="kix-sidebar__label">Integrations</span></a>
+        <a class="kix-sidebar__item" href="#settings"><svg class="kix-icon kix-icon--lg kix-sidebar__icon"><use href="icons.svg#icon-settings"/></svg><span class="kix-sidebar__label">Settings</span></a>
+      </nav>
+      <button class="kix-sidebar__toggle" data-kix-sidebar-toggle>
+        <svg class="kix-icon"><use href="icons.svg#icon-menu"/></svg>
+        <span class="kix-sidebar__label" style="margin-inline-start:8px">Collapse</span>
+      </button>
+    </aside>
+
+    <!-- ===== Top bar ===== -->
+    <header class="kix-topbar">
+      <button class="kix-topbar__switcher" type="button">
+        <span class="kix-avatar" style="inline-size:24px;block-size:24px;font-size:11px">AC</span>
+        AcmeCoffee SG
+        <svg class="kix-icon"><use href="icons.svg#icon-chevron-down"/></svg>
+      </button>
+      <button class="kix-topbar__search" id="cmdk-trigger" type="button">
+        <svg class="kix-icon"><use href="icons.svg#icon-search"/></svg>
+        Search campaigns, vouchers, settings…
+        <kbd>⌘K</kbd>
+      </button>
+      <div class="kix-topbar__actions">
+        <button class="kix-topbar__iconbtn" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-sun"/></svg>
+        </button>
+        <button class="kix-topbar__iconbtn" aria-label="Help">
+          <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-help"/></svg>
+        </button>
+        <button class="kix-topbar__iconbtn" aria-label="Notifications" data-unread>
+          <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-bell"/></svg>
+        </button>
+        <div class="kix-topbar__profile">
+          <span class="kix-avatar">MZ</span>
+          <span style="font-size:14px;font-weight:500">Demo</span>
+          <svg class="kix-icon"><use href="icons.svg#icon-chevron-down"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===== Main content ===== -->
+    <main class="kix-shell__main">
+      <div class="kix-shell__content">
+        <!-- Page header -->
+        <nav class="kix-breadcrumb" aria-label="Breadcrumb">
+          <a href="#">Home</a>
+          <span class="kix-breadcrumb__sep"></span>
+          <span class="kix-breadcrumb__current">Design System Showcase</span>
+        </nav>
+        <div class="kix-pageheader">
+          <div>
+            <h1 class="kix-pageheader__title">Design System Showcase</h1>
+            <div class="kix-pageheader__subtitle">25 enterprise components · tokens · ui-kit.js</div>
+          </div>
+          <div class="kix-pageheader__actions">
+            <button class="kix-btn kix-btn--secondary"><svg class="kix-icon"><use href="icons.svg#icon-download"/></svg>Export</button>
+            <button class="kix-btn kix-btn--primary"><svg class="kix-icon"><use href="icons.svg#icon-plus"/></svg>New campaign</button>
+          </div>
+        </div>
+
+        <!-- ===== Buttons ===== -->
+        <section class="demo-section" id="buttons">
+          <h2 class="kix-h2">Buttons</h2>
+          <div class="demo-block">
+            <div class="demo-label">Variants</div>
+            <div class="demo-row">
+              <button class="kix-btn kix-btn--primary">Primary</button>
+              <button class="kix-btn kix-btn--secondary">Secondary</button>
+              <button class="kix-btn kix-btn--tertiary">Tertiary</button>
+              <button class="kix-btn kix-btn--destructive">Destructive</button>
+              <button class="kix-btn kix-btn--primary" disabled>Disabled</button>
+            </div>
+            <div class="demo-label">Sizes</div>
+            <div class="demo-row">
+              <button class="kix-btn kix-btn--primary kix-btn--sm">Small</button>
+              <button class="kix-btn kix-btn--primary">Medium</button>
+              <button class="kix-btn kix-btn--primary kix-btn--lg">Large</button>
+              <button class="kix-btn kix-btn--secondary kix-btn--icon" aria-label="Edit"><svg class="kix-icon"><use href="icons.svg#icon-edit"/></svg></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Inputs ===== -->
+        <section class="demo-section" id="inputs">
+          <h2 class="kix-h2">Inputs</h2>
+          <div class="demo-block">
+            <div class="demo-grid">
+              <div class="kix-field">
+                <label class="kix-label">Campaign name</label>
+                <input class="kix-input" type="text" placeholder="e.g. Q2 Coffee Drive"/>
+                <div class="kix-helper">Will appear in reports as the campaign label.</div>
+              </div>
+              <div class="kix-field">
+                <label class="kix-label">Budget (SGD)</label>
+                <input class="kix-input" type="number" value="1500"/>
+                <div class="kix-helper">Daily limit before pacing.</div>
+              </div>
+              <div class="kix-field kix-field--error">
+                <label class="kix-label">Email</label>
+                <input class="kix-input" type="email" value="invalid@"/>
+                <div class="kix-helper kix-helper--error">Please enter a valid address.</div>
+              </div>
+              <div class="kix-field">
+                <label class="kix-label">Password</label>
+                <input class="kix-input" type="password" value="********"/>
+              </div>
+              <div class="kix-field">
+                <label class="kix-label">Country</label>
+                <select class="kix-select"><option>Singapore</option><option>Malaysia</option><option>Thailand</option></select>
+              </div>
+              <div class="kix-field">
+                <label class="kix-label">Notes</label>
+                <textarea class="kix-textarea" placeholder="Internal notes…"></textarea>
+              </div>
+              <div class="kix-field">
+                <label class="kix-label">Bid cap</label>
+                <input class="kix-slider" type="range" min="0" max="100" value="40"/>
+              </div>
+              <div class="kix-field">
+                <span class="kix-label">Options</span>
+                <label class="kix-check"><input type="checkbox" checked/> Auto-pause on overspend</label>
+                <label class="kix-check"><input type="checkbox"/> Send weekly digest</label>
+                <label class="kix-radio"><input type="radio" name="r" checked/> Spend evenly</label>
+                <label class="kix-radio"><input type="radio" name="r"/> Front-load</label>
+                <label class="kix-toggle"><input type="checkbox" checked/><span class="kix-toggle__slider"></span></label>
+              </div>
+              <div class="kix-field">
+                <span class="kix-label">Date range</span>
+                <div id="daterange-mount"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Data display ===== -->
+        <section class="demo-section" id="data">
+          <h2 class="kix-h2">Data display</h2>
+          <div class="demo-label">Metric cards</div>
+          <div class="demo-grid" style="margin-block-end:24px">
+            <div class="kix-metric">
+              <div class="kix-metric__label">Impressions</div>
+              <div class="kix-metric__value">2.4M</div>
+              <div class="kix-metric__delta kix-metric__delta--up">▲ 12.4% vs prev 7d</div>
+              <svg class="kix-metric__spark" data-spark="[40,52,48,60,68,72,80,76,84,92]"></svg>
+            </div>
+            <div class="kix-metric">
+              <div class="kix-metric__label">Click-through rate</div>
+              <div class="kix-metric__value">3.18%</div>
+              <div class="kix-metric__delta kix-metric__delta--down">▼ 0.4% vs prev 7d</div>
+              <svg class="kix-metric__spark" data-spark="[60,58,55,57,52,50,48,49,46,44]"></svg>
+            </div>
+            <div class="kix-metric">
+              <div class="kix-metric__label">Redemptions</div>
+              <div class="kix-metric__value">1,247</div>
+              <div class="kix-metric__delta kix-metric__delta--up">▲ 38 vs prev 7d</div>
+              <svg class="kix-metric__spark" data-spark="[20,28,30,45,52,60,65,72,80,90]"></svg>
+            </div>
+            <div class="kix-metric">
+              <div class="kix-metric__label">ROAS</div>
+              <div class="kix-metric__value">4.21x</div>
+              <div class="kix-metric__delta kix-metric__delta--up">▲ 0.31</div>
+              <svg class="kix-metric__spark" data-spark="[1,2,2.5,3,3.4,3.6,3.9,4,4.1,4.2]"></svg>
+            </div>
+          </div>
+
+          <div class="demo-label">Charts</div>
+          <div class="demo-row" style="align-items:stretch">
+            <div class="kix-chart" style="flex:2; min-inline-size: 320px;"><div class="kix-chart__title">Spend over time</div><svg class="kix-chart__canvas" id="chart-line"></svg></div>
+            <div class="kix-chart" style="flex:1; min-inline-size: 220px;"><div class="kix-chart__title">By channel</div><svg class="kix-chart__canvas" id="chart-bar"></svg></div>
+            <div class="kix-chart" style="flex:1; min-inline-size: 220px;"><div class="kix-chart__title">Mix</div><svg class="kix-chart__canvas" id="chart-donut" style="block-size:200px"></svg></div>
+          </div>
+
+          <div class="demo-label">Table</div>
+          <div class="kix-table-wrap">
+            <table class="kix-table kix-tabular" id="demo-table">
+              <thead>
+                <tr>
+                  <th style="inline-size:36px"><input type="checkbox" data-bulk/></th>
+                  <th class="kix-sticky-col" data-sortable>Campaign</th>
+                  <th data-sortable>Status</th>
+                  <th data-sortable>Spend</th>
+                  <th data-sortable>Impressions</th>
+                  <th data-sortable>CTR</th>
+                  <th data-sortable>ROAS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><input type="checkbox" data-bulk-row/></td><td class="kix-sticky-col">Q2 Coffee Drive</td><td><span class="kix-badge kix-badge--success">Active</span></td><td data-value="1240">S$1,240</td><td data-value="481200">481,200</td><td data-value="3.2">3.20%</td><td data-value="4.1">4.10x</td><td><button class="kix-btn kix-btn--tertiary kix-btn--icon" aria-label="More"><svg class="kix-icon"><use href="icons.svg#icon-more"/></svg></button></td></tr>
+                <tr><td><input type="checkbox" data-bulk-row/></td><td class="kix-sticky-col">Morning Office Push</td><td><span class="kix-badge kix-badge--warning">Paused</span></td><td data-value="320">S$320</td><td data-value="92100">92,100</td><td data-value="2.8">2.80%</td><td data-value="3.2">3.20x</td><td><button class="kix-btn kix-btn--tertiary kix-btn--icon" aria-label="More"><svg class="kix-icon"><use href="icons.svg#icon-more"/></svg></button></td></tr>
+                <tr><td><input type="checkbox" data-bulk-row/></td><td class="kix-sticky-col">Weekend Rewards</td><td><span class="kix-badge kix-badge--success">Active</span></td><td data-value="2780">S$2,780</td><td data-value="1100400">1,100,400</td><td data-value="4.1">4.10%</td><td data-value="5.8">5.80x</td><td><button class="kix-btn kix-btn--tertiary kix-btn--icon" aria-label="More"><svg class="kix-icon"><use href="icons.svg#icon-more"/></svg></button></td></tr>
+                <tr><td><input type="checkbox" data-bulk-row/></td><td class="kix-sticky-col">Loyalty Tier Up</td><td><span class="kix-badge kix-badge--info">Scheduled</span></td><td data-value="0">S$0</td><td data-value="0">0</td><td data-value="0">—</td><td data-value="0">—</td><td><button class="kix-btn kix-btn--tertiary kix-btn--icon" aria-label="More"><svg class="kix-icon"><use href="icons.svg#icon-more"/></svg></button></td></tr>
+                <tr><td><input type="checkbox" data-bulk-row/></td><td class="kix-sticky-col">QR Counter Test</td><td><span class="kix-badge kix-badge--critical">Error</span></td><td data-value="0">S$0</td><td data-value="14">14</td><td data-value="0">—</td><td data-value="0">—</td><td><button class="kix-btn kix-btn--tertiary kix-btn--icon" aria-label="More"><svg class="kix-icon"><use href="icons.svg#icon-more"/></svg></button></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo-label" style="margin-block-start:24px">Badges & tags</div>
+          <div class="demo-block">
+            <div class="demo-row">
+              <span class="kix-badge">Default</span>
+              <span class="kix-badge kix-badge--brand">Brand</span>
+              <span class="kix-badge kix-badge--success">Success</span>
+              <span class="kix-badge kix-badge--warning">Warning</span>
+              <span class="kix-badge kix-badge--critical">Critical</span>
+              <span class="kix-badge kix-badge--info">Info</span>
+              <span class="kix-tag">F&amp;B <button class="kix-tag__close" aria-label="Remove">×</button></span>
+              <span class="kix-tag">Coffee <button class="kix-tag__close" aria-label="Remove">×</button></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Feedback ===== -->
+        <section class="demo-section" id="feedback">
+          <h2 class="kix-h2">Feedback</h2>
+          <div class="demo-block kix-stack">
+            <div class="kix-alert kix-alert--info">
+              <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-info"/></svg>
+              <div><strong>Heads up.</strong> Pixel events for store #SG-12 are below baseline.</div>
+            </div>
+            <div class="kix-alert kix-alert--success">
+              <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-check-circle"/></svg>
+              <div>Campaign published — 482 impressions in first hour.</div>
+            </div>
+            <div class="kix-alert kix-alert--warning">
+              <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-alert"/></svg>
+              <div>Budget will deplete in 2.4 days at current pace.</div>
+            </div>
+            <div class="kix-alert kix-alert--critical">
+              <svg class="kix-icon kix-icon--lg"><use href="icons.svg#icon-x-circle"/></svg>
+              <div>QR scan validation failing for 3 locations. Action required.</div>
+            </div>
+            <div class="demo-row">
+              <button class="kix-btn kix-btn--primary" onclick="KixUI.Toast.show({message:'Saved successfully', variant:'success'})">Toast: success</button>
+              <button class="kix-btn kix-btn--secondary" onclick="KixUI.Toast.show({message:'Heads up.', variant:'info'})">Toast: info</button>
+              <button class="kix-btn kix-btn--destructive" onclick="KixUI.Toast.show({message:'Network failed', variant:'error'})">Toast: error</button>
+              <button class="kix-btn kix-btn--secondary" onclick="openModal()">Open modal</button>
+              <button class="kix-btn kix-btn--secondary" onclick="openDrawer()">Open drawer</button>
+              <span class="kix-tooltip">
+                <button class="kix-btn kix-btn--secondary">Hover me</button>
+                <span class="kix-tooltip__content">Tooltip content</span>
+              </span>
+            </div>
+            <div>
+              <div class="demo-label">Empty state</div>
+              <div class="kix-empty">
+                <svg class="kix-empty__art"><use href="icons.svg#icon-creative"/></svg>
+                <div class="kix-empty__title">No campaigns yet</div>
+                <div class="kix-empty__body">Get started by launching your first campaign. We'll suggest a playbook based on your business profile.</div>
+                <button class="kix-btn kix-btn--primary"><svg class="kix-icon"><use href="icons.svg#icon-plus"/></svg>Create your first campaign</button>
+              </div>
+            </div>
+            <div>
+              <div class="demo-label">Loading skeleton</div>
+              <div class="demo-block">
+                <div class="kix-skeleton kix-skeleton--title"></div>
+                <div class="kix-skeleton kix-skeleton--text"></div>
+                <div class="kix-skeleton kix-skeleton--text" style="inline-size:80%"></div>
+                <div class="kix-skeleton kix-skeleton--block" style="margin-block-start:12px"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Navigation ===== -->
+        <section class="demo-section" id="navigation">
+          <h2 class="kix-h2">Navigation</h2>
+          <div class="demo-block kix-stack">
+            <div>
+              <div class="demo-label">Top tabs</div>
+              <div class="kix-tabs">
+                <button class="kix-tabs__item is-active">Overview</button>
+                <button class="kix-tabs__item">Audiences</button>
+                <button class="kix-tabs__item">Creative</button>
+                <button class="kix-tabs__item">Reports</button>
+              </div>
+            </div>
+            <div>
+              <div class="demo-label">Side tabs</div>
+              <div style="display:flex; gap:24px">
+                <div class="kix-tabs kix-tabs--side">
+                  <button class="kix-tabs__item is-active">Account</button>
+                  <button class="kix-tabs__item">Team</button>
+                  <button class="kix-tabs__item">Billing</button>
+                  <button class="kix-tabs__item">API keys</button>
+                </div>
+                <div style="flex:1; padding-block:8px">Side tabs show vertical hierarchy in settings panels.</div>
+              </div>
+            </div>
+            <div>
+              <div class="demo-label">Pagination</div>
+              <div class="kix-pagination">
+                <button class="kix-pagination__btn">‹</button>
+                <button class="kix-pagination__btn">1</button>
+                <button class="kix-pagination__btn is-current">2</button>
+                <button class="kix-pagination__btn">3</button>
+                <button class="kix-pagination__btn">…</button>
+                <button class="kix-pagination__btn">12</button>
+                <button class="kix-pagination__btn">›</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Layout ===== -->
+        <section class="demo-section" id="layout">
+          <h2 class="kix-h2">Layout</h2>
+          <div class="demo-block">
+            <div class="demo-label">Card + right rail</div>
+            <div style="display:flex; gap:24px; align-items:flex-start">
+              <div class="kix-card" style="flex:1">
+                <div class="kix-card__header">
+                  <div class="kix-card__title">Campaign overview</div>
+                  <button class="kix-btn kix-btn--tertiary kix-btn--sm">View all</button>
+                </div>
+                <p class="kix-muted" style="margin:0">Cards use a subtle border and no heavy shadow — Polaris/Stripe grammar.</p>
+              </div>
+              <aside class="kix-rail">
+                <div class="kix-h3">Insights</div>
+                <ul style="margin:0; padding-inline-start:18px; color:var(--kix-text-subdued); font-size:14px; line-height:22px">
+                  <li>CTR up 12% week over week</li>
+                  <li>3 vouchers below threshold</li>
+                  <li>Pixel firing OK across 14 locations</li>
+                </ul>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <footer style="text-align:center; padding:32px; color:var(--kix-text-subdued); font-size:13px">
+          KiX Enterprise Design System · v1 · <span class="kix-code">/landing/design-system/</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <script src="ui-kit.js"></script>
+  <script>
+    // Inline the icon sprite so <use href="..."> works without same-origin file://
+    fetch('icons.svg').then(r => r.text()).then(t => { document.getElementById('kix-icons-mount').innerHTML = t; }).catch(()=>{});
+
+    // Theme toggle
+    document.getElementById('theme-toggle').addEventListener('click', () => KixUI.Theme.toggle());
+
+    // Sidebar
+    KixUI.Sidebar.bind();
+
+    // Table
+    KixUI.Table.bind(document.getElementById('demo-table'), { sortable: true, bulkActions: true, onBulkChange: (n) => { if (n) KixUI.Toast.show({message: n + ' row(s) selected', variant:'info', duration:1500}); } });
+
+    // Charts
+    KixUI.Chart.line(document.getElementById('chart-line'), [
+      { label: 'This week', values: [120, 180, 160, 220, 240, 280, 260] },
+      { label: 'Last week', values: [100, 140, 150, 190, 200, 230, 220] }
+    ], { height: 220 });
+    KixUI.Chart.bar(document.getElementById('chart-bar'), [
+      {label:'QR', value:42},{label:'Web', value:28},{label:'In-app', value:19},{label:'Email', value:11}
+    ], { height: 220 });
+    KixUI.Chart.donut(document.getElementById('chart-donut'), [40, 25, 20, 15], { width: 200, height: 200 });
+
+    // Sparklines
+    document.querySelectorAll('[data-spark]').forEach(el => {
+      try { KixUI.Chart.sparkline(el, JSON.parse(el.dataset.spark)); } catch (e) {}
+    });
+
+    // Date range
+    KixUI.DateRange.bind(document.getElementById('daterange-mount'), {
+      withComparison: true,
+      onChange: (r) => console.log('DateRange', r)
+    });
+
+    // Command palette
+    KixUI.CommandPalette.setItems([
+      { label: 'Go to Overview',    icon: '🏠', href: '#overview',    shortcut: 'g o' },
+      { label: 'Go to Campaigns',   icon: '🎯', href: '#campaigns',   shortcut: 'g c' },
+      { label: 'New campaign',      icon: '＋', action: () => KixUI.Toast.show({message:'New campaign…', variant:'info'}), shortcut: 'n' },
+      { label: 'Toggle theme',      icon: '🌓', action: () => KixUI.Theme.toggle() },
+      { label: 'Open settings',     icon: '⚙', href: '#settings' },
+      { label: 'Sign out',          icon: '↩' , action: () => KixUI.Toast.show({message:'Signed out', variant:'info'}) }
+    ]);
+    KixUI.CommandPalette.bind('#cmdk-trigger');
+
+    function openModal() {
+      KixUI.Modal.open({
+        title: 'Create campaign',
+        body: '<div class="kix-stack"><div class="kix-field"><label class="kix-label">Name</label><input class="kix-input" placeholder="Spring Promo"/></div><div class="kix-field"><label class="kix-label">Playbook</label><select class="kix-select"><option>Loyalty Tier Up</option><option>QR Counter</option></select></div></div>',
+        footer: '<button class="kix-btn kix-btn--secondary" onclick="this.closest(\'.kix-modal-backdrop\').click()">Cancel</button><button class="kix-btn kix-btn--primary">Create</button>'
+      });
+    }
+    function openDrawer() {
+      KixUI.Drawer.open({
+        title: 'Edit playbook',
+        body: '<p class="kix-muted">Tweak parameters and save to push live.</p><div class="kix-field"><label class="kix-label">Validity (days)</label><input class="kix-input" type="number" value="30"/></div>',
+        footer: '<button class="kix-btn kix-btn--secondary">Cancel</button><button class="kix-btn kix-btn--primary">Save</button>'
+      });
+    }
+    window.openModal = openModal; window.openDrawer = openDrawer;
+  </script>
+</body>
+</html>

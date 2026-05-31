@@ -34,24 +34,23 @@ MARK_RE = re.compile(re.escape(MARK_START) + r".*?" + re.escape(MARK_END), re.DO
 
 
 def banner_html(deprecated_at: str, sunset_at: str, successor: str, reason: str) -> str:
+    # R1 buyer-journey friction: "red DEPRECATED banner destroys credibility".
+    # Softened to amber informational note that points to canonical successor
+    # without screaming "this content is bad".
     return f'''{MARK_START}
 <style>
   .kix-deprecation-banner{{
     position:fixed;top:0;left:0;right:0;z-index:9999;
-    background:#FEE2E2;border-bottom:2px solid #DC2626;
-    padding:10px 16px;font:13px -apple-system,BlinkMacSystemFont,Inter,sans-serif;
-    color:#7F1D1D;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+    background:#FEF3C7;border-bottom:1px solid #FBBF24;
+    padding:8px 16px;font:12.5px -apple-system,BlinkMacSystemFont,Inter,sans-serif;
+    color:#78350F;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
   }}
-  .kix-deprecation-banner strong{{font-weight:800}}
-  .kix-deprecation-banner a{{color:#991B1B;text-decoration:underline;font-weight:700}}
-  body{{padding-top:46px !important}}
+  .kix-deprecation-banner strong{{font-weight:700}}
+  .kix-deprecation-banner a{{color:#92400E;text-decoration:underline;font-weight:700}}
+  body{{padding-top:38px !important}}
 </style>
-<div class="kix-deprecation-banner" role="alert">
-  <span>⚠️ <strong>DEPRECATED</strong> · {deprecated_at} → sunset {sunset_at}</span>
-  <span>·</span>
-  <span>Canonical: <a href="{successor}">{successor}</a></span>
-  <span>·</span>
-  <span style="opacity:.85">{reason}</span>
+<div class="kix-deprecation-banner" role="status">
+  <span>ℹ️ <strong>This page is moving</strong> to <a href="{successor}">{successor}</a> on {sunset_at}. Content here remains accurate until then.</span>
 </div>
 {MARK_END}
 '''

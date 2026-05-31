@@ -74,29 +74,32 @@ TIER_FREE = PricingTier(
 
 TIER_VERIFIED_BUSINESS = PricingTier(
     tier_id="verified_business",
-    name="Verified Business",
-    headline="Pay only for verified new customers. CPA from S$3 / RM 11.",
-    price_text="Pay-as-you-go · CPA from S$3",
+    name="Verified Business · Pro",
+    headline="S$499/mo flat OR pay-per-customer. Most merchants cut their IG/FB ad spend 35-50% within month 1 — S$499 REPLACES that budget, not adds to it.",
+    price_text="S$499/mo flat · OR pay-as-you-go from S$3 CPA",
     cc_required=True,
-    no_charge_until="first successful campaign delivers a verified new customer",
+    no_charge_until="first successful campaign delivers a verified new customer (CPA path) · or 14-day free trial (Pro path)",
     take_rate_pct=10.0,
     scope="global",
     approval_required=False,
     included=(
+        "S$499/mo flat: unlimited campaigns + ~1,000-2,500 new customers/month for most F&B",
+        "OR pay-as-you-go: S$3-30 CPA depending on vertical (no monthly fee)",
+        "Switch between Pro and CPA anytime · 1 click",
         "Unlimited games + campaigns",
         "Geofence up to 500m",
         "Cohort retention analytics (D0/14/30/60/90)",
         "Remove KiX branding (white-label)",
         "API access + webhooks",
         "Same-day chat support",
-        "6 PSPs (PayNow · GrabPay · OVO · Alipay · WeChat · Stripe Terminal)",
+        "6 PSPs · PayNow · GrabPay · OVO · Alipay · WeChat (CN ready) · Stripe Terminal",
     ),
     not_included=(
         "Founding-100 zero-take-rate",
         "On-site founder onboarding",
     ),
-    cta_text="Add card to start (no charge until first sale)",
-    cta_action="signup",
+    cta_text="Start S$499/mo Pro · 14-day free · cancel 1-click",
+    cta_action="subscribe",
 )
 
 

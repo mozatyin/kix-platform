@@ -1,0 +1,201 @@
+/* =============================================================================
+   KiX Enterprise Design System — Design Tokens
+   Source of truth: /Users/mozat/a-docs/ux-trinity-portal-redesign.md § 4
+   Convention: Inter base (already loaded across portal); JetBrains Mono for IDs.
+   All tokens map to CSS custom properties on :root with dark-mode override.
+   ========================================================================== */
+
+:root {
+  /* ---------- Surface (light is default; chrome = ad-manager grammar) ----- */
+  --kix-surface-canvas:    #FFFFFF;
+  --kix-surface-subdued:   #F6F6F7;
+  --kix-surface-hover:     #F1F2F3;
+  --kix-surface-pressed:   #E4E5E7;
+  --kix-surface-inverse:   #1A1A1A;
+  --kix-surface-overlay:   rgba(15, 23, 42, 0.45);
+
+  /* Sidebar specific (dark slate per Google Ads pattern) */
+  --kix-sidebar-bg:        #1F2129;
+  --kix-sidebar-text:      #E4E5E7;
+  --kix-sidebar-text-muted:#9CA0A8;
+  --kix-sidebar-hover:     #2A2D38;
+  --kix-sidebar-active-bg: #2F323E;
+
+  /* ---------- Border ------------------------------------------------------ */
+  --kix-border-subdued:    #E1E3E5;
+  --kix-border-default:    #C9CCCF;
+  --kix-border-strong:     #8C9196;
+  --kix-border-focus:      #1A73E8;
+
+  /* ---------- Text -------------------------------------------------------- */
+  --kix-text-strong:       #0B0F19;
+  --kix-text-default:      #1F2937;
+  --kix-text-subdued:      #6B7280;
+  --kix-text-disabled:     #9CA3AF;
+  --kix-text-on-brand:     #FFFFFF;
+  --kix-text-link:         #1A73E8;
+
+  /* ---------- Brand (darkened green: WCAG AA on white) ------------------- */
+  --kix-brand-primary:       #00B341;
+  --kix-brand-primary-hover: #009638;
+  --kix-brand-primary-press: #00802F;
+  --kix-brand-primary-soft:  #E6F7EE;
+  --kix-brand-primary-bg:    #F0FBF5;
+  --kix-brand-on:            #FFFFFF;
+  --kix-brand-secondary:     #1A73E8; /* enterprise blue accent for links */
+
+  /* ---------- Semantic ---------------------------------------------------- */
+  --kix-success:    #008060;
+  --kix-success-bg: #E3F2EC;
+  --kix-warning:    #B86E00;
+  --kix-warning-bg: #FFF1D6;
+  --kix-critical:   #D72C0D;
+  --kix-critical-bg:#FDEDEB;
+  --kix-info:       #0085FF;
+  --kix-info-bg:    #E8F3FF;
+
+  /* ---------- Data-viz palette (color-blind-safe, ordered) --------------- */
+  --kix-chart-1: #1A73E8;
+  --kix-chart-2: #00B341;
+  --kix-chart-3: #F4A300;
+  --kix-chart-4: #D72C0D;
+  --kix-chart-5: #6F42C1;
+  --kix-chart-6: #008080;
+  --kix-chart-7: #FF6B35;
+  --kix-chart-8: #C2185B;
+
+  /* ---------- Typography -------------------------------------------------- */
+  --kix-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                   'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB',
+                   'Microsoft YaHei', sans-serif;
+  --kix-font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace;
+
+  /* Font sizes (px) + line height + weight bundled as scale */
+  --kix-fs-display-lg: 30px;  --kix-lh-display-lg: 36px;
+  --kix-fs-display-md: 24px;  --kix-lh-display-md: 32px;
+  --kix-fs-h1:         28px;  --kix-lh-h1:         34px;
+  --kix-fs-h2:         20px;  --kix-lh-h2:         28px;
+  --kix-fs-h3:         16px;  --kix-lh-h3:         22px;
+  --kix-fs-body-lg:    15px;  --kix-lh-body-lg:    22px;
+  --kix-fs-body:       14px;  --kix-lh-body:       20px;
+  --kix-fs-body-sm:    13px;  --kix-lh-body-sm:    18px;
+  --kix-fs-label:      14px;  --kix-lh-label:      20px;
+  --kix-fs-caption:    12px;  --kix-lh-caption:    16px;
+  --kix-fs-code:       13px;  --kix-lh-code:       20px;
+
+  --kix-fw-regular: 400;
+  --kix-fw-medium:  500;
+  --kix-fw-semibold:600;
+  --kix-fw-bold:    700;
+
+  /* ---------- Spacing (4pt scale) ----------------------------------------- */
+  --kix-space-050:  2px;
+  --kix-space-100:  4px;
+  --kix-space-150:  6px;
+  --kix-space-200:  8px;
+  --kix-space-300: 12px;
+  --kix-space-400: 16px;
+  --kix-space-500: 20px;
+  --kix-space-600: 24px;
+  --kix-space-800: 32px;
+  --kix-space-1000:40px;
+  --kix-space-1200:48px;
+  --kix-space-1600:64px;
+
+  /* ---------- Radius ------------------------------------------------------ */
+  --kix-radius-100:  2px;
+  --kix-radius-200:  4px;
+  --kix-radius-300:  6px;
+  --kix-radius-400:  8px;
+  --kix-radius-full: 999px;
+
+  /* ---------- Shadow ------------------------------------------------------ */
+  --kix-shadow-sm:    0 1px 2px rgba(15,23,42,0.04), 0 1px 1px rgba(15,23,42,0.06);
+  --kix-shadow-md:    0 4px 8px rgba(15,23,42,0.06), 0 2px 4px rgba(15,23,42,0.08);
+  --kix-shadow-lg:    0 12px 24px rgba(15,23,42,0.08), 0 8px 16px rgba(15,23,42,0.06);
+  --kix-shadow-focus: 0 0 0 3px rgba(26,115,232,0.35);
+
+  /* ---------- Motion ------------------------------------------------------ */
+  --kix-motion-fast:    100ms cubic-bezier(0.4, 0, 0.2, 1);
+  --kix-motion-default: 150ms ease-out;
+  --kix-motion-slow:    250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------- Layout constants ------------------------------------------- */
+  --kix-sidebar-w:          240px;
+  --kix-sidebar-w-collapsed: 72px;
+  --kix-topbar-h:            56px;
+  --kix-content-max:        1440px;
+  --kix-rail-w:              300px;
+
+  /* ---------- Z-index ----------------------------------------------------- */
+  --kix-z-sidebar:   100;
+  --kix-z-topbar:    110;
+  --kix-z-dropdown:  500;
+  --kix-z-drawer:    900;
+  --kix-z-modal:    1000;
+  --kix-z-toast:    1100;
+  --kix-z-tooltip:  1200;
+}
+
+/* =============================================================================
+   Dark theme — invert surfaces, retain brand
+   ========================================================================== */
+[data-theme="dark"] {
+  --kix-surface-canvas:    #0F1115;
+  --kix-surface-subdued:   #161922;
+  --kix-surface-hover:     #1E212B;
+  --kix-surface-pressed:   #262A36;
+  --kix-surface-inverse:   #F6F6F7;
+
+  --kix-sidebar-bg:        #0B0D13;
+  --kix-sidebar-text:      #E4E5E7;
+  --kix-sidebar-text-muted:#7C828D;
+  --kix-sidebar-hover:     #161922;
+  --kix-sidebar-active-bg: #1E212B;
+
+  --kix-border-subdued:    #262A36;
+  --kix-border-default:    #353A48;
+  --kix-border-strong:     #555B6B;
+
+  --kix-text-strong:       #F6F6F7;
+  --kix-text-default:      #E4E5E7;
+  --kix-text-subdued:      #9CA0A8;
+  --kix-text-disabled:     #5B606C;
+  --kix-text-on-brand:     #FFFFFF;
+  --kix-text-link:         #6BAEFB;
+
+  --kix-brand-primary-soft:#0E2A1A;
+  --kix-brand-primary-bg:  #0A1F14;
+
+  --kix-success-bg: #0E2A1F;
+  --kix-warning-bg: #2B1F08;
+  --kix-critical-bg:#2B1010;
+  --kix-info-bg:    #0A2240;
+
+  --kix-shadow-sm:    0 1px 2px rgba(0,0,0,0.4);
+  --kix-shadow-md:    0 4px 8px rgba(0,0,0,0.5);
+  --kix-shadow-lg:    0 12px 24px rgba(0,0,0,0.6);
+}
+
+/* =============================================================================
+   Base resets — apply to .kix-app scope to avoid contaminating existing pages
+   ========================================================================== */
+.kix-app,
+.kix-app * {
+  box-sizing: border-box;
+}
+
+.kix-app {
+  font-family: var(--kix-font-sans);
+  font-size: var(--kix-fs-body);
+  line-height: var(--kix-lh-body);
+  color: var(--kix-text-default);
+  background: var(--kix-surface-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.kix-app .kix-tabular {
+  font-variant-numeric: tabular-nums;
+}

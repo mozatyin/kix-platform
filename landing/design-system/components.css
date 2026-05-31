@@ -1,0 +1,626 @@
+/* =============================================================================
+   KiX Enterprise Design System — Component Library
+   All selectors scoped under .kix-app or .kix-* prefix; RTL-ready via logical
+   properties (margin-inline-*, padding-inline-*, inset-inline-*, text-align:
+   start / end). Depends on tokens.css.
+   ========================================================================== */
+
+/* ---------- 1. Typography utilities -------------------------------------- */
+.kix-h1 { font-size: var(--kix-fs-h1); line-height: var(--kix-lh-h1); font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); margin: 0; }
+.kix-h2 { font-size: var(--kix-fs-h2); line-height: var(--kix-lh-h2); font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); margin: 0; }
+.kix-h3 { font-size: var(--kix-fs-h3); line-height: var(--kix-lh-h3); font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); margin: 0; }
+.kix-body { font-size: var(--kix-fs-body); line-height: var(--kix-lh-body); }
+.kix-caption { font-size: var(--kix-fs-caption); line-height: var(--kix-lh-caption); color: var(--kix-text-subdued); }
+.kix-code { font-family: var(--kix-font-mono); font-size: var(--kix-fs-code); line-height: var(--kix-lh-code); }
+.kix-muted { color: var(--kix-text-subdued); }
+
+/* ---------- 2. Button ---------------------------------------------------- */
+.kix-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--kix-space-200);
+  font-family: var(--kix-font-sans);
+  font-size: var(--kix-fs-label);
+  line-height: var(--kix-lh-label);
+  font-weight: var(--kix-fw-medium);
+  padding-block: var(--kix-space-200);
+  padding-inline: var(--kix-space-400);
+  border: 1px solid transparent;
+  border-radius: var(--kix-radius-200);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--kix-motion-default), border-color var(--kix-motion-default), color var(--kix-motion-default);
+  user-select: none;
+}
+.kix-btn:focus-visible { outline: none; box-shadow: var(--kix-shadow-focus); }
+.kix-btn:disabled, .kix-btn[aria-disabled="true"] {
+  cursor: not-allowed; opacity: 0.5;
+}
+/* sizes */
+.kix-btn--sm { font-size: var(--kix-fs-body-sm); padding-block: var(--kix-space-150); padding-inline: var(--kix-space-300); }
+.kix-btn--lg { font-size: var(--kix-fs-body-lg); padding-block: var(--kix-space-300); padding-inline: var(--kix-space-500); }
+/* variants */
+.kix-btn--primary {
+  background: var(--kix-brand-primary); color: var(--kix-brand-on); border-color: var(--kix-brand-primary);
+}
+.kix-btn--primary:hover:not(:disabled) { background: var(--kix-brand-primary-hover); border-color: var(--kix-brand-primary-hover); }
+.kix-btn--primary:active:not(:disabled) { background: var(--kix-brand-primary-press); }
+.kix-btn--secondary {
+  background: var(--kix-surface-canvas); color: var(--kix-text-strong); border-color: var(--kix-border-default);
+}
+.kix-btn--secondary:hover:not(:disabled) { background: var(--kix-surface-hover); }
+.kix-btn--tertiary {
+  background: transparent; color: var(--kix-text-link); border-color: transparent;
+}
+.kix-btn--tertiary:hover:not(:disabled) { background: var(--kix-brand-primary-soft); }
+.kix-btn--destructive {
+  background: var(--kix-critical); color: #FFFFFF; border-color: var(--kix-critical);
+}
+.kix-btn--destructive:hover:not(:disabled) { background: #B02408; border-color: #B02408; }
+.kix-btn--icon { padding-inline: var(--kix-space-200); }
+
+/* ---------- 3. Input ----------------------------------------------------- */
+.kix-field { display: flex; flex-direction: column; gap: var(--kix-space-100); }
+.kix-label { font-size: var(--kix-fs-label); line-height: var(--kix-lh-label); font-weight: var(--kix-fw-medium); color: var(--kix-text-default); text-align: start; }
+.kix-input, .kix-textarea, .kix-select {
+  font-family: var(--kix-font-sans);
+  font-size: var(--kix-fs-body);
+  line-height: var(--kix-lh-body);
+  color: var(--kix-text-default);
+  background: var(--kix-surface-canvas);
+  padding-block: var(--kix-space-200);
+  padding-inline: var(--kix-space-300);
+  border: 1px solid var(--kix-border-default);
+  border-radius: var(--kix-radius-200);
+  width: 100%;
+  transition: border-color var(--kix-motion-default), box-shadow var(--kix-motion-default);
+  text-align: start;
+}
+.kix-input::placeholder { color: var(--kix-text-disabled); }
+.kix-input:focus, .kix-textarea:focus, .kix-select:focus {
+  outline: none; border-color: var(--kix-border-focus); box-shadow: var(--kix-shadow-focus);
+}
+.kix-input:disabled, .kix-textarea:disabled, .kix-select:disabled {
+  background: var(--kix-surface-subdued); color: var(--kix-text-disabled); cursor: not-allowed;
+}
+.kix-field--error .kix-input,
+.kix-field--error .kix-textarea,
+.kix-field--error .kix-select {
+  border-color: var(--kix-critical);
+}
+.kix-helper { font-size: var(--kix-fs-caption); line-height: var(--kix-lh-caption); color: var(--kix-text-subdued); }
+.kix-helper--error { color: var(--kix-critical); }
+.kix-textarea { min-height: 80px; resize: vertical; }
+
+/* ---------- 4. Checkbox / Radio / Toggle --------------------------------- */
+.kix-check, .kix-radio {
+  display: inline-flex; align-items: center; gap: var(--kix-space-200);
+  cursor: pointer; user-select: none;
+}
+.kix-check input[type="checkbox"],
+.kix-radio input[type="radio"] {
+  inline-size: 16px; block-size: 16px; accent-color: var(--kix-brand-primary);
+  cursor: pointer; margin: 0;
+}
+.kix-toggle {
+  position: relative; display: inline-block; inline-size: 36px; block-size: 20px;
+}
+.kix-toggle input { opacity: 0; inline-size: 0; block-size: 0; }
+.kix-toggle__slider {
+  position: absolute; inset: 0;
+  background: var(--kix-border-default); border-radius: var(--kix-radius-full);
+  transition: background var(--kix-motion-default);
+  cursor: pointer;
+}
+.kix-toggle__slider::before {
+  content: ""; position: absolute; inline-size: 16px; block-size: 16px;
+  inset-block-start: 2px; inset-inline-start: 2px;
+  background: #fff; border-radius: 50%;
+  transition: transform var(--kix-motion-default);
+}
+.kix-toggle input:checked + .kix-toggle__slider { background: var(--kix-brand-primary); }
+.kix-toggle input:checked + .kix-toggle__slider::before { transform: translateX(16px); }
+[dir="rtl"] .kix-toggle input:checked + .kix-toggle__slider::before { transform: translateX(-16px); }
+
+/* ---------- 5. Slider ---------------------------------------------------- */
+.kix-slider { inline-size: 100%; accent-color: var(--kix-brand-primary); }
+
+/* ---------- 6. DateRangePicker (visual scaffold; JS in ui-kit.js) -------- */
+.kix-daterange {
+  display: inline-flex; align-items: center; gap: var(--kix-space-200);
+  padding-block: var(--kix-space-200);
+  padding-inline: var(--kix-space-300);
+  border: 1px solid var(--kix-border-default);
+  border-radius: var(--kix-radius-200);
+  background: var(--kix-surface-canvas);
+  font-size: var(--kix-fs-body);
+  cursor: pointer;
+}
+.kix-daterange__compare {
+  font-size: var(--kix-fs-caption); color: var(--kix-text-subdued);
+  padding-inline-start: var(--kix-space-200);
+  border-inline-start: 1px solid var(--kix-border-subdued);
+}
+
+/* ---------- 7. Table ----------------------------------------------------- */
+.kix-table-wrap { overflow: auto; border: 1px solid var(--kix-border-subdued); border-radius: var(--kix-radius-300); background: var(--kix-surface-canvas); }
+.kix-table { inline-size: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--kix-fs-body); font-variant-numeric: tabular-nums; }
+.kix-table thead th {
+  position: sticky; inset-block-start: 0;
+  background: var(--kix-surface-subdued);
+  color: var(--kix-text-strong);
+  font-weight: var(--kix-fw-semibold);
+  text-align: start;
+  padding-block: var(--kix-space-300);
+  padding-inline: var(--kix-space-400);
+  border-block-end: 1px solid var(--kix-border-subdued);
+  white-space: nowrap;
+  z-index: 1;
+}
+.kix-table th.kix-sortable { cursor: pointer; user-select: none; }
+.kix-table th.kix-sortable::after { content: "\25B4\25BE"; color: var(--kix-text-disabled); padding-inline-start: var(--kix-space-100); font-size: 10px; }
+.kix-table th.kix-sortable[aria-sort="ascending"]::after { content: "\25B4"; color: var(--kix-text-strong); }
+.kix-table th.kix-sortable[aria-sort="descending"]::after { content: "\25BE"; color: var(--kix-text-strong); }
+.kix-table tbody td {
+  padding-block: var(--kix-space-300);
+  padding-inline: var(--kix-space-400);
+  border-block-end: 1px solid var(--kix-border-subdued);
+  color: var(--kix-text-default);
+}
+.kix-table tbody tr:hover { background: var(--kix-surface-hover); }
+.kix-table tbody tr.is-selected { background: var(--kix-brand-primary-bg); }
+.kix-table tbody tr:last-child td { border-block-end: none; }
+.kix-table th.kix-sticky-col, .kix-table td.kix-sticky-col {
+  position: sticky; inset-inline-start: 0;
+  background: var(--kix-surface-canvas); z-index: 2;
+  border-inline-end: 1px solid var(--kix-border-subdued);
+}
+.kix-table thead th.kix-sticky-col { background: var(--kix-surface-subdued); z-index: 3; }
+
+/* ---------- 8. Tabs ------------------------------------------------------ */
+.kix-tabs { display: flex; gap: var(--kix-space-100); border-block-end: 1px solid var(--kix-border-subdued); }
+.kix-tabs__item {
+  font-size: var(--kix-fs-label); font-weight: var(--kix-fw-medium);
+  color: var(--kix-text-subdued);
+  padding-block: var(--kix-space-300);
+  padding-inline: var(--kix-space-400);
+  border: none; background: transparent; cursor: pointer;
+  border-block-end: 2px solid transparent; margin-block-end: -1px;
+  transition: color var(--kix-motion-default), border-color var(--kix-motion-default);
+}
+.kix-tabs__item:hover { color: var(--kix-text-default); }
+.kix-tabs__item[aria-selected="true"], .kix-tabs__item.is-active {
+  color: var(--kix-brand-primary); border-block-end-color: var(--kix-brand-primary);
+}
+.kix-tabs--side { flex-direction: column; border-block-end: none; border-inline-end: 1px solid var(--kix-border-subdued); inline-size: 200px; }
+.kix-tabs--side .kix-tabs__item {
+  text-align: start; border-block-end: none;
+  border-inline-end: 2px solid transparent; margin-inline-end: -1px; margin-block-end: 0;
+}
+.kix-tabs--side .kix-tabs__item[aria-selected="true"] {
+  border-inline-end-color: var(--kix-brand-primary);
+}
+
+/* ---------- 9. Card ------------------------------------------------------ */
+.kix-card {
+  background: var(--kix-surface-canvas);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-300);
+  padding: var(--kix-space-600);
+}
+.kix-card__header { display: flex; align-items: center; justify-content: space-between; margin-block-end: var(--kix-space-400); }
+.kix-card__title { font-size: var(--kix-fs-h3); font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); }
+
+/* ---------- 10. Modal --------------------------------------------------- */
+.kix-modal-backdrop {
+  position: fixed; inset: 0; background: var(--kix-surface-overlay);
+  display: flex; align-items: center; justify-content: center;
+  z-index: var(--kix-z-modal); opacity: 0; pointer-events: none;
+  transition: opacity var(--kix-motion-default);
+}
+.kix-modal-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.kix-modal {
+  background: var(--kix-surface-canvas);
+  border-radius: var(--kix-radius-400);
+  box-shadow: var(--kix-shadow-lg);
+  inline-size: min(560px, calc(100vw - 32px));
+  max-block-size: calc(100vh - 64px);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.kix-modal__header { padding: var(--kix-space-600); border-block-end: 1px solid var(--kix-border-subdued); display: flex; justify-content: space-between; align-items: center; }
+.kix-modal__body { padding: var(--kix-space-600); overflow: auto; }
+.kix-modal__footer { padding: var(--kix-space-400) var(--kix-space-600); border-block-start: 1px solid var(--kix-border-subdued); display: flex; gap: var(--kix-space-300); justify-content: flex-end; background: var(--kix-surface-subdued); }
+
+/* ---------- 11. Drawer --------------------------------------------------- */
+.kix-drawer-backdrop {
+  position: fixed; inset: 0; background: var(--kix-surface-overlay);
+  z-index: var(--kix-z-drawer); opacity: 0; pointer-events: none;
+  transition: opacity var(--kix-motion-default);
+}
+.kix-drawer-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.kix-drawer {
+  position: fixed; inset-block: 0; inset-inline-end: 0;
+  inline-size: min(480px, 100vw);
+  background: var(--kix-surface-canvas);
+  box-shadow: var(--kix-shadow-lg);
+  transform: translateX(100%);
+  transition: transform var(--kix-motion-slow);
+  display: flex; flex-direction: column;
+  z-index: calc(var(--kix-z-drawer) + 1);
+}
+[dir="rtl"] .kix-drawer { transform: translateX(-100%); }
+.kix-drawer.is-open { transform: translateX(0); }
+.kix-drawer__header, .kix-drawer__footer { padding: var(--kix-space-400) var(--kix-space-600); }
+.kix-drawer__header { border-block-end: 1px solid var(--kix-border-subdued); display: flex; justify-content: space-between; align-items: center; }
+.kix-drawer__body { padding: var(--kix-space-600); overflow: auto; flex: 1; }
+.kix-drawer__footer { border-block-start: 1px solid var(--kix-border-subdued); background: var(--kix-surface-subdued); display: flex; justify-content: flex-end; gap: var(--kix-space-300); }
+
+/* ---------- 12. Toast / Alert ------------------------------------------- */
+.kix-toast-stack {
+  position: fixed; inset-block-start: var(--kix-space-600); inset-inline-end: var(--kix-space-600);
+  display: flex; flex-direction: column; gap: var(--kix-space-300);
+  z-index: var(--kix-z-toast);
+}
+.kix-toast {
+  background: var(--kix-surface-inverse); color: #FFF;
+  padding: var(--kix-space-400) var(--kix-space-500);
+  border-radius: var(--kix-radius-300);
+  box-shadow: var(--kix-shadow-lg);
+  font-size: var(--kix-fs-body);
+  display: flex; align-items: center; gap: var(--kix-space-300);
+  min-inline-size: 280px;
+  animation: kix-toast-in var(--kix-motion-default);
+}
+@keyframes kix-toast-in { from { opacity: 0; transform: translateY(-8px);} to {opacity: 1; transform: translateY(0);} }
+.kix-toast--success { background: var(--kix-success); }
+.kix-toast--warning { background: var(--kix-warning); }
+.kix-toast--error   { background: var(--kix-critical); }
+.kix-toast--info    { background: var(--kix-info); }
+
+.kix-alert {
+  display: flex; gap: var(--kix-space-300);
+  padding: var(--kix-space-400);
+  border-radius: var(--kix-radius-300);
+  border: 1px solid;
+  font-size: var(--kix-fs-body);
+}
+.kix-alert--info     { background: var(--kix-info-bg); border-color: var(--kix-info); color: var(--kix-text-strong); }
+.kix-alert--success  { background: var(--kix-success-bg); border-color: var(--kix-success); color: var(--kix-text-strong); }
+.kix-alert--warning  { background: var(--kix-warning-bg); border-color: var(--kix-warning); color: var(--kix-text-strong); }
+.kix-alert--critical { background: var(--kix-critical-bg); border-color: var(--kix-critical); color: var(--kix-text-strong); }
+
+/* ---------- 13. Badge / Tag --------------------------------------------- */
+.kix-badge {
+  display: inline-flex; align-items: center; gap: var(--kix-space-100);
+  padding-block: 2px; padding-inline: var(--kix-space-200);
+  border-radius: var(--kix-radius-100);
+  font-size: var(--kix-fs-caption); font-weight: var(--kix-fw-medium);
+  background: var(--kix-surface-subdued); color: var(--kix-text-default);
+  line-height: 1.4;
+}
+.kix-badge--success  { background: var(--kix-success-bg);  color: var(--kix-success); }
+.kix-badge--warning  { background: var(--kix-warning-bg);  color: var(--kix-warning); }
+.kix-badge--critical { background: var(--kix-critical-bg); color: var(--kix-critical); }
+.kix-badge--info     { background: var(--kix-info-bg);     color: var(--kix-info); }
+.kix-badge--brand    { background: var(--kix-brand-primary-soft); color: var(--kix-brand-primary); }
+
+.kix-tag {
+  display: inline-flex; align-items: center; gap: var(--kix-space-100);
+  padding-block: var(--kix-space-100); padding-inline: var(--kix-space-200);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-full);
+  font-size: var(--kix-fs-caption);
+  background: var(--kix-surface-canvas);
+}
+.kix-tag__close {
+  cursor: pointer; color: var(--kix-text-subdued); border: none; background: transparent;
+  padding: 0; font-size: 14px; line-height: 1;
+}
+
+/* ---------- 14. Tooltip / Popover --------------------------------------- */
+.kix-tooltip {
+  position: relative; display: inline-flex;
+}
+.kix-tooltip__content {
+  position: absolute; inset-block-end: calc(100% + 8px); inset-inline-start: 50%;
+  transform: translateX(-50%);
+  background: var(--kix-surface-inverse); color: #FFF;
+  padding-block: var(--kix-space-150); padding-inline: var(--kix-space-300);
+  border-radius: var(--kix-radius-200);
+  font-size: var(--kix-fs-caption); white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--kix-motion-default);
+  z-index: var(--kix-z-tooltip);
+}
+.kix-tooltip:hover .kix-tooltip__content,
+.kix-tooltip:focus-within .kix-tooltip__content { opacity: 1; }
+
+.kix-popover {
+  position: absolute; min-inline-size: 220px;
+  background: var(--kix-surface-canvas);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-300);
+  box-shadow: var(--kix-shadow-md);
+  padding: var(--kix-space-300);
+  z-index: var(--kix-z-dropdown);
+}
+
+/* ---------- 15. Breadcrumb ---------------------------------------------- */
+.kix-breadcrumb {
+  display: flex; align-items: center; gap: var(--kix-space-200);
+  font-size: var(--kix-fs-caption); color: var(--kix-text-subdued);
+}
+.kix-breadcrumb a { color: var(--kix-text-subdued); text-decoration: none; }
+.kix-breadcrumb a:hover { color: var(--kix-text-link); text-decoration: underline; }
+.kix-breadcrumb__sep::before { content: "/"; color: var(--kix-text-disabled); }
+[dir="rtl"] .kix-breadcrumb__sep::before { content: "\\"; }
+.kix-breadcrumb__current { color: var(--kix-text-default); font-weight: var(--kix-fw-medium); }
+
+/* ---------- 16. Pagination --------------------------------------------- */
+.kix-pagination {
+  display: flex; align-items: center; gap: var(--kix-space-100);
+  font-size: var(--kix-fs-body-sm);
+}
+.kix-pagination__btn {
+  min-inline-size: 32px; block-size: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--kix-border-subdued);
+  background: var(--kix-surface-canvas);
+  color: var(--kix-text-default);
+  border-radius: var(--kix-radius-200);
+  cursor: pointer; padding: 0 var(--kix-space-200);
+}
+.kix-pagination__btn:hover { background: var(--kix-surface-hover); }
+.kix-pagination__btn.is-current {
+  background: var(--kix-brand-primary); color: var(--kix-brand-on); border-color: var(--kix-brand-primary);
+}
+.kix-pagination__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- 17. MetricCard ---------------------------------------------- */
+.kix-metric {
+  background: var(--kix-surface-canvas);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-300);
+  padding: var(--kix-space-500);
+  display: flex; flex-direction: column; gap: var(--kix-space-200);
+  min-inline-size: 180px;
+}
+.kix-metric__label { font-size: var(--kix-fs-caption); color: var(--kix-text-subdued); text-transform: uppercase; letter-spacing: 0.04em; }
+.kix-metric__value { font-size: 28px; line-height: 32px; font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); font-variant-numeric: tabular-nums; }
+.kix-metric__delta { font-size: var(--kix-fs-caption); display: inline-flex; gap: var(--kix-space-100); align-items: center; }
+.kix-metric__delta--up   { color: var(--kix-success); }
+.kix-metric__delta--down { color: var(--kix-critical); }
+.kix-metric__spark { block-size: 32px; inline-size: 100%; }
+
+/* ---------- 18. Chart container ---------------------------------------- */
+.kix-chart {
+  background: var(--kix-surface-canvas);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-300);
+  padding: var(--kix-space-500);
+}
+.kix-chart__title { font-size: var(--kix-fs-h3); font-weight: var(--kix-fw-semibold); margin-block-end: var(--kix-space-400); color: var(--kix-text-strong); }
+.kix-chart__canvas { inline-size: 100%; block-size: 240px; }
+
+/* ---------- 19. EmptyState --------------------------------------------- */
+.kix-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--kix-space-1200) var(--kix-space-600);
+  gap: var(--kix-space-400);
+}
+.kix-empty__art { inline-size: 96px; block-size: 96px; color: var(--kix-text-disabled); }
+.kix-empty__title { font-size: var(--kix-fs-h3); font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); }
+.kix-empty__body  { color: var(--kix-text-subdued); max-inline-size: 420px; }
+
+/* ---------- 20. LoadingSkeleton ---------------------------------------- */
+.kix-skeleton {
+  background: linear-gradient(90deg, var(--kix-surface-subdued) 0%, var(--kix-surface-hover) 50%, var(--kix-surface-subdued) 100%);
+  background-size: 200% 100%;
+  animation: kix-shimmer 1.4s infinite;
+  border-radius: var(--kix-radius-200);
+  block-size: 14px;
+}
+@keyframes kix-shimmer { 0% { background-position: -100% 0;} 100% { background-position: 100% 0;} }
+.kix-skeleton--text { block-size: 12px; margin-block-end: var(--kix-space-200); }
+.kix-skeleton--title{ block-size: 20px; inline-size: 60%; }
+.kix-skeleton--block{ block-size: 96px; }
+
+/* ---------- 21. Sidebar ------------------------------------------------- */
+.kix-sidebar {
+  position: fixed; inset-block: 0; inset-inline-start: 0;
+  inline-size: var(--kix-sidebar-w);
+  background: var(--kix-sidebar-bg);
+  color: var(--kix-sidebar-text);
+  display: flex; flex-direction: column;
+  z-index: var(--kix-z-sidebar);
+  transition: inline-size var(--kix-motion-slow);
+}
+.kix-sidebar.is-collapsed { inline-size: var(--kix-sidebar-w-collapsed); }
+.kix-sidebar__brand {
+  display: flex; align-items: center; gap: var(--kix-space-300);
+  padding: var(--kix-space-400);
+  block-size: var(--kix-topbar-h);
+  border-block-end: 1px solid rgba(255,255,255,0.06);
+  font-weight: var(--kix-fw-semibold);
+  color: #fff;
+}
+.kix-sidebar__nav { flex: 1; padding-block: var(--kix-space-300); overflow-y: auto; }
+.kix-sidebar__item {
+  display: flex; align-items: center; gap: var(--kix-space-300);
+  padding-block: var(--kix-space-300);
+  padding-inline: var(--kix-space-400);
+  color: var(--kix-sidebar-text);
+  text-decoration: none;
+  font-size: var(--kix-fs-label); font-weight: var(--kix-fw-medium);
+  border-inline-start: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap; overflow: hidden;
+}
+.kix-sidebar__item:hover { background: var(--kix-sidebar-hover); color: #fff; }
+.kix-sidebar__item.is-active {
+  background: var(--kix-sidebar-active-bg);
+  border-inline-start-color: var(--kix-brand-primary);
+  color: #fff;
+}
+.kix-sidebar__icon { inline-size: 20px; block-size: 20px; flex-shrink: 0; }
+.kix-sidebar.is-collapsed .kix-sidebar__label { display: none; }
+.kix-sidebar__toggle {
+  padding: var(--kix-space-300) var(--kix-space-400);
+  border: none; background: transparent; color: var(--kix-sidebar-text-muted);
+  cursor: pointer; text-align: start;
+  border-block-start: 1px solid rgba(255,255,255,0.06);
+}
+.kix-sidebar__section {
+  font-size: var(--kix-fs-caption); text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--kix-sidebar-text-muted);
+  padding: var(--kix-space-400) var(--kix-space-400) var(--kix-space-200);
+}
+.kix-sidebar.is-collapsed .kix-sidebar__section { display: none; }
+
+/* ---------- 22. TopBar -------------------------------------------------- */
+.kix-topbar {
+  position: fixed; inset-block-start: 0;
+  inset-inline-start: var(--kix-sidebar-w);
+  inset-inline-end: 0;
+  block-size: var(--kix-topbar-h);
+  background: var(--kix-surface-canvas);
+  border-block-end: 1px solid var(--kix-border-subdued);
+  display: flex; align-items: center; gap: var(--kix-space-400);
+  padding-inline: var(--kix-space-600);
+  z-index: var(--kix-z-topbar);
+  transition: inset-inline-start var(--kix-motion-slow);
+}
+.kix-sidebar.is-collapsed ~ .kix-topbar { inset-inline-start: var(--kix-sidebar-w-collapsed); }
+.kix-topbar__switcher {
+  display: inline-flex; align-items: center; gap: var(--kix-space-200);
+  padding-block: var(--kix-space-200); padding-inline: var(--kix-space-300);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-200);
+  background: var(--kix-surface-canvas);
+  cursor: pointer; font-size: var(--kix-fs-body); font-weight: var(--kix-fw-medium);
+}
+.kix-topbar__search {
+  flex: 1; max-inline-size: 480px;
+  display: flex; align-items: center; gap: var(--kix-space-200);
+  background: var(--kix-surface-subdued);
+  border: 1px solid transparent;
+  border-radius: var(--kix-radius-200);
+  padding-block: var(--kix-space-200); padding-inline: var(--kix-space-300);
+  color: var(--kix-text-subdued); font-size: var(--kix-fs-body);
+  cursor: pointer;
+}
+.kix-topbar__search:hover { background: var(--kix-surface-hover); }
+.kix-topbar__search kbd {
+  margin-inline-start: auto;
+  font-family: var(--kix-font-mono); font-size: 11px;
+  padding-block: 1px; padding-inline: var(--kix-space-150);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-100);
+  background: var(--kix-surface-canvas); color: var(--kix-text-subdued);
+}
+.kix-topbar__actions { display: flex; align-items: center; gap: var(--kix-space-200); margin-inline-start: auto; }
+.kix-topbar__iconbtn {
+  inline-size: 36px; block-size: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--kix-radius-full); border: none;
+  background: transparent; cursor: pointer; color: var(--kix-text-default);
+  position: relative;
+}
+.kix-topbar__iconbtn:hover { background: var(--kix-surface-hover); }
+.kix-topbar__iconbtn[data-unread]::after {
+  content: ""; position: absolute; inset-block-start: 8px; inset-inline-end: 8px;
+  inline-size: 8px; block-size: 8px; border-radius: 50%;
+  background: var(--kix-critical); border: 2px solid var(--kix-surface-canvas);
+}
+.kix-topbar__profile {
+  display: inline-flex; align-items: center; gap: var(--kix-space-200);
+  cursor: pointer; padding: var(--kix-space-100);
+  border-radius: var(--kix-radius-full);
+}
+.kix-avatar {
+  inline-size: 32px; block-size: 32px;
+  background: var(--kix-brand-primary); color: #fff;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--kix-fs-caption); font-weight: var(--kix-fw-semibold);
+}
+
+/* ---------- 23. PageHeader --------------------------------------------- */
+.kix-pageheader {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--kix-space-600);
+  padding-block: var(--kix-space-500) var(--kix-space-600);
+}
+.kix-pageheader__title { font-size: var(--kix-fs-display-md); line-height: var(--kix-lh-display-md); font-weight: var(--kix-fw-semibold); color: var(--kix-text-strong); margin: 0; }
+.kix-pageheader__subtitle { color: var(--kix-text-subdued); margin-block-start: var(--kix-space-100); }
+.kix-pageheader__actions { display: flex; gap: var(--kix-space-200); }
+
+/* ---------- 24. App shell ---------------------------------------------- */
+.kix-shell { min-block-size: 100vh; background: var(--kix-surface-subdued); }
+.kix-shell__main {
+  margin-inline-start: var(--kix-sidebar-w);
+  padding-block-start: var(--kix-topbar-h);
+  transition: margin-inline-start var(--kix-motion-slow);
+}
+.kix-shell.is-collapsed .kix-shell__main { margin-inline-start: var(--kix-sidebar-w-collapsed); }
+.kix-shell__content {
+  padding: var(--kix-space-600);
+  max-inline-size: var(--kix-content-max);
+  margin-inline: auto;
+}
+
+/* ---------- 25. Right rail --------------------------------------------- */
+.kix-rail {
+  inline-size: var(--kix-rail-w);
+  background: var(--kix-surface-canvas);
+  border: 1px solid var(--kix-border-subdued);
+  border-radius: var(--kix-radius-300);
+  padding: var(--kix-space-500);
+  display: flex; flex-direction: column; gap: var(--kix-space-400);
+}
+
+/* ---------- Command Palette (⌘K) --------------------------------------- */
+.kix-cmdk-backdrop {
+  position: fixed; inset: 0; background: var(--kix-surface-overlay);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-block-start: 12vh;
+  z-index: var(--kix-z-modal);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--kix-motion-default);
+}
+.kix-cmdk-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.kix-cmdk {
+  inline-size: min(560px, calc(100vw - 32px));
+  background: var(--kix-surface-canvas);
+  border-radius: var(--kix-radius-400);
+  box-shadow: var(--kix-shadow-lg);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.kix-cmdk__input {
+  padding: var(--kix-space-500); border: none; outline: none;
+  font-size: var(--kix-fs-body-lg);
+  border-block-end: 1px solid var(--kix-border-subdued);
+  font-family: var(--kix-font-sans);
+}
+.kix-cmdk__list { max-block-size: 360px; overflow-y: auto; padding: var(--kix-space-200); }
+.kix-cmdk__item {
+  padding-block: var(--kix-space-300); padding-inline: var(--kix-space-400);
+  border-radius: var(--kix-radius-200); cursor: pointer;
+  display: flex; align-items: center; gap: var(--kix-space-300);
+  font-size: var(--kix-fs-body);
+}
+.kix-cmdk__item.is-focused, .kix-cmdk__item:hover { background: var(--kix-surface-hover); }
+
+/* ---------- Icon helper ------------------------------------------------- */
+.kix-icon { inline-size: 16px; block-size: 16px; display: inline-block; flex-shrink: 0; }
+.kix-icon--lg { inline-size: 20px; block-size: 20px; }
+.kix-icon--xl { inline-size: 24px; block-size: 24px; }
+
+/* ---------- Utilities --------------------------------------------------- */
+.kix-stack    { display: flex; flex-direction: column; gap: var(--kix-space-400); }
+.kix-row      { display: flex; align-items: center; gap: var(--kix-space-300); }
+.kix-grow     { flex: 1; }
+.kix-divider  { block-size: 1px; background: var(--kix-border-subdued); border: none; }
+.kix-sr-only  { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

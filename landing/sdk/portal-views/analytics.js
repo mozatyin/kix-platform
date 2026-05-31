@@ -1,6 +1,13 @@
 (function() {
   'use strict';
 
+  const t = (key, opts) => {
+    if (window.i18next && typeof window.i18next.t === 'function') {
+      return window.i18next.t('portal-sdk:' + key, opts);
+    }
+    return key;
+  };
+
   const AnalyticsView = {
     async render() {
       const root = document.getElementById('view-analytics');
@@ -58,8 +65,8 @@
 
     _skeletonHTML() {
       return `
-        <h2 class="page-title">Analytics / 数据分析</h2>
-        <p class="page-subtitle">所有 gamification 活动的实时数据 / Real-time stats across all modules</p>
+        <h2 class="page-title">${t('analytics.title')}</h2>
+        <p class="page-subtitle">${t('analytics.subtitle')}</p>
 
         <div id="analytics-overview" class="section"></div>
         <div id="analytics-viral" class="section"></div>
@@ -80,16 +87,16 @@
       const redeemed = vouchers.coupons_redeemed || 0;
       const redemptionRate = vouchers.redemption_rate || 0;
       section.innerHTML = `
-        <div class="section-title">概览 / Overview</div>
+        <div class="section-title">${t('analytics.overview')}</div>
         <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-label">已启用模块 / Active Modules</div><div class="kpi-value">${activeModules}</div></div>
-          <div class="kpi-card"><div class="kpi-label">优惠券发放 / Vouchers Issued</div><div class="kpi-value">${claimed}</div></div>
-          <div class="kpi-card"><div class="kpi-label">已核销 / Redeemed</div><div class="kpi-value">${redeemed}</div></div>
-          <div class="kpi-card"><div class="kpi-label">核销率 / Redemption</div><div class="kpi-value">${(redemptionRate * 100).toFixed(1)}%</div></div>
-          <div class="kpi-card"><div class="kpi-label">病毒系数 K / Viral K</div><div class="kpi-value">${coef.toFixed(2)}</div></div>
-          <div class="kpi-card"><div class="kpi-label">总邀请 / Invited</div><div class="kpi-value">${invited}</div></div>
-          <div class="kpi-card"><div class="kpi-label">转化 / Converted</div><div class="kpi-value">${converted}</div></div>
-          <div class="kpi-card"><div class="kpi-label">转化率 / Conv. Rate</div><div class="kpi-value">${invited ? (converted / invited * 100).toFixed(1) : '0.0'}%</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.active-modules')}</div><div class="kpi-value">${activeModules}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.vouchers-issued')}</div><div class="kpi-value">${claimed}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.redeemed')}</div><div class="kpi-value">${redeemed}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.redemption-rate')}</div><div class="kpi-value">${(redemptionRate * 100).toFixed(1)}%</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.viral-k')}</div><div class="kpi-value">${coef.toFixed(2)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.invited')}</div><div class="kpi-value">${invited}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.converted')}</div><div class="kpi-value">${converted}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('analytics.conv-rate')}</div><div class="kpi-value">${invited ? (converted / invited * 100).toFixed(1) : '0.0'}%</div></div>
         </div>
       `;
     },
@@ -99,9 +106,9 @@
       const triggers = viral.triggers || {};
       const entries = Object.entries(triggers);
       section.innerHTML = `
-        <div class="section-title">病毒触发器 / Viral Triggers</div>
+        <div class="section-title">${t('analytics.viral-triggers')}</div>
         <table class="data-table">
-          <thead><tr><th>Trigger</th><th>邀请 / Invited</th><th>转化 / Converted</th><th>系数 K</th></tr></thead>
+          <thead><tr><th>${t('analytics.col-trigger')}</th><th>${t('analytics.invited')}</th><th>${t('analytics.converted')}</th><th>${t('analytics.col-k')}</th></tr></thead>
           <tbody>
             ${entries.length ? entries.map(([name, stats]) => {
               const inv = stats.invited || 0;
@@ -115,7 +122,7 @@
                   <td><strong style="color:${k >= 0.5 ? 'var(--green)' : 'var(--text)'}">${k.toFixed(2)}</strong></td>
                 </tr>
               `;
-            }).join('') : '<tr><td colspan="4" class="empty-row">暂无病毒数据 / No viral data yet</td></tr>'}
+            }).join('') : `<tr><td colspan="4" class="empty-row">${t('analytics.no-viral')}</td></tr>`}
           </tbody>
         </table>
       `;
@@ -124,8 +131,8 @@
     async _renderConditionsUsage(root, modules) {
       const section = root.querySelector('#analytics-conditions');
       section.innerHTML = `
-        <div class="section-title">条件门控统计 / Conditions Usage</div>
-        <p class="empty">Loading...</p>
+        <div class="section-title">${t('analytics.conditions-usage')}</div>
+        <p class="empty">${t('common.loading')}</p>
       `;
       const enabledIds = modules.filter(m => m.enabled).map(m => m.id).filter(Boolean);
       const usages = await Promise.all(enabledIds.map(async (id) => {
@@ -140,16 +147,16 @@
       }));
       const valid = usages.filter(u => u && (u.total_claims || 0) > 0);
       section.innerHTML = `
-        <div class="section-title">条件门控统计 / Conditions Usage</div>
+        <div class="section-title">${t('analytics.conditions-usage')}</div>
         ${valid.length ? `
           <table class="data-table">
-            <thead><tr><th>模块 / Module</th><th>总尝试 / Claims</th><th>独立用户 / Users</th><th>转化率 / Conv.</th><th>主要拦截 / Top Blockers</th><th>近24h / 24h</th></tr></thead>
+            <thead><tr><th>${t('analytics.col-module')}</th><th>${t('analytics.col-claims')}</th><th>${t('analytics.col-users')}</th><th>${t('analytics.col-conv')}</th><th>${t('analytics.col-blockers')}</th><th>${t('analytics.col-24h')}</th></tr></thead>
             <tbody>
               ${valid.map(u => {
                 const blockers = (u.top_blockers || []).slice(0, 3).map(b => {
                   const key = Array.isArray(b) ? b[0] : (b && b.condition) || '?';
                   return esc(String(key));
-                }).join(', ') || '无';
+                }).join(', ') || t('analytics.no-blockers');
                 const hourly = u.hourly_distribution || [];
                 return `
                   <tr>
@@ -164,7 +171,7 @@
               }).join('')}
             </tbody>
           </table>
-        ` : '<p class="empty">暂无门控活动 / No condition-gated activity yet</p>'}
+        ` : `<p class="empty">${t('analytics.no-conditions')}</p>`}
       `;
     },
 
@@ -185,15 +192,15 @@
       const enabled = modules.filter(m => m.enabled);
       if (!enabled.length) {
         section.innerHTML = `
-          <div class="section-title">已启用模块 / Active Modules (0)</div>
-          <p class="empty">尚未启用任何模块 / No modules enabled yet</p>
+          <div class="section-title">${t('analytics.active-modules-count', {count: 0})}</div>
+          <p class="empty">${t('analytics.no-modules')}</p>
         `;
         return;
       }
       section.innerHTML = `
-        <div class="section-title">已启用模块 / Active Modules (${enabled.length})</div>
+        <div class="section-title">${t('analytics.active-modules-count', {count: enabled.length})}</div>
         <table class="data-table">
-          <thead><tr><th>Module</th><th>今日 / Today</th><th>本周 / Week</th><th>本月 / Month</th><th>Top User</th><th>Avg Value</th></tr></thead>
+          <thead><tr><th>${t('analytics.col-module')}</th><th>${t('analytics.col-today')}</th><th>${t('analytics.col-week')}</th><th>${t('analytics.col-month')}</th><th>Top User</th><th>Avg Value</th></tr></thead>
           <tbody>
             ${enabled.map(m => {
               const stats = m.stats || {};
@@ -226,18 +233,18 @@
       const dropValidation = issued ? Math.max(0, 100 - pctValidated) : 0;
       const dropRedemption = validated ? Math.max(0, 100 - (redeemed / validated * 100)) : 0;
       section.innerHTML = `
-        <div class="section-title">优惠券漏斗 / Voucher Funnel</div>
+        <div class="section-title">${t('analytics.voucher-funnel')}</div>
         <div class="funnel">
-          <div class="funnel-step" style="width:100%"><span>发放 / Issued: ${issued}</span></div>
-          <div class="funnel-step" style="width:${Math.max(8, pctValidated)}%"><span>验证 / Validated: ${validated} (${pctValidated.toFixed(0)}%)</span></div>
-          <div class="funnel-step" style="width:${Math.max(8, pctRedeemed)}%"><span>核销 / Redeemed: ${redeemed} (${pctRedeemed.toFixed(0)}%)</span></div>
+          <div class="funnel-step" style="width:100%"><span>${t('analytics.issued')}: ${issued}</span></div>
+          <div class="funnel-step" style="width:${Math.max(8, pctValidated)}%"><span>${t('analytics.validated')}: ${validated} (${pctValidated.toFixed(0)}%)</span></div>
+          <div class="funnel-step" style="width:${Math.max(8, pctRedeemed)}%"><span>${t('analytics.redeemed')}: ${redeemed} (${pctRedeemed.toFixed(0)}%)</span></div>
         </div>
         <div class="funnel-dropoff">
-          <span>↓ 流失 / Drop-off (issue→validate): <strong>${dropValidation.toFixed(1)}%</strong></span>
-          <span>↓ 流失 / Drop-off (validate→redeem): <strong>${dropRedemption.toFixed(1)}%</strong></span>
+          <span>↓ ${t('analytics.drop-issue-validate')}: <strong>${dropValidation.toFixed(1)}%</strong></span>
+          <span>↓ ${t('analytics.drop-validate-redeem')}: <strong>${dropRedemption.toFixed(1)}%</strong></span>
         </div>
         <div class="kpi-card" style="margin-top:12px;max-width:240px">
-          <div class="kpi-label">总省金额 / Total Savings</div>
+          <div class="kpi-label">${t('analytics.total-savings')}</div>
           <div class="kpi-value">¥${((vouchers.total_savings_value || 0) / 100).toFixed(2)}</div>
         </div>
       `;
@@ -246,8 +253,8 @@
     async _renderActivityFeed(root) {
       const section = root.querySelector('#analytics-activity');
       section.innerHTML = `
-        <div class="section-title">最近活动 / Recent Activity</div>
-        <p class="empty" id="activity-list">Loading...</p>
+        <div class="section-title">${t('analytics.recent-activity')}</div>
+        <p class="empty" id="activity-list">${t('common.loading')}</p>
       `;
       try {
         const moduleIds = ['reward_roulette', 'voucher_template', 'score_to_coupon', 'lucky_draw', 'streak_bonus', 'daily_checkin'];
@@ -273,11 +280,11 @@
           }).join('');
           list.replaceWith(ul);
         } else {
-          list.textContent = '暂无活动数据 / No activity yet';
+          list.textContent = t('analytics.no-activity');
         }
       } catch (e) {
         const list = section.querySelector('#activity-list');
-        if (list) list.textContent = '加载失败 / Load failed';
+        if (list) list.textContent = t('analytics.load-failed');
       }
     }
   };

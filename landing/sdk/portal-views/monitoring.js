@@ -9,18 +9,25 @@
  *   /api/v1/tutorials/{id}/abandon
  * ──────────────────────────────────────────────────────────────────── */
 (function() {
+  const t = (key, opts) => {
+    if (window.i18next && typeof window.i18next.t === 'function') {
+      return window.i18next.t('portal-sdk:' + key, opts);
+    }
+    return key;
+  };
+
   const MonitoringView = {
     async render() {
       const root = document.getElementById('view-monitoring');
       if (!root) return;
       root.innerHTML = `
-        <h2 class="page-title">Monitoring / 监控中心</h2>
-        <p class="page-subtitle">社交、P2P、多人、教程 — 实时状态</p>
+        <h2 class="page-title">${t('monitoring.title')}</h2>
+        <p class="page-subtitle">${t('monitoring.subtitle')}</p>
         <div class="tabs mon-tabs">
-          <button class="tab active" data-tab="social">👥 社交 Social</button>
-          <button class="tab" data-tab="p2p">🎁 P2P</button>
-          <button class="tab" data-tab="multiplayer">⚔️ 多人 Multiplayer</button>
-          <button class="tab" data-tab="tutorials">📚 教程 Tutorials</button>
+          <button class="tab active" data-tab="social">👥 ${t('monitoring.tab.social')}</button>
+          <button class="tab" data-tab="p2p">🎁 ${t('monitoring.tab.p2p')}</button>
+          <button class="tab" data-tab="multiplayer">⚔️ ${t('monitoring.tab.multiplayer')}</button>
+          <button class="tab" data-tab="tutorials">📚 ${t('monitoring.tab.tutorials')}</button>
         </div>
         <div id="mon-social" class="mon-pane"></div>
         <div id="mon-p2p" class="mon-pane" style="display:none"></div>
@@ -31,9 +38,9 @@
         btn.addEventListener('click', () => {
           root.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          ['social','p2p','multiplayer','tutorials'].forEach(t => {
-            const pane = document.getElementById(`mon-${t}`);
-            if (pane) pane.style.display = (t === btn.dataset.tab) ? 'block' : 'none';
+          ['social','p2p','multiplayer','tutorials'].forEach(tn => {
+            const pane = document.getElementById(`mon-${tn}`);
+            if (pane) pane.style.display = (tn === btn.dataset.tab) ? 'block' : 'none';
           });
           this._loadTab(btn.dataset.tab);
         });
@@ -57,11 +64,11 @@
       const pane = document.getElementById('mon-social');
       pane.innerHTML = `
         <div class="mon-toolbar">
-          <input id="social-uid" placeholder="用户ID / User ID" class="mon-input">
-          <button class="btn-mini" onclick="MonitoringView._lookupSocial()">查询 Lookup</button>
+          <input id="social-uid" placeholder="${t('common.user-id')}" class="mon-input">
+          <button class="btn-mini" onclick="MonitoringView._lookupSocial()">${t('common.lookup')}</button>
         </div>
         <div id="social-result"></div>
-        <p class="mon-info">📊 输入用户ID查看好友/关注/动态。后端：/api/v1/social/{user_id}/friends|followers|following|feed</p>
+        <p class="mon-info">📊 ${t('monitoring.social.info')}</p>
       `;
     },
 
@@ -82,12 +89,12 @@
       const feedArr = Array.isArray(feed) ? feed : (feed.feed || feed.posts || []);
       result.innerHTML = `
         <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-label">好友 Friends</div><div class="kpi-value">${friendsArr.length}</div></div>
-          <div class="kpi-card"><div class="kpi-label">粉丝 Followers</div><div class="kpi-value">${followersArr.length}</div></div>
-          <div class="kpi-card"><div class="kpi-label">关注 Following</div><div class="kpi-value">${followingArr.length}</div></div>
-          <div class="kpi-card"><div class="kpi-label">动态 Feed</div><div class="kpi-value">${feedArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.social.friends')}</div><div class="kpi-value">${friendsArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.social.followers')}</div><div class="kpi-value">${followersArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.social.following')}</div><div class="kpi-value">${followingArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.social.feed')}</div><div class="kpi-value">${feedArr.length}</div></div>
         </div>
-        ${feedArr.length ? `<h4 style="margin-top:18px">最近动态 / Recent Feed</h4>
+        ${feedArr.length ? `<h4 style="margin-top:18px">${t('monitoring.social.recent-feed')}</h4>
           <ul class="activity-list">${feedArr.slice(0,10).map(p=>`
             <li>
               <span class="time">${new Date(p.created_at||p.timestamp||0).toLocaleString()}</span>
@@ -105,11 +112,11 @@
       const pane = document.getElementById('mon-p2p');
       pane.innerHTML = `
         <div class="mon-toolbar">
-          <input id="p2p-uid" placeholder="用户ID / User ID" class="mon-input">
-          <button class="btn-mini" onclick="MonitoringView._lookupP2P()">查询 Lookup</button>
+          <input id="p2p-uid" placeholder="${t('common.user-id')}" class="mon-input">
+          <button class="btn-mini" onclick="MonitoringView._lookupP2P()">${t('common.lookup')}</button>
         </div>
         <div id="p2p-result"></div>
-        <p class="mon-info">📦 礼物收件箱 / 已发送 / 交易请求 — Gift inbox, sent, pending trades</p>
+        <p class="mon-info">📦 ${t('monitoring.p2p.info')}</p>
       `;
     },
 
@@ -128,24 +135,24 @@
       const tradesArr = trades.trades || [];
       result.innerHTML = `
         <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-label">未领礼物 Unclaimed</div><div class="kpi-value">${inboxArr.length}</div></div>
-          <div class="kpi-card"><div class="kpi-label">已发送 Sent</div><div class="kpi-value">${sentArr.length}</div></div>
-          <div class="kpi-card"><div class="kpi-label">待回应交易 Pending Trades</div><div class="kpi-value">${tradesArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.p2p.unclaimed')}</div><div class="kpi-value">${inboxArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.p2p.sent')}</div><div class="kpi-value">${sentArr.length}</div></div>
+          <div class="kpi-card"><div class="kpi-label">${t('monitoring.p2p.pending-trades')}</div><div class="kpi-value">${tradesArr.length}</div></div>
         </div>
-        ${inboxArr.length ? `<h4 style="margin-top:18px">收件箱 / Inbox</h4>
+        ${inboxArr.length ? `<h4 style="margin-top:18px">${t('monitoring.p2p.inbox')}</h4>
           <ul class="activity-list">${inboxArr.slice(0,10).map(g=>`
             <li>
               <span class="time">${new Date(g.created_at||g.sent_at||0).toLocaleString()}</span>
               <span class="event">${esc(g.gift_type||g.type||'gift')}</span>
-              <span class="user">来自 ${esc(g.from_user_id||g.sender_id||'?')}</span>
+              <span class="user">${t('common.from')} ${esc(g.from_user_id||g.sender_id||'?')}</span>
             </li>
           `).join('')}</ul>` : ''}
-        ${tradesArr.length ? `<h4 style="margin-top:18px">待回应交易 / Pending Trades</h4>
-          <ul class="activity-list">${tradesArr.slice(0,10).map(t=>`
+        ${tradesArr.length ? `<h4 style="margin-top:18px">${t('monitoring.p2p.trades-header')}</h4>
+          <ul class="activity-list">${tradesArr.slice(0,10).map(tr=>`
             <li>
-              <span class="time">${new Date(t.created_at||0).toLocaleString()}</span>
-              <span class="event">${esc(t.status||'pending')}</span>
-              <span class="user">${esc(t.from_user_id||'?')} ↔ ${esc(t.to_user_id||'?')}</span>
+              <span class="time">${new Date(tr.created_at||0).toLocaleString()}</span>
+              <span class="event">${esc(tr.status||'pending')}</span>
+              <span class="user">${esc(tr.from_user_id||'?')} ↔ ${esc(tr.to_user_id||'?')}</span>
             </li>
           `).join('')}</ul>` : ''}
       `;
@@ -157,22 +164,22 @@
     _renderMultiplayer() {
       const pane = document.getElementById('mon-multiplayer');
       pane.innerHTML = `
-        <p class="mon-info">⚔️ 多人活动需通过具体 ID 查询 / Lookup multiplayer entities by ID:</p>
+        <p class="mon-info">⚔️ ${t('monitoring.mp.info')}</p>
         <ul class="mon-list">
-          <li><code>GET /api/v1/multiplayer/coop-quest/{coop_id}</code> — 团队任务 CoopQuest</li>
-          <li><code>GET /api/v1/multiplayer/raid/{party_id}</code> — 副本 Raid</li>
-          <li><code>GET /api/v1/multiplayer/territory/{territory_id}</code> — 领地 Territory</li>
-          <li><code>GET /api/v1/multiplayer/squad/{squad_id}</code> — 小队 Squad</li>
+          <li><code>GET /api/v1/multiplayer/coop-quest/{coop_id}</code> — ${t('monitoring.mp.coop-quest-desc')}</li>
+          <li><code>GET /api/v1/multiplayer/raid/{party_id}</code> — ${t('monitoring.mp.raid-desc')}</li>
+          <li><code>GET /api/v1/multiplayer/territory/{territory_id}</code> — ${t('monitoring.mp.territory-desc')}</li>
+          <li><code>GET /api/v1/multiplayer/squad/{squad_id}</code> — ${t('monitoring.mp.squad-desc')}</li>
         </ul>
         <div class="mon-toolbar">
           <select id="mp-type" class="mon-input">
-            <option value="coop-quest">CoopQuest 团队任务</option>
-            <option value="raid">Raid 副本</option>
-            <option value="territory">Territory 领地</option>
-            <option value="squad">Squad 小队</option>
+            <option value="coop-quest">${t('monitoring.mp.opt-coop')}</option>
+            <option value="raid">${t('monitoring.mp.opt-raid')}</option>
+            <option value="territory">${t('monitoring.mp.opt-territory')}</option>
+            <option value="squad">${t('monitoring.mp.opt-squad')}</option>
           </select>
           <input id="mp-id" placeholder="ID" class="mon-input">
-          <button class="btn-mini" onclick="MonitoringView._lookupMP()">查询 Lookup</button>
+          <button class="btn-mini" onclick="MonitoringView._lookupMP()">${t('common.lookup')}</button>
         </div>
         <div id="mp-result"></div>
       `;
@@ -186,11 +193,11 @@
       result.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
       try {
         const res = await apiFetch(`/api/v1/multiplayer/${type}/${id}`);
-        if (!res.ok) { result.innerHTML = '<p class="empty">未找到 / Not found</p>'; return; }
+        if (!res.ok) { result.innerHTML = `<p class="empty">${t('common.not-found')}</p>`; return; }
         const data = await res.json();
         result.innerHTML = `<pre class="json-out">${esc(JSON.stringify(data, null, 2))}</pre>`;
       } catch(e) {
-        result.innerHTML = '<p class="empty">查询失败 / Lookup failed</p>';
+        result.innerHTML = `<p class="empty">${t('common.lookup-failed')}</p>`;
       }
     },
 
@@ -200,51 +207,51 @@
     async _renderTutorials() {
       const pane = document.getElementById('mon-tutorials');
       pane.innerHTML = `
-        <h4>本品牌教程历史 / Brand Tutorials History</h4>
+        <h4>${t('monitoring.tutorials.title')}</h4>
         <div id="tutorials-list"><div class="loading-center"><div class="spinner"></div></div></div>
       `;
       try {
         const res = await apiFetch(`/api/v1/tutorials/brand/${state.brandId}`);
         const listEl = document.getElementById('tutorials-list');
-        if (!res.ok) { listEl.innerHTML = '<p class="empty">加载失败 / Load failed</p>'; return; }
+        if (!res.ok) { listEl.innerHTML = `<p class="empty">${t('common.load-failed')}</p>`; return; }
         const data = await res.json();
         const tutorials = data.tutorials || (Array.isArray(data) ? data : []);
         if (!tutorials.length) {
-          listEl.innerHTML = '<p class="empty">还没有教程。在 Recipes 页面点击"教程模式"开始。<br>No tutorials yet. Start one from the Recipes page.</p>';
+          listEl.innerHTML = `<p class="empty">${t('monitoring.tutorials.none')}</p>`;
           return;
         }
-        listEl.innerHTML = tutorials.map(t => {
-          const tid = t.tutorial_id || t.id || '';
-          const totalSteps = t.total_steps || (Array.isArray(t.steps) ? t.steps.length : '?');
+        listEl.innerHTML = tutorials.map(tu => {
+          const tid = tu.tutorial_id || tu.id || '';
+          const totalSteps = tu.total_steps || (Array.isArray(tu.steps) ? tu.steps.length : '?');
           return `
             <div class="ops-card">
-              <h4>${esc(t.title_cn || t.title || tid)}</h4>
+              <h4>${esc(tu.title_cn || tu.title || tid)}</h4>
               <div class="ops-stats">
-                <span>状态 Status: <strong>${esc(t.status || 'active')}</strong></span>
-                <span>进度 Progress: ${t.current_step || 0}/${totalSteps}</span>
-                <span>来源 Recipe: ${esc(t.recipe_id || '-')}</span>
-                ${t.started_at ? `<span>开始 Started: ${new Date(t.started_at).toLocaleString()}</span>` : ''}
+                <span>${t('monitoring.tutorials.status')}: <strong>${esc(tu.status || 'active')}</strong></span>
+                <span>${t('monitoring.tutorials.progress')}: ${tu.current_step || 0}/${totalSteps}</span>
+                <span>${t('monitoring.tutorials.recipe')}: ${esc(tu.recipe_id || '-')}</span>
+                ${tu.started_at ? `<span>${t('monitoring.tutorials.started')}: ${new Date(tu.started_at).toLocaleString()}</span>` : ''}
               </div>
               <div class="ops-tools">
-                ${t.status === 'active' && window.TutorialEngine ? `<button class="btn-mini" onclick="TutorialEngine.start('${esc(tid)}')">继续 Resume</button>` : ''}
-                ${t.status !== 'completed' && t.status !== 'abandoned' ? `<button class="btn-mini btn-danger" onclick="MonitoringView._abandonTutorial('${esc(tid)}')">放弃 Abandon</button>` : ''}
+                ${tu.status === 'active' && window.TutorialEngine ? `<button class="btn-mini" onclick="TutorialEngine.start('${esc(tid)}')">${t('monitoring.tutorials.resume')}</button>` : ''}
+                ${tu.status !== 'completed' && tu.status !== 'abandoned' ? `<button class="btn-mini btn-danger" onclick="MonitoringView._abandonTutorial('${esc(tid)}')">${t('monitoring.tutorials.abandon')}</button>` : ''}
               </div>
             </div>
           `;
         }).join('');
       } catch(e) {
         const listEl = document.getElementById('tutorials-list');
-        if (listEl) listEl.innerHTML = '<p class="empty">加载失败 / Load failed</p>';
+        if (listEl) listEl.innerHTML = `<p class="empty">${t('common.load-failed')}</p>`;
       }
     },
 
     async _abandonTutorial(id) {
-      if (!confirm('确认放弃这个教程？\nAbandon this tutorial?')) return;
+      if (!confirm(t('monitoring.tutorials.abandon-confirm'))) return;
       try {
         const res = await apiFetch(`/api/v1/tutorials/${id}/abandon`, { method: 'POST' });
-        if (res.ok && typeof showToast === 'function') showToast('已放弃 / Abandoned');
+        if (res.ok && typeof showToast === 'function') showToast(t('monitoring.tutorials.abandoned'));
       } catch(e) {
-        if (typeof showToast === 'function') showToast('操作失败 / Failed');
+        if (typeof showToast === 'function') showToast(t('common.failed'));
       }
       this._renderTutorials();
     }

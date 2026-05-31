@@ -198,6 +198,7 @@ BRANDS: dict[str, BrandConfig] = {
         # D · stricter gate for enterprise (Sandeep is pickier)
         verdict_threshold=70,
         verdict_min_floor=50,
+        hide_founding_cta=True,   # R9 · Sandeep: "founding-100 is startup theatre, not enterprise"
     ),
 }
 
@@ -228,7 +229,16 @@ def main() -> int:
         total += n
         print(f"  wrote {out_path} ({n:,} chars, audience={cfg.audience}, chain={'Y' if cfg.chain_section else 'N'})")
 
-    print(f"\nGenerated {len(targets)} landing(s), {total:,} chars total.")
+    # Regenerate /landing/pricing.html from pricing_canon so the legacy URL
+    # always serves current data (buyer-journey R2 fix).
+    from app.services.landing_gen import render_pricing_canonical_page
+    pricing_html = render_pricing_canonical_page()
+    pricing_path = Path("landing/pricing.html")
+    pricing_path.write_text(pricing_html)
+    print(f"  wrote {pricing_path} ({len(pricing_html):,} chars · canonical)")
+    total += len(pricing_html)
+
+    print(f"\nGenerated {len(targets) + 1} landing(s), {total:,} chars total.")
     return 0
 
 

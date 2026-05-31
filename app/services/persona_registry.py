@@ -111,6 +111,52 @@ PERSONAS: dict[str, Persona] = {
         ),
         axes=PersonaAxes(audience="consumer", scale="both"),
     ),
+    # ── Wave N buyer-journey personas (multi-page conversion simulation) ──
+    "enterprise_skeptic_cn": Persona(
+        persona_id="enterprise_skeptic_cn",
+        name="王经理 / Mr Wang",
+        role=(
+            "CMO of a 380-store McDonald's-tier QSR brand. HQ in Shanghai, "
+            "stores across mainland China + Singapore + Malaysia. Reports to "
+            "Group COO. Has S$2-5M annual marketing-tech budget. Compares 5+ "
+            "vendors per RFP. Has been pitched 30 SaaS platforms this year. "
+            "Default answer is 'no' — vendors must overcome serious doubt."
+        ),
+        context=(
+            "Visiting KiX because his Singapore franchisee mentioned it at a "
+            "Q1 review. Has 15 min before next meeting. Will leave at the first "
+            "vague claim. Wants: (a) is this real? (b) does it fit my scale? "
+            "(c) what's the actual 12-month cost-and-ROI for 380 stores? "
+            "(d) can I exit if it doesn't work? Authorization to spend up to "
+            "S$50K on a 6-month pilot without further approval. Anything bigger "
+            "needs board sign-off."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="enterprise"),
+        score_floor_override=55,
+        temperature=0.4,
+    ),
+    "smb_entrepreneur_sgcn": Persona(
+        persona_id="smb_entrepreneur_sgcn",
+        name="陈老板 / Boss Chen",
+        role=(
+            "Owner of 3 bubble-tea shops (1 in Singapore Bedok, 2 in Shenzhen). "
+            "Hands-on operator — works the counter on busy days. Marketing "
+            "spend ~S$800/month (mostly IG + Xiaohongshu). Will subscribe to "
+            "ONE more SaaS if it pays for itself in ≤2 months. Already has "
+            "Shopify POS + WeChat mini-program."
+        ),
+        context=(
+            "Saw KiX on a LinkedIn ad. Has 8 min to decide whether to bookmark "
+            "or close. Wants: (a) will it work for bubble tea? "
+            "(b) ~how much per month? (c) can I cancel? (d) any pilot/free "
+            "trial so I can test without risk? Will subscribe at S$499/mo if "
+            "convinced ROI is real and cancel is 1-click. Hates 'enterprise' "
+            "sales calls — wants self-serve checkout."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="single"),
+        score_floor_override=50,
+        temperature=0.4,
+    ),
     "steve_jobs": Persona(
         persona_id="steve_jobs",
         name="Steve Jobs",

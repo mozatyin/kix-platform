@@ -5,18 +5,25 @@
 // Depends on globals: state, apiFetch, esc, showToast
 // ═══════════════════════════════════════════════════════════════════════
 (function () {
+  const t = (key, opts) => {
+    if (window.i18next && typeof window.i18next.t === 'function') {
+      return window.i18next.t('portal-sdk:' + key, opts);
+    }
+    return key;
+  };
+
   const RulesEditorView = {
     async render() {
       const root = document.getElementById('view-rules');
       if (!root) return;
 
       root.innerHTML = `
-        <h2 class="page-title">Rules / 规则引擎</h2>
-        <p class="page-subtitle">When-Then 规则：连接事件和奖励 / When-Then rules wiring events to rewards</p>
+        <h2 class="page-title">${t('rules.title')}</h2>
+        <p class="page-subtitle">${t('rules.subtitle')}</p>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <h3 style="margin:0;font-size:14px;color:var(--text-dim)">已有规则 / Existing Rules</h3>
-          <button class="btn-primary" id="new-rule" style="width:auto;padding:9px 16px">+ 新建规则 / New Rule</button>
+          <h3 style="margin:0;font-size:14px;color:var(--text-dim)">${t('rules.existing')}</h3>
+          <button class="btn-primary" id="new-rule" style="width:auto;padding:9px 16px">${t('rules.new-button')}</button>
         </div>
 
         <div class="section">
@@ -33,14 +40,13 @@
       try {
         const res = await apiFetch('/api/v1/rules/' + encodeURIComponent(state.brandId || ''));
         if (!res.ok) {
-          list.innerHTML = '<p class="empty">加载失败 / Load failed (' + res.status + ')</p>';
+          list.innerHTML = '<p class="empty">' + t('common.load-failed') + ' (' + res.status + ')</p>';
           return;
         }
         const data = await res.json();
         const rules = Array.isArray(data) ? data : data.rules || [];
         if (!rules.length) {
-          list.innerHTML =
-            '<p class="empty">还没有规则。AI 可以帮你生成 — 用 Recipes 页面的"AI生成配方"。<br>No rules yet. AI can help — use the Recipes page.</p>';
+          list.innerHTML = '<p class="empty">' + t('rules.none') + '</p>';
           return;
         }
         list.innerHTML = rules
@@ -55,33 +61,33 @@
               '<span class="' +
               (r.active ? 'pill-green' : 'pill-gray') +
               '">' +
-              (r.active ? '激活 / Active' : '停用 / Inactive') +
+              (r.active ? t('rules.active') : t('rules.inactive')) +
               '</span>' +
               '</div>' +
-              '<div class="rule-when">当 / When <code>' +
+              '<div class="rule-when">' + t('rules.when') + ' <code>' +
               esc(r.trigger_event || '') +
               '</code></div>' +
               '<div class="rule-actions">' +
-              actCount +
-              ' 个动作 / actions</div>' +
+              t('rules.actions-count', {count: actCount}) +
+              '</div>' +
               '<div class="rule-tools">' +
               '<button class="btn-mini" onclick="RulesEditorView.toggle(\'' +
               esc(r.id) +
               "', " +
               (!r.active) +
               ')">' +
-              (r.active ? '停用 / Disable' : '启用 / Enable') +
+              (r.active ? t('rules.disable') : t('rules.enable')) +
               '</button>' +
               '<button class="btn-mini btn-danger" onclick="RulesEditorView.del(\'' +
               esc(r.id) +
-              '\')">删除 / Delete</button>' +
+              '\')">' + t('rules.delete') + '</button>' +
               '</div>' +
               '</div>'
             );
           })
           .join('');
       } catch (e) {
-        list.innerHTML = '<p class="empty">加载失败 / Load failed: ' + esc(e.message || '') + '</p>';
+        list.innerHTML = '<p class="empty">' + t('common.load-failed') + ': ' + esc(e.message || '') + '</p>';
       }
     },
 
@@ -94,43 +100,43 @@
         modal.innerHTML = `
           <div class="modal-card large">
             <div class="modal-head">
-              <h3>新建规则 / New Rule</h3>
+              <h3>${t('rules.modal-title')}</h3>
               <button onclick="RulesEditorView._closeModal()">✕</button>
             </div>
             <div class="modal-body">
               <div class="form-group">
-                <label>规则名称 / Rule Name</label>
-                <input id="rule-name" type="text" class="form-input-sm" placeholder="如：消费送积分 / e.g. Purchase rewards XP">
+                <label>${t('rules.name-label')}</label>
+                <input id="rule-name" type="text" class="form-input-sm" placeholder="${t('rules.name-placeholder')}">
               </div>
               <div class="form-group">
-                <label>触发事件 / Trigger Event</label>
+                <label>${t('rules.event-label')}</label>
                 <select id="rule-event" class="form-select">
-                  <option value="purchase_made">用户消费 / Purchase Made</option>
-                  <option value="game_completed">游戏完成 / Game Completed</option>
-                  <option value="friend_redeemed_invite">好友接受邀请 / Friend Accepted Invite</option>
-                  <option value="daily_checkin">每日打卡 / Daily Check-in</option>
-                  <option value="streak_milestone">连胜里程碑 / Streak Milestone</option>
-                  <option value="badge_earned">勋章解锁 / Badge Earned</option>
-                  <option value="level_up">升级 / Level Up</option>
+                  <option value="purchase_made">${t('rules.event.purchase')}</option>
+                  <option value="game_completed">${t('rules.event.game-completed')}</option>
+                  <option value="friend_redeemed_invite">${t('rules.event.friend-invite')}</option>
+                  <option value="daily_checkin">${t('rules.event.daily-checkin')}</option>
+                  <option value="streak_milestone">${t('rules.event.streak')}</option>
+                  <option value="badge_earned">${t('rules.event.badge')}</option>
+                  <option value="level_up">${t('rules.event.level-up')}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>条件 (可选) / Condition (optional)</label>
-                <input id="rule-cond" type="text" class="form-input-sm" placeholder='如：score >= 100  (留空 = 无条件 / leave empty for no condition)'>
-                <div class="form-help">格式 / Format: <code>metric op value</code> — 例 / e.g. <code>score >= 100</code></div>
+                <label>${t('rules.cond-label')}</label>
+                <input id="rule-cond" type="text" class="form-input-sm" placeholder="${t('rules.cond-placeholder')}">
+                <div class="form-help">${t('rules.cond-help-prefix')}: <code>metric op value</code> — ${t('rules.cond-help-example')} <code>score >= 100</code></div>
               </div>
-              <h4 style="font-size:13px;color:var(--text-dim);margin:14px 0 8px 0">动作 / Actions</h4>
+              <h4 style="font-size:13px;color:var(--text-dim);margin:14px 0 8px 0">${t('rules.actions-header')}</h4>
               <div id="rule-actions"></div>
-              <button class="btn btn-outline" onclick="RulesEditorView._addAction()" style="margin-top:8px">+ 添加动作 / Add Action</button>
+              <button class="btn btn-outline" onclick="RulesEditorView._addAction()" style="margin-top:8px">${t('rules.add-action')}</button>
               <div class="form-group" style="margin-top:14px">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                  <input id="rule-active" type="checkbox" checked> 立即激活 / Activate immediately
+                  <input id="rule-active" type="checkbox" checked> ${t('rules.activate-now')}
                 </label>
               </div>
             </div>
             <div class="modal-foot">
-              <button class="btn btn-outline" onclick="RulesEditorView._closeModal()">取消 / Cancel</button>
-              <button class="btn btn-green" onclick="RulesEditorView._save()">保存规则 / Save Rule</button>
+              <button class="btn btn-outline" onclick="RulesEditorView._closeModal()">${t('rules.cancel')}</button>
+              <button class="btn btn-green" onclick="RulesEditorView._save()">${t('rules.save-button')}</button>
             </div>
           </div>
         `;
@@ -162,11 +168,11 @@
       div.className = 'rule-action-row';
       div.innerHTML =
         '<select class="ra-module">' +
-        '<option value="progression.award_xp">送 XP / Award XP</option>' +
-        '<option value="progression.award_badge">送勋章 / Award Badge</option>' +
-        '<option value="primitives.currency.grant">送货币 / Grant Currency</option>' +
-        '<option value="voucher.grant">送优惠券 / Grant Voucher</option>' +
-        '<option value="streak.increment">连胜+1 / Streak +1</option>' +
+        '<option value="progression.award_xp">' + t('rules.action.award-xp') + '</option>' +
+        '<option value="progression.award_badge">' + t('rules.action.award-badge') + '</option>' +
+        '<option value="primitives.currency.grant">' + t('rules.action.grant-currency') + '</option>' +
+        '<option value="voucher.grant">' + t('rules.action.grant-voucher') + '</option>' +
+        '<option value="streak.increment">' + t('rules.action.streak-inc') + '</option>' +
         '</select>' +
         '<input class="ra-param" type="text" placeholder=\'{"amount":100}\'>' +
         '<button onclick="this.parentElement.remove()" class="btn-mini btn-danger">×</button>';
@@ -175,7 +181,7 @@
 
     async _save() {
       const name = document.getElementById('rule-name').value.trim();
-      if (!name) return showToast('请输入规则名称 / Rule name required', 'error');
+      if (!name) return showToast(t('rules.name-required'), 'error');
 
       const actions = Array.from(document.querySelectorAll('.rule-action-row')).map((row) => {
         const fq = row.querySelector('.ra-module').value;
@@ -198,10 +204,7 @@
         if (m) {
           conditions = { type: 'value', metric: m[1], op: m[2], value: parseFloat(m[3]) };
         } else {
-          return showToast(
-            '条件格式错误 / Bad condition format. Use: metric op value',
-            'error'
-          );
+          return showToast(t('rules.bad-condition'), 'error');
         }
       }
 
@@ -219,13 +222,13 @@
         const res = await apiFetch('/api/v1/rules/configure', { method: 'POST', json: body });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          return showToast('保存失败 / Save failed: ' + (err.detail || res.status), 'error');
+          return showToast(t('rules.save-failed') + ': ' + (err.detail || res.status), 'error');
         }
-        showToast('规则已保存 / Rule saved');
+        showToast(t('rules.saved'));
         this._closeModal();
         await this._loadRules();
       } catch (e) {
-        showToast(e.message || '保存失败', 'error');
+        showToast(e.message || t('rules.save-failed'), 'error');
       }
     },
 
@@ -235,24 +238,24 @@
         : '/api/v1/rules/' + encodeURIComponent(id) + '/disable';
       try {
         const res = await apiFetch(ep, { method: 'POST' });
-        if (!res.ok) return showToast('切换失败 / Toggle failed', 'error');
+        if (!res.ok) return showToast(t('rules.toggle-failed'), 'error');
         await this._loadRules();
       } catch (e) {
-        showToast(e.message || '切换失败', 'error');
+        showToast(e.message || t('rules.toggle-failed'), 'error');
       }
     },
 
     async del(id) {
-      if (!confirm('确认删除？/ Confirm delete?')) return;
+      if (!confirm(t('rules.confirm-delete'))) return;
       try {
         const res = await apiFetch('/api/v1/rules/' + encodeURIComponent(id), {
           method: 'DELETE',
         });
-        if (!res.ok) return showToast('删除失败 / Delete failed', 'error');
-        showToast('已删除 / Deleted');
+        if (!res.ok) return showToast(t('rules.delete-failed'), 'error');
+        showToast(t('rules.deleted'));
         await this._loadRules();
       } catch (e) {
-        showToast(e.message || '删除失败', 'error');
+        showToast(e.message || t('rules.delete-failed'), 'error');
       }
     },
   };

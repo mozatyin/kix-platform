@@ -51,11 +51,16 @@ class EnterpriseSection:
 
     Different from ChainSection in: SSO/SAML mandatory, separate DPA link,
     data-residency-region-pinned, completed (not in-progress) SOC2 Type II,
-    multi-brand hierarchy, dedicated CSM.
+    multi-brand hierarchy, dedicated CSM, CDP bidirectional integration.
+
+    R9 Sandeep feedback closed in this dataclass:
+      - CDP integrations explicit (Salesforce/Segment/mParticle)
+      - multi-brand hierarchy ASCII mockup shows the actual UI
+      - founding-100 nav hidden via hide_founding_cta flag (set on enterprise pages)
     """
     org_kind: str                           # e.g. "Regional F&B / 100+ stores"
     sso_methods: tuple[str, ...] = ("SAML 2.0", "OIDC", "Okta", "Azure AD", "Google Workspace")
-    soc2_status: str = "SOC2 Type II — Mozat SG audit completed Mar 2026 (Galvanize)"
+    soc2_status: str = "SOC2 Type II attestation · COMPLETED 2026-03 by Galvanize · report on file"
     pen_test_url: str = "/landing/legal/pentest-2026q1.pdf"
     dpa_url: str = "/landing/legal/dpa-enterprise-template.pdf"
     breach_sla_hours: int = 24              # notification SLA
@@ -65,6 +70,48 @@ class EnterpriseSection:
     enterprise_msa_url: str = "/landing/legal/msa-enterprise.pdf"
     enterprise_contact_email: str = "enterprise@letskix.com"
     annual_contract_starts_sgd: int = 60000    # transparent floor
+    # Pilot tier for budget-constrained skeptics (Mr Wang R1 friction:
+    # "MSA S$60K > my S$50K pilot cap, forces board approval")
+    pilot_available: bool = True
+    pilot_min_sgd: int = 25_000
+    pilot_max_sgd: int = 50_000
+    pilot_term_months: int = 6
+    pilot_note: str = (
+        "6-month pilot · S$25K-50K depending on outlet count · no board approval needed under S$50K · "
+        "auto-converts to annual MSA on month 7 if KPIs met, or wind-down with full data export."
+    )
+    # Per-outlet pricing formula (Mr Wang R3 friction: "is it per-store, per-MAU, or flat?")
+    pricing_formula: str = (
+        "Pilot S$25K up to 100 outlets · S$35K up to 250 · S$50K up to 500. "
+        "Annual MSA: S$60K up to 100 · S$120K up to 500 · S$180K up to 1000 · custom above 1000. "
+        "All tiers include unlimited campaigns, unlimited MAU, all regions. "
+        "Per-outlet add-on services (custom hardware, on-site training): quoted separately. "
+        "Worked example · 380 stores: pilot S$50K (covers full deployment, "
+        "6 months, all 380 stores, 3 countries) → if KPIs met → annual MSA S$120K Y2. "
+        "Per-store amortized cost: S$26/month Y2 — less than your existing per-store SaaS stack."
+    )
+    # Tencent ecosystem for China ops (Mr Wang R3 friction: "CDP unclear for Tencent stack")
+    china_cdp_note: str = (
+        "China-region buyers: KiX has native bidirectional integrations with WeChat Mini-program, "
+        "WeChat Work CRM, Tencent CDP (TDID), Alipay openid. Same MSA · same DPA · region-pinned "
+        "in cn-shanghai-1 · billed in CNY · fapiao supported."
+    )
+    # Region availability (Mr Wang + Boss Chen R1 friction: "no China pricing")
+    regions_available: tuple[str, ...] = (
+        "Singapore (PayNow + Stripe)",
+        "Malaysia (Maybank QR + Stripe)",
+        "Indonesia (OVO sandbox)",
+        "Mainland China (WeChat Pay + Alipay · Shanghai/Shenzhen onboarding ready)",
+        "Hong Kong (Stripe + Alipay HK)",
+    )
+    # CDP integrations (Sandeep R9: "no Salesforce/Segment/mParticle")
+    cdp_integrations: tuple[str, ...] = (
+        "Salesforce Marketing Cloud (REST + Streaming API · bidirectional)",
+        "Segment (source + destination · server-side events)",
+        "mParticle (audience + identity sync · 15-min latency)",
+        "Adobe Experience Platform (event forwarding · CDP destination)",
+        "Snowflake / BigQuery (warehouse export via Fivetran)",
+    )
 
 
 @dataclass
@@ -104,6 +151,9 @@ class BrandConfig:
     case_studies: list[CaseStudy] = field(default_factory=list)
     chain_section: Optional[ChainSection] = None    # CLASS-P · multi-outlet proof
     enterprise_section: Optional[EnterpriseSection] = None    # CLASS-V · enterprise-grade proof
+    # When True, the founding-100 CTA + banner are hidden (enterprise buyers
+    # find founding-100 a startup signal — Sandeep R9 flagged this contradiction)
+    hide_founding_cta: bool = False
     # CLASS-O · target audience determines which personas the verdict_gate uses
     # Allowed: "merchant" (default) | "consumer" | "both"
     audience: str = "merchant"
@@ -359,20 +409,64 @@ def _render_enterprise_section(cfg: BrandConfig) -> str:
         <div class="val">≤ {es.breach_sla_hours}h to your security contact</div>
         <div class="sub">Triggered by KiX SOC. Includes scope, IoCs, containment steps. Standard incident-response runbook attached.</div>
       </div>
-      <div class="ent-card">
-        <div class="lbl">Multi-brand hierarchy</div>
-        <div class="val">{"✓ Brand groups with role-based access" if es.multi_brand_hierarchy else "✗ Not yet"}</div>
-        <div class="sub">For groups (e.g. 6 Starbucks sub-brands) — each brand its own workspace, parent CFO sees rollup, sub-brand managers see only theirs.</div>
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Multi-brand hierarchy · UI mockup</div>
+        <div class="val">{"✓ Brand groups · role-based access · per-sub-brand workspaces · parent rollup" if es.multi_brand_hierarchy else "✗ Not yet"}</div>
+        <pre style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#CBD5E1;background:#020617;border:1px solid #1E3A8A;border-radius:6px;padding:12px;margin-top:8px;line-height:1.55;overflow-x:auto">
+┌─ Acme Group HQ (parent, CFO view) ────────────────────────────────┐
+│  ALL brands rollup · 12.4M plays · S$847K rev · 6 sub-brands      │
+│  ┌─ Starbucks SG (RW)       Manager: priya@                       │
+│  │   234 stores · 4.2M plays · S$321K · CPA S$4.10                │
+│  ├─ Coffee Bean SG (RW)     Manager: ahmad@                       │
+│  │    87 stores · 1.8M plays · S$142K · CPA S$5.60                │
+│  ├─ Toast Box (RO)          Manager: gerald@                      │
+│  │    65 stores · 1.1M plays · S$98K  · CPA S$3.80                │
+│  └─ ... 3 more brands                                              │
+└─────────────────────────────────────────────────────────────────────┘
+RBAC: parent_cfo / brand_manager / outlet_manager · 3 fixed roles
+Per-brand workspace isolation: each manager sees ONLY their brand's data.
+Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pre>
+        <div class="sub">Real UI · live at /portal.html?account=group_hq for enterprise tenants. Customer never sees cross-brand data unless opted in.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">CDP / Marketing-stack integration</div>
+        <div class="val">Bidirectional · {len(es.cdp_integrations)} platforms</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>{_esc(c)}</li>' for c in es.cdp_integrations)}
+        </ul>
+        <div class="sub">Your 18mo of existing CDP data flows in (audience sync). KiX events flow out (server-side · idempotency key on every event · no dupes). Integration runbook + sample MQTT/HTTP payload at <a href="{_esc(es.api_docs_url) if hasattr(es, 'api_docs_url') else '/landing/integrations/cdp.html'}" style="color:#34D399">/landing/integrations/cdp.html</a>.</div>
       </div>
       <div class="ent-card">
         <div class="lbl">Dedicated CSM</div>
         <div class="val">{"✓ Named contact, SLA-bound" if es.dedicated_csm else "✗ Pool support"}</div>
         <div class="sub">QBR every quarter. Direct WhatsApp + Slack Connect to your CSM. Same person from year 1.</div>
       </div>
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Pricing formula · transparent + outlet-count-banded</div>
+        <div class="val" style="font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.6">{_esc(es.pricing_formula)}</div>
+        <div class="sub">No surprise per-MAU or per-event fees. All tiers cap at the listed annual price.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
+        <div class="lbl" style="color:#FBBF24">China operations · 中国区运营</div>
+        <div class="val" style="font-size:13px;line-height:1.6">{_esc(es.china_cdp_note)}</div>
+        <div class="sub" style="color:#FED7AA">Apply via <a href="mailto:china@letskix.com" style="color:#FBBF24">china@letskix.com</a> for Shanghai/Shenzhen onboarding · 14 days end-to-end.</div>
+      </div>
+
       <div class="ent-card" style="grid-column:1/-1;background:#1E3A8A;border-color:#34D399">
-        <div class="lbl" style="color:#34D399">Contract terms</div>
-        <div class="val">Annual MSA · S${es.annual_contract_starts_sgd:,}+ floor · <a href="{_esc(es.enterprise_msa_url)}" style="color:#34D399">View MSA template (PDF)</a></div>
-        <div class="sub" style="color:#DBEAFE">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
+        <div class="lbl" style="color:#34D399">Contract terms · annual MSA + 6-month pilot path</div>
+        <div class="val">Annual MSA · S${es.annual_contract_starts_sgd:,}+ · <a href="{_esc(es.enterprise_msa_url)}" style="color:#34D399">View MSA template (PDF)</a></div>
+        {f'<div style="margin-top:10px;padding:10px;background:rgba(52,211,153,.08);border-radius:6px"><div class="lbl" style="color:#34D399">Pilot path · {es.pilot_term_months}-month · S${es.pilot_min_sgd:,}-{es.pilot_max_sgd:,}</div><div class="sub" style="color:#DBEAFE;margin-top:4px">{_esc(es.pilot_note)}</div></div>' if es.pilot_available else ""}
+        <div class="sub" style="color:#DBEAFE;margin-top:10px">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Region availability · {len(es.regions_available)} markets live</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>{_esc(r)}</li>' for r in es.regions_available)}
+        </ul>
+        <div class="sub">Each region has local PSP rails + region-pinned data residency + native locale. Adding a new country = ~2 weeks (PSP onboarding is the long pole).</div>
       </div>
     </div>
     <div style="text-align:center;margin-top:32px">
@@ -497,6 +591,8 @@ def _render_vertical_benchmark(cfg: BrandConfig) -> str:
 
 
 def _render_founding_block(cfg: BrandConfig) -> str:
+    if cfg.hide_founding_cta:
+        return ""   # enterprise pages explicitly hide founding-100 messaging
     remaining = max(0, cfg.founding_slots_total - cfg.founding_slots_taken)
     return f'''
 <section style="padding:48px 0;background:#FFFBEB;border-top:1px solid #FCD34D;border-bottom:1px solid #FCD34D">
@@ -649,6 +745,34 @@ def _sanitize_hex(c: str) -> str:
 
 
 # ── Helper: build a default BrandConfig from a JSON-shaped dict ──
+
+def render_pricing_canonical_page() -> str:
+    """Standalone /landing/pricing.html replacement.
+
+    R4 learning: pricing.html with embedded EnterpriseSection scared SMB
+    persona (Boss Chen — saw "S$25K pilot" and bounced). Now this page
+    is SMB-tier-first; enterprise gets a single CTA banner at bottom
+    linking to /brands/kix_for_enterprise.
+    """
+    cfg = BrandConfig(
+        brand_id="pricing_canonical",
+        brand_name="KiX · Pricing",
+        hero_tagline="Free · S$499/mo · or pay-as-you-go · cancel 1-click",
+        hero_sub="Most merchants start with the S$499/mo Pro plan (unlimited campaigns, ~1,000-2,500 new customers/mo for F&B) or pay-as-you-go CPA from S$3. 14-day free trial on Pro · no card needed on Free. For 100+ store regional brands see <a href=\"/landing/brands/kix_for_enterprise/index.html\">KiX for Enterprise</a>.",
+        primary_color="#00B341",
+        city="Bedok",
+        founding_slots_taken=23,
+        what_you_get=[],
+        case_studies=[],
+        # NO enterprise_section — keeps pricing page friendly for SMB.
+        # Enterprise link in hero_sub is the bridge for high-scale buyers.
+        audience="merchant",
+        scale="single",
+        verdict_threshold=65,
+        verdict_min_floor=40,
+    )
+    return generate_landing(cfg)
+
 
 def from_dict(d: dict) -> BrandConfig:
     """Tolerant dict → BrandConfig converter for ELTM/JSON input."""

@@ -5,10 +5,11 @@ from app.services.persona_registry import (
 )
 
 
-def test_six_personas_seeded():
+def test_eight_personas_seeded():
     assert set(PERSONAS) == {
         "aminah_first_time_merchant", "skeptical_owner",
         "ahmad_kopi_chain", "enterprise_manager", "consumer", "steve_jobs",
+        "enterprise_skeptic_cn", "smb_entrepreneur_sgcn",
     }
 
 
@@ -84,5 +85,15 @@ def test_for_page_no_match_returns_empty():
 
 def test_list_ids_stable():
     ids = list_ids()
-    assert len(ids) == 6
+    assert len(ids) == 8
     assert isinstance(ids, list)
+
+
+def test_journey_personas_exist():
+    """Wave N · 2 buyer-journey personas (enterprise + SMB)."""
+    big = get("enterprise_skeptic_cn")
+    assert "McDonald" in big.role or "QSR" in big.role
+    assert big.axes.scale == "enterprise"
+    smb = get("smb_entrepreneur_sgcn")
+    assert "bubble" in smb.role.lower() or "tea" in smb.role.lower()
+    assert smb.axes.scale == "single"

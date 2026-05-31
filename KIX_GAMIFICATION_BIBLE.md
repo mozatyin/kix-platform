@@ -444,8 +444,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 2c8276c
-Last commit         : chore(bible): Trinity 三体 audit — drift 0% + claim audits + G-A16..A20 added
+HEAD                : 7621037
+Last commit         : feat(arch): Wave M-5 — ALL 7 improvement axes shipped (A · B · C · D · E · F · G)
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -454,11 +454,11 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 54
   migrations        : 11
-  total Python LOC  : 137,938
+  total Python LOC  : 138,111
 
 Test surface
   test files        : 156
-  test functions    : 1,688
+  test functions    : 1,689
 
 Data
   recipes           : 79

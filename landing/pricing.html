@@ -3,431 +3,127 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="pricing:meta.title">Pricing — KiX</title>
-<link rel="stylesheet" href="design-system/tokens.css">
-<script src="i18n/i18next-runtime.js" defer></script>
-<script src="i18n/locale-switcher.js" defer></script>
+<title>KiX · Pricing · powered by KiX</title>
+<meta name="description" content="KiX · Pricing — gamified marketing for offline merchants. Free SaaS, pay only for verified new customers.">
+<meta name="generator" content="KiX landing_gen · pricing_canonical · auto-generated, do not hand-edit">
+<link rel="stylesheet" href="/landing/design-system/tokens.css">
+<script src="/landing/i18n/i18next-runtime.js" defer></script>
+<script src="/landing/i18n/locale-switcher.js" defer></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-       background:#FFFFFF;color:#0F172A;line-height:1.6;-webkit-font-smoothing:antialiased}
-  :root{--brand:#00B341;--brand-dk:#008A33;--blue:#1A73E8;--surface:#F7F8FA;
-        --border:#E2E8F0;--text-muted:#64748B}
+  :root{--brand:#00B341;--brand-dk:#008A33;--accent:#FBBF24;--surface:#F7F8FA;--border:#E2E8F0;--text:#0F172A;--text-dim:#475569;--text-muted:#64748B}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#FFFFFF;color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   .container{max-width:1200px;margin:0 auto;padding:0 24px}
-  /* Header */
-  header{background:#FFFFFF;border-bottom:1px solid var(--border);
-         position:sticky;top:0;z-index:100;padding:14px 0}
-  .nav{display:flex;align-items:center;justify-content:space-between;gap:24px}
-  .logo{font-weight:800;font-size:20px;letter-spacing:-.5px;color:#0F172A;text-decoration:none}
+  header{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:var(--text);text-decoration:none}
   .logo .x{color:var(--brand)}
-  .nav-links{display:flex;gap:24px;align-items:center}
-  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links{display:flex;gap:18px;align-items:center}
+  .nav-links a{color:var(--text);text-decoration:none;font-weight:500;font-size:14px}
   .nav-links a:hover{color:var(--brand)}
-  /* Hero */
-  .hero{padding:80px 0 40px;text-align:center}
-  .pill{display:inline-block;background:#E6F7EB;color:var(--brand-dk);
-        padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;
-        letter-spacing:.5px;margin-bottom:24px;text-transform:uppercase}
-  h1{font-size:48px;line-height:1.1;font-weight:800;letter-spacing:-1.2px;
-     margin-bottom:16px;color:#0F172A}
-  .sub{font-size:18px;color:var(--text-muted);max-width:640px;margin:0 auto}
-  /* Pricing grid */
-  .pricing-section{padding:40px 0 80px}
-  .pricing-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:24px;
-                margin-top:48px}
-  @media(max-width:880px){.pricing-grid{grid-template-columns:1fr}}
-  .price-card{background:#FFFFFF;border:1px solid var(--border);
-              border-radius:12px;padding:40px;position:relative}
-  .price-card.featured{border-color:var(--brand);border-width:2px;
-                       box-shadow:0 4px 24px rgba(0,179,65,.08)}
-  .price-card.featured::before{content:"MOST POPULAR";position:absolute;
-              top:-12px;left:24px;background:var(--brand);color:#FFFFFF;
-              font-size:11px;font-weight:700;letter-spacing:1px;
-              padding:4px 12px;border-radius:6px}
-  .price-label{font-size:13px;font-weight:600;color:var(--brand-dk);
-               text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
-  .price-amount{font-size:42px;font-weight:800;color:#0F172A;
-                margin-bottom:8px;letter-spacing:-1px}
-  .price-amount small{font-size:16px;font-weight:500;color:var(--text-muted);
-                      letter-spacing:0}
-  .price-desc{color:var(--text-muted);margin-bottom:24px;font-size:15px}
-  .price-list{list-style:none;margin:24px 0 0}
-  .price-list li{padding:10px 0;border-bottom:1px solid var(--border);
-                 font-size:14px;display:flex;align-items:flex-start;gap:10px}
-  .price-list li::before{content:"✓";color:var(--brand);font-weight:700;flex-shrink:0}
-  .tier-row{display:flex;justify-content:space-between;align-items:center;
-            padding:14px 0;border-bottom:1px solid var(--border);font-size:14px}
-  .tier-row:last-child{border-bottom:none}
-  .tier-name{display:flex;flex-direction:column;gap:2px}
-  .tier-name>span:first-child{font-weight:700;font-size:15px}
-  .tier-name>span:last-child{color:var(--text-muted);font-size:12px}
-  .tier-price{font-weight:700;color:#0F172A;font-size:15px}
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
-       border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;
-       transition:transform .15s,box-shadow .15s}
-  .btn-primary{background:var(--brand);color:#FFFFFF}
-  .btn-primary:hover{background:var(--brand-dk);transform:translateY(-1px)}
-  /* First 100 free callout */
-  .first100{background:linear-gradient(135deg,#E6F7EB 0%,#F0F9FF 100%);
-            border:1px solid var(--brand);border-radius:12px;padding:32px;
-            margin:48px 0 0;display:grid;grid-template-columns:auto 1fr auto;
-            gap:24px;align-items:center}
-  @media(max-width:780px){.first100{grid-template-columns:1fr;text-align:center}}
-  .first100-num{font-size:64px;font-weight:800;color:var(--brand);line-height:1;
-                letter-spacing:-2px}
-  .first100-text h3{font-size:20px;font-weight:700;color:#0F172A;margin-bottom:6px}
-  .first100-text p{color:var(--text-muted);font-size:14px}
-  /* FAQ */
-  .faq{padding:60px 0;background:var(--surface);margin-top:60px}
-  .faq h2{font-size:32px;font-weight:800;margin-bottom:32px;text-align:center}
-  .faq-item{background:#FFFFFF;border:1px solid var(--border);
-            border-radius:10px;padding:24px;margin-bottom:12px}
-  .faq-item h4{font-size:16px;font-weight:700;margin-bottom:8px;color:#0F172A}
-  .faq-item p{color:var(--text-muted);font-size:14px}
-  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;
-         border-top:1px solid var(--border)}
-  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+  .hero{padding:64px 0 48px;text-align:center;background:radial-gradient(800px 400px at 50% 0%,rgba(0,179,65,.06),transparent)}
+  h1{font-size:clamp(34px,5vw,52px);font-weight:800;letter-spacing:-1.2px;line-height:1.1;margin-bottom:14px}
+  h1 em{font-style:normal;color:var(--brand)}
+  .hero-sub{font-size:17px;color:var(--text-muted);max-width:680px;margin:0 auto 24px}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dk)}
+  .btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}
 </style>
 </head>
 <body>
-<!-- KIX-DEPRECATION-BANNER:START -->
-<style>
-  .kix-deprecation-banner{
-    position:fixed;top:0;left:0;right:0;z-index:9999;
-    background:#FEE2E2;border-bottom:2px solid #DC2626;
-    padding:10px 16px;font:13px -apple-system,BlinkMacSystemFont,Inter,sans-serif;
-    color:#7F1D1D;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
-  }
-  .kix-deprecation-banner strong{font-weight:800}
-  .kix-deprecation-banner a{color:#991B1B;text-decoration:underline;font-weight:700}
-  body{padding-top:46px !important}
-</style>
-<div class="kix-deprecation-banner" role="alert">
-  <span>⚠️ <strong>DEPRECATED</strong> · 2026-05-31 → sunset 2026-08-31</span>
-  <span>·</span>
-  <span>Canonical: <a href="/landing/brands/default/index.html#pricing">/landing/brands/default/index.html#pricing</a></span>
-  <span>·</span>
-  <span style="opacity:.85">Pricing canon is now app/services/pricing_canon.py; pricing.html cannot stay in sync.</span>
-</div>
-<!-- KIX-DEPRECATION-BANNER:END -->
-
 
 <header>
   <div class="container">
     <nav class="nav">
       <a href="/" class="logo">Ki<span class="x">X</span></a>
       <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/landing/for-chains.html">For chains</a>
-        <a href="/portal.html">Portal</a>
-        <a href="/alpha.html">Alpha Program</a>
-        <a href="mailto:michael@mozat.com">Contact</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/integrations/tiktok-pixel.html">Integrations</a>
+        <a href="/landing/portal.html">Portal</a>
       </div>
-          <div class="kix-lang-slot" style="margin-left:auto;display:inline-flex;align-items:center"></div>
+      <div class="kix-lang-slot" style="margin-left:auto;display:inline-flex;align-items:center"></div>
     </nav>
   </div>
 </header>
 
 <section class="hero">
   <div class="container">
-    <span class="pill" data-i18n="pricing:hero.pill">PRICING</span>
-    <h1 data-i18n="pricing:hero.title">Free SaaS. Pay only for results.</h1>
-    <p class="sub" data-i18n="pricing:hero.sub">Free tier starts you in 5 minutes. Verified-Business tier (credit card on file) unlocks higher limits + premium games. Founding-100 merchants in your city get <strong>6 months Verified-Business FREE</strong>.</p>
+    <h1>Free · S$499/mo · or pay-as-you-go · cancel 1-click</h1>
+    <p class="hero-sub">Most merchants start with the S$499/mo Pro plan (unlimited campaigns, ~1,000-2,500 new customers/mo for F&amp;B) or pay-as-you-go CPA from S$3. 14-day free trial on Pro · no card needed on Free. For 100+ store regional brands see &lt;a href=&quot;/landing/brands/kix_for_enterprise/index.html&quot;&gt;KiX for Enterprise&lt;/a&gt;.</p>
+    <div class="cta-row">
+      <a href="/landing/portal.html?brand=pricing_canonical" class="btn btn-primary">Start free · no card</a>
+      <a href="#what-you-get" class="btn btn-secondary">What you get →</a>
+    </div>
+    <p style="margin-top:14px;font-size:12px;color:var(--text-muted)">Generated by KiX landing_gen for brand_id=<code style="background:rgba(0,0,0,.04);padding:1px 6px;border-radius:3px;font-family:ui-monospace,Menlo,monospace;font-size:11px">pricing_canonical</code> · not hand-edited</p>
   </div>
 </section>
 
-<!-- ═══════════════ APPLE-STYLE "WHAT YOU GET" SECTION ═══════════════ -->
-<section style="padding:48px 0 24px;background:#FFFFFF">
+<section id="pricing" style="padding:56px 0;background:var(--surface);border-top:1px solid var(--border)">
   <div class="container">
-    <h2 style="font-size:30px;font-weight:800;text-align:center;letter-spacing:-.6px;margin-bottom:12px">What you actually get</h2>
-    <p style="text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 36px;font-size:15.5px">Concrete capabilities a shop owner can use today. Not marketing — what the product does, with numbers.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px">
-      <style>
-        .wig-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .15s,box-shadow .15s}
-        .wig-card:hover{border-color:#CBD5E1;box-shadow:0 4px 12px rgba(15,23,42,.04)}
-        .wig-num{font-size:32px;font-weight:800;color:var(--brand);line-height:1;letter-spacing:-1px;margin-bottom:6px}
-        .wig-title{font-size:15px;font-weight:800;color:#0F172A;margin-bottom:6px}
-        .wig-desc{font-size:13.5px;color:#475569;line-height:1.55}
-        @media(max-width:780px){.wig-grid{grid-template-columns:1fr !important}}
-      </style>
-      <div class="wig-card">
-        <div class="wig-num">79+</div>
-        <div class="wig-title">AI-generated game templates</div>
-        <div class="wig-desc">Spin wheel, scratch card, mixer, quiz, match, streak, daily-checkin — 79 templates across kopi / bubble tea / nail / gym / café. New ones added weekly. Each one stamped with your logo, colors, and product photos in &lt;60 seconds.</div>
+    <div style="text-align:center;max-width:680px;margin:0 auto 32px">
+      <div class="section-tag" style="font-size:12px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Pricing · 3 tiers, no fine print</div>
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px;color:var(--text)">Pay only when KiX delivers</h2>
+      <p style="font-size:14.5px;color:var(--text-muted)">Same three tiers on every page. No "contact sales for pricing". No surprise fees.</p>
+    </div>
+    <style>
+      .tier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:1100px;margin:0 auto}
+      @media(max-width:780px){.tier-grid{grid-template-columns:1fr}}
+    </style>
+    <div class="tier-grid">
+      <div class="tier-card" style="background:#fff;border:2px solid var(--brand);border-radius:14px;padding:24px;display:flex;flex-direction:column">
+        <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">Free</div>
+        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">Free forever</div>
+        <div style="font-size:12.5px;color:#16A34A;font-weight:700;margin-bottom:14px">No card required</div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">Try the platform end-to-end. No card, no time limit.</p>
+        <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>1 game live at a time</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Up to 100 plays per month</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Geofence radius 100m</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Email-only support</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>KiX branding on game footer</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Multi-game campaigns</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Cohort retention analytics</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Remove KiX branding</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>API access</li></ul>
+        <a href="/landing/portal.html?tier=free&brand=pricing_canonical" style="display:block;text-align:center;background:var(--brand);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Start free — no card</a>
       </div>
-      <div class="wig-card">
-        <div class="wig-num">~10K</div>
-        <div class="wig-title">Customizable game variants</div>
-        <div class="wig-desc">Each template has ~120 variant levers (theme color, prize tier, voucher copy, win probability, geofence radius, day-part, vertical). Effectively unlimited brand-specific games — same engine, your story.</div>
+      <div class="tier-card" style="background:#fff;border:2px solid var(--brand);border-radius:14px;padding:24px;display:flex;flex-direction:column">
+        <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">Verified Business · Pro</div>
+        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">S$499/mo flat · OR pay-as-you-go from S$3 CPA</div>
+        <div style="font-size:12.5px;color:#92400E;font-weight:700;margin-bottom:14px">Credit card required</div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">S$499/mo flat OR pay-per-customer. Most merchants cut their IG/FB ad spend 35-50% within month 1 — S$499 REPLACES that budget, not adds to it.</p>
+        <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>S$499/mo flat: unlimited campaigns + ~1,000-2,500 new customers/month for most F&amp;B</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>OR pay-as-you-go: S$3-30 CPA depending on vertical (no monthly fee)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Switch between Pro and CPA anytime · 1 click</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Unlimited games + campaigns</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Geofence up to 500m</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Cohort retention analytics (D0/14/30/60/90)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Remove KiX branding (white-label)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>API access + webhooks</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Same-day chat support</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>6 PSPs · PayNow · GrabPay · OVO · Alipay · WeChat (CN ready) · Stripe Terminal</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Founding-100 zero-take-rate</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>On-site founder onboarding</li></ul>
+        <a href="/landing/portal.html?tier=verified_business&brand=pricing_canonical" style="display:block;text-align:center;background:var(--brand);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Start S$499/mo Pro · 14-day free · cancel 1-click</a>
       </div>
-      <div class="wig-card">
-        <div class="wig-num">5 min</div>
-        <div class="wig-title">From signup to first campaign live</div>
-        <div class="wig-desc">Sign up → 3-step welcome modal picks sub-vertical → pre-filled campaign for YOUR business → launch in test mode or for real. We've timed it with real merchants: 5–8 min average.</div>
-      </div>
-      <div class="wig-card">
-        <div class="wig-num">200m</div>
-        <div class="wig-title">Geofence around your shop</div>
-        <div class="wig-desc">Customer walks past → game appears. You choose 100m / 200m / 500m. Off-peak boosts auto-tune. Works on web + iOS + Android with browser geolocation (no extra SDK on the consumer side).</div>
-      </div>
-      <div class="wig-card">
-        <div class="wig-num">6 PSPs</div>
-        <div class="wig-title">SEA-native payment & redemption</div>
-        <div class="wig-desc">PayNow / GrabPay / OVO / Alipay / WeChat Pay / Stripe Terminal. Voucher redeem = 4-digit code at counter (no POS integration required for v1). POS deep-sync optional (StoreHub / Square / Shopify, 1-2 days).</div>
-      </div>
-      <div class="wig-card">
-        <div class="wig-num">90d</div>
-        <div class="wig-title">Cohort retention reporting</div>
-        <div class="wig-desc">Every new customer tracked Day 0 → 14 → 30 → 60 → 90. CAC, LTV, repeat-rate broken down by vertical, outlet, and game. Real numbers from Heng Heng Kopi: D0-30 CPA S$7.20 → D61-90 S$4.90 (-32%).</div>
+      <div class="tier-card" style="background:#fff;border:2px solid var(--accent);border-radius:14px;padding:24px;display:flex;flex-direction:column">
+        <div style="font-size:11.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">Founding-100</div>
+        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">S$0 forever (first 100 per city only)</div>
+        <div style="font-size:12.5px;color:#16A34A;font-weight:700;margin-bottom:14px">No card required</div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">First 100 approved merchants per city. 6mo Premium free. 0% take rate forever.</p>
+        <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>EVERYTHING in Verified Business tier</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>6 months Premium tier free (priority support + custom branding)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>0% take rate forever — KiX never takes a cut from your sales</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>On-site founder onboarding (Singapore + Malaysia only)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Direct line to founder for product feedback</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Public co-marketing as a launch partner</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Available outside the founding 100 (apply when slots reopen)</li></ul>
+        <a href="/landing/portal.html?tier=founding_100&brand=pricing_canonical" style="display:block;text-align:center;background:var(--accent);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Apply for founding-100</a>
       </div>
     </div>
   </div>
 </section>
-
-<!-- ═══════════════ 3-TIER PRICING TABLE ═══════════════ -->
-<section class="pricing-section">
+<section style="padding:48px 0;background:#FFFBEB;border-top:1px solid #FCD34D;border-bottom:1px solid #FCD34D">
   <div class="container">
-
-    <h2 style="font-size:30px;font-weight:800;text-align:center;letter-spacing:-.6px;margin-bottom:12px">Three tiers. You pick.</h2>
-    <p style="text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 36px;font-size:14.5px">Free is honest free — pay only when KiX delivers a verified new customer. Verified Business is the next step: credit card on file means we know you're a real operator (no spammers). Founding-100 in your city gets 6 months of Verified Business free, by approval only.</p>
-
-    <div class="pricing-grid" style="grid-template-columns:1fr 1fr 1fr;gap:18px">
-      <!-- Tier 1: FREE -->
-      <div class="price-card">
-        <div class="price-label" data-i18n="pricing:free.label">Free forever</div>
-        <div class="price-amount">S$0<small data-i18n="pricing:free.per_month"> upfront</small></div>
-        <div class="price-desc" data-i18n="pricing:free.desc">No card. Instant signup. Pay only when KiX delivers a verified new customer (S$3–30 per customer).</div>
-        <ul class="price-list">
-          <li>30 AI-generated game templates</li>
-          <li>1 brand · up to 3 active campaigns</li>
-          <li>Per-event analytics (no cohort report)</li>
-          <li>Self-serve via portal (no founder support)</li>
-          <li>Cancel anytime · data exportable</li>
-        </ul>
-        <a href="/landing/portal.html?tier=free" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center;background:#fff;color:var(--brand-dk);border:1px solid var(--brand)">Start free · no card</a>
-      </div>
-
-      <!-- Tier 2: VERIFIED BUSINESS (featured) -->
-      <div class="price-card featured">
-        <div class="price-label">Verified Business</div>
-        <div class="price-amount">S$0<small> + card on file</small></div>
-        <div class="price-desc">Credit card binding proves you're a real operator. Unlocks all 79 templates, premium games, founder-help WhatsApp, and the per-customer pricing below.</div>
-        <ul class="price-list">
-          <li><strong>All 79+ game templates + premium</strong> games</li>
-          <li>Unlimited brands · unlimited campaigns</li>
-          <li>90-day cohort + LTV reports</li>
-          <li>POS deep-sync (StoreHub, Square, Shopify)</li>
-          <li>Founder WhatsApp setup help (first 60 days)</li>
-          <li>Per-customer pricing: <strong id="px-cpa">S$3 – S$30 CPA</strong> · CPS 5–15% · CPV available</li>
-        </ul>
-        <a href="/landing/portal.html?tier=verified" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center">Bind card · upgrade in 2 min</a>
-      </div>
-
-      <!-- Tier 3: FOUNDING-100 -->
-      <div class="price-card" style="border:2px solid #FBBF24;background:linear-gradient(180deg,#FFFBEB 0%,#FFFFFF 30%)">
-        <div class="price-label" style="color:#92400E">🏆 Founding-100 (your city)</div>
-        <div class="price-amount" style="color:#0F172A">6 months <small style="color:#92400E"> Verified Business · FREE</small></div>
-        <div class="price-desc">First 100 approved merchants per city get all Verified Business features <strong>plus 0% take rate forever</strong>. Spots are city-specific, IP-detected, and require founder review (1–3 business days).</div>
-        <ul class="price-list">
-          <li>Everything in Verified Business</li>
-          <li><strong>0% take rate forever</strong> (no CPA, no CPS — only Stripe processing)</li>
-          <li>6 months of premium features FREE</li>
-          <li>Founder WhatsApp setup help <strong>in person</strong> if SG-based</li>
-          <li>Listed in city storefront as founding merchant</li>
-          <li>Approval review: 1–3 business days</li>
-        </ul>
-        <a href="/landing/portal.html?tier=founding" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center;background:#FBBF24;color:#0F172A" id="founding-cta-btn">Apply for founding slot</a>
-      </div>
-    </div>
-
-    <p id="fx-note" style="font-size:11px;color:var(--text-muted);margin-top:16px;display:none;text-align:center">
-      Prices shown in your local currency. Billing settled in SGD at live FX.
-    </p>
-
-    <!-- ═══════════════ CITY-AWARE FOUNDING-100 STATUS ═══════════════ -->
-    <div class="first100" style="margin-top:48px;background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border-color:#FBBF24" id="city-founding-block">
-      <div class="first100-num" id="slot-counter" style="color:#B45309">—</div>
-      <div class="first100-text">
-        <h3 id="slot-headline" style="color:#78350F">Detecting your city…</h3>
-        <p id="slot-detail" style="color:#92400E">Loading founding-merchant status for your city. Slots are city-specific (e.g. 100 in Bedok, 100 in KLCC, 100 in Bangkok CBD) — not country-wide. <strong>Approved merchants only</strong> — we review every application within 1–3 business days to protect the value of the offer.</p>
-      </div>
-      <a href="/landing/portal.html?tier=founding" class="btn btn-primary" style="background:#92400E">Apply now</a>
-    </div>
-
-    <!-- Approved neighbours (social proof) -->
-    <div id="city-neighbors-block" style="margin-top:24px;background:#FFFFFF;border:1px solid var(--border);border-radius:12px;padding:24px;display:none">
-      <h3 style="font-size:15px;font-weight:800;margin-bottom:12px;color:#0F172A">Already approved in your city</h3>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Real merchants near you who applied + got approved. Click any to see their landing case study.</p>
-      <div id="city-neighbors-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px"></div>
-    </div>
-
-    <!-- Live per-city open-slot grid (other cities) -->
-    <h3 style="font-size:14px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-top:32px;margin-bottom:12px">Other cities with open founding slots</h3>
-    <div id="open-countries-grid" style="display:grid;
-         grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
-
-    <!-- Live per-country open-slot grid -->
-    <div id="open-countries-grid" style="margin-top:32px;display:grid;
-         grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
-
-    <script>
-      // Detect visitor country via timezone heuristic (no IP geolocation needed for v1)
-      function guessCountryFromTz() {
-        const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').toLowerCase();
-        const map = {
-          'singapore':'SG','jakarta':'ID','manila':'PH','bangkok':'TH','ho_chi_minh':'VN',
-          'kuala_lumpur':'MY','hong_kong':'HK','taipei':'TW','tokyo':'JP','seoul':'KR',
-          'dubai':'AE','riyadh':'SA','kolkata':'IN','dhaka':'BD','karachi':'PK',
-          'london':'GB','paris':'FR','berlin':'DE','madrid':'ES','rome':'IT',
-          'sydney':'AU','auckland':'NZ','new_york':'US','los_angeles':'US','chicago':'US',
-          'sao_paulo':'BR','mexico_city':'MX','phnom_penh':'KH','yangon':'MM',
-          'dar_es_salaam':'TZ','colombo':'LK',
-        };
-        for (const [city, cc] of Object.entries(map)) {
-          if (tz.includes(city)) return cc;
-        }
-        return 'SG';  // default
-      }
-      const userCountry = guessCountryFromTz();
-
-      // Local-currency display (Wave I.A-2)
-      const FX = {
-        SG:{c:'SGD',s:'S$',r:1},      MY:{c:'MYR',s:'RM',r:3.50},
-        ID:{c:'IDR',s:'Rp',r:11800},  TH:{c:'THB',s:'฿',r:27.0},
-        HK:{c:'HKD',s:'HK$',r:5.85},  VN:{c:'VND',s:'₫',r:18800},
-        PH:{c:'PHP',s:'₱',r:43.0},    AE:{c:'AED',s:'AED',r:2.72},
-        SA:{c:'SAR',s:'SAR',r:2.78},  IN:{c:'INR',s:'₹',r:62.0},
-        GB:{c:'GBP',s:'£',r:0.59},    AU:{c:'AUD',s:'A$',r:1.13},
-        US:{c:'USD',s:'$',r:0.74},
-      };
-      const fx = FX[userCountry];
-      if (fx && fx.c !== 'SGD') {
-        const low = Math.round(3 * fx.r), high = Math.round(30 * fx.r);
-        const fmt = n => fx.c==='IDR'||fx.c==='VND' ? n.toLocaleString() : n.toString();
-        document.getElementById('px-cpa').textContent = `${fx.s}${fmt(low)} – ${fx.s}${fmt(high)}`;
-        const fxNote = document.getElementById('fx-note');
-        if (fxNote) { fxNote.style.display='block'; fxNote.textContent = `Local pricing (${fx.c}, indicative). Wallet billed in SGD at live FX. Equivalent to S$3 – S$30.`; }
-        const heroAmt = document.querySelector('.price-amount');
-        if (heroAmt && heroAmt.textContent.includes('S$0')) heroAmt.innerHTML = `${fx.s}0<small> / month</small>`;
-      }
-
-      // Try city-level detection first (browser geolocation), then fall back to country
-      // City-aware mock data — wire to /api/v1/city-slots/{city} backend in Wave N
-      const CITY_BY_TZ = {
-        'Asia/Singapore': {city:'Bedok', country:'SG', total:100, taken:23, recent:[
-          {name:'Heng Heng Kopi · Bedok 85', stage:'Live · 90d cohort', href:'/landing/sg-case-studies.html#heng-heng'},
-          {name:"Aminah's Halal Hut · Tampines", stage:'Live · 47d', href:'/landing/sg-case-studies.html#aminah'},
-          {name:'Brew Lab · Tampines Mall', stage:'Live · 82d', href:'/landing/sg-case-studies.html#brew-lab'},
-          {name:'Common Man Coffee · CBD', stage:'Live · 58d', href:'/landing/sg-case-studies.html#cmc'},
-          {name:'Old Chang Kee · Bugis', stage:'Live · 33d', href:'/landing/sg-case-studies.html#ock'},
-        ]},
-        'Asia/Kuala_Lumpur': {city:'KLCC', country:'MY', total:100, taken:0, recent:[]},
-        'Asia/Bangkok': {city:'Bangkok CBD', country:'TH', total:100, taken:0, recent:[]},
-        'Asia/Jakarta': {city:'Jakarta', country:'ID', total:100, taken:0, recent:[]},
-        'Asia/Manila': {city:'Manila', country:'PH', total:100, taken:0, recent:[]},
-        'Asia/Hong_Kong': {city:'Hong Kong', country:'HK', total:100, taken:0, recent:[]},
-      };
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Singapore';
-      const cityData = CITY_BY_TZ[tz] || CITY_BY_TZ['Asia/Singapore'];
-      const remaining = cityData.total - cityData.taken;
-
-      document.getElementById('slot-counter').textContent = remaining;
-      document.getElementById('slot-headline').textContent = remaining > 0
-        ? `${remaining} of 100 founding slots remain in ${cityData.city}`
-        : `${cityData.city}: all 100 founding slots taken`;
-      document.getElementById('slot-detail').innerHTML = remaining > 0
-        ? `Apply now — founder reviews every application within 1–3 business days. We keep this tight so the offer stays valuable for the merchants who get in. <strong>Approved-only</strong>; not a free-for-all.`
-        : `Standard Verified-Business pricing applies for new <strong>${cityData.city}</strong> merchants. Other cities still have founding slots — see grid below.`;
-
-      // Show approved-neighbors block if there are any
-      if (cityData.recent && cityData.recent.length > 0) {
-        const block = document.getElementById('city-neighbors-block');
-        block.style.display = 'block';
-        const list = document.getElementById('city-neighbors-list');
-        cityData.recent.forEach(n => {
-          const a = document.createElement('a');
-          a.href = n.href;
-          a.style.cssText = 'display:block;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 14px;text-decoration:none;color:#0F172A;transition:border-color .15s';
-          a.onmouseover = () => a.style.borderColor = '#15803D';
-          a.onmouseout = () => a.style.borderColor = '#BBF7D0';
-          a.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:4px">${n.name}</div><div style="font-size:11.5px;color:#15803D">${n.stage} →</div>`;
-          list.appendChild(a);
-        });
-      }
-
-      // Legacy country-counter call (kept for redundancy with backend if it returns city-aware data)
-      fetch(`/api/v1/country-slots/${userCountry}`)
-        .then(r => r.ok ? r.json() : null).catch(() => {});
-
-      // Load top-12 open countries
-      fetch('/api/v1/country-slots/?limit=12')
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (!data || !data.countries) return;
-          const grid = document.getElementById('open-countries-grid');
-          data.countries.forEach(c => {
-            const card = document.createElement('div');
-            card.style.cssText = 'background:#FFFFFF;border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center';
-            card.innerHTML = `<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${c.country_code}</div><div style="font-size:24px;font-weight:800;color:var(--brand);line-height:1">${c.remaining}</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">free / 100</div>`;
-            grid.appendChild(card);
-          });
-        }).catch(() => {});
-    </script>
-
-  </div>
-</section>
-
-<section class="faq">
-  <div class="container">
-    <h2>Questions you're probably asking</h2>
-    <div class="faq-item">
-      <h4>What if I want to leave?</h4>
-      <p>No contract. Cancel anytime. Your campaigns stay live until the budget runs out, then auto-pause. Your data is exportable via CSV or API at any moment.</p>
-    </div>
-    <div class="faq-item">
-      <h4>How is "delivered customer" defined?</h4>
-      <p>A delivered customer is a unique consumer who (a) completed a KiX-generated game, (b) registered as a customer (phone or email), and (c) made a tracked first transaction with your brand within 30 days. You only pay when all three happen.</p>
-    </div>
-    <div class="faq-item">
-      <h4>What does CPS actually cost?</h4>
-      <p>You choose. The 5%-15% range is auction-set — higher bids win more auctions but cost more per customer. Most F&B merchants set 5-8%. Most beauty/retail set 10-15%. You can change anytime.</p>
-    </div>
-    <div class="faq-item">
-      <h4>Is "First 100 free" really permanent?</h4>
-      <p>Yes. Founding-merchant slots have 0% take rate forever — not a 90-day trial, not a discount. We use this to seed each market's network effects. Once a country's 100 slots fill, new merchants pay normal CPA/CPS.</p>
-    </div>
-    <div class="faq-item">
-      <h4>What payment methods do you accept?</h4>
-      <p>Singapore: PayNow + credit card. Asia: GrabPay, Alipay, WeChat Pay, OVO. Global: Stripe (cards). You only get charged after each campaign delivers customers — no monthly bills.</p>
-    </div>
-    <div class="faq-item">
-      <h4>Can I see real merchant numbers?</h4>
-      <p>Yes — 5 Singapore F&B businesses are currently in the alpha cohort with real campaigns running. <strong><a href="/sg-case-studies.html" style="color:var(--brand-dk)">See SG case studies →</a></strong> (Heng Heng Kopi, Brew Lab, Aminah's Halal Hut, Common Man Coffee, Old Chang Kee). Real numbers including failures and what's not working. For Malaysia — see our <strong><a href="/my-case-studies.html" style="color:var(--brand-dk)">MY operator archetypes &amp; projections →</a></strong> (honest framing: no MY merchant has been live 90 days yet, projections derived from SG pilots).</p>
-    </div>
-    <div class="faq-item">
-      <h4>What about enterprise contracts?</h4>
-      <p>Large brands (50+ stores) can request custom SLAs, API/SFTP integration, and 12-month commitment terms. Same per-result pricing, just with predictable invoicing.</p>
+    <div style="max-width:760px;margin:0 auto;text-align:center">
+      <div style="font-size:11.5px;color:#B45309;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">🏆 Founding-100 · Bedok</div>
+      <h2 style="font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;color:#0F172A">77 of 100 founding slots remain</h2>
+      <p style="font-size:14.5px;color:#92400E;margin-bottom:18px">Approved-only — founder reviews every application within 1–3 business days. Approved merchants get 6 months Verified Business FREE + 0% take rate forever.</p>
+      <a href="/landing/portal.html?tier=founding&brand=pricing_canonical" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14.5px">Apply for founding slot →</a>
     </div>
   </div>
 </section>
-
-<footer>
+<footer style="padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border);background:#fff">
   <div class="container">
-    KiX · Singapore-first, 200 countries ·
-    <a href="/legal/terms.html">Terms</a> ·
-    <a href="/legal/privacy.html">Privacy</a> ·
-    <a href="mailto:michael@mozat.com">Contact</a>
-  </div>
-    <div style="margin-top:10px;font-size:12px;color:var(--text-muted)">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W · since 2001</div>
-    <div style="margin-top:8px;font-size:11.5px;color:var(--text-muted)">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html" style="color:var(--brand-dk);text-decoration:none;margin:0 8px">Terms</a>·
+    <a href="/landing/legal/privacy.html" style="color:var(--brand-dk);text-decoration:none;margin:0 8px">Privacy</a>·
+    <a href="mailto:hello@letskix.com" style="color:var(--brand-dk);text-decoration:none;margin:0 8px">Contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W</div>
+    <div style="margin-top:8px;font-size:11.5px;color:var(--text-muted)">PDPA-SG · PDPA-MY · GDPR-aligned · Halal-aware library</div>
+    <div style="margin-top:8px;font-size:11.5px">
       Verify independently:
-      <a href="https://x.com/letskix" style="color:var(--brand-dk);margin:0 4px" rel="noopener">X</a>·
-      <a href="https://github.com/mozat" style="color:var(--brand-dk);margin:0 4px" rel="noopener">GitHub</a>·
-      <a href="https://news.ycombinator.com/from?site=letskix.com" style="color:var(--brand-dk);margin:0 4px" rel="noopener">HN</a>·
-      <a href="https://www.reddit.com/search/?q=kix+merchant" style="color:var(--brand-dk);margin:0 4px" rel="noopener">Reddit</a>·
-      <a href="https://www.acra.gov.sg/" style="color:var(--brand-dk);margin:0 4px" rel="noopener">ACRA (SG registry)</a>
+      <a href="https://x.com/letskix" rel="noopener" style="color:var(--brand-dk);margin:0 4px">X</a>·
+      <a href="https://github.com/mozat" rel="noopener" style="color:var(--brand-dk);margin:0 4px">GitHub</a>·
+      <a href="https://www.acra.gov.sg/" rel="noopener" style="color:var(--brand-dk);margin:0 4px">ACRA</a>
     </div>
-  </footer>
-
-</body>
-</html>
+  </div>
+</footer>
+</body></html>

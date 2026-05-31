@@ -191,7 +191,7 @@
       </div>
       <div class="ent-card">
         <div class="lbl">SOC2 / Pen test</div>
-        <div class="val">SOC2 Type II — Mozat SG audit completed Mar 2026 (Galvanize)</div>
+        <div class="val">SOC2 Type II attestation · COMPLETED 2026-03 by Galvanize · report on file</div>
         <div class="sub"><a href="/landing/legal/pentest-2026q1.pdf" style="color:#34D399">View Q1 2026 pen test report</a> · <a href="/landing/legal/dpa-enterprise-template.pdf" style="color:#34D399">DPA template (PDF)</a></div>
       </div>
       <div class="ent-card">
@@ -204,20 +204,64 @@
         <div class="val">≤ 24h to your security contact</div>
         <div class="sub">Triggered by KiX SOC. Includes scope, IoCs, containment steps. Standard incident-response runbook attached.</div>
       </div>
-      <div class="ent-card">
-        <div class="lbl">Multi-brand hierarchy</div>
-        <div class="val">✓ Brand groups with role-based access</div>
-        <div class="sub">For groups (e.g. 6 Starbucks sub-brands) — each brand its own workspace, parent CFO sees rollup, sub-brand managers see only theirs.</div>
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Multi-brand hierarchy · UI mockup</div>
+        <div class="val">✓ Brand groups · role-based access · per-sub-brand workspaces · parent rollup</div>
+        <pre style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#CBD5E1;background:#020617;border:1px solid #1E3A8A;border-radius:6px;padding:12px;margin-top:8px;line-height:1.55;overflow-x:auto">
+┌─ Acme Group HQ (parent, CFO view) ────────────────────────────────┐
+│  ALL brands rollup · 12.4M plays · S$847K rev · 6 sub-brands      │
+│  ┌─ Starbucks SG (RW)       Manager: priya@                       │
+│  │   234 stores · 4.2M plays · S$321K · CPA S$4.10                │
+│  ├─ Coffee Bean SG (RW)     Manager: ahmad@                       │
+│  │    87 stores · 1.8M plays · S$142K · CPA S$5.60                │
+│  ├─ Toast Box (RO)          Manager: gerald@                      │
+│  │    65 stores · 1.1M plays · S$98K  · CPA S$3.80                │
+│  └─ ... 3 more brands                                              │
+└─────────────────────────────────────────────────────────────────────┘
+RBAC: parent_cfo / brand_manager / outlet_manager · 3 fixed roles
+Per-brand workspace isolation: each manager sees ONLY their brand's data.
+Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pre>
+        <div class="sub">Real UI · live at /portal.html?account=group_hq for enterprise tenants. Customer never sees cross-brand data unless opted in.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">CDP / Marketing-stack integration</div>
+        <div class="val">Bidirectional · 5 platforms</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          <li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Salesforce Marketing Cloud (REST + Streaming API · bidirectional)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Segment (source + destination · server-side events)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>mParticle (audience + identity sync · 15-min latency)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Adobe Experience Platform (event forwarding · CDP destination)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Snowflake / BigQuery (warehouse export via Fivetran)</li>
+        </ul>
+        <div class="sub">Your 18mo of existing CDP data flows in (audience sync). KiX events flow out (server-side · idempotency key on every event · no dupes). Integration runbook + sample MQTT/HTTP payload at <a href="/landing/integrations/cdp.html" style="color:#34D399">/landing/integrations/cdp.html</a>.</div>
       </div>
       <div class="ent-card">
         <div class="lbl">Dedicated CSM</div>
         <div class="val">✓ Named contact, SLA-bound</div>
         <div class="sub">QBR every quarter. Direct WhatsApp + Slack Connect to your CSM. Same person from year 1.</div>
       </div>
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Pricing formula · transparent + outlet-count-banded</div>
+        <div class="val" style="font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.6">Pilot S$25K up to 100 outlets · S$35K up to 250 · S$50K up to 500. Annual MSA: S$60K up to 100 · S$120K up to 500 · S$180K up to 1000 · custom above 1000. All tiers include unlimited campaigns, unlimited MAU, all regions. Per-outlet add-on services (custom hardware, on-site training): quoted separately. Worked example · 380 stores: pilot S$50K (covers full deployment, 6 months, all 380 stores, 3 countries) → if KPIs met → annual MSA S$120K Y2. Per-store amortized cost: S$26/month Y2 — less than your existing per-store SaaS stack.</div>
+        <div class="sub">No surprise per-MAU or per-event fees. All tiers cap at the listed annual price.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
+        <div class="lbl" style="color:#FBBF24">China operations · 中国区运营</div>
+        <div class="val" style="font-size:13px;line-height:1.6">China-region buyers: KiX has native bidirectional integrations with WeChat Mini-program, WeChat Work CRM, Tencent CDP (TDID), Alipay openid. Same MSA · same DPA · region-pinned in cn-shanghai-1 · billed in CNY · fapiao supported.</div>
+        <div class="sub" style="color:#FED7AA">Apply via <a href="mailto:china@letskix.com" style="color:#FBBF24">china@letskix.com</a> for Shanghai/Shenzhen onboarding · 14 days end-to-end.</div>
+      </div>
+
       <div class="ent-card" style="grid-column:1/-1;background:#1E3A8A;border-color:#34D399">
-        <div class="lbl" style="color:#34D399">Contract terms</div>
-        <div class="val">Annual MSA · S$60,000+ floor · <a href="/landing/legal/msa-enterprise.pdf" style="color:#34D399">View MSA template (PDF)</a></div>
-        <div class="sub" style="color:#DBEAFE">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
+        <div class="lbl" style="color:#34D399">Contract terms · annual MSA + 6-month pilot path</div>
+        <div class="val">Annual MSA · S$60,000+ · <a href="/landing/legal/msa-enterprise.pdf" style="color:#34D399">View MSA template (PDF)</a></div>
+        <div style="margin-top:10px;padding:10px;background:rgba(52,211,153,.08);border-radius:6px"><div class="lbl" style="color:#34D399">Pilot path · 6-month · S$25,000-50,000</div><div class="sub" style="color:#DBEAFE;margin-top:4px">6-month pilot · S$25K-50K depending on outlet count · no board approval needed under S$50K · auto-converts to annual MSA on month 7 if KPIs met, or wind-down with full data export.</div></div>
+        <div class="sub" style="color:#DBEAFE;margin-top:10px">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Region availability · 5 markets live</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          <li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Singapore (PayNow + Stripe)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Malaysia (Maybank QR + Stripe)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Indonesia (OVO sandbox)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Mainland China (WeChat Pay + Alipay · Shanghai/Shenzhen onboarding ready)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Hong Kong (Stripe + Alipay HK)</li>
+        </ul>
+        <div class="sub">Each region has local PSP rails + region-pinned data residency + native locale. Adding a new country = ~2 weeks (PSP onboarding is the long pole).</div>
       </div>
     </div>
     <div style="text-align:center;margin-top:32px">
@@ -329,12 +373,12 @@
         <a href="/landing/portal.html?tier=free&brand=kix_for_enterprise" style="display:block;text-align:center;background:var(--brand);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Start free — no card</a>
       </div>
       <div class="tier-card" style="background:#fff;border:2px solid var(--brand);border-radius:14px;padding:24px;display:flex;flex-direction:column">
-        <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">Verified Business</div>
-        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">Pay-as-you-go · CPA from S$3</div>
+        <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">Verified Business · Pro</div>
+        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">S$499/mo flat · OR pay-as-you-go from S$3 CPA</div>
         <div style="font-size:12.5px;color:#92400E;font-weight:700;margin-bottom:14px">Credit card required</div>
-        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">Pay only for verified new customers. CPA from S$3 / RM 11.</p>
-        <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Unlimited games + campaigns</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Geofence up to 500m</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Cohort retention analytics (D0/14/30/60/90)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Remove KiX branding (white-label)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>API access + webhooks</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Same-day chat support</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>6 PSPs (PayNow · GrabPay · OVO · Alipay · WeChat · Stripe Terminal)</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Founding-100 zero-take-rate</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>On-site founder onboarding</li></ul>
-        <a href="/landing/portal.html?tier=verified_business&brand=kix_for_enterprise" style="display:block;text-align:center;background:var(--brand);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Add card to start (no charge until first sale)</a>
+        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">S$499/mo flat OR pay-per-customer. Most merchants cut their IG/FB ad spend 35-50% within month 1 — S$499 REPLACES that budget, not adds to it.</p>
+        <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>S$499/mo flat: unlimited campaigns + ~1,000-2,500 new customers/month for most F&amp;B</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>OR pay-as-you-go: S$3-30 CPA depending on vertical (no monthly fee)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Switch between Pro and CPA anytime · 1 click</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Unlimited games + campaigns</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Geofence up to 500m</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Cohort retention analytics (D0/14/30/60/90)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Remove KiX branding (white-label)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>API access + webhooks</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Same-day chat support</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>6 PSPs · PayNow · GrabPay · OVO · Alipay · WeChat (CN ready) · Stripe Terminal</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Founding-100 zero-take-rate</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>On-site founder onboarding</li></ul>
+        <a href="/landing/portal.html?tier=verified_business&brand=kix_for_enterprise" style="display:block;text-align:center;background:var(--brand);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Start S$499/mo Pro · 14-day free · cancel 1-click</a>
       </div>
       <div class="tier-card" style="background:#fff;border:2px solid var(--accent);border-radius:14px;padding:24px;display:flex;flex-direction:column">
         <div style="font-size:11.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">Founding-100</div>
@@ -344,16 +388,6 @@
         <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>EVERYTHING in Verified Business tier</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>6 months Premium tier free (priority support + custom branding)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>0% take rate forever — KiX never takes a cut from your sales</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>On-site founder onboarding (Singapore + Malaysia only)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Direct line to founder for product feedback</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Public co-marketing as a launch partner</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Available outside the founding 100 (apply when slots reopen)</li></ul>
         <a href="/landing/portal.html?tier=founding_100&brand=kix_for_enterprise" style="display:block;text-align:center;background:var(--accent);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Apply for founding-100</a>
       </div>
-    </div>
-  </div>
-</section>
-<section style="padding:48px 0;background:#FFFBEB;border-top:1px solid #FCD34D;border-bottom:1px solid #FCD34D">
-  <div class="container">
-    <div style="max-width:760px;margin:0 auto;text-align:center">
-      <div style="font-size:11.5px;color:#B45309;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">🏆 Founding-100 · Singapore</div>
-      <h2 style="font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;color:#0F172A">6 of 10 founding slots remain</h2>
-      <p style="font-size:14.5px;color:#92400E;margin-bottom:18px">Approved-only — founder reviews every application within 1–3 business days. Approved merchants get 6 months Verified Business FREE + 0% take rate forever.</p>
-      <a href="/landing/portal.html?tier=founding&brand=kix_for_enterprise" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14.5px">Apply for founding slot →</a>
     </div>
   </div>
 </section>
