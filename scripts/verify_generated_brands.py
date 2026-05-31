@@ -41,6 +41,7 @@ PERSONA_AXES = {
     "aminah_first_time_merchant": {"audience": "merchant", "scale": "single"},
     "skeptical_owner": {"audience": "merchant", "scale": "single"},
     "ahmad_kopi_chain": {"audience": "merchant", "scale": "chain"},
+    "enterprise_manager": {"audience": "merchant", "scale": "enterprise"},  # Sandeep — 100+ stores
     "consumer": {"audience": "consumer", "scale": "both"},
 }
 
@@ -75,6 +76,11 @@ PERSONA_PROFILES = {
         "name": "Ben Tan",
         "role": "Office worker. Lunch in CBD. Will scan a QR if it's <3 seconds. Won't install an app. Won't fill a form for free coffee.",
         "context": "Cynical about ad tracking. Likes vouchers. Hates 'gamification' that's actually just spam.",
+    },
+    "enterprise_manager": {
+        "name": "Sandeep Kumar",
+        "role": "Regional Loyalty Manager at Starbucks SG. 38 years old. Manages S$2M/year promotion budget. Reports to APAC marketing director. Buys from Salesforce, Klaviyo, Eber today. Evaluating KiX as a possible add-on or replacement.",
+        "context": "15-minute evaluation window. Needs: enterprise contract terms, SSO/SAML, data residency in SG, integration with existing CDP, multi-brand reporting roll-up (across 6 Starbucks sub-brands in his region). Will scrutinize SOC2 / pen-test reports / DPA / breach notification SLA. 'Founding-100' is a startup signal, not enterprise — needs separate tier.",
     },
 }
 

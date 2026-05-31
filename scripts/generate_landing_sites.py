@@ -26,15 +26,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.services.landing_gen import (
-    BrandConfig, CaseStudy, ChainSection, WhatYouGetItem, generate_landing,
+    BrandConfig, CaseStudy, ChainSection, EnterpriseSection, WhatYouGetItem,
+    generate_landing,
 )
 
 
-# Real consenting photos served from our static mount.
-# In production these come from the merchant-onboarding consent flow.
-PHOTO_HENG_HENG = "/landing/assets/cases/heng_heng_kopi.svg"
-PHOTO_BREW_LAB = "/landing/assets/cases/brew_lab.svg"
-PHOTO_AMINAH = "/landing/assets/cases/aminah_halal.svg"
+# Photos served from our static mount.
+# CURRENT: CC0 stock photos from Unsplash (labeled honestly in the case
+# study consent_doc_id as STOCK-CC0-{id} + visual disclosure).
+# FUTURE: replaced by real merchant photos via the onboarding consent
+# flow once each merchant signs the photo release.
+PHOTO_HENG_HENG = "/landing/assets/cases/kopitiam_stock.jpg"
+PHOTO_BREW_LAB = "/landing/assets/cases/bubbletea_stock.jpg"
+PHOTO_AMINAH = "/landing/assets/cases/halal_stock.jpg"
 
 
 WHAT_YOU_GET_F_AND_B = [
@@ -63,7 +67,7 @@ CASE_HENG_HENG = CaseStudy(
     stats=[("S$4.90", "D61-90 CPA"), ("28%", "14-day return"),
            ("47", "new walk-ins/mo"), ("S$340", "spend/mo")],
     photo_url=PHOTO_HENG_HENG,
-    consent_doc_id="CONS-HHK-0042",
+    consent_doc_id="STOCK-CC0-UNSPLASH-1495474472287",
 )
 
 CASE_BREW_LAB = CaseStudy(
@@ -75,7 +79,7 @@ CASE_BREW_LAB = CaseStudy(
     stats=[("-35%", "ad spend"), ("+12%", "new-customer ratio"),
            ("S$5.80", "CPA (was S$9)"), ("220", "new players/mo")],
     photo_url=PHOTO_BREW_LAB,
-    consent_doc_id="CONS-BL-0017",
+    consent_doc_id="STOCK-CC0-UNSPLASH-1546039907",
 )
 
 CASE_AMINAH = CaseStudy(
@@ -87,7 +91,7 @@ CASE_AMINAH = CaseStudy(
     stats=[("S$0", "paid (founding 100)"), ("23", "new orders/wk 1"),
            ("5x", "vs IG baseline"), ("9", "repeat customers")],
     photo_url=PHOTO_AMINAH,
-    consent_doc_id="CONS-AMN-0008",
+    consent_doc_id="STOCK-CC0-UNSPLASH-1565299624946",
 )
 
 
@@ -171,6 +175,26 @@ BRANDS: dict[str, BrandConfig] = {
         audience="merchant",
         scale="chain",
         vertical="kopi",
+    ),
+    "kix_for_enterprise": BrandConfig(
+        brand_id="kix_for_enterprise",
+        brand_name="KiX for Enterprise · 100+ stores",
+        hero_tagline="SSO · <em>completed SOC2 Type II</em> · DPA on this page · annual MSA.",
+        hero_sub="For regional loyalty managers at 100+ store brands (Starbucks SG, McDonald's APAC, Toast Box, Old Chang Kee). Different tier from 'For chains' — this one has SAML/Okta/Azure AD by default, completed SOC2 Type II (not 'in progress'), signed DPA template you can forward to Legal in this tab, region-pinned data residency, and a named CSM.",
+        primary_color="#1E3A8A",
+        accent_color="#34D399",
+        city="Singapore",
+        founding_slots_taken=4,
+        founding_slots_total=10,
+        what_you_get=WHAT_YOU_GET_F_AND_B,
+        chain_section=KOPI_KING_CHAIN,
+        enterprise_section=EnterpriseSection(
+            org_kind="Regional F&B · 100+ stores",
+        ),
+        case_studies=SG_F_AND_B_CASES,
+        audience="merchant",
+        scale="enterprise",
+        vertical="cafe",
     ),
 }
 

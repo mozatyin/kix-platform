@@ -1,0 +1,149 @@
+{
+  "_doc": "Single source of truth for KiX landing-page deprecation. Updated when a page is marked for sunset. Lint reads this; cron mounts banner.",
+  "_schema": {
+    "page": "relative path from repo root (e.g. landing/index.html)",
+    "deprecated_at": "ISO date — when the deprecation banner went live",
+    "sunset_at": "ISO date — when the page is rewritten or 302'd to /brands/{successor}",
+    "successor": "URL to redirect/migrate to once sunset",
+    "reason": "1-sentence why it's being deprecated",
+    "owner_email": "who decides when to flip the switch"
+  },
+  "deprecations": [
+    {
+      "page": "landing/index.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/default/index.html",
+      "reason": "Hand-edited index drifts from landing_gen output; brands/default/ is the canonical render.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/pricing.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/default/index.html#pricing",
+      "reason": "Pricing canon is now app/services/pricing_canon.py; pricing.html cannot stay in sync.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/for-chains.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/kopi_king_chain/index.html",
+      "reason": "Chain page replaced by generated landing/brands/{chain-id}/ with ChainSection.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/enterprise.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-07-31",
+      "successor": "/landing/brands/kopi_king_chain/index.html",
+      "reason": "Founder explicitly killed 'enterprise' framing in favor of 'for chains'.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/trinity-artifacts.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-07-31",
+      "successor": "/landing/how-we-build.html",
+      "reason": "Trinity 3T is internal vocabulary; CLASS-D vocab_check would reject this page.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/how-we-build.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-09-30",
+      "successor": "/landing/brands/default/index.html",
+      "reason": "Process-page content moves into brands/default/ once landing_gen has a process section.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/sg-case-studies.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/default/index.html#cases",
+      "reason": "Case studies now sourced from generate_landing_sites.py SG_F_AND_B_CASES.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/my-case-studies.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/default/index.html#cases",
+      "reason": "MY-specific cases will be sourced from BrandConfig once we add country axis.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/calculator.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-09-30",
+      "successor": "/landing/brands/default/index.html#vbench",
+      "reason": "Vertical benchmarks now rendered inline by landing_gen via vertical_benchmarks.py.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/play.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-12-31",
+      "successor": "/landing/brands/default/index.html",
+      "reason": "Game demo iframe path; needs consumer-audience landing template before deprecation.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/portal.html",
+      "deprecated_at": "",
+      "sunset_at": "",
+      "successor": "",
+      "reason": "Portal is logged-in app shell, not a landing page — exempt from deprecation. Kept here for clarity.",
+      "owner_email": ""
+    },
+    {
+      "page": "landing/storefront.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-09-30",
+      "successor": "/landing/brands/default/index.html",
+      "reason": "Storefront preview folded into per-brand pages.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/alpha.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/default/index.html",
+      "reason": "Alpha cohort signup absorbed into Founding-100 flow on default page.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/connect.html",
+      "deprecated_at": "",
+      "sunset_at": "",
+      "successor": "",
+      "reason": "OAuth connect page is functional, not a landing — exempt.",
+      "owner_email": ""
+    },
+    {
+      "page": "landing/ahmad.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/kopi_king_chain/index.html",
+      "reason": "Named-persona page subsumed by chain-scale brand landing.",
+      "owner_email": "founder@letskix.com"
+    },
+    {
+      "page": "landing/investors.html",
+      "deprecated_at": "",
+      "sunset_at": "",
+      "successor": "",
+      "reason": "Investor page is for a different audience (not merchants); keep separate, not in CLASS-A scope.",
+      "owner_email": ""
+    },
+    {
+      "page": "landing/demo.html",
+      "deprecated_at": "2026-05-31",
+      "sunset_at": "2026-08-31",
+      "successor": "/landing/brands/default/index.html",
+      "reason": "Generic demo page; landing_gen output is the new demo.",
+      "owner_email": "founder@letskix.com"
+    }
+  ]
+}

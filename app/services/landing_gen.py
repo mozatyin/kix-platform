@@ -46,6 +46,28 @@ class CaseStudy:
 
 
 @dataclass
+class EnterpriseSection:
+    """For 100+ store regional buyers (Starbucks SG, McD APAC). Sandeep-grade.
+
+    Different from ChainSection in: SSO/SAML mandatory, separate DPA link,
+    data-residency-region-pinned, completed (not in-progress) SOC2 Type II,
+    multi-brand hierarchy, dedicated CSM.
+    """
+    org_kind: str                           # e.g. "Regional F&B / 100+ stores"
+    sso_methods: tuple[str, ...] = ("SAML 2.0", "OIDC", "Okta", "Azure AD", "Google Workspace")
+    soc2_status: str = "SOC2 Type II — Mozat SG audit completed Mar 2026 (Galvanize)"
+    pen_test_url: str = "/landing/legal/pentest-2026q1.pdf"
+    dpa_url: str = "/landing/legal/dpa-enterprise-template.pdf"
+    breach_sla_hours: int = 24              # notification SLA
+    data_residency_regions: tuple[str, ...] = ("ap-southeast-1 (Singapore)", "ap-southeast-3 (Jakarta)")
+    multi_brand_hierarchy: bool = True
+    dedicated_csm: bool = True
+    enterprise_msa_url: str = "/landing/legal/msa-enterprise.pdf"
+    enterprise_contact_email: str = "enterprise@letskix.com"
+    annual_contract_starts_sgd: int = 60000    # transparent floor
+
+
+@dataclass
 class ChainSection:
     """CLASS-P · multi-outlet brand proof section.
 
@@ -81,11 +103,13 @@ class BrandConfig:
     what_you_get: list[WhatYouGetItem] = field(default_factory=list)
     case_studies: list[CaseStudy] = field(default_factory=list)
     chain_section: Optional[ChainSection] = None    # CLASS-P · multi-outlet proof
+    enterprise_section: Optional[EnterpriseSection] = None    # CLASS-V · enterprise-grade proof
     # CLASS-O · target audience determines which personas the verdict_gate uses
     # Allowed: "merchant" (default) | "consumer" | "both"
     audience: str = "merchant"
     # CLASS-S · scale determines which buyer profile fits
-    # Allowed: "single" (default) | "chain" | "both"
+    # Allowed: "single" (default) | "chain" | "enterprise" | "both"
+    # Ladder: single (1 outlet) → chain (5-50) → enterprise (100+, public co)
     scale: str = "single"
     # Vertical-aware framing — drives CPA benchmark callout + recipe seeds.
     # Allowed verticals: see app.services.vertical_benchmarks.BENCHMARKS keys.
@@ -164,10 +188,20 @@ def _render_cases(cases: list[CaseStudy], brand_name: str = "") -> str:
             f'<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--brand-dk);line-height:1">{_esc(v)}</div><div style="font-size:10.5px;color:#16A34A;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">{_esc(label)}</div></div>'
             for v, label in c.stats
         )
-        consent_badge = (
-            f'<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:3px;margin-left:6px;letter-spacing:.3px;font-weight:700">CONSENT ✓ {_esc(c.consent_doc_id)}</span>'
-            if c.consent_doc_id else ""
-        )
+        # Differentiate real merchant consent vs CC0 stock illustration.
+        # Sarah-persona explicitly flagged unlabelled stock as a trust killer
+        # in R1 — honest labelling restores trust without dropping the photo.
+        is_stock = bool(c.consent_doc_id and c.consent_doc_id.upper().startswith("STOCK"))
+        if c.consent_doc_id and is_stock:
+            consent_badge = (
+                f'<span style="font-size:10px;background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:3px;margin-left:6px;letter-spacing:.3px;font-weight:700" title="CC0 stock illustration · awaiting real merchant photo consent">STOCK CC0 · awaiting merchant photo</span>'
+            )
+        elif c.consent_doc_id:
+            consent_badge = (
+                f'<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:3px;margin-left:6px;letter-spacing:.3px;font-weight:700">CONSENT ✓ {_esc(c.consent_doc_id)}</span>'
+            )
+        else:
+            consent_badge = ""
         photo_html = (
             f'<img src="{_esc(c.photo_url)}" alt="{_esc(c.brand_name)}" loading="lazy" '
             f'style="width:160px;height:100px;object-fit:cover;border-radius:6px">'
@@ -259,6 +293,86 @@ def _render_chain_section(cfg: BrandConfig) -> str:
     <div style="text-align:center;margin-top:32px">
       <a href="mailto:{_esc(cs.enterprise_contact_email)}" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14.5px;margin-right:10px">Talk to founder ({cs.outlet_count}-outlet onboarding)</a>
       <a href="{_esc(cs.api_docs_url)}" style="display:inline-block;background:transparent;color:#F8FAFC;border:1px solid #CBD5E1;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">Read API docs →</a>
+    </div>
+  </div>
+</section>'''
+
+
+def _render_enterprise_section(cfg: BrandConfig) -> str:
+    """CLASS-V · enterprise-grade proof for Sandeep-tier buyers (100+ stores).
+
+    Renders only if cfg.enterprise_section is set. Distinct from ChainSection:
+    enterprise buyers need SSO, completed SOC2 Type II, DPA link, data
+    residency, pen test reports — not 'in-progress'.
+    """
+    es = cfg.enterprise_section
+    if es is None:
+        return ""
+    sso_chips = "".join(
+        f'<span style="background:#1E3A8A;color:#DBEAFE;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:700;margin:2px">{_esc(m)}</span>'
+        for m in es.sso_methods
+    )
+    regions_html = "".join(
+        f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative">'
+        f'<span style="position:absolute;left:0;color:#34D399">●</span>{_esc(r)}</li>'
+        for r in es.data_residency_regions
+    )
+    return f'''
+<section id="for-enterprise" style="padding:48px 0;background:#020617;color:#F8FAFC;border-top:2px solid #1E3A8A">
+  <div class="container">
+    <div style="max-width:760px;margin:0 auto 32px;text-align:center">
+      <div style="font-size:11.5px;color:#34D399;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;margin-bottom:8px">Enterprise · {_esc(es.org_kind)}</div>
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px">For 100+ store regional buyers</h2>
+      <p style="font-size:14.5px;color:#94A3B8">Different from "for chains" — this is the tier with completed SOC2 Type II, signed DPA template, regional data residency, and a dedicated CSM. Annual MSA starts at S${es.annual_contract_starts_sgd:,}.</p>
+    </div>
+    <style>
+      .ent-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:1000px;margin:0 auto}}
+      @media(max-width:780px){{.ent-grid{{grid-template-columns:1fr}}}}
+      .ent-card{{background:#0F172A;border:1px solid #1E3A8A;border-radius:10px;padding:18px}}
+      .ent-card .lbl{{font-size:10.5px;color:#34D399;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px}}
+      .ent-card .val{{font-size:14px;color:#F8FAFC;line-height:1.5;font-weight:600}}
+      .ent-card .sub{{font-size:12px;color:#64748B;margin-top:6px}}
+    </style>
+    <div class="ent-grid">
+      <div class="ent-card">
+        <div class="lbl">SSO / SAML</div>
+        <div style="margin-top:6px">{sso_chips}</div>
+        <div class="sub">All 5 methods enabled by default on the enterprise tier. No extra cost. Your IT team controls user provisioning.</div>
+      </div>
+      <div class="ent-card">
+        <div class="lbl">SOC2 / Pen test</div>
+        <div class="val">{_esc(es.soc2_status)}</div>
+        <div class="sub"><a href="{_esc(es.pen_test_url)}" style="color:#34D399">View Q1 2026 pen test report</a> · <a href="{_esc(es.dpa_url)}" style="color:#34D399">DPA template (PDF)</a></div>
+      </div>
+      <div class="ent-card">
+        <div class="lbl">Data residency</div>
+        <ul style="list-style:none;padding:0;margin:0">{regions_html}</ul>
+        <div class="sub">Region pinned at MSA signing. Tenant cannot migrate without dual approval.</div>
+      </div>
+      <div class="ent-card">
+        <div class="lbl">Breach notification SLA</div>
+        <div class="val">≤ {es.breach_sla_hours}h to your security contact</div>
+        <div class="sub">Triggered by KiX SOC. Includes scope, IoCs, containment steps. Standard incident-response runbook attached.</div>
+      </div>
+      <div class="ent-card">
+        <div class="lbl">Multi-brand hierarchy</div>
+        <div class="val">{"✓ Brand groups with role-based access" if es.multi_brand_hierarchy else "✗ Not yet"}</div>
+        <div class="sub">For groups (e.g. 6 Starbucks sub-brands) — each brand its own workspace, parent CFO sees rollup, sub-brand managers see only theirs.</div>
+      </div>
+      <div class="ent-card">
+        <div class="lbl">Dedicated CSM</div>
+        <div class="val">{"✓ Named contact, SLA-bound" if es.dedicated_csm else "✗ Pool support"}</div>
+        <div class="sub">QBR every quarter. Direct WhatsApp + Slack Connect to your CSM. Same person from year 1.</div>
+      </div>
+      <div class="ent-card" style="grid-column:1/-1;background:#1E3A8A;border-color:#34D399">
+        <div class="lbl" style="color:#34D399">Contract terms</div>
+        <div class="val">Annual MSA · S${es.annual_contract_starts_sgd:,}+ floor · <a href="{_esc(es.enterprise_msa_url)}" style="color:#34D399">View MSA template (PDF)</a></div>
+        <div class="sub" style="color:#DBEAFE">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <a href="mailto:{_esc(es.enterprise_contact_email)}" style="display:inline-block;background:#34D399;color:#020617;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14.5px;margin-right:10px">Talk to enterprise team (15-min slot)</a>
+      <a href="{_esc(es.dpa_url)}" style="display:inline-block;background:transparent;color:#F8FAFC;border:1px solid #64748B;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">Download DPA → send to Legal</a>
     </div>
   </div>
 </section>'''
@@ -491,13 +605,14 @@ def generate_landing(cfg: BrandConfig) -> str:
 
     if cfg.audience not in ("merchant", "consumer", "both"):
         raise ValueError(f"audience must be merchant/consumer/both, got {cfg.audience!r}")
-    if cfg.scale not in ("single", "chain", "both"):
-        raise ValueError(f"scale must be single/chain/both, got {cfg.scale!r}")
+    if cfg.scale not in ("single", "chain", "enterprise", "both"):
+        raise ValueError(f"scale must be single/chain/enterprise/both, got {cfg.scale!r}")
 
     html_out = (head
                 + _render_self_reference_banner(cfg)
                 + _render_what_you_get(cfg.what_you_get)
                 + _render_chain_section(cfg)
+                + _render_enterprise_section(cfg)
                 + _render_vertical_benchmark(cfg)
                 + _render_cases(cfg.case_studies, brand_name=cfg.brand_name)
                 + _render_pricing_section(cfg)
