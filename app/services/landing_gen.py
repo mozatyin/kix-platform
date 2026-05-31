@@ -24,6 +24,21 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 
+def _t(key: str, default: str) -> str:
+    """R22 · emit a translatable HTML span.
+
+    Wraps default text with data-i18n="landing:<key>" so the existing
+    i18next runtime + locale-switcher can swap content client-side.
+    Server still emits the English default so the page is readable
+    even if JS fails.
+
+    Convention: keys live in landing/i18n/locales/{lng}/landing.json
+    under flat keys: {"hero.title": "...", "hero.sub": "...", ...}
+    """
+    safe_key = key.replace('"', '&quot;')
+    return f'<span data-i18n="landing:{safe_key}">{default}</span>'
+
+
 def _proof(claim_id: str, label: Optional[str] = None) -> str:
     """Shortcut to render an inline proof badge — defers import to avoid cycles."""
     from app.services.proof_registry import render_badge
@@ -56,33 +71,33 @@ def _render_shopify_hero(cfg: BrandConfig) -> str:
   <div class="container" style="position:relative;z-index:1">
     <div style="max-width:820px;margin:0 auto;text-align:center">
       <div style="display:inline-block;background:#F0FDF4;color:var(--brand-dk);padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:700;margin-bottom:28px;border:1px solid #BBF7D0">
-        For offline merchants · live in 5 minutes
+        {_t("hero.eyebrow", "For offline merchants · live in 5 minutes")}
       </div>
       <h1 style="font-size:64px;font-weight:800;letter-spacing:-2.2px;line-height:1.02;margin-bottom:22px;color:#0F172A">
-        Stop paying for ads that bring back<br>
-        <em style="color:var(--brand-dk);font-style:normal;background:linear-gradient(120deg,transparent 0%,transparent 50%,{_sanitize_hex(cfg.accent_color)}60 50%,{_sanitize_hex(cfg.accent_color)}60 100%);padding:0 6px">people who already buy from you.</em>
+        {_t("hero.title_line1", "Stop paying for ads that bring back")}<br>
+        <em style="color:var(--brand-dk);font-style:normal;background:linear-gradient(120deg,transparent 0%,transparent 50%,{_sanitize_hex(cfg.accent_color)}60 50%,{_sanitize_hex(cfg.accent_color)}60 100%);padding:0 6px">{_t("hero.title_line2", "people who already buy from you.")}</em>
       </h1>
       <p style="font-size:20px;line-height:1.5;color:#475569;margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-weight:400">
-        KiX brings new customers in with little games on their phone. You only pay when one walks through your door.
+        {_t("hero.sub", "KiX brings new customers in with little games on their phone. You only pay when one walks through your door.")}
       </p>
       <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:18px">
         <a href="{_esc(cfg.portal_link)}?tier=free&brand={_esc(cfg.brand_id)}" style="display:inline-flex;align-items:center;gap:8px;background:#0F172A;color:#fff;padding:17px 36px;border-radius:8px;font-weight:700;text-decoration:none;font-size:17px">
-          Start free trial <span style="opacity:.7">→</span>
+          {_t("hero.cta_primary", "Start free trial")} <span style="opacity:.7">→</span>
         </a>
         <a href="#how-it-works" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#0F172A;border:1px solid #CBD5E1;padding:17px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:16px">
-          See how
+          {_t("hero.cta_secondary", "See how")}
         </a>
       </div>
       <div style="font-size:13px;color:#64748B">
-        Card-on-file at signup · never charged on Free · cancel 1-click
+        {_t("hero.assurance", "Card-on-file at signup · never charged on Free · cancel 1-click")}
       </div>
     </div>
 
     <div style="max-width:680px;margin:72px auto 0;text-align:center">
-      <div style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">5 SG alpha pilots · 90-day average</div>
+      <div style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">{_t("hero.bignum_eyebrow", "5 SG alpha pilots · 90-day average")}</div>
       <div style="font-size:96px;font-weight:900;letter-spacing:-4px;line-height:1;background:linear-gradient(135deg,{_sanitize_hex(cfg.primary_color)} 0%,var(--brand-dk) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px">−35%</div>
-      <div style="font-size:17px;color:#0F172A;font-weight:700">ad spend, same number of new customers</div>
-      <div style="font-size:13px;color:#64748B;margin-top:8px">Brew Lab S$9 → S$5.80 CPA · Heng Heng S$7.20 → S$4.90 CPA</div>
+      <div style="font-size:17px;color:#0F172A;font-weight:700">{_t("hero.bignum_label", "ad spend, same number of new customers")}</div>
+      <div style="font-size:13px;color:#64748B;margin-top:8px">{_t("hero.bignum_proof", "Brew Lab S$9 → S$5.80 CPA · Heng Heng S$7.20 → S$4.90 CPA")}</div>
     </div>
   </div>
 </section>'''

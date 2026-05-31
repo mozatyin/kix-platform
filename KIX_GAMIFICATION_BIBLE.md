@@ -500,6 +500,72 @@ path with WATCH/MULTI atomicity. Two modes:
 
 Real-Redis path validated; harness ready for staging soak.
 
+## 14.12 R18 → R21 · "Shopify of gamification" visual unification ✅ DELIVERED
+
+Founder mandate 2026-06-01: "Apply Shopify design as a filter over
+the 17-round iterated content. Don't drop the iterated content."
+
+Visual style references (INDUSTRY benchmark):
+- Shopify.com — centered hero + product mockup right + green accent
+- Stripe.com — generous whitespace + single primary CTA
+- Linear.app — gradient hint + concise hero copy
+- Vercel — mega-footer with 5 sitemap columns
+
+Concrete deliverables R18-R21:
+- R18: split front (`/index.html`) + details (`/details.html`) per brand
+- R19: 11-section Shopify-styled front (logos + 4-persona use-cases +
+  value props + iterated R7-R17 content + Shopify pricing + mega footer)
+- R20: added FAQ accordion + comparison table (caused regression to 6/8)
+- R21: Steve Jobs 3 fixes applied:
+    - Hero mom-3-sec test ("Stop paying for ads that bring back
+      people who already buy from you" + ONE 96px −35% bignum)
+    - FAQ + comparison moved to details (R20 regression recovered)
+    - Cross-border SGD↔HKD note added (Wong friction closed)
+    - Portal greeting → single-line status bar
+- Result: 8/8 convert · S$211,916 ARR · stable across visual rebrand
+
+Bug-class catalog 45 → 56 (UU FAQ · VV comparison · WW TikTok preview
+· XX hero brevity · YY pricing path · ZZ status-bar).
+
+## 14.13 Portal v3 · TikTok-functional Shopify-visual ✅ PREVIEW
+
+`landing/portal-v3-preview.html` — non-destructive preview for
+founder review before migrating `landing/portal.html`.
+
+INDUSTRY benchmark: TikTok For Business / Ads Manager structure:
+- Left sidebar: Acquire / Measure / Customers / Account groups
+- Top: account switcher (Heng Heng Kopi · S$847 wallet · Verified)
+- Page header: breadcrumb + search + notification + + New campaign
+- Status strip (single-line): wallet · new 7d · campaigns live · runway
+- 4 metric cards (impressions · plays · new customers · spend · CPA)
+- Campaign table (TikTok columns: status · campaign+objective · audience
+  · spend · impressions · plays · new customers · CPA · CTR)
+- Tabs: Campaigns 5 · Ad groups 11 · Creatives 23 · Audiences 7
+- 14-day sparkline + audience donut + live activity feed
+- + New campaign CTA card at bottom
+
+VISUAL style: Shopify clean white (not TikTok dark mode):
+- Background #F8FAFC, panels #FFFFFF, border #E2E8F0
+- Green brand accent #00B341 (same as merchant landings)
+- Inter sans-serif throughout, no gradient walls
+- Subtle hovers, status pills, tabular-numeric font for $$
+
+After founder approval: migrate to `landing/portal.html` as v3.
+
+## 14.14 R22 · i18n keys on body content ✅ STARTED
+
+landing_gen._t(key, default) wraps every customer-visible string
+in `<span data-i18n="landing:<key>">default</span>`. i18next runtime
+swaps content client-side when locale changes.
+
+R22 first pass covers hero block (10 keys). Translation files seeded:
+  landing/i18n/locales/en-SG/landing.json
+  landing/i18n/locales/zh-Hans-SG/landing.json
+  landing/i18n/locales/zh-Hans-CN/landing.json
+
+Next pass: value props · what-you-get · CTAs across all sections.
+Pattern proven; expansion is mechanical.
+
 ---
 
 # Appendix A · Numbers
@@ -508,8 +574,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : bb7504f
-Last commit         : feat(shopify): R19 · Shopify visual filter OVER 17-round iterated content               8/
+HEAD                : f1a337b
+Last commit         : feat(shopify+tiktok): R21 · Jobs 3 fixes + R20 regression recovered · 8/8 convert
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -518,7 +584,7 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 139,501
+  total Python LOC  : 139,507
 
 Test surface
   test files        : 157
