@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.services.landing_gen import (
     BrandConfig, CaseStudy, ChainSection, EnterpriseSection, WhatYouGetItem,
-    generate_landing,
+    generate_landing, generate_details_page,
 )
 
 
@@ -256,14 +256,21 @@ def main() -> int:
     total = 0
     for bid in targets:
         cfg = BRANDS[bid]
-        html = generate_landing(cfg)
         out_dir = out_root / bid
         out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / "index.html"
-        out_path.write_text(html)
-        n = len(html)
-        total += n
-        print(f"  wrote {out_path} ({n:,} chars, audience={cfg.audience}, chain={'Y' if cfg.chain_section else 'N'})")
+
+        # Shopify-style FRONT page (lean · emotional)
+        front = generate_landing(cfg)
+        (out_dir / "index.html").write_text(front)
+        total += len(front)
+        print(f"  wrote {out_dir / 'index.html'} (front · {len(front):,} chars)")
+
+        # Enterprise spec-sheet DETAILS page (for merchant audience only)
+        if cfg.audience != "consumer":
+            details = generate_details_page(cfg)
+            (out_dir / "details.html").write_text(details)
+            total += len(details)
+            print(f"        + details.html ({len(details):,} chars · scale={cfg.scale})")
 
     # Regenerate /landing/pricing.html from pricing_canon so the legacy URL
     # always serves current data (buyer-journey R2 fix).

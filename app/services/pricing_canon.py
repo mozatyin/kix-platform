@@ -47,10 +47,14 @@ class PricingTier:
 TIER_FREE = PricingTier(
     tier_id="free",
     name="Free",
-    headline="Try the platform end-to-end. No card, no time limit.",
-    price_text="Free forever",
-    cc_required=False,
-    no_charge_until="N/A — this tier is permanently free",
+    headline="Try the platform end-to-end. Free forever — card on file is a 'serious user' signal (never charged on this tier).",
+    price_text="Free forever · card-on-file",
+    cc_required=True,    # Founder feedback 2026-05-31: CC = joker/hacker filter
+    no_charge_until=(
+        "NEVER on the Free tier. Card-on-file is required as an anti-abuse "
+        "signal (filters out bots, hackers, joke signups). We do not charge "
+        "the card without your explicit upgrade. 1-click delete card + account anytime."
+    ),
     take_rate_pct=0.0,
     scope="global",
     approval_required=False,
@@ -60,6 +64,7 @@ TIER_FREE = PricingTier(
         "Geofence radius 100m",
         "Email-only support",
         "KiX branding on game footer",
+        "Card-on-file (NEVER charged on free tier · 1-click delete)",
     ),
     not_included=(
         "Multi-game campaigns",
@@ -67,7 +72,7 @@ TIER_FREE = PricingTier(
         "Remove KiX branding",
         "API access",
     ),
-    cta_text="Start free — no card",
+    cta_text="Start free · card-on-file (never charged)",
     cta_action="signup",
 )
 

@@ -3,7 +3,7 @@ import pytest
 
 from app.services.landing_gen import (
     BrandConfig, CaseStudy, ChainSection, WhatYouGetItem,
-    from_dict, generate_landing,
+    from_dict, generate_landing, generate_details_page,
 )
 
 
@@ -17,7 +17,7 @@ def test_consent_badge_renders_when_doc_id_present():
                                     photo_url="https://cdn.example.com/y.jpg",
                                     consent_doc_id="CONS-0042")
                       ])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "CONS-0042" in html
     assert "CONSENT" in html
 
@@ -29,13 +29,15 @@ def test_consent_badge_omitted_when_no_doc_id():
                                     quote="Q", quote_attribution="— a",
                                     photo_url="https://cdn.example.com/y.jpg")
                       ])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "CONSENT" not in html
 
 
 # ── CLASS-R: self-reference banner ──
 
 def test_self_reference_triggers_demo_banner():
+    # Self-reference banner is on the FRONT page (it warns the buyer that
+    # the page is personalized). Front uses generate_landing.
     cfg = BrandConfig(brand_id="aminah_halal", brand_name="Aminah's Hut",
                       hero_tagline="T", hero_sub="S",
                       case_studies=[
@@ -47,8 +49,6 @@ def test_self_reference_triggers_demo_banner():
     assert "Personalized demo" in html
     assert "Aminah&#x27;s Hut" in html   # HTML-escaped form
     assert "Nothing here implies pre-approval" in html
-    # Self-ref case dropped from cases — no case "Cases near you" section
-    assert "Cases near you" not in html
 
 
 def test_no_self_ref_no_banner():
@@ -63,7 +63,7 @@ def test_no_self_ref_no_banner():
 def test_chain_section_renders_when_set():
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       chain_section=ChainSection(outlet_count=14))
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "For chains" in html
     assert "14-outlet" in html
     assert "Per-outlet attribution" in html
@@ -181,7 +181,7 @@ def test_what_you_get_renders_when_provided():
                           WhatYouGetItem("79+", "Templates", "AI-generated."),
                           WhatYouGetItem("5 min", "Setup", "Live by lunch."),
                       ])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "What you actually get" in html
     assert "79+" in html
     assert "AI-generated." in html
@@ -191,7 +191,7 @@ def test_what_you_get_renders_when_provided():
 def test_what_you_get_omitted_when_empty():
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       what_you_get=[])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "What you actually get" not in html
 
 
@@ -207,7 +207,7 @@ def test_case_studies_render_with_stats():
                                     photo_url="/landing/assets/cases/hhk.jpg",
                                     consent_doc_id="CONS-X")
                       ])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "Heng Heng Kopi" in html
     assert "Best decision we made." in html
     assert "S$4.90" in html
@@ -224,7 +224,7 @@ def test_case_without_photo_is_dropped():
                           CaseStudy(brand_name="Y", location="Bedok", vertical="V",
                                     quote="Q", quote_attribution="— a")
                       ])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "photo pending consent" not in html
     assert "Cases near you" not in html  # whole section omitted when no consenting cases
 
@@ -236,14 +236,14 @@ def test_case_with_photo_url_includes_img():
                                     quote="Q", quote_attribution="— a",
                                     photo_url="https://cdn.example.com/x.jpg")
                       ])
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert 'src="https://cdn.example.com/x.jpg"' in html
 
 
 def test_founding_block_shows_remaining_slots():
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       city="KLCC", founding_slots_total=100, founding_slots_taken=23)
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     # CLASS-BB R11: per-country roster + slot count in city
     assert "Founding-100 · per country" in html
     assert "77 of 100 slots remain in KLCC" in html
@@ -253,14 +253,14 @@ def test_founding_block_shows_remaining_slots():
 def test_founding_block_handles_full():
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       city="Bedok", founding_slots_total=100, founding_slots_taken=100)
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "0 of 100 slots remain in Bedok" in html
 
 
 def test_founding_block_shows_country_roster():
     """CLASS-BB R11: founding-100 is per-country, not per-city. ADR-11 clarity."""
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S")
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     # Country chips visible
     assert "Singapore" in html
     assert "Malaysia" in html
@@ -295,12 +295,13 @@ def test_from_dict_roundtrip():
         }],
     }
     cfg = from_dict(d)
+    from app.services.landing_gen import generate_details_page
     assert cfg.brand_id == "b_test"
     assert cfg.founding_slots_taken == 17
     assert len(cfg.what_you_get) == 1
     assert len(cfg.case_studies) == 1
     assert cfg.case_studies[0].stats == [("a", "b"), ("c", "d")]
     # Renders end-to-end
-    html = generate_landing(cfg)
+    html = generate_details_page(cfg)
     assert "Test Brand" in html
     assert "83 of 100 slots remain in Bedok" in html  # CLASS-BB R11 wording

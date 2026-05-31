@@ -16,9 +16,11 @@ def test_three_canonical_tiers():
     assert ids == {"free", "verified_business", "founding_100"}
 
 
-def test_tier_free_no_cc():
-    assert TIER_FREE.cc_required is False
-    assert TIER_FREE.price_text == "Free forever"
+def test_tier_free_requires_cc_as_anti_abuse():
+    """Founder 2026-05-31: Free tier requires CC as joker/hacker filter.
+    CC is NEVER charged on free tier — pure anti-abuse signal."""
+    assert TIER_FREE.cc_required is True
+    assert "NEVER" in TIER_FREE.no_charge_until
     assert TIER_FREE.take_rate_pct == 0.0
 
 

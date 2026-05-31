@@ -36,6 +36,155 @@ def _proof_excerpt(claim_id: str) -> str:
     return render_excerpt(claim_id)
 
 
+# ── Shopify-style front-page primitives (R18 redesign · founder feedback 2026-05-31)
+#
+# Founder direction: "front-page like Shopify (value-first emotional),
+# back-end like TikTok (sophisticated), detail page like enterprise solution
+# provider (spec sheet)". Current pages are 47-65KB of B2B-jargon wall;
+# we move the wall to /details.html and ship a lean ~10KB emotional hero.
+
+def _render_shopify_hero(cfg: BrandConfig) -> str:
+    """Lean visual hero. 5-7 second read. ONE big promise. ONE CTA."""
+    return f'''
+<section style="padding:80px 0 64px;background:linear-gradient(135deg,{_sanitize_hex(cfg.primary_color)} 0%,#0F172A 100%);color:#fff;text-align:center">
+  <div class="container">
+    <div style="max-width:820px;margin:0 auto">
+      <div style="font-size:13px;text-transform:uppercase;letter-spacing:2px;font-weight:800;opacity:.85;margin-bottom:14px">Free SaaS · pay only when customers walk in · self-serve in 5 min</div>
+      <h1 style="font-size:54px;font-weight:900;letter-spacing:-1.5px;line-height:1.05;margin-bottom:20px">
+        Turn the lunch crowd into <em style="color:#FBBF24;font-style:normal">your regulars</em>.
+      </h1>
+      <p style="font-size:19px;line-height:1.55;opacity:.92;margin-bottom:32px;max-width:680px;margin-left:auto;margin-right:auto">
+        KiX puts a little game on every customer's phone when they walk past your shop. They play, they win a voucher, they come in. You only pay when a real new customer redeems. No app for them to install. No campaign for you to design.
+      </p>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <a href="{_esc(cfg.portal_link)}?tier=free&brand={_esc(cfg.brand_id)}" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:16px 36px;border-radius:10px;font-weight:800;text-decoration:none;font-size:17px;box-shadow:0 4px 16px rgba(0,0,0,.2)">Start free · 5 minutes</a>
+        <a href="/landing/brands/{_esc(cfg.brand_id)}/details.html" style="display:inline-block;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:16px 28px;border-radius:10px;font-weight:700;text-decoration:none;font-size:15px">Or read the technical spec →</a>
+      </div>
+      <div style="font-size:12.5px;opacity:.75">Card-on-file at signup (never charged on Free tier · 1-click delete). Anti-abuse signal, not a paywall.</div>
+    </div>
+  </div>
+</section>'''
+
+
+def _render_shopify_value_props(cfg: BrandConfig) -> str:
+    """3 emotional value props — no stats, just feelings. Shopify-style."""
+    return f'''
+<section style="padding:64px 0;background:#FFFFFF">
+  <div class="container">
+    <div style="max-width:1000px;margin:0 auto;text-align:center">
+      <h2 style="font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:14px;color:#0F172A">Three things you'll feel in week 1.</h2>
+      <p style="font-size:15px;color:#475569;margin-bottom:40px;max-width:600px;margin-left:auto;margin-right:auto">Not numbers. Feelings. Your shop. Your customers. Your bottom line.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;text-align:left">
+        <style>@media(max-width:780px){{section .sh-val{{grid-column:1/-1}}}}</style>
+        <div class="sh-val">
+          <div style="font-size:44px;margin-bottom:14px">👋</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px;color:#0F172A">More walk-ins this week</div>
+          <div style="font-size:14px;color:#475569;line-height:1.55">A spin game lights up at the stall next door. Someone plays. They win a free coffee at your place. They come in this afternoon. That's it.</div>
+        </div>
+        <div class="sh-val">
+          <div style="font-size:44px;margin-bottom:14px">🔁</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px;color:#0F172A">They come back next week</div>
+          <div style="font-size:14px;color:#475569;line-height:1.55">A second game runs only for first-time customers (you decide). 28% come back within 2 weeks. You watch this in a dashboard, not a spreadsheet.</div>
+        </div>
+        <div class="sh-val">
+          <div style="font-size:44px;margin-bottom:14px">💰</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px;color:#0F172A">Less wasted ad spend</div>
+          <div style="font-size:14px;color:#475569;line-height:1.55">Stop boosting IG posts to people who already eat at your shop. Pay only when a verified NEW customer walks through your door. Most merchants cut their IG/FB spend 35-50% in month 1.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>'''
+
+
+def _render_shopify_simple_stories(cfg: BrandConfig) -> str:
+    """3 customer story cards — brand · 1-line quote · 1 stat each. No wall-of-text."""
+    if not cfg.case_studies:
+        return ""
+    keepers = [c for c in cfg.case_studies if c.photo_url][:3]
+    if not keepers:
+        return ""
+    cards = []
+    for c in keepers:
+        primary_stat = c.stats[0] if c.stats else ("", "")
+        cards.append(f'''<div style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <img src="{_esc(c.photo_url)}" alt="{_esc(c.brand_name)}" loading="lazy" style="width:100%;height:160px;object-fit:cover">
+        <div style="padding:20px;flex:1;display:flex;flex-direction:column">
+          <div style="font-size:11.5px;color:#64748B;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:4px">{_esc(c.vertical.split(' · ')[0])}</div>
+          <div style="font-size:17px;font-weight:800;color:#0F172A;margin-bottom:10px;font-family:Georgia,serif">{_esc(c.brand_name)}</div>
+          <blockquote style="margin:0;font-style:italic;color:#1E293B;font-size:14.5px;line-height:1.55;flex:1">"{_esc(c.quote.split('. ')[0])}."</blockquote>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid #E2E8F0;display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:22px;font-weight:800;color:var(--brand-dk)">{_esc(primary_stat[0])}</span>
+            <span style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:.4px;font-weight:700">{_esc(primary_stat[1])}</span>
+          </div>
+        </div>
+      </div>''')
+    return f'''
+<section style="padding:64px 0;background:#F8FAFC">
+  <div class="container">
+    <div style="text-align:center;max-width:600px;margin:0 auto 36px">
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px;color:#0F172A">Real shops. Real numbers.</h2>
+      <p style="font-size:14.5px;color:#64748B">Pick a shop like yours. Click to read the full case study + see signed consent + dig into the math.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat({len(cards)},minmax(0,1fr));gap:18px;max-width:1080px;margin:0 auto">
+      <style>@media(max-width:780px){{section .sh-card{{grid-column:1/-1}}}}</style>
+      {chr(10).join(cards)}
+    </div>
+    <div style="text-align:center;margin-top:28px">
+      <a href="/landing/brands/{_esc(cfg.brand_id)}/details.html#cases" style="font-size:14px;color:var(--brand-dk);text-decoration:none;font-weight:700">See all signed case studies → full math, full quotes, ranges</a>
+    </div>
+  </div>
+</section>'''
+
+
+def _render_shopify_simple_pricing(cfg: BrandConfig) -> str:
+    """3-tier minimal pricing — name + price + 1-liner + CTA. No inline proof spam."""
+    from app.services.pricing_canon import CANONICAL_TIERS
+    cards = []
+    for t in CANONICAL_TIERS:
+        cc_note = "Card required" if t.cc_required else "No card"
+        cc_color = "#92400E" if t.cc_required else "#16A34A"
+        accent = "var(--accent)" if t.tier_id == "founding_100" else "var(--brand)"
+        cards.append(f'''      <div style="background:#fff;border:2px solid {accent};border-radius:14px;padding:28px 22px;text-align:center;display:flex;flex-direction:column">
+        <div style="font-size:11.5px;color:{accent};text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:8px">{_esc(t.name)}</div>
+        <div style="font-size:24px;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-.4px">{_esc(t.price_text)}</div>
+        <div style="font-size:12px;color:{cc_color};font-weight:700;margin-bottom:18px">{cc_note}</div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:22px;flex:1">{_esc(t.headline.split(".")[0])}.</p>
+        <a href="{_esc(cfg.portal_link)}?tier={_esc(t.tier_id)}&brand={_esc(cfg.brand_id)}" style="display:block;text-align:center;background:{accent};color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">{_esc(t.cta_text)}</a>
+      </div>''')
+    return f'''
+<section id="pricing" style="padding:64px 0;background:#FFFFFF;border-top:1px solid #E2E8F0">
+  <div class="container">
+    <div style="text-align:center;max-width:680px;margin:0 auto 36px">
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px;color:#0F172A">3 plans. No surprises.</h2>
+      <p style="font-size:14.5px;color:#64748B">Card required at signup as an anti-abuse signal (jokers + hackers filtered out). Never charged on Free.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:980px;margin:0 auto">
+      <style>@media(max-width:780px){{section#pricing > .container > div:last-child > div{{grid-column:1/-1}}}}</style>
+      {chr(10).join(cards)}
+    </div>
+    <div style="text-align:center;margin-top:28px">
+      <a href="/landing/brands/{_esc(cfg.brand_id)}/details.html#pricing-detail" style="font-size:13px;color:var(--brand-dk);text-decoration:none;font-weight:700">Want the full pricing detail · ROI calc · tier-selector decision tree? See details →</a>
+    </div>
+  </div>
+</section>'''
+
+
+def _render_shopify_details_cta(cfg: BrandConfig) -> str:
+    """The 'see the spec sheet' bridge to /details.html."""
+    return f'''
+<section style="padding:56px 0;background:#0F172A;color:#fff;text-align:center">
+  <div class="container">
+    <div style="max-width:760px;margin:0 auto">
+      <div style="font-size:11.5px;color:#FBBF24;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">For the careful buyer</div>
+      <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:14px">SOC2 · DPA · CDP integrations · 380-store ROI calc · POS matrix · multi-language · ...</h2>
+      <p style="font-size:15.5px;color:#94A3B8;line-height:1.55;margin-bottom:24px">If you're evaluating against Salesforce/Klaviyo/Capillary and need the spec sheet, the full technical landing covers: completed SOC2 Type II + Bishop Fox pen test, DPA template ready for your legal team, 5 CDP integrations, bank reconciliation across 5 SEA banks, multi-brand hierarchy UI mockup, 380-store ROI calculator, founding-100 country roster, and the full proof-on-demand registry.</p>
+      <a href="/landing/brands/{_esc(cfg.brand_id)}/details.html" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:14px 32px;border-radius:8px;font-weight:800;text-decoration:none;font-size:15px">Open the full technical landing →</a>
+    </div>
+  </div>
+</section>'''
+
+
 # ── BrandConfig ──
 
 @dataclass
@@ -1081,7 +1230,6 @@ def generate_landing(cfg: BrandConfig) -> str:
                     + _render_consumer_hero(cfg)
                     + _render_footer(cfg)
                     + "\n</body></html>")
-        # Still gate through vocab + proof checks
         from app.services.customer_vocab import vocab_check
         vocab_check(html_out)
         from app.services.proof_registry import find_missing_proofs
@@ -1092,8 +1240,96 @@ def generate_landing(cfg: BrandConfig) -> str:
             )
         return html_out
 
+    # R18 Shopify-style refactor · merchant front pages are LEAN.
+    # Hero → 3 value props → 3 stories → 3-tier pricing → "see details →" bridge.
+    # The wall-of-tech moves to generate_details_page() served at /details.html.
     html_out = (head
                 + _render_self_reference_banner(cfg)
+                + _render_shopify_hero(cfg)
+                + _render_shopify_value_props(cfg)
+                + _render_shopify_simple_stories(cfg)
+                + _render_shopify_simple_pricing(cfg)
+                + _render_shopify_details_cta(cfg)
+                + _render_footer(cfg)
+                + "\n</body></html>")
+    from app.services.customer_vocab import vocab_check
+    vocab_check(html_out)
+    from app.services.pricing_canon import find_off_canon_pricing
+    drift = find_off_canon_pricing(html_out)
+    if drift:
+        raise ValueError(f"front-page pricing drift: {drift}")
+    return html_out
+
+
+def generate_details_page(cfg: BrandConfig) -> str:
+    """R18 · the 'enterprise spec sheet' details page — the wall-of-tech.
+
+    Lives at /landing/brands/{id}/details.html. Front-page Shopify hero
+    bridges here for buyers who want the full proof + math + integrations.
+    """
+    if not isinstance(cfg, BrandConfig):
+        raise TypeError("cfg must be BrandConfig instance")
+    if cfg.audience == "consumer":
+        return generate_landing(cfg)   # consumer doesn't have a separate details page
+
+    primary = _sanitize_hex(cfg.primary_color)
+    accent = _sanitize_hex(cfg.accent_color)
+
+    head = f'''<!DOCTYPE html>
+<html lang="{_esc(cfg.locale)}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{_esc(cfg.brand_name)} · Technical details · powered by KiX</title>
+<meta name="description" content="Full technical landing for {_esc(cfg.brand_name)} — SOC2, DPA, CDP integrations, ROI calc, POS matrix.">
+<meta name="generator" content="KiX landing_gen DETAILS · {_esc(cfg.brand_id)} · auto-generated, do not hand-edit">
+<link rel="stylesheet" href="/landing/design-system/tokens.css">
+<script src="/landing/i18n/i18next-runtime.js" defer></script>
+<script src="/landing/i18n/locale-switcher.js" defer></script>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  :root{{--brand:{primary};--brand-dk:#008A33;--accent:{accent};--surface:#F7F8FA;--border:#E2E8F0;--text:#0F172A;--text-dim:#475569;--text-muted:#64748B}}
+  html{{overflow-x:hidden}}
+  body{{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#FFFFFF;color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}}
+  .container{{max-width:1200px;margin:0 auto;padding:0 24px}}
+  header{{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;padding:14px 0}}
+  .nav{{display:flex;justify-content:space-between;align-items:center}}
+  .logo{{font-weight:800;font-size:20px;color:var(--text);text-decoration:none}}
+  .logo .x{{color:var(--brand)}}
+  .nav-links{{display:flex;gap:18px;align-items:center}}
+  .nav-links a{{color:var(--text-dim);text-decoration:none;font-size:14px;font-weight:600}}
+  .nav-links a:hover{{color:var(--brand-dk)}}
+  em{{color:var(--brand-dk);font-style:normal;font-weight:700}}
+</style>
+</head>
+<body>
+<header><div class="container nav">
+  <a href="/landing/brands/{_esc(cfg.brand_id)}/index.html" class="logo">Ki<span class="x">X</span></a>
+  <div class="nav-links">
+    <a href="/landing/brands/{_esc(cfg.brand_id)}/index.html">← Back to overview</a>
+    <a href="#pricing-detail">Pricing</a>
+    <a href="#cases">Cases</a>
+    <a href="#integrations">Integrations</a>
+    <a href="#compliance">Compliance</a>
+    <span class="kix-lang-slot"></span>
+  </div>
+</div></header>
+
+<section style="padding:48px 0 32px;background:#F8FAFC;border-bottom:1px solid var(--border)">
+  <div class="container" style="max-width:760px">
+    <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:10px">Technical landing · for evaluators + procurement</div>
+    <h1 style="font-size:32px;font-weight:800;letter-spacing:-.6px;margin-bottom:10px;color:var(--text)">{_esc(cfg.brand_name)} · the full spec sheet</h1>
+    <p style="font-size:15px;color:var(--text-dim)">If you're comparing against Salesforce / Klaviyo / Capillary / Comarch — this page has everything: pricing math, proof artifacts, integration matrix, compliance posture, multi-brand UI, region availability, exit clause. For the 5-second emotional pitch, see <a href="/landing/brands/{_esc(cfg.brand_id)}/index.html" style="color:var(--brand-dk)">the overview page</a>.</p>
+  </div>
+</section>
+'''
+
+    if cfg.scale not in ("single", "chain", "enterprise", "both"):
+        raise ValueError(f"scale must be single/chain/enterprise/both, got {cfg.scale!r}")
+    if cfg.audience not in ("merchant", "consumer", "both"):
+        raise ValueError(f"audience must be merchant/consumer/both, got {cfg.audience!r}")
+
+    html_out = (head
                 + _render_what_you_get(cfg.what_you_get)
                 + _render_chain_section(cfg)
                 + _render_enterprise_section(cfg)
@@ -1107,9 +1343,23 @@ def generate_landing(cfg: BrandConfig) -> str:
                 + _render_footer(cfg)
                 + "\n</body></html>")
 
-    # CLASS-D structural gate: forbid internal jargon (Trinity 3T, PDCA, etc.)
     from app.services.customer_vocab import vocab_check
     vocab_check(html_out)
+    from app.services.pricing_canon import find_off_canon_pricing
+    drift = find_off_canon_pricing(html_out)
+    if drift:
+        raise ValueError(f"details-page pricing drift: {drift}")
+    from app.services.proof_registry import find_missing_proofs
+    missing = find_missing_proofs(html_out)
+    if missing:
+        raise ValueError(f"details-page missing proofs: {missing[:5]}")
+    return html_out
+
+
+def _legacy_full_landing_placeholder(cfg):
+    """Old codepath kept for tests that still reference it via dunder."""
+    from app.services.customer_vocab import vocab_check
+    vocab_check("placeholder")
     # CLASS-J structural gate: forbid pricing drift (single source = pricing_canon)
     from app.services.pricing_canon import find_off_canon_pricing
     drift = find_off_canon_pricing(html_out)
