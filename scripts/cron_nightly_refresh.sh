@@ -46,7 +46,27 @@ echo "[$(date +%T)] STAGE 2 · regenerate brand landings" | tee -a "$LOG"
 echo "[$(date +%T)] STAGE 3 · lint_no_handcrafted_landings" | tee -a "$LOG"
 "$PY" -m scripts.lint_no_handcrafted_landings 2>&1 | tee -a "$LOG" || true   # 14 legacy off-template = informational
 
-echo "[$(date +%T)] STAGE 4 · verdict_gate sweep" | tee -a "$LOG"
+echo "[$(date +%T)] STAGE 4a · ELTM smoke (G-A3)" | tee -a "$LOG"
+ELTM_URL="${ELTM_HEALTH_URL:-http://localhost:8000/internal/eltm/health}"
+if curl -sf --max-time 5 "$ELTM_URL" >/dev/null 2>&1; then
+  echo "  ✓ ELTM reachable at $ELTM_URL" | tee -a "$LOG"
+else
+  echo "  ⚠ ELTM unreachable at $ELTM_URL — non-blocking warning" | tee -a "$LOG"
+fi
+
+echo "[$(date +%T)] STAGE 4b · coverage measurement (G-A15)" | tee -a "$LOG"
+"$PY" -m pytest \
+  tests/test_landing_gen.py tests/test_verdict_gate.py tests/test_customer_vocab.py \
+  tests/test_pricing_canon.py tests/test_vertical_benchmarks.py \
+  tests/test_brand_inject_preview.py tests/test_nightly_creative_refresh.py \
+  tests/test_eltm_callback_verdict_gate.py \
+  --cov=app/services --cov=app/workers --cov-report=term-missing:skip-covered \
+  -q --no-header 2>&1 | tail -15 | tee -a "$LOG" || true
+
+echo "[$(date +%T)] STAGE 5 · bible_check (drift + claim audits)" | tee -a "$LOG"
+"$PY" -m scripts.bible_check --strict 2>&1 | tee -a "$LOG"
+
+echo "[$(date +%T)] STAGE 6 · verdict_gate sweep" | tee -a "$LOG"
 "$PY" -m scripts.verify_generated_brands 2>&1 | tee -a "$LOG"
 
 # Pull just the AGGREGATE lines for the alert

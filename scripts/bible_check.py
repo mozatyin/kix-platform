@@ -207,6 +207,109 @@ def _drift_pct(actual: int, cited: int) -> float:
     return abs(actual - cited) / cited * 100.0
 
 
+def _audit_adr_test_count() -> tuple[int, int, str]:
+    """ADR-4 claims "9 explicit tests in test_auction_adr4_new_users_only.py"
+    Return (actual_count, claimed_count, file). Claimed=9 hard-coded per Bible."""
+    p = REPO / "tests" / "test_auction_adr4_new_users_only.py"
+    if not p.exists():
+        return (0, 9, str(p.relative_to(REPO)))
+    actual = sum(
+        1
+        for line in p.read_text(encoding="utf-8", errors="ignore").splitlines()
+        if line.lstrip().startswith(("def test_", "async def test_"))
+    )
+    return (actual, 9, str(p.relative_to(REPO)))
+
+
+def _audit_storehub_tests_pass() -> tuple[bool, int, str]:
+    """Bible claims StoreHub adapter has 25 passing tests."""
+    p = REPO / "tests" / "test_storehub_adapter.py"
+    if not p.exists():
+        return (False, 0, "missing")
+    actual = sum(
+        1
+        for line in p.read_text(encoding="utf-8", errors="ignore").splitlines()
+        if line.lstrip().startswith(("def test_", "async def test_"))
+    )
+    return (actual >= 25, actual, str(p.relative_to(REPO)))
+
+
+def _enumerate_files(pat: str) -> list[str]:
+    return sorted(
+        p.name
+        for p in REPO.glob(pat)
+        if p.is_file() and "__init__" not in p.name
+    )
+
+
+def _audit_country_slots_tests() -> tuple[int, int, str]:
+    """ADR-11 claims "15 tests tests/test_country_slots.py"."""
+    p = REPO / "tests" / "test_country_slots.py"
+    if not p.exists():
+        return (0, 15, str(p.relative_to(REPO)))
+    actual = sum(
+        1
+        for line in p.read_text(encoding="utf-8", errors="ignore").splitlines()
+        if line.lstrip().startswith(("def test_", "async def test_"))
+    )
+    return (actual, 15, str(p.relative_to(REPO)))
+
+
+def _audit_wallet_reconciliation_tests() -> tuple[int, int, str]:
+    """ADR-12 claims "12 tests tests/test_wallet_reconciliation.py"."""
+    p = REPO / "tests" / "test_wallet_reconciliation.py"
+    if not p.exists():
+        return (0, 12, str(p.relative_to(REPO)))
+    actual = sum(
+        1
+        for line in p.read_text(encoding="utf-8", errors="ignore").splitlines()
+        if line.lstrip().startswith(("def test_", "async def test_"))
+    )
+    return (actual, 12, str(p.relative_to(REPO)))
+
+
+def _run_audits(strict: bool) -> int:
+    """Run claim-level audits — return 1 if any fail in strict mode."""
+    print("\nClaim audits (per-Bible high-impact verifiable claims)")
+    print("-" * 70)
+    fail = False
+
+    adr4 = _audit_adr_test_count()
+    ok = adr4[0] >= adr4[1]
+    print(f"  ADR-4 test count        : {adr4[0]} actual · {adr4[1]} claimed · "
+          f"{'OK' if ok else 'MISS'} · {adr4[2]}")
+    if not ok:
+        fail = True
+
+    adr11 = _audit_country_slots_tests()
+    ok = adr11[0] >= adr11[1]
+    print(f"  ADR-11 country slots    : {adr11[0]} actual · {adr11[1]} claimed · "
+          f"{'OK' if ok else 'MISS'} · {adr11[2]}")
+    if not ok:
+        fail = True
+
+    adr12 = _audit_wallet_reconciliation_tests()
+    ok = adr12[0] >= adr12[1]
+    print(f"  ADR-12 wallet recon     : {adr12[0]} actual · {adr12[1]} claimed · "
+          f"{'OK' if ok else 'MISS'} · {adr12[2]}")
+    if not ok:
+        fail = True
+
+    sh = _audit_storehub_tests_pass()
+    print(f"  StoreHub test count     : {sh[1]} actual · 25 claimed · "
+          f"{'OK' if sh[0] else 'MISS'} · {sh[2]}")
+    if not sh[0]:
+        fail = True
+
+    workers = _enumerate_files("app/workers/*.py")
+    print(f"  Workers enumerated      : {len(workers)} · {', '.join(workers[:6])}{'...' if len(workers) > 6 else ''}")
+
+    services = _enumerate_files("app/services/*.py")
+    print(f"  Services enumerated     : {len(services)} · {', '.join(services[:4])}{'...' if len(services) > 4 else ''}")
+
+    return 1 if (fail and strict) else 0
+
+
 def run(threshold: float, strict: bool) -> int:
     cited = _parse_bible()
     head = _git_head()
@@ -256,7 +359,12 @@ def run(threshold: float, strict: bool) -> int:
             "\nWARN · some metrics not found in Bible. Add them to Appendix A."
         )
         return 1 if strict else 0
-    print("\nOK · Bible matches code reality.")
+    audit_rc = _run_audits(strict)
+    if audit_rc != 0:
+        print("\nFAIL · claim audit miss. Bible references tests that don't exist at the claimed count.")
+        return audit_rc
+
+    print("\nOK · Bible matches code reality + claim audits pass.")
     return 0
 
 

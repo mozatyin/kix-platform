@@ -326,24 +326,32 @@ Alpha program scaffold is live (Chapter 1.13). Zero real merchants enrolled as o
 Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from these.
 
 ```
-HEAD                : 7554eac
-Last commit         : feat(health): /api/v1/health/stripe-mode readiness surface (Wave H Opp #2)
-Generated           : 2026-05-31
+HEAD                : 802a334
+Last commit         : feat(arch): real photos · Sandeep enterprise persona · 17-page deprecation
+Generated           : 2026-05-31 (Wave M-4 · Trinity三体 audit)
 
-Code surface (after Wave G + H)
-  routers           : 123           (was 94; +29: country_slots, wavef_*, support, retention, prizes, ...)
-  endpoints         : 1,064         (was 925; +139)
-  workers           : 15            (was 9; +6: wallet_reconciliation, voucher_lifecycle, support_sla, ...)
-  services          : 47            (was 15; +32: wavef_*, retention, viral_amplifier, country_slots,
-                                       storehub_adapter, whatsapp_template ...)
+Code surface (after Wave G + H + M-1..M-4) — counts exclude __init__.py
+  routers           : 124           (was 94; +30: country_slots, wavef_*, support, retention,
+                                       prizes, eltm_callback, ...)
+  endpoints         : 1,068         (was 925; +143)
+  workers           : 16            (was 9; +7: wallet_reconciliation, voucher_lifecycle,
+                                       support_sla, nightly_creative_refresh, ...)
+  services          : 53            (was 15; +38: wavef_*, retention, viral_amplifier,
+                                       country_slots, storehub_adapter, whatsapp_template,
+                                       brand_inject_preview, verdict_gate, landing_gen,
+                                       customer_vocab, pricing_canon, vertical_benchmarks ...)
   migrations        : 11            (was 7; +4: audit_log_0007, prizes_0008, whatsapp_auth_0009,
                                        country_slots_0010, country_slots_all_iso_0011)
-  total Python LOC  : ~135,800      (was 109,800; +26k from Waves E/F/G/H/I/J/K/L)
+  total Python LOC  : ~137,770      (was 109,800; +28k from Waves E/F/G/H/I/J/K/L/M)
 
 Test surface
-  test files        : 145           (was 104; +41 — added test_storehub_adapter, test_whatsapp_template)
-  test functions    : 1,530         (was 1,006; +524)
-  test LOC          : ~32,500
+  test files        : 154           (was 104; +50 — added test_storehub_adapter, test_whatsapp_template,
+                                       test_landing_gen, test_verdict_gate, test_brand_inject_preview,
+                                       test_customer_vocab, test_pricing_canon,
+                                       test_vertical_benchmarks, test_nightly_creative_refresh,
+                                       test_eltm_callback_verdict_gate)
+  test functions    : 1,670         (was 1,006; +664)
+  test LOC          : ~34,000
 
 Data
   recipes           : 79            (len(app/data/recipes_seed.json))
@@ -363,10 +371,20 @@ PSPs
   live in prod      : 0             (Stripe defaults to mock)
 
 Status counts in this Bible
-  DELIVERED         : 14 sections
+  DELIVERED         : 19 sections   (was 14; +5: landing_gen, verdict_gate, customer_vocab,
+                                       pricing_canon, nightly_creative_refresh)
   PARTIAL           : 9 sections
   SCAFFOLDED        : 6 sections
   ASPIRATIONAL      : 7 sections
+  Bug-class catalog : 23 closed     (docs/all-bugs-catalog.md · A through V)
+
+Landing-gen surface (Wave M)
+  brand landings    : 5             (default, heng_heng_kopi, halal_hawker, kopi_king_chain,
+                                       kix_for_enterprise)
+  persona axes      : 2             (audience: merchant|consumer|both, scale: single|chain|enterprise|both)
+  gate threshold    : 65 avg, 40 min-floor, majority_pass
+  R8 acceptance     : 5/5 ACCEPT    (gate working as designed; see /tmp/kix_verify8.log)
+  deprecated pages  : 12            (data/deprecation_registry.json · 14 entries, 2 missing)
 ```
 
 ---
@@ -392,6 +410,11 @@ For each P0/P1 gap, the current state, the fix path, and the Wave that owns it. 
 | G-A13 | SMS OTP gateway (Twilio/Aliyun) | P0 | 📝 not wired | D-future |
 | G-A14 | Per-region compliance at auction filter | P1 | 🟡 PARTIAL | D-future |
 | G-A15 | Coverage gate in CI | P1 | 🟡 PARTIAL | D-future |
+| G-A16 | Bug-class catalog + structural fix discipline (23 classes A-V) | P0 | ✅ DELIVERED | M-1..M-4 |
+| G-A17 | landing_gen + verdict_gate machinery (Class A/H) | P0 | ✅ DELIVERED | M-1..M-2 |
+| G-A18 | customer_vocab + pricing_canon (Class D/J) — fail-closed gates | P0 | ✅ DELIVERED | M-2..M-3 |
+| G-A19 | persona-axes evaluation (audience × scale × vertical) | P1 | ✅ DELIVERED | M-2..M-3 |
+| G-A20 | Legacy page deprecation pipeline (Class N — 12 stamped) | P1 | ✅ DELIVERED | M-4 |
 
 **Closed since v1 Bible** (do not re-litigate):
 - ✅ Push delivery (commit `01c260f` — real FCM + APNS)
@@ -419,6 +442,9 @@ For each P0/P1 gap, the current state, the fix path, and the Wave that owns it. 
 | 10 | Bible auto-checked by `scripts/bible_check.py` | R12 | Documentation discipline contract-first, not post-hoc | ✅ (new) |
 | 11 | **First 100 merchants per country pay 0% take rate forever** | Wave H (2026-05-31) | Founding-merchant scarcity drives global Day-1 land grab; same offer every country (Tanzania, Cambodia, Philippines, Singapore) prevents per-region dynamics. Atomic claim via `UPDATE...RETURNING ... FOR UPDATE SKIP LOCKED` — no race possible. Public counter on `pricing.html` makes it credible. | ✅ (`migrations/0010_country_slots.py` + `app/services/country_slots.py` + `app/routers/country_slots.py` + 15 tests `tests/test_country_slots.py`) |
 | 12 | **Wallet ledger reconciliation worker** runs hourly to detect drift | Wave H (2026-05-31) | At 100m+ daily auction events, even 0.01% bookkeeping error = $millions silent loss. Worker computes expected = topups + auto-recharges − charges + refunds from durable HASHes; compares to live `wallet:{bid}:balance`. Severity tiers: ok / warn ($10) / alert ($100) / critical ($10k). Alerts to Redis LIST capped 1000. Never auto-repairs — humans review. | ✅ (`app/workers/wallet_reconciliation_worker.py` + 12 tests `tests/test_wallet_reconciliation.py`) |
+| 13 | **Structural-fix discipline — remove the broken path, not guard it** | Wave M (2026-05-31) | A linter warning can be bypassed; a deleted code path cannot. Every bug-class fix in catalog A-V uses the "raise / fail-closed gate / single source of truth" pattern. Documentation: `feedback_structural_fix_pattern` memory + `docs/all-bugs-catalog.md`. | ✅ (23 classes closed; see catalog) |
+| 14 | **Persona-axis-matched verdict gate** for generated output | Wave M (2026-05-31) | Wrong-audience scoring drowns real signal (R1: consumer 12/100 on B2B pages = noise, not bug). Persona scores only apply when persona's (audience, scale) axes match the page's. Ensures gate REJECTs catch real defects, not mis-scoping. | ✅ (`scripts/verify_generated_brands.py` PERSONA_AXES; 5/5 R8 ACCEPT after axis fix) |
+| 15 | **Generated pages carry `<meta name=generator>` + deprecation registry replaces hand-edits** | Wave M (2026-05-31) | Hand-edits to generated files silently break on next regen + landing pages drift across 17 files. Single source of truth = `landing_gen.generate_landing(BrandConfig)`; lint catches drift; deprecation registry sunsets legacy. | ✅ (`scripts/lint_no_handcrafted_landings.py` + `data/deprecation_registry.json` + `scripts/apply_deprecation_banners.py`) |
 
 ---
 
