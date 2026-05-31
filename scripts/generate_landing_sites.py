@@ -203,8 +203,9 @@ BRANDS: dict[str, BrandConfig] = {
         brand_name="KiX · Trust & Compliance",
         hero_tagline="Audit log architecture · PDPA-SG consent · breach SLA · minor protection · <em>all in one place</em>",
         hero_sub="For regulators, DPOs, IT-security teams, and compliance officers reviewing KiX before merchant deployment in SG / HK / MY / ID. Every claim has an artifact link · 1-click bookmark for your review file.",
-        primary_color="#1E40AF",
-        accent_color="#34D399",
+        # Founder 2026-06-01: unify brand color across all pages (green #00B341)
+        primary_color="#00B341",
+        accent_color="#FBBF24",
         city="Singapore",
         founding_slots_taken=0,
         what_you_get=WHAT_YOU_GET_F_AND_B,

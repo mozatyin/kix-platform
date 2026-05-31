@@ -1,4 +1,11 @@
 {
+  "nav.single": "Single stall",
+  "nav.chains": "For chains",
+  "nav.enterprise": "Enterprise",
+  "nav.pricing": "Pricing",
+  "nav.specs": "Specs",
+  "nav.signin": "Sign in",
+  "nav.start_free": "Start free",
   "hero.eyebrow": "For offline merchants · live in 5 minutes",
   "hero.title_line1": "Stop paying for ads that bring back",
   "hero.title_line2": "people who already buy from you.",
