@@ -275,7 +275,8 @@ footer{padding:48px 0 32px;border-top:1px solid var(--border);background:var(--b
       <a href="#solution" data-i18n="index:nav.solution">Solution</a>
       <a href="#how" data-i18n="index:nav.how">How it works</a>
       <a href="#pricing" data-i18n="index:nav.pricing">Pricing</a>
-      <a href="https://partner.letskix.com" class="nav-cta" data-i18n="index:nav.get_started">Get started</a>
+      <a href="/landing/portal.html" class="nav-cta" data-i18n="index:nav.get_started">Get started</a>
+          <div class="kix-lang-slot" style="margin-left:auto;display:inline-flex;align-items:center"></div>
     </nav>
   </div>
 </header>
@@ -287,8 +288,63 @@ footer{padding:48px 0 32px;border-top:1px solid var(--border);background:var(--b
     <h1 class="hero-title reveal" data-i18n="index:hero.title" data-i18n-html="true">Pay <em>only for verified new customers</em></h1>
     <p class="hero-sub reveal" data-i18n="index:hero.sub" data-i18n-html="true">Free SaaS. CPA from <strong>S$3 / RM 11</strong>. 5 SG F&amp;B pilots live · <a href="/landing/sg-case-studies.html#cohort-90d" style="color:var(--brand-dk);text-decoration:underline">90-day cohort data published</a>.</p>
     <div class="hero-ctas reveal">
-      <a href="https://partner.letskix.com" class="btn btn-primary" data-i18n="index:hero.cta_primary">Get started</a>
+      <a href="/landing/portal.html" class="btn btn-primary" data-i18n="index:hero.cta_primary">Get started</a>
       <a href="#how" class="btn btn-secondary" data-i18n="index:hero.cta_secondary">How it works</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ WHAT YOU GET (Apple-style above-the-fold value) ═══ -->
+<section id="what-you-get" style="padding:56px 0 32px;background:#FFFFFF;border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="section-head reveal" style="text-align:center;max-width:720px;margin:0 auto 36px">
+      <div class="section-tag" style="font-size:12px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">What you actually get</div>
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.6px;margin-bottom:10px;color:var(--text)">Concrete things you ship in week 1</h2>
+      <p style="font-size:15.5px;color:var(--text-muted)">Not marketing — what the product does, with numbers a shop owner can verify.</p>
+    </div>
+    <style>
+      .wyg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1100px;margin:0 auto}
+      @media(max-width:780px){.wyg-grid{grid-template-columns:1fr}}
+      .wyg-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;transition:border-color .15s,box-shadow .15s}
+      .wyg-card:hover{border-color:#CBD5E1;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+      .wyg-num{font-size:30px;font-weight:800;color:var(--brand);line-height:1;letter-spacing:-1px;margin-bottom:6px}
+      .wyg-title{font-size:14.5px;font-weight:800;color:var(--text);margin-bottom:6px}
+      .wyg-desc{font-size:13px;color:var(--text-dim);line-height:1.55}
+    </style>
+    <div class="wyg-grid">
+      <div class="wyg-card">
+        <div class="wyg-num">79+</div>
+        <div class="wyg-title">AI-generated game templates</div>
+        <div class="wyg-desc">Spin wheel · scratch card · mixer · quiz · streak · daily check-in · ~30 more. Each one stamped with your logo + colors + product photos in &lt;60 seconds.</div>
+      </div>
+      <div class="wyg-card">
+        <div class="wyg-num">~10K</div>
+        <div class="wyg-title">Customizable variants</div>
+        <div class="wyg-desc">Each template ≈ 120 levers (theme color, prize tier, voucher copy, win probability, geofence radius, day-part). Effectively unlimited brand-specific games.</div>
+      </div>
+      <div class="wyg-card">
+        <div class="wyg-num">5 min</div>
+        <div class="wyg-title">From signup to live campaign</div>
+        <div class="wyg-desc">3-step welcome modal picks your sub-vertical → pre-filled campaign → launch in test or real. Timed with 5 SG pilot merchants: 5–8 min average.</div>
+      </div>
+      <div class="wyg-card">
+        <div class="wyg-num">200m</div>
+        <div class="wyg-title">Geofence around your shop</div>
+        <div class="wyg-desc">Customer walks past → game appears on their phone. Choose 100m / 200m / 500m radius. Works on browser geolocation (no extra app).</div>
+      </div>
+      <div class="wyg-card">
+        <div class="wyg-num">6 PSPs</div>
+        <div class="wyg-title">SEA-native payment + redeem</div>
+        <div class="wyg-desc">PayNow / GrabPay / OVO / Alipay / WeChat / Stripe. Voucher = 4-digit code at counter (no POS install needed). POS deep-sync optional.</div>
+      </div>
+      <div class="wyg-card">
+        <div class="wyg-num">90d</div>
+        <div class="wyg-title">Cohort retention reporting</div>
+        <div class="wyg-desc">Every customer tracked D0/14/30/60/90. CAC, LTV, repeat-rate per outlet + vertical. Heng Heng Kopi: D0-30 CPA S$7.20 → D61-90 S$4.90 (−32%).</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:24px">
+      <a href="/landing/sg-case-studies.html#cohort-90d" style="color:var(--brand-dk);font-weight:600;font-size:14px;text-decoration:underline">See the 5 SG case studies with full 90-day numbers →</a>
     </div>
   </div>
 </section>
@@ -439,7 +495,7 @@ footer{padding:48px 0 32px;border-top:1px solid var(--border);background:var(--b
           <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cpv.name">CPV</span><span data-i18n="index:pricing.paid.cpv.label">per store visit</span></div><div class="tier-price" data-i18n="index:pricing.paid.cpv.value">Available</div></div>
           <div class="tier-row"><div class="tier-name"><span data-i18n="index:pricing.paid.cpe.name">CPE</span><span data-i18n="index:pricing.paid.cpe.label">per engagement</span></div><div class="tier-price" data-i18n="index:pricing.paid.cpe.value">Available</div></div>
         </div>
-        <a href="https://partner.letskix.com" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center" data-i18n="index:pricing.paid.cta">Start free</a>
+        <a href="/landing/portal.html" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center" data-i18n="index:pricing.paid.cta">Start free</a>
       </div>
     </div>
   </div>
@@ -588,7 +644,7 @@ footer{padding:48px 0 32px;border-top:1px solid var(--border);background:var(--b
       <div class="footer-col">
         <h4 data-i18n="index:footer.product">Product</h4>
         <ul>
-          <li><a href="https://partner.letskix.com" data-i18n="index:footer.product.portal">Merchant portal</a></li>
+          <li><a href="/landing/portal.html" data-i18n="index:footer.product.portal">Merchant portal</a></li>
           <li><a href="/app/" data-i18n="index:footer.product.app">User app</a></li>
           <li><a href="/landing/sdk/" data-i18n="index:footer.product.sdk">SDK</a></li>
           <li><a href="/api-docs" data-i18n="index:footer.product.api">API docs</a></li>

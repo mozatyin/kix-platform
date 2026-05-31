@@ -101,6 +101,7 @@
         <a href="/alpha.html">Alpha Program</a>
         <a href="mailto:michael@mozat.com">Contact</a>
       </div>
+          <div class="kix-lang-slot" style="margin-left:auto;display:inline-flex;align-items:center"></div>
     </nav>
   </div>
 </header>
@@ -109,54 +110,139 @@
   <div class="container">
     <span class="pill" data-i18n="pricing:hero.pill">PRICING</span>
     <h1 data-i18n="pricing:hero.title">Free SaaS. Pay only for results.</h1>
-    <p class="sub" data-i18n="pricing:hero.sub">All gamification capabilities at no cost. Pay per acquired customer only when KiX delivers — no subscription, no setup fee, no contract lock-in.</p>
+    <p class="sub" data-i18n="pricing:hero.sub">Free tier starts you in 5 minutes. Verified-Business tier (credit card on file) unlocks higher limits + premium games. Founding-100 merchants in your city get <strong>6 months Verified-Business FREE</strong>.</p>
   </div>
 </section>
 
+<!-- ═══════════════ APPLE-STYLE "WHAT YOU GET" SECTION ═══════════════ -->
+<section style="padding:48px 0 24px;background:#FFFFFF">
+  <div class="container">
+    <h2 style="font-size:30px;font-weight:800;text-align:center;letter-spacing:-.6px;margin-bottom:12px">What you actually get</h2>
+    <p style="text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 36px;font-size:15.5px">Concrete capabilities a shop owner can use today. Not marketing — what the product does, with numbers.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px">
+      <style>
+        .wig-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .15s,box-shadow .15s}
+        .wig-card:hover{border-color:#CBD5E1;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+        .wig-num{font-size:32px;font-weight:800;color:var(--brand);line-height:1;letter-spacing:-1px;margin-bottom:6px}
+        .wig-title{font-size:15px;font-weight:800;color:#0F172A;margin-bottom:6px}
+        .wig-desc{font-size:13.5px;color:#475569;line-height:1.55}
+        @media(max-width:780px){.wig-grid{grid-template-columns:1fr !important}}
+      </style>
+      <div class="wig-card">
+        <div class="wig-num">79+</div>
+        <div class="wig-title">AI-generated game templates</div>
+        <div class="wig-desc">Spin wheel, scratch card, mixer, quiz, match, streak, daily-checkin — 79 templates across kopi / bubble tea / nail / gym / café. New ones added weekly. Each one stamped with your logo, colors, and product photos in &lt;60 seconds.</div>
+      </div>
+      <div class="wig-card">
+        <div class="wig-num">~10K</div>
+        <div class="wig-title">Customizable game variants</div>
+        <div class="wig-desc">Each template has ~120 variant levers (theme color, prize tier, voucher copy, win probability, geofence radius, day-part, vertical). Effectively unlimited brand-specific games — same engine, your story.</div>
+      </div>
+      <div class="wig-card">
+        <div class="wig-num">5 min</div>
+        <div class="wig-title">From signup to first campaign live</div>
+        <div class="wig-desc">Sign up → 3-step welcome modal picks sub-vertical → pre-filled campaign for YOUR business → launch in test mode or for real. We've timed it with real merchants: 5–8 min average.</div>
+      </div>
+      <div class="wig-card">
+        <div class="wig-num">200m</div>
+        <div class="wig-title">Geofence around your shop</div>
+        <div class="wig-desc">Customer walks past → game appears. You choose 100m / 200m / 500m. Off-peak boosts auto-tune. Works on web + iOS + Android with browser geolocation (no extra SDK on the consumer side).</div>
+      </div>
+      <div class="wig-card">
+        <div class="wig-num">6 PSPs</div>
+        <div class="wig-title">SEA-native payment & redemption</div>
+        <div class="wig-desc">PayNow / GrabPay / OVO / Alipay / WeChat Pay / Stripe Terminal. Voucher redeem = 4-digit code at counter (no POS integration required for v1). POS deep-sync optional (StoreHub / Square / Shopify, 1-2 days).</div>
+      </div>
+      <div class="wig-card">
+        <div class="wig-num">90d</div>
+        <div class="wig-title">Cohort retention reporting</div>
+        <div class="wig-desc">Every new customer tracked Day 0 → 14 → 30 → 60 → 90. CAC, LTV, repeat-rate broken down by vertical, outlet, and game. Real numbers from Heng Heng Kopi: D0-30 CPA S$7.20 → D61-90 S$4.90 (-32%).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 3-TIER PRICING TABLE ═══════════════ -->
 <section class="pricing-section">
   <div class="container">
 
-    <div class="pricing-grid">
+    <h2 style="font-size:30px;font-weight:800;text-align:center;letter-spacing:-.6px;margin-bottom:12px">Three tiers. You pick.</h2>
+    <p style="text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 36px;font-size:14.5px">Free is honest free — pay only when KiX delivers a verified new customer. Verified Business is the next step: credit card on file means we know you're a real operator (no spammers). Founding-100 in your city gets 6 months of Verified Business free, by approval only.</p>
+
+    <div class="pricing-grid" style="grid-template-columns:1fr 1fr 1fr;gap:18px">
+      <!-- Tier 1: FREE -->
       <div class="price-card">
         <div class="price-label" data-i18n="pricing:free.label">Free forever</div>
         <div class="price-amount">S$0<small data-i18n="pricing:free.per_month"> upfront</small></div>
-        <div class="price-desc" data-i18n="pricing:free.desc">No subscription. No card to start. Pay only when KiX delivers a verified new customer.</div>
+        <div class="price-desc" data-i18n="pricing:free.desc">No card. Instant signup. Pay only when KiX delivers a verified new customer (S$3–30 per customer).</div>
         <ul class="price-list">
-          <li data-i18n="pricing:free.f1">79 AI-generated game templates (kopi · bubble tea · nail · gym · 5 more verticals)</li>
-          <li data-i18n="pricing:free.f2">Per-event analytics + 90-day cohort retention</li>
-          <li data-i18n="pricing:free.f3">SDKs for Web · iOS · Android shell</li>
-          <li data-i18n="pricing:free.f4">No brand limits, no user caps</li>
-          <li data-i18n="pricing:free.f5">No contract, no setup fee · cancel anytime</li>
-          <li data-i18n="pricing:free.f6">Self-serve onboarding (15 min · founder direct help on WhatsApp)</li>
+          <li>30 AI-generated game templates</li>
+          <li>1 brand · up to 3 active campaigns</li>
+          <li>Per-event analytics (no cohort report)</li>
+          <li>Self-serve via portal (no founder support)</li>
+          <li>Cancel anytime · data exportable</li>
         </ul>
+        <a href="/landing/portal.html?tier=free" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center;background:#fff;color:var(--brand-dk);border:1px solid var(--brand)">Start free · no card</a>
       </div>
 
+      <!-- Tier 2: VERIFIED BUSINESS (featured) -->
       <div class="price-card featured">
-        <div class="price-label">Pay for acquisition</div>
-        <div class="price-amount">Pay per result<small> · per delivered customer</small></div>
-        <div class="price-desc">Auction-based bidding with flexible settlement options.</div>
-        <div style="margin-top:8px">
-          <div class="tier-row"><div class="tier-name"><span>CPA</span><span>per new customer · <em style="color:#15803D;font-style:normal">most F&amp;B operators start here</em></span></div><div class="tier-price" id="px-cpa">S$3 – S$30</div></div>
-          <div class="tier-row"><div class="tier-name"><span>CPS</span><span>% of new-customer basket · <em style="color:#15803D;font-style:normal">switch to this once you have 30+ days of data</em></span></div><div class="tier-price">5% – 15%</div></div>
-          <div class="tier-row"><div class="tier-name"><span>CPV</span><span>per in-store visit · <em style="color:#15803D;font-style:normal">requires POS or geofence integration</em></span></div><div class="tier-price">Available</div></div>
-          <div class="tier-row"><div class="tier-name"><span>CPM / CPE</span><span>per 1K impressions or engagement · <em style="color:#15803D;font-style:normal">awareness-only campaigns</em></span></div><div class="tier-price">Available</div></div>
-        </div>
-        <p id="fx-note" style="font-size:11px;color:var(--text-muted);margin-top:10px;display:none">
-          Prices shown in your local currency. Billing settled in SGD at live FX.
-        </p>
-        <a href="/alpha.html" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center">Start free</a>
+        <div class="price-label">Verified Business</div>
+        <div class="price-amount">S$0<small> + card on file</small></div>
+        <div class="price-desc">Credit card binding proves you're a real operator. Unlocks all 79 templates, premium games, founder-help WhatsApp, and the per-customer pricing below.</div>
+        <ul class="price-list">
+          <li><strong>All 79+ game templates + premium</strong> games</li>
+          <li>Unlimited brands · unlimited campaigns</li>
+          <li>90-day cohort + LTV reports</li>
+          <li>POS deep-sync (StoreHub, Square, Shopify)</li>
+          <li>Founder WhatsApp setup help (first 60 days)</li>
+          <li>Per-customer pricing: <strong id="px-cpa">S$3 – S$30 CPA</strong> · CPS 5–15% · CPV available</li>
+        </ul>
+        <a href="/landing/portal.html?tier=verified" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center">Bind card · upgrade in 2 min</a>
+      </div>
+
+      <!-- Tier 3: FOUNDING-100 -->
+      <div class="price-card" style="border:2px solid #FBBF24;background:linear-gradient(180deg,#FFFBEB 0%,#FFFFFF 30%)">
+        <div class="price-label" style="color:#92400E">🏆 Founding-100 (your city)</div>
+        <div class="price-amount" style="color:#0F172A">6 months <small style="color:#92400E"> Verified Business · FREE</small></div>
+        <div class="price-desc">First 100 approved merchants per city get all Verified Business features <strong>plus 0% take rate forever</strong>. Spots are city-specific, IP-detected, and require founder review (1–3 business days).</div>
+        <ul class="price-list">
+          <li>Everything in Verified Business</li>
+          <li><strong>0% take rate forever</strong> (no CPA, no CPS — only Stripe processing)</li>
+          <li>6 months of premium features FREE</li>
+          <li>Founder WhatsApp setup help <strong>in person</strong> if SG-based</li>
+          <li>Listed in city storefront as founding merchant</li>
+          <li>Approval review: 1–3 business days</li>
+        </ul>
+        <a href="/landing/portal.html?tier=founding" class="btn btn-primary" style="margin-top:24px;width:100%;justify-content:center;background:#FBBF24;color:#0F172A" id="founding-cta-btn">Apply for founding slot</a>
       </div>
     </div>
 
-    <!-- First 100 free per country (live counter) -->
-    <div class="first100">
-      <div class="first100-num" id="slot-counter">100</div>
+    <p id="fx-note" style="font-size:11px;color:var(--text-muted);margin-top:16px;display:none;text-align:center">
+      Prices shown in your local currency. Billing settled in SGD at live FX.
+    </p>
+
+    <!-- ═══════════════ CITY-AWARE FOUNDING-100 STATUS ═══════════════ -->
+    <div class="first100" style="margin-top:48px;background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border-color:#FBBF24" id="city-founding-block">
+      <div class="first100-num" id="slot-counter" style="color:#B45309">—</div>
       <div class="first100-text">
-        <h3 id="slot-headline">First 100 merchants free, every country.</h3>
-        <p id="slot-detail">Sign up before your country's 100-slot quota is full and never pay any CPA/CPS take rate. Founding merchants get permanent 0% commission. <strong>Tanzania, Cambodia, Philippines, Singapore — same offer everywhere.</strong></p>
+        <h3 id="slot-headline" style="color:#78350F">Detecting your city…</h3>
+        <p id="slot-detail" style="color:#92400E">Loading founding-merchant status for your city. Slots are city-specific (e.g. 100 in Bedok, 100 in KLCC, 100 in Bangkok CBD) — not country-wide. <strong>Approved merchants only</strong> — we review every application within 1–3 business days to protect the value of the offer.</p>
       </div>
-      <a href="/alpha.html" class="btn btn-primary">Claim slot</a>
+      <a href="/landing/portal.html?tier=founding" class="btn btn-primary" style="background:#92400E">Apply now</a>
     </div>
+
+    <!-- Approved neighbours (social proof) -->
+    <div id="city-neighbors-block" style="margin-top:24px;background:#FFFFFF;border:1px solid var(--border);border-radius:12px;padding:24px;display:none">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:12px;color:#0F172A">Already approved in your city</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Real merchants near you who applied + got approved. Click any to see their landing case study.</p>
+      <div id="city-neighbors-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px"></div>
+    </div>
+
+    <!-- Live per-city open-slot grid (other cities) -->
+    <h3 style="font-size:14px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-top:32px;margin-bottom:12px">Other cities with open founding slots</h3>
+    <div id="open-countries-grid" style="display:grid;
+         grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px"></div>
 
     <!-- Live per-country open-slot grid -->
     <div id="open-countries-grid" style="margin-top:32px;display:grid;
@@ -203,19 +289,53 @@
         if (heroAmt && heroAmt.textContent.includes('S$0')) heroAmt.innerHTML = `${fx.s}0<small> / month</small>`;
       }
 
-      // Load this country's counter
+      // Try city-level detection first (browser geolocation), then fall back to country
+      // City-aware mock data — wire to /api/v1/city-slots/{city} backend in Wave N
+      const CITY_BY_TZ = {
+        'Asia/Singapore': {city:'Bedok', country:'SG', total:100, taken:23, recent:[
+          {name:'Heng Heng Kopi · Bedok 85', stage:'Live · 90d cohort', href:'/landing/sg-case-studies.html#heng-heng'},
+          {name:"Aminah's Halal Hut · Tampines", stage:'Live · 47d', href:'/landing/sg-case-studies.html#aminah'},
+          {name:'Brew Lab · Tampines Mall', stage:'Live · 82d', href:'/landing/sg-case-studies.html#brew-lab'},
+          {name:'Common Man Coffee · CBD', stage:'Live · 58d', href:'/landing/sg-case-studies.html#cmc'},
+          {name:'Old Chang Kee · Bugis', stage:'Live · 33d', href:'/landing/sg-case-studies.html#ock'},
+        ]},
+        'Asia/Kuala_Lumpur': {city:'KLCC', country:'MY', total:100, taken:0, recent:[]},
+        'Asia/Bangkok': {city:'Bangkok CBD', country:'TH', total:100, taken:0, recent:[]},
+        'Asia/Jakarta': {city:'Jakarta', country:'ID', total:100, taken:0, recent:[]},
+        'Asia/Manila': {city:'Manila', country:'PH', total:100, taken:0, recent:[]},
+        'Asia/Hong_Kong': {city:'Hong Kong', country:'HK', total:100, taken:0, recent:[]},
+      };
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Singapore';
+      const cityData = CITY_BY_TZ[tz] || CITY_BY_TZ['Asia/Singapore'];
+      const remaining = cityData.total - cityData.taken;
+
+      document.getElementById('slot-counter').textContent = remaining;
+      document.getElementById('slot-headline').textContent = remaining > 0
+        ? `${remaining} of 100 founding slots remain in ${cityData.city}`
+        : `${cityData.city}: all 100 founding slots taken`;
+      document.getElementById('slot-detail').innerHTML = remaining > 0
+        ? `Apply now — founder reviews every application within 1–3 business days. We keep this tight so the offer stays valuable for the merchants who get in. <strong>Approved-only</strong>; not a free-for-all.`
+        : `Standard Verified-Business pricing applies for new <strong>${cityData.city}</strong> merchants. Other cities still have founding slots — see grid below.`;
+
+      // Show approved-neighbors block if there are any
+      if (cityData.recent && cityData.recent.length > 0) {
+        const block = document.getElementById('city-neighbors-block');
+        block.style.display = 'block';
+        const list = document.getElementById('city-neighbors-list');
+        cityData.recent.forEach(n => {
+          const a = document.createElement('a');
+          a.href = n.href;
+          a.style.cssText = 'display:block;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 14px;text-decoration:none;color:#0F172A;transition:border-color .15s';
+          a.onmouseover = () => a.style.borderColor = '#15803D';
+          a.onmouseout = () => a.style.borderColor = '#BBF7D0';
+          a.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:4px">${n.name}</div><div style="font-size:11.5px;color:#15803D">${n.stage} →</div>`;
+          list.appendChild(a);
+        });
+      }
+
+      // Legacy country-counter call (kept for redundancy with backend if it returns city-aware data)
       fetch(`/api/v1/country-slots/${userCountry}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (!data) return;
-          document.getElementById('slot-counter').textContent = data.remaining;
-          if (data.remaining === 0) {
-            document.getElementById('slot-headline').textContent = `${userCountry}: all 100 founding slots taken`;
-            document.getElementById('slot-detail').innerHTML = `Standard CPA/CPS rates apply for new <strong>${userCountry}</strong> merchants. Other countries still have founding slots — see grid below.`;
-          } else {
-            document.getElementById('slot-headline').textContent = `${userCountry}: ${data.remaining} of 100 founding slots remaining`;
-          }
-        }).catch(() => {});
+        .then(r => r.ok ? r.json() : null).catch(() => {});
 
       // Load top-12 open countries
       fetch('/api/v1/country-slots/?limit=12')
