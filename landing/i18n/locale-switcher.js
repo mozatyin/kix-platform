@@ -25,13 +25,14 @@
 
   const STYLE = `
   .kix-locale-switcher{
-    /* Sit BELOW any sticky header (typical 60-65px on KiX landing).
-     * z-index 99999 still keeps it above modals/topbars when menu opens. */
-    position:fixed; top:76px; right:14px; z-index:99999;
+    /* Bottom-right widget pattern (like Intercom). Universal —
+     * never overlaps nav, never affected by sticky-header height,
+     * works on every viewport + zoom level. */
+    position:fixed; bottom:20px; right:20px; z-index:99999;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     font-size:13px; user-select:none;
   }
-  @media(max-width:640px){ .kix-locale-switcher{ top:72px; right:10px } }
+  @media(max-width:640px){ .kix-locale-switcher{ bottom:16px; right:12px } }
   .kix-locale-switcher *{box-sizing:border-box}
   .kix-ls-button{
     display:inline-flex; align-items:center; gap:6px;
@@ -44,11 +45,13 @@
   .kix-ls-globe{ width:16px; height:16px; flex-shrink:0 }
   .kix-ls-caret{ width:10px; height:10px; opacity:.7 }
   .kix-ls-menu{
-    position:absolute; top:calc(100% + 6px); right:0;
-    min-width:180px; background:#0b0b0b; color:#fff;
+    /* Pop UPWARDS from button (button is at bottom-right of viewport) */
+    position:absolute; bottom:calc(100% + 6px); right:0; top:auto;
+    min-width:200px; background:#0b0b0b; color:#fff;
     border:1px solid rgba(255,255,255,.14); border-radius:10px;
     box-shadow:0 12px 32px rgba(0,0,0,.45);
     overflow:hidden; display:none;
+    max-height:60vh; overflow-y:auto;
   }
   .kix-ls-menu[data-open="true"]{ display:block }
   .kix-ls-item{
