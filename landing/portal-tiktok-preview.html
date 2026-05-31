@@ -191,8 +191,19 @@
     </div>
 
     <div class="content">
-      <div class="greeting">Good morning, <span class="accent">Uncle Ng</span> 👋</div>
-      <div class="greeting-sub">3 campaigns live · 147 new customers this week · S$847 wallet balance · all systems green</div>
+      <!-- R21 Jobs fix: single-line status bar replaces emoji greeting -->
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 22px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;gap:28px;align-items:center;font-size:14px;font-weight:700">
+          <span><span style="color:var(--accent-yellow)">S$847</span> wallet</span>
+          <span style="color:var(--text-muted)">·</span>
+          <span><span style="color:var(--accent-pink)">147</span> new this week</span>
+          <span style="color:var(--text-muted)">·</span>
+          <span><span style="color:var(--accent-green)">3 campaigns</span> live</span>
+          <span style="color:var(--text-muted)">·</span>
+          <span style="color:var(--accent-blue)">all green</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--text-muted)">Uncle Ng · Heng Heng Kopi</div>
+      </div>
 
       <!-- Live metrics -->
       <div class="metrics">

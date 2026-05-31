@@ -44,72 +44,45 @@ def _proof_excerpt(claim_id: str) -> str:
 # we move the wall to /details.html and ship a lean ~10KB emotional hero.
 
 def _render_shopify_hero(cfg: BrandConfig) -> str:
-    """Shopify-style centered hero · clean white · product mockup on right.
+    """R21 · Jobs #1 fix: mom-3-sec test hero. One sentence promise. One huge number.
 
-    Style references (INDUSTRY benchmark):
-      - Shopify.com 2025 — centered hero · subtle gradient · product UI on right
-      - Stripe.com — clean white · large type · single primary CTA + secondary text-link
-      - Linear.app — generous whitespace · concise copy · "Free to try"
+    Steve Jobs verdict on R19 hero: "feature list cosplaying as a value prop · every
+    extra word between confused visitor and Start free trial is a leak". R21 cuts
+    80% of hero copy + replaces 3-metric dashboard with ONE huge S$ saved number.
     """
     return f'''
 <section style="padding:96px 0 80px;background:#FFFFFF;position:relative;overflow:hidden">
   <div style="position:absolute;top:-100px;right:-100px;width:600px;height:600px;background:radial-gradient(circle,{_sanitize_hex(cfg.primary_color)}15 0%,transparent 70%);z-index:0"></div>
   <div class="container" style="position:relative;z-index:1">
-    <div style="max-width:780px;margin:0 auto;text-align:center">
-      <div style="display:inline-block;background:#F0FDF4;color:var(--brand-dk);padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:700;margin-bottom:24px;border:1px solid #BBF7D0">
-        ✨ The Shopify of customer acquisition for offline merchants
+    <div style="max-width:820px;margin:0 auto;text-align:center">
+      <div style="display:inline-block;background:#F0FDF4;color:var(--brand-dk);padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:700;margin-bottom:28px;border:1px solid #BBF7D0">
+        For offline merchants · live in 5 minutes
       </div>
-      <h1 style="font-size:60px;font-weight:800;letter-spacing:-2px;line-height:1.02;margin-bottom:24px;color:#0F172A">
-        Gamify your way to <em style="color:var(--brand-dk);font-style:normal;background:linear-gradient(120deg,transparent 0%,transparent 60%,{_sanitize_hex(cfg.accent_color)}60 60%,{_sanitize_hex(cfg.accent_color)}60 100%);padding:0 4px">repeat customers</em>.
+      <h1 style="font-size:64px;font-weight:800;letter-spacing:-2.2px;line-height:1.02;margin-bottom:22px;color:#0F172A">
+        Stop paying for ads that bring back<br>
+        <em style="color:var(--brand-dk);font-style:normal;background:linear-gradient(120deg,transparent 0%,transparent 50%,{_sanitize_hex(cfg.accent_color)}60 50%,{_sanitize_hex(cfg.accent_color)}60 100%);padding:0 6px">people who already buy from you.</em>
       </h1>
-      <p style="font-size:21px;line-height:1.55;color:#475569;margin-bottom:36px;max-width:680px;margin-left:auto;margin-right:auto;font-weight:400">
-        From a single kopi stall to a 380-store chain — KiX gives you the games, vouchers, and customer dashboard that big brands spend $50K/year for. You pay only when a verified new customer walks in.
+      <p style="font-size:20px;line-height:1.5;color:#475569;margin-bottom:36px;max-width:560px;margin-left:auto;margin-right:auto;font-weight:400">
+        KiX brings new customers in with little games on their phone. You only pay when one walks through your door.
       </p>
-      <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:20px">
-        <a href="{_esc(cfg.portal_link)}?tier=free&brand={_esc(cfg.brand_id)}" style="display:inline-flex;align-items:center;gap:8px;background:#0F172A;color:#fff;padding:16px 32px;border-radius:8px;font-weight:700;text-decoration:none;font-size:16px;transition:background .15s">
+      <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:18px">
+        <a href="{_esc(cfg.portal_link)}?tier=free&brand={_esc(cfg.brand_id)}" style="display:inline-flex;align-items:center;gap:8px;background:#0F172A;color:#fff;padding:17px 36px;border-radius:8px;font-weight:700;text-decoration:none;font-size:17px">
           Start free trial <span style="opacity:.7">→</span>
         </a>
-        <a href="#how-it-works" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#0F172A;border:1px solid #CBD5E1;padding:16px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:16px">
-          See how it works
+        <a href="#how-it-works" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#0F172A;border:1px solid #CBD5E1;padding:17px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:16px">
+          See how
         </a>
       </div>
       <div style="font-size:13px;color:#64748B">
-        <span style="margin:0 12px">✓ Card-on-file (never charged on Free)</span>
-        <span style="margin:0 12px">✓ Cancel 1-click</span>
-        <span style="margin:0 12px">✓ Live in 5 minutes</span>
+        Card-on-file at signup · never charged on Free · cancel 1-click
       </div>
     </div>
 
-    <div style="max-width:880px;margin:64px auto 0;background:#0F172A;border-radius:18px;padding:8px;box-shadow:0 24px 60px rgba(15,23,42,.18)">
-      <div style="background:linear-gradient(135deg,#1E293B 0%,#334155 100%);border-radius:14px;padding:32px;display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:center">
-        <style>@media(max-width:780px){{.hero-mock{{grid-template-columns:1fr !important}}}}</style>
-        <div class="hero-mock-left">
-          <div style="font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:14px">Your KiX dashboard · live</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
-            <div style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:12px"><div style="font-size:24px;font-weight:800;color:#34D399">147</div><div style="font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-top:2px">new this week</div></div>
-            <div style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:12px"><div style="font-size:24px;font-weight:800;color:#FBBF24">S$4.90</div><div style="font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-top:2px">avg CPA</div></div>
-            <div style="background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:8px;padding:12px"><div style="font-size:24px;font-weight:800;color:#A78BFA">28%</div><div style="font-size:10.5px;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-top:2px">return 14d</div></div>
-          </div>
-          <div style="background:rgba(255,255,255,.05);border-radius:8px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#CBD5E1;line-height:1.6">
-            <div>✓ 13:24 · spin won by kid_8a3f · S$1 off kopi</div>
-            <div>✓ 13:18 · redeemed at counter · 4-digit code</div>
-            <div>✓ 13:11 · new customer · first visit ever</div>
-          </div>
-        </div>
-        <div class="hero-mock-right" style="background:#000;border-radius:24px;padding:14px;border:6px solid #334155">
-          <div style="background:linear-gradient(135deg,{_sanitize_hex(cfg.primary_color)} 0%,#0F172A 100%);border-radius:14px;padding:24px 16px;text-align:center;color:#fff;aspect-ratio:9/16;display:flex;flex-direction:column;justify-content:space-between">
-            <div>
-              <div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:1px;font-weight:700">Spin to win</div>
-              <div style="font-size:14px;font-weight:800;margin-top:4px">{_esc(cfg.brand_name)}</div>
-            </div>
-            <div style="font-size:60px">🎯</div>
-            <div>
-              <div style="background:rgba(255,255,255,.2);border-radius:6px;padding:8px;font-size:11px;font-weight:700">You won! S$1 off kopi</div>
-              <div style="font-size:9px;opacity:.6;margin-top:6px">Redeem at counter · expires in 7 days</div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div style="max-width:680px;margin:72px auto 0;text-align:center">
+      <div style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">5 SG alpha pilots · 90-day average</div>
+      <div style="font-size:96px;font-weight:900;letter-spacing:-4px;line-height:1;background:linear-gradient(135deg,{_sanitize_hex(cfg.primary_color)} 0%,var(--brand-dk) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px">−35%</div>
+      <div style="font-size:17px;color:#0F172A;font-weight:700">ad spend, same number of new customers</div>
+      <div style="font-size:13px;color:#64748B;margin-top:8px">Brew Lab S$9 → S$5.80 CPA · Heng Heng S$7.20 → S$4.90 CPA</div>
     </div>
   </div>
 </section>'''
@@ -616,6 +589,16 @@ class EnterpriseSection:
         "then: our largest live operator is a 14-outlet chain; we're honest "
         "about this and don't claim McDonald's-scale proof we don't have."
     )
+    # R20 Madam Wong friction · cross-border SGD↔HKD sub-ledger
+    cross_border_note: str = (
+        "Cross-border (SG+HK · SG+CN · MY+HK) merchants: per-outlet wallet "
+        "sub-ledger handles SGD↔HKD↔CNY conversion at daily mid-market rate "
+        "(OANDA feed · audit-trail per FX leg). Tax allocation by outlet "
+        "jurisdiction · GST-SG + IRD-HK + CN VAT separate ledgers + "
+        "consolidated rollup. Settlement currency per outlet, billing currency "
+        "per merchant entity. Real example: Tea Trio (Bedok + 2 Shenzhen) "
+        "reconciles SGD-CNY daily · founder reviews monthly + ad-hoc on dispute."
+    )
     # CDP integrations (Sandeep R9: "no Salesforce/Segment/mParticle")
     cdp_integrations: tuple[str, ...] = (
         "Salesforce Marketing Cloud (REST + Streaming API · bidirectional)",
@@ -1088,6 +1071,12 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
         <div class="sub">No surprise per-MAU or per-event fees. All tiers cap at the listed annual price.</div>
       </div>
 
+      <div class="ent-card" style="grid-column:1/-1;background:#1E3A8A;border-color:#34D399">
+        <div class="lbl" style="color:#34D399">Cross-border (multi-currency · multi-jurisdiction) · R21 Wong fix</div>
+        <div class="val" style="font-size:13px;line-height:1.6">{_esc(es.cross_border_note)}</div>
+        <div class="sub" style="color:#DBEAFE">FX rate locked at booking; reconciled to settlement at T+1. Cross-border merchants: <a href="mailto:cross-border@letskix.com" style="color:#34D399">cross-border@letskix.com</a></div>
+      </div>
+
       <div class="ent-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
         <div class="lbl" style="color:#FBBF24">China operations · 中国区运营 {_proof("tencent_china_stack", "China stack details")}</div>
         <div class="val" style="font-size:13px;line-height:1.6">{_esc(es.china_cdp_note)}</div>
@@ -1552,6 +1541,8 @@ def generate_landing(cfg: BrandConfig) -> str:
     # renders them with Shopify-style spacing, typography, and structure.
     # ChainSection + EnterpriseSection stay on /details.html (they're for
     # buyers who explicitly need scale-specific spec sheets).
+    # R21 path tightening: FAQ + comparison moved to /details.html
+    # (Jobs #3 + R20 Wong/James loop). Front kept lean(er); details has the depth.
     html_out = (head
                 + _render_global_top_nav(cfg)
                 + _render_self_reference_banner(cfg)
@@ -1563,12 +1554,10 @@ def generate_landing(cfg: BrandConfig) -> str:
                 + _render_vertical_benchmark(cfg)
                 + _render_shopify_simple_stories(cfg)
                 + _render_roi_calculator(cfg)
-                + _render_comparison_table(cfg)
                 + _render_tier_selector(cfg)
                 + _render_shopify_simple_pricing(cfg)
                 + (_render_founding_block(cfg) if not cfg.hide_founding_cta else "")
                 + (_render_founding_prequalifier() if not cfg.hide_founding_cta else "")
-                + _render_faq_accordion(cfg)
                 + _render_shopify_details_cta(cfg)
                 + _render_final_cta_banner(cfg)
                 + _render_mega_footer(cfg)
@@ -1656,11 +1645,13 @@ def generate_details_page(cfg: BrandConfig) -> str:
                 + _render_enterprise_section(cfg)
                 + _render_vertical_benchmark(cfg)
                 + _render_roi_calculator(cfg)
+                + _render_comparison_table(cfg)
                 + _render_tier_selector(cfg)
                 + (_render_founding_prequalifier() if not cfg.hide_founding_cta else "")
                 + _render_cases(cfg.case_studies, brand_name=cfg.brand_name)
                 + _render_pricing_section(cfg)
                 + _render_founding_block(cfg)
+                + _render_faq_accordion(cfg)
                 + _render_footer(cfg)
                 + "\n</body></html>")
 

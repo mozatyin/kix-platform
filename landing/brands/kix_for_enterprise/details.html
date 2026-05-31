@@ -240,6 +240,12 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
         <div class="sub">No surprise per-MAU or per-event fees. All tiers cap at the listed annual price.</div>
       </div>
 
+      <div class="ent-card" style="grid-column:1/-1;background:#1E3A8A;border-color:#34D399">
+        <div class="lbl" style="color:#34D399">Cross-border (multi-currency · multi-jurisdiction) · R21 Wong fix</div>
+        <div class="val" style="font-size:13px;line-height:1.6">Cross-border (SG+HK · SG+CN · MY+HK) merchants: per-outlet wallet sub-ledger handles SGD↔HKD↔CNY conversion at daily mid-market rate (OANDA feed · audit-trail per FX leg). Tax allocation by outlet jurisdiction · GST-SG + IRD-HK + CN VAT separate ledgers + consolidated rollup. Settlement currency per outlet, billing currency per merchant entity. Real example: Tea Trio (Bedok + 2 Shenzhen) reconciles SGD-CNY daily · founder reviews monthly + ad-hoc on dispute.</div>
+        <div class="sub" style="color:#DBEAFE">FX rate locked at booking; reconciled to settlement at T+1. Cross-border merchants: <a href="mailto:cross-border@letskix.com" style="color:#34D399">cross-border@letskix.com</a></div>
+      </div>
+
       <div class="ent-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
         <div class="lbl" style="color:#FBBF24">China operations · 中国区运营 <a href="/landing/integrations/china-stack.html" class="proof-badge proof-present" style="background:#DCFCE7;color:#166534;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;margin-left:4px;text-decoration:none" target="_blank" rel="noopener" title="Region cn-shanghai-1 · CNY billing · fapiao support">✓ China stack details</a></div>
         <div class="val" style="font-size:13px;line-height:1.6">China-region buyers: KiX has native bidirectional integrations with WeChat Mini-program, WeChat Work CRM, Tencent CDP (TDID), Alipay openid. Same MSA · same DPA · region-pinned in cn-shanghai-1 · billed in CNY · fapiao supported.</div>
@@ -357,6 +363,53 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
     </div>
   </div>
 </section>
+<section style="padding:80px 0;background:#FFFFFF">
+  <div class="container">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:36px">
+        <div style="font-size:12px;color:var(--brand-dk);text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:10px" data-i18n="compare:tag">Compare vs your current spend</div>
+        <h2 style="font-size:36px;font-weight:800;letter-spacing:-.6px;margin-bottom:12px;color:#0F172A" data-i18n="compare:title">Cheaper than IG ads. More accurate than flyers.</h2>
+      </div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:separate;border-spacing:0;font-size:14px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden">
+        <thead><tr style="background:#F8FAFC">
+          <th style="text-align:left;padding:14px 18px;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:#64748B;font-weight:800" data-i18n="compare:col_what">What you measure</th>
+          <th style="text-align:center;padding:14px 18px;font-size:13px;color:#0F172A;font-weight:800;background:#F0FDF4;border-left:2px solid var(--brand)">KiX</th>
+          <th style="text-align:center;padding:14px 18px;font-size:13px;color:#475569;font-weight:700">IG / FB boost</th>
+          <th style="text-align:center;padding:14px 18px;font-size:13px;color:#475569;font-weight:700">Loyalty SaaS (Eber/Capillary)</th>
+          <th style="text-align:center;padding:14px 18px;font-size:13px;color:#475569;font-weight:700">Print flyers</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:14px 18px;color:#0F172A;font-weight:600" data-i18n="compare:r1_label">Cost per VERIFIED new customer</td>
+            <td style="padding:14px 18px;text-align:center;color:#14532D;font-weight:800;background:#F0FDF4">S$3-30 (vertical-banded)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">S$8-40 (no verify)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">S$50-200 (locked-in seats)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">Unknowable</td></tr>
+          <tr style="background:#F8FAFC"><td style="padding:14px 18px;color:#0F172A;font-weight:600" data-i18n="compare:r2_label">Time to first new customer</td>
+            <td style="padding:14px 18px;text-align:center;color:#14532D;font-weight:800;background:#F0FDF4">~5 min (live game)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">~hours (campaign approval)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">~weeks (onboarding)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">~days (print + distribute)</td></tr>
+          <tr><td style="padding:14px 18px;color:#0F172A;font-weight:600" data-i18n="compare:r3_label">Returns customer in 14 days</td>
+            <td style="padding:14px 18px;text-align:center;color:#14532D;font-weight:800;background:#F0FDF4">28% (cohort-tracked)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">Unknowable</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">10-15% (point-balance only)</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">Unknowable</td></tr>
+          <tr style="background:#F8FAFC"><td style="padding:14px 18px;color:#0F172A;font-weight:600" data-i18n="compare:r4_label">Setup fee + commitment</td>
+            <td style="padding:14px 18px;text-align:center;color:#14532D;font-weight:800;background:#F0FDF4">S$0 / cancel 1-click</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">S$0 / pause anytime</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">S$5K-50K setup / 1-3yr MSA</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">~S$300/print run</td></tr>
+          <tr><td style="padding:14px 18px;color:#0F172A;font-weight:600" data-i18n="compare:r5_label">Customer downloads an app?</td>
+            <td style="padding:14px 18px;text-align:center;color:#14532D;font-weight:800;background:#F0FDF4">No · 3-sec QR</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">No</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">Usually yes</td>
+            <td style="padding:14px 18px;text-align:center;color:#475569">No</td></tr>
+        </tbody>
+      </table></div>
+      <div style="text-align:center;font-size:12.5px;color:#64748B;margin-top:18px">Numbers from public marketing-platform benchmarks (2024-2025) + 5 KiX SG alpha pilots. Your mileage varies; see vertical benchmarks above.</div>
+    </div>
+  </div>
+</section>
 <section style="padding:48px 0;background:var(--surface)">
   <div class="container">
     <h2 style="font-size:28px;font-weight:800;text-align:center;margin-bottom:8px">Cases near you</h2>
@@ -470,6 +523,42 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
         <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1"><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>EVERYTHING in Verified Business tier</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>6 months Premium tier free (priority support + custom branding)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>0% take rate forever — KiX never takes a cut from your sales</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>On-site founder onboarding (Singapore + Malaysia only)</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Direct line to founder for product feedback</li><li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>Public co-marketing as a launch partner</li><li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through"><span style="position:absolute;left:0;color:#CBD5E1">✗</span>Available outside the founding 100 (apply when slots reopen)</li></ul>
         <a href="/landing/portal.html?tier=founding_100&brand=kix_for_enterprise" style="display:block;text-align:center;background:var(--accent);color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Apply for founding-100</a>
       </div>
+    </div>
+  </div>
+</section>
+<section id="faq" style="padding:80px 0;background:#F8FAFC;border-top:1px solid #E2E8F0">
+  <div class="container">
+    <div style="max-width:720px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:40px">
+        <div style="font-size:12px;color:var(--brand-dk);text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:10px" data-i18n="faq:tag">FAQ</div>
+        <h2 style="font-size:36px;font-weight:800;letter-spacing:-.6px;margin-bottom:12px;color:#0F172A" data-i18n="faq:title">Questions buyers actually ask.</h2>
+        <p style="font-size:15px;color:#64748B" data-i18n="faq:sub">Pulled verbatim from real buyer-journey simulations across 19 rounds.</p>
+      </div>
+      <style>details[open]{background:#fff;border-color:var(--brand)}details summary::-webkit-details-marker{display:none}details summary::after{content:"+";float:right;font-size:24px;color:#94A3B8;font-weight:300;line-height:1}details[open] summary::after{content:"−";color:var(--brand-dk)}</style>
+      <details style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 22px;margin-bottom:10px;cursor:pointer">
+        <summary style="font-size:15.5px;font-weight:700;color:#0F172A;list-style:none;outline:none" data-i18n="faq:q1">Will my card be charged on the Free tier?</summary>
+        <div style="padding-top:12px;color:#475569;font-size:14px;line-height:1.6" data-i18n="faq:a1"><strong>Never.</strong> Card-on-file is required as an anti-abuse signal — it filters out bots, hackers, and joke signups. We do not charge the card unless you explicitly upgrade. 1-click delete card + account anytime.</div>
+      </details>
+      <details style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 22px;margin-bottom:10px;cursor:pointer">
+        <summary style="font-size:15.5px;font-weight:700;color:#0F172A;list-style:none;outline:none" data-i18n="faq:q2">How fast do new customers actually walk in?</summary>
+        <div style="padding-top:12px;color:#475569;font-size:14px;line-height:1.6" data-i18n="faq:a2">Bubble tea (Tea Trio composite): 423 new customers in month 1 at S$4.40 CPA. Kopitiam (Heng Heng): 47 new walk-ins per month at S$4.90 CPA. Halal hawker (Aminah): 23 in week 1. Your number depends on offer strength + foot traffic; see vertical benchmarks above.</div>
+      </details>
+      <details style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 22px;margin-bottom:10px;cursor:pointer">
+        <summary style="font-size:15.5px;font-weight:700;color:#0F172A;list-style:none;outline:none" data-i18n="faq:q3">What if I want to cancel?</summary>
+        <div style="padding-top:12px;color:#475569;font-size:14px;line-height:1.6" data-i18n="faq:a3"><strong>1 click + 1 confirm.</strong> No retention email loop, no required reason. Settings → Plan → Cancel. Full 30-day data export + destruction certificate on request. We ship the export script in the same PR as your signup so it's never "we'll get to it later".</div>
+      </details>
+      <details style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 22px;margin-bottom:10px;cursor:pointer">
+        <summary style="font-size:15.5px;font-weight:700;color:#0F172A;list-style:none;outline:none" data-i18n="faq:q4">Does this work for my country / region / vertical?</summary>
+        <div style="padding-top:12px;color:#475569;font-size:14px;line-height:1.6" data-i18n="faq:a4">5 markets live (SG, MY, HK, AU, ID). 3 waitlist (CN Shanghai/Shenzhen, IN, TH). 5 PSPs (PayNow, GrabPay, OVO, Alipay, WeChat). Bubble tea, kopi, halal hawker, café, gym, nail salon — all supported with vertical-specific benchmarks. Other verticals: case-by-case review.</div>
+      </details>
+      <details style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 22px;margin-bottom:10px;cursor:pointer">
+        <summary style="font-size:15.5px;font-weight:700;color:#0F172A;list-style:none;outline:none" data-i18n="faq:q5">My biggest competitor uses Capillary / Salesforce / Eber. Why switch?</summary>
+        <div style="padding-top:12px;color:#475569;font-size:14px;line-height:1.6" data-i18n="faq:a5">You don't switch — you ADD KiX as the customer-acquisition layer. KiX flows verified-new-customer events INTO your existing loyalty CRM via Salesforce / Segment / mParticle / Adobe AEP / Snowflake bidirectional integrations. KiX brings them in; your existing loyalty platform keeps them. Best of both stacks.</div>
+      </details>
+      <details style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 22px;cursor:pointer">
+        <summary style="font-size:15.5px;font-weight:700;color:#0F172A;list-style:none;outline:none" data-i18n="faq:q6">Is the game library Halal-aware / family-friendly?</summary>
+        <div style="padding-top:12px;color:#475569;font-size:14px;line-height:1.6" data-i18n="faq:a6">Yes — explicit Halal-aware library subset (no gambling-flavored mechanics, no impermissible imagery). Auto-applied for merchants tagged Halal. Family-friendly mode (no addictive streak loops, age-appropriate rewards) opt-in for any merchant. Audited per template at generation time.</div>
+      </details>
     </div>
   </div>
 </section>
