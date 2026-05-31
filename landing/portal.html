@@ -4960,109 +4960,294 @@ document.getElementById('register-form').addEventListener('submit',async(e)=>{
   }
 });
 
-// ── Wave I.F MVP: Tutorial-as-first-campaign welcome modal ──────────
-// Pre-fills a sandbox campaign so fresh signups see value in <30 sec
-// instead of empty dashboard.  Aminah (first_time_merchant) friction fix.
-const DEMO_CAMPAIGN_BY_VERTICAL = {
-  fnb:     { game:'Bubble Tea Mixer', budget:200, cpa:5.80, voucher:'S$2 off any drink', emoji:'🧋' },
-  beauty:  { game:'Color Match Challenge', budget:300, cpa:14.00, voucher:'30% off first nail service', emoji:'💅' },
-  retail:  { game:'Mystery Box Unlock', budget:200, cpa:9.00, voucher:'15% off in-store purchase', emoji:'🎁' },
-  fitness: { game:'Attendance Streak', budget:250, cpa:18.00, voucher:'1 free trial class', emoji:'🔥' },
-  services:{ game:'Booking Quiz', budget:200, cpa:11.00, voucher:'10% off next booking', emoji:'📅' },
-  other:   { game:'Spin the Wheel', budget:200, cpa:8.00, voucher:'$5 voucher', emoji:'🎡' },
+// ── Wave I.F-2: Welcome modal rewrite (7 Aminah fixes) ──────────────
+// Aminah v2 sim feedback: sub-vertical needed, budget too high, jargon
+// scary, need customer-preview, BM wiring, vertical-matched voucher.
+// Each sub-vertical maps to a real game + budget + voucher in the
+// merchant's own product language ("nasi padang" not "bubble tea").
+const DEMO_CAMPAIGN_BY_SUBVERTICAL = {
+  // F&B sub-verticals
+  'fnb-kopi':       { game:'Spin the Wheel — Kopi Edition', cpa_sgd:4.20, voucher:{en:'S$1 off kopi or teh', ms:'RM3 jimat untuk kopi atau teh', zh:'咖啡或茶减S$1'}, emoji:'☕' },
+  'fnb-nasi':       { game:'Spice-level Roulette', cpa_sgd:4.80, voucher:{en:'S$3 off lunch set', ms:'RM10 jimat untuk set tengah hari', zh:'午餐套餐减S$3'}, emoji:'🍛' },
+  'fnb-bubbletea':  { game:'Bubble Tea Mixer', cpa_sgd:5.80, voucher:{en:'$2 off any drink + free pearl upgrade', ms:'$2 jimat + pearl percuma', zh:'饮料减$2 + 免费珍珠升级'}, emoji:'🧋' },
+  'fnb-hawker':     { game:'Hawker Memory Match', cpa_sgd:3.10, voucher:{en:'S$1 off any stall in pool', ms:'S$1 jimat dari mana-mana gerai', zh:'任何摊位减S$1'}, emoji:'🍜' },
+  'fnb-cafe':       { game:'Latte-art Match', cpa_sgd:4.20, voucher:{en:'S$2 off specialty drinks', ms:'RM7 jimat untuk minuman', zh:'特色饮品减S$2'}, emoji:'🥐' },
+  'fnb-other':      { game:'Pick-your-dish Quiz', cpa_sgd:5.00, voucher:{en:'10% off first visit', ms:'10% jimat lawatan pertama', zh:'首次到访9折'}, emoji:'🍽️' },
+  // Other verticals
+  'beauty-nail':    { game:'Color Match Challenge', cpa_sgd:14.00, voucher:{en:'30% off first nail service', ms:'30% jimat khidmat pertama', zh:'美甲首次服务7折'}, emoji:'💅' },
+  'beauty-spa':     { game:'Spa Stress-Level Quiz', cpa_sgd:18.00, voucher:{en:'20% off recommended treatment', ms:'20% jimat rawatan', zh:'推荐疗程8折'}, emoji:'💆' },
+  'beauty-hair':    { game:'Hair-Goal Tracker', cpa_sgd:16.00, voucher:{en:'Free wash with cut', ms:'Cuci percuma dengan potong', zh:'剪发免费洗头'}, emoji:'💇' },
+  'retail-fashion': { game:'Style Match', cpa_sgd:9.00, voucher:{en:'15% off matched item', ms:'15% jimat barang dipadan', zh:'匹配商品85折'}, emoji:'🛍️' },
+  'retail-conv':    { game:'Mystery Box Daily', cpa_sgd:7.50, voucher:{en:'$1-$10 mystery off', ms:'$1-$10 misteri jimat', zh:'神秘减$1-$10'}, emoji:'🎁' },
+  'retail-other':   { game:'Daily Scratch', cpa_sgd:8.00, voucher:{en:'5% off in-store', ms:'5% jimat di kedai', zh:'店内95折'}, emoji:'🎟️' },
+  'fitness-gym':    { game:'Attendance Streak', cpa_sgd:18.00, voucher:{en:'1 free trial class', ms:'1 kelas percubaan percuma', zh:'1节免费试课'}, emoji:'🔥' },
+  'fitness-studio': { game:'Class-Find Voucher', cpa_sgd:24.00, voucher:{en:'$15 off trial class', ms:'$15 jimat kelas percubaan', zh:'试课减$15'}, emoji:'🧘' },
+  'services-other': { game:'Booking Quiz', cpa_sgd:11.00, voucher:{en:'10% off next booking', ms:'10% jimat tempahan', zh:'下次预订9折'}, emoji:'📅' },
+  'other':          { game:'Spin the Wheel', cpa_sgd:8.00, voucher:{en:'$5 voucher', ms:'$5 baucar', zh:'$5代金券'}, emoji:'🎡' },
 };
+const SUBVERTICAL_TREE = {
+  fnb:     [['fnb-kopi','☕','Kopitiam / Kopi'],['fnb-nasi','🍛','Nasi / Halal lunch'],['fnb-bubbletea','🧋','Bubble tea'],['fnb-hawker','🍜','Hawker'],['fnb-cafe','🥐','Café'],['fnb-other','🍽️','Other F&B']],
+  beauty:  [['beauty-nail','💅','Nail studio'],['beauty-spa','💆','Spa / massage'],['beauty-hair','💇','Hair salon']],
+  retail:  [['retail-fashion','🛍️','Fashion'],['retail-conv','🎁','Convenience'],['retail-other','📦','Other retail']],
+  fitness: [['fitness-gym','💪','Gym'],['fitness-studio','🧘','Yoga / Pilates / Studio']],
+  services:[['services-other','🔧','Services (any)']],
+  other:   [['other','📦','Other / not listed']],
+};
+// Localized strings — use i18next if available, fallback to en
+const KIXW_LANG = (() => {
+  try { return (window.i18next && window.i18next.language || 'en').split('-')[0]; } catch(_) { return 'en'; }
+})();
+const KIXW_TXT = {
+  en: {
+    title:'Let\'s launch your first campaign — 5 minutes',
+    sub:'We\'ll pre-fill everything based on your business. You stay in control.',
+    skip:'Skip — I\'ll explore on my own',
+    next:'Next →',
+    back:'← Back',
+    step:'Step',
+    of:'of',
+    q1:'What kind of business?',
+    q2:'More specifically?',
+    q2hint:'We\'ll suggest a game and voucher that matches what you actually sell.',
+    q3:'How much do you want to spend to start?',
+    q3hint:'No commitment. You can pause or change anytime. Founding-100 merchants pay 0% take rate forever.',
+    budget_cheap:'Try first',
+    budget_starter:'Most popular',
+    budget_growth:'Growth',
+    budget_aggressive:'Aggressive',
+    q4:'See what your customer will experience',
+    q4hint:'Before launching, look at the game and voucher exactly as your customer will see them.',
+    preview_cta:'Open customer preview ↗',
+    game_label:'The game your customer plays',
+    voucher_label:'What they win',
+    cost_label:'You pay only when a new customer buys',
+    cost_unit:'per new customer (you set the max)',
+    area_label:'Reaches customers within',
+    area_unit:'of your shop',
+    free_credit_label:'Your founding-100 starter credit',
+    free_credit_amount:'S$30 free',
+    free_credit_note:'Auto-applied. No card needed to start.',
+    q5:'Ready?',
+    launch_real:'🚀 Launch for real (no card charged until starter credit used)',
+    launch_real_sub:'We use your S$30 free credit first. You\'ll see exactly when real money kicks in.',
+    launch_test:'🧪 Run in test mode first (free, fake traffic)',
+    launch_test_sub:'Click around, see how the dashboard works. Switch to real anytime.',
+    whatsapp_help:'Need help? WhatsApp the founder (Malay, English, 中文):',
+  },
+  ms: {
+    title:'Mari lancarkan kempen pertama anda — 5 minit',
+    sub:'Kami pra-isi semuanya berdasarkan perniagaan anda. Anda tetap mengawal.',
+    skip:'Langkau — saya nak teroka sendiri',
+    next:'Seterusnya →',
+    back:'← Kembali',
+    step:'Langkah',
+    of:'daripada',
+    q1:'Jenis perniagaan apa?',
+    q2:'Lebih spesifik?',
+    q2hint:'Kami akan cadangkan permainan dan baucar yang padan dengan apa yang anda sebenarnya jual.',
+    q3:'Berapa anda nak belanja untuk mula?',
+    q3hint:'Tiada komitmen. Boleh berhenti atau ubah bila-bila. 100 peniaga pengasas bayar 0% selamanya.',
+    budget_cheap:'Cuba dulu',
+    budget_starter:'Paling popular',
+    budget_growth:'Pertumbuhan',
+    budget_aggressive:'Agresif',
+    q4:'Lihat apa pelanggan anda akan alami',
+    q4hint:'Sebelum lancar, tengok permainan dan baucar persis seperti pelanggan akan nampak.',
+    preview_cta:'Buka pratonton pelanggan ↗',
+    game_label:'Permainan yang dimainkan pelanggan',
+    voucher_label:'Apa yang mereka menang',
+    cost_label:'Anda bayar hanya bila pelanggan baharu beli',
+    cost_unit:'setiap pelanggan baharu (anda tetapkan maksimum)',
+    area_label:'Jangkau pelanggan dalam lingkungan',
+    area_unit:'kedai anda',
+    free_credit_label:'Kredit pemula 100-pengasas anda',
+    free_credit_amount:'RM100 percuma',
+    free_credit_note:'Diguna pakai automatik. Tiada kad diperlukan untuk mula.',
+    q5:'Sedia?',
+    launch_real:'🚀 Lancar sebenar (tiada kad dicaj sehingga kredit pemula habis)',
+    launch_real_sub:'Kami guna kredit RM100 percuma anda dulu. Anda nampak bila wang sebenar mula digunakan.',
+    launch_test:'🧪 Mod ujian dulu (percuma, trafik palsu)',
+    launch_test_sub:'Klik sekeliling, tengok cara dashboard berfungsi. Tukar ke sebenar bila-bila.',
+    whatsapp_help:'Perlukan bantuan? WhatsApp pengasas (Melayu, English, 中文):',
+  },
+  zh: {
+    title:'5分钟启动你的第一个活动',
+    sub:'根据你的业务自动预填。你掌控一切。',
+    skip:'跳过 — 我自己看',
+    next:'下一步 →',
+    back:'← 返回',
+    step:'第',
+    of:'/',
+    q1:'什么类型的生意？',
+    q2:'更具体一点？',
+    q2hint:'我们会推荐符合你实际销售的游戏和优惠券。',
+    q3:'初期想花多少？',
+    q3hint:'无承诺。随时可暂停或修改。创始百强商家永久0%抽成。',
+    budget_cheap:'先试试',
+    budget_starter:'最受欢迎',
+    budget_growth:'增长',
+    budget_aggressive:'激进',
+    q4:'看看顾客的体验',
+    q4hint:'启动前，看看顾客将看到的游戏和优惠券。',
+    preview_cta:'打开顾客预览 ↗',
+    game_label:'顾客玩的游戏',
+    voucher_label:'他们赢得',
+    cost_label:'只有新客户购买才扣费',
+    cost_unit:'每位新客户 (你设上限)',
+    area_label:'覆盖范围',
+    area_unit:'店铺周边',
+    free_credit_label:'创始百强启动金',
+    free_credit_amount:'S$30 免费',
+    free_credit_note:'自动应用。无需信用卡即可开始。',
+    q5:'准备好了？',
+    launch_real:'🚀 真实启动 (启动金用完前不刷卡)',
+    launch_real_sub:'先用S$30免费额度。真钱启动时会明确通知。',
+    launch_test:'🧪 先用测试模式 (免费, 模拟流量)',
+    launch_test_sub:'点击查看仪表盘。随时切换到真实。',
+    whatsapp_help:'需要帮助？WhatsApp 创始人 (中文、Malay、English):',
+  },
+};
+const T = KIXW_TXT[KIXW_LANG] || KIXW_TXT.en;
+
 function showWelcomeModal(){
   if (document.getElementById('kix-welcome-modal')) return;
   const country = (state.country || localStorage.getItem('kix_country') || 'SG').toUpperCase();
   const cur = (typeof kixCurrencyFor==='function') ? kixCurrencyFor(country) : {symbol:'S$',code:'SGD',fxFromSGD:1};
-  const overlay = document.createElement('div');
+  const TOTAL_STEPS = 5;
+  // State
+  let step = 1, vertical = null, subvertical = null, budgetSGD = 50;
+  let overlay = document.createElement('div');
   overlay.id = 'kix-welcome-modal';
   overlay.setAttribute('role','dialog');
   overlay.setAttribute('aria-modal','true');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
   overlay.innerHTML = `
-    <div role="document" style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.4)">
+    <div role="document" style="background:#fff;border-radius:14px;max-width:580px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.4)">
       <div style="background:linear-gradient(135deg,#00B341 0%,#008A33 100%);color:#fff;padding:22px 24px;border-radius:14px 14px 0 0">
-        <div style="font-size:11.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.92">Welcome — Step 1 of 3</div>
-        <div style="font-size:22px;font-weight:800;margin-top:4px">Let's launch your first campaign in 5 minutes.</div>
-        <div style="font-size:13.5px;opacity:.92;margin-top:6px">We'll pre-fill everything based on your business. You stay in control.</div>
+        <div style="font-size:11.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.92" id="kixw-step-label"></div>
+        <div style="font-size:21px;font-weight:800;margin-top:4px">${T.title}</div>
+        <div style="font-size:13.5px;opacity:.92;margin-top:6px">${T.sub}</div>
       </div>
       <div id="kixw-body" style="padding:24px"></div>
-      <div style="padding:14px 24px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#F7F8FA;border-radius:0 0 14px 14px">
-        <button id="kixw-skip" style="background:none;border:none;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit">Skip — I'll explore on my own</button>
-        <button id="kixw-next" style="background:#00B341;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">Next →</button>
+      <div style="padding:14px 24px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#F7F8FA;border-radius:0 0 14px 14px;gap:10px">
+        <button id="kixw-skip" style="background:none;border:none;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit">${T.skip}</button>
+        <div style="display:flex;gap:8px">
+          <button id="kixw-back" style="background:none;border:1px solid #CBD5E1;color:#475569;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;display:none">${T.back}</button>
+          <button id="kixw-next" style="background:#00B341;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">${T.next}</button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  let step = 1, vertical = 'fnb';
+
+  function selectedCampaign(){ return DEMO_CAMPAIGN_BY_SUBVERTICAL[subvertical] || DEMO_CAMPAIGN_BY_SUBVERTICAL.other; }
+  function voucherText(d){
+    const map = d.voucher || {}; return map[KIXW_LANG] || map.en || '';
+  }
+  function fmtMoney(sgd){ const v = sgd * cur.fxFromSGD; return cur.symbol + (v >= 100 ? Math.round(v) : v.toFixed(2)); }
   function render(){
+    document.getElementById('kixw-step-label').textContent = `${T.step} ${step} ${T.of} ${TOTAL_STEPS}`;
+    document.getElementById('kixw-back').style.display = step > 1 ? '' : 'none';
+    const nextBtn = document.getElementById('kixw-next');
+    nextBtn.style.display = (step >= TOTAL_STEPS) ? 'none' : '';
     const body = document.getElementById('kixw-body');
+
     if (step === 1){
+      // Vertical
+      const opts = [['fnb','🍽️','F&B'],['beauty','💆','Beauty'],['retail','🛍️','Retail'],['fitness','💪','Fitness'],['services','🔧','Services'],['other','📦','Other']];
       body.innerHTML = `
-        <div style="font-size:14px;color:#0F172A;margin-bottom:14px">What kind of business do you run?</div>
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px" id="kixw-vert">
-          ${[
-            ['fnb','🍽️','F&B'],['beauty','💆','Beauty'],['retail','🛍️','Retail'],
-            ['fitness','💪','Fitness'],['services','🔧','Services'],['other','📦','Other'],
-          ].map(([k,e,n])=>`<button data-v="${k}" style="background:#fff;border:2px solid ${k===vertical?'#00B341':'#E2E8F0'};border-radius:10px;padding:14px 8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#0F172A;text-align:center"><div style="font-size:22px;margin-bottom:4px">${e}</div>${n}</button>`).join('')}
+        <div style="font-size:15px;color:#0F172A;margin-bottom:14px;font-weight:600">${T.q1}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px" id="kixw-v">
+          ${opts.map(([k,e,n])=>`<button data-v="${k}" style="background:#fff;border:2px solid ${k===vertical?'#00B341':'#E2E8F0'};border-radius:10px;padding:14px 8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#0F172A;text-align:center"><div style="font-size:22px;margin-bottom:4px">${e}</div>${n}</button>`).join('')}
         </div>`;
-      body.querySelectorAll('#kixw-vert button').forEach(b => b.addEventListener('click', e=>{vertical = b.dataset.v; render();}));
+      body.querySelectorAll('#kixw-v button').forEach(b => b.addEventListener('click', ()=>{ vertical = b.dataset.v; subvertical = null; render(); }));
+      nextBtn.disabled = !vertical;
+      nextBtn.style.opacity = vertical ? '1' : '.5';
     } else if (step === 2){
-      const d = DEMO_CAMPAIGN_BY_VERTICAL[vertical] || DEMO_CAMPAIGN_BY_VERTICAL.other;
-      const localBudget = Math.round(d.budget * cur.fxFromSGD);
-      const localCpa = (d.cpa * cur.fxFromSGD).toFixed(d.cpa * cur.fxFromSGD < 100 ? 2 : 0);
+      // Sub-vertical
+      const subs = SUBVERTICAL_TREE[vertical] || [];
       body.innerHTML = `
-        <div style="font-size:14px;color:#0F172A;margin-bottom:14px">Here's a starter campaign we built for your <strong>${vertical.toUpperCase()}</strong> business — tweak anything later.</div>
-        <div style="background:#F7F8FA;border:1px solid #E2E8F0;border-radius:10px;padding:18px">
-          <div style="font-size:32px;margin-bottom:6px">${d.emoji}</div>
-          <div style="font-size:17px;font-weight:700;margin-bottom:12px">${d.game}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;color:#0F172A">
-            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Budget</div><div style="font-weight:700;margin-top:2px">${cur.symbol}${localBudget}</div></div>
-            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Target CPA</div><div style="font-weight:700;margin-top:2px">${cur.symbol}${localCpa}</div></div>
-            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Voucher</div><div style="font-weight:700;margin-top:2px">${d.voucher}</div></div>
-            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Geofence</div><div style="font-weight:700;margin-top:2px">Your shop ± 200m</div></div>
+        <div style="font-size:15px;color:#0F172A;margin-bottom:6px;font-weight:600">${T.q2}</div>
+        <div style="font-size:13px;color:#64748B;margin-bottom:14px">${T.q2hint}</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px" id="kixw-sv">
+          ${subs.map(([k,e,n])=>`<button data-s="${k}" style="background:#fff;border:2px solid ${k===subvertical?'#00B341':'#E2E8F0'};border-radius:10px;padding:14px 12px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:600;color:#0F172A;text-align:left;display:flex;gap:10px;align-items:center"><span style="font-size:22px">${e}</span>${n}</button>`).join('')}
+        </div>`;
+      body.querySelectorAll('#kixw-sv button').forEach(b => b.addEventListener('click', ()=>{ subvertical = b.dataset.s; render(); }));
+      nextBtn.disabled = !subvertical;
+      nextBtn.style.opacity = subvertical ? '1' : '.5';
+    } else if (step === 3){
+      // Budget chips + plain language
+      const opts = [
+        ['cheap', T.budget_cheap, 20],
+        ['starter', T.budget_starter, 50],
+        ['growth', T.budget_growth, 200],
+        ['aggressive', T.budget_aggressive, 500],
+      ];
+      body.innerHTML = `
+        <div style="font-size:15px;color:#0F172A;margin-bottom:6px;font-weight:600">${T.q3}</div>
+        <div style="font-size:13px;color:#64748B;margin-bottom:14px">${T.q3hint}</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px" id="kixw-b">
+          ${opts.map(([k,lbl,val])=>`<button data-b="${val}" style="background:#fff;border:2px solid ${val===budgetSGD?'#00B341':'#E2E8F0'};border-radius:10px;padding:16px 12px;cursor:pointer;font-family:inherit;text-align:center"><div style="font-size:18px;font-weight:800;color:#0F172A">${fmtMoney(val)}</div><div style="font-size:11.5px;color:#64748B;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">${lbl}</div></button>`).join('')}
+        </div>
+        <div style="margin-top:18px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:14px;display:flex;gap:12px;align-items:center">
+          <div style="font-size:24px">🎁</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:#15803D">${T.free_credit_label}: ${T.free_credit_amount}</div>
+            <div style="font-size:11.5px;color:#16A34A;margin-top:2px">${T.free_credit_note}</div>
+          </div>
+        </div>`;
+      body.querySelectorAll('#kixw-b button').forEach(b => b.addEventListener('click', ()=>{ budgetSGD = parseInt(b.dataset.b); render(); }));
+    } else if (step === 4){
+      // Customer-view preview
+      const d = selectedCampaign();
+      const localCpa = (d.cpa_sgd * cur.fxFromSGD).toFixed(d.cpa_sgd * cur.fxFromSGD < 100 ? 2 : 0);
+      body.innerHTML = `
+        <div style="font-size:15px;color:#0F172A;margin-bottom:6px;font-weight:600">${T.q4}</div>
+        <div style="font-size:13px;color:#64748B;margin-bottom:14px">${T.q4hint}</div>
+        <div style="background:#F7F8FA;border:1px solid #E2E8F0;border-radius:10px;padding:18px;margin-bottom:14px">
+          <div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">${T.game_label}</div>
+          <div style="font-size:32px;margin-bottom:4px">${d.emoji}</div>
+          <div style="font-size:18px;font-weight:700;color:#0F172A;margin-bottom:12px">${d.game}</div>
+          <div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:4px">${T.voucher_label}</div>
+          <div style="font-size:15px;font-weight:600;color:#15803D;background:#F0FDF4;padding:8px 12px;border-radius:6px;display:inline-block">${voucherText(d)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:#F7F8FA;border:1px solid #E2E8F0;border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase">${T.cost_label}</div>
+            <div style="font-size:18px;font-weight:800;color:#0F172A;margin-top:2px">${cur.symbol}${localCpa}</div>
+            <div style="font-size:10.5px;color:#64748B">${T.cost_unit}</div>
+          </div>
+          <div style="background:#F7F8FA;border:1px solid #E2E8F0;border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase">${T.area_label}</div>
+            <div style="font-size:18px;font-weight:800;color:#0F172A;margin-top:2px">200m</div>
+            <div style="font-size:10.5px;color:#64748B">${T.area_unit}</div>
           </div>
         </div>
-        <p style="font-size:12px;color:#64748B;margin-top:12px;line-height:1.5">This will live in <strong>sandbox</strong> first — no real spend. You can launch for real in Step 3 or keep tweaking.</p>`;
-    } else if (step === 3){
+        <a href="/landing/play.html?demo=1" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;color:#008A33;font-weight:700;font-size:13.5px;text-decoration:underline">${T.preview_cta}</a>`;
+    } else if (step === 5){
+      // Final commit
       body.innerHTML = `
-        <div style="font-size:14px;color:#0F172A;margin-bottom:14px">Ready to launch?</div>
+        <div style="font-size:15px;color:#0F172A;margin-bottom:14px;font-weight:600">${T.q5}</div>
         <div style="display:grid;gap:10px">
           <button id="kixw-go-real" style="background:#00B341;color:#fff;border:none;padding:14px 18px;border-radius:10px;font-weight:700;font-size:14.5px;cursor:pointer;text-align:left;font-family:inherit">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <div>🚀 Launch this campaign for real</div>
-                <div style="font-size:12px;font-weight:500;opacity:.92;margin-top:2px">Goes live in 5 min. We top up your wallet from your saved card if needed.</div>
-              </div>
-              <span style="font-size:18px">→</span>
-            </div>
+            <div>${T.launch_real}</div>
+            <div style="font-size:12px;font-weight:500;opacity:.92;margin-top:2px">${T.launch_real_sub}</div>
           </button>
           <button id="kixw-sandbox" style="background:#fff;border:1px solid #00B341;color:#008A33;padding:14px 18px;border-radius:10px;font-weight:700;font-size:14.5px;cursor:pointer;text-align:left;font-family:inherit">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <div>🧪 Keep in sandbox — let me look around first</div>
-                <div style="font-size:12px;font-weight:500;opacity:.92;margin-top:2px">Demo runs against fake traffic. Free, no spend, no obligation.</div>
-              </div>
-              <span style="font-size:18px">→</span>
-            </div>
+            <div>${T.launch_test}</div>
+            <div style="font-size:12px;font-weight:500;opacity:.92;margin-top:2px">${T.launch_test_sub}</div>
           </button>
         </div>
         <p style="font-size:12px;color:#64748B;margin-top:14px;line-height:1.5">
-          Either way, your account is created and your founder is reachable on WhatsApp (+65 9XXX XXXX). No hidden fees — see <a href="/landing/pricing.html" style="color:#008A33">pricing</a>.
+          ${T.whatsapp_help} <a href="https://wa.me/6590000000?text=Hello%20KiX%20founder%20-%20I%20just%20signed%20up" target="_blank" style="color:#008A33;font-weight:600">+65 9000 0000</a>
         </p>`;
-      body.querySelector('#kixw-go-real').addEventListener('click', ()=>{ closeModal(); navigate && navigate('campaigns'); showToast && showToast('Campaign queued — going live in 5 min','success'); });
-      body.querySelector('#kixw-sandbox').addEventListener('click', ()=>{ closeModal(); navigate && navigate('overview'); showToast && showToast('Sandbox active — explore freely','success'); });
+      body.querySelector('#kixw-go-real').addEventListener('click', ()=>{ closeModal(); navigate && navigate('campaigns'); showToast && showToast('Campaign queued · S$30 starter credit auto-applied','success'); });
+      body.querySelector('#kixw-sandbox').addEventListener('click', ()=>{ closeModal(); navigate && navigate('overview'); showToast && showToast('Test mode active — explore freely','success'); });
     }
-    const nextBtn = document.getElementById('kixw-next');
-    if (step === 3) { nextBtn.style.display='none'; }
-    else { nextBtn.textContent = step === 2 ? 'Looks good →' : 'Next →'; }
   }
-  function closeModal(){
-    overlay.remove();
-    try { localStorage.removeItem('kix_fresh_signup'); } catch(_){}
-  }
+  function closeModal(){ overlay.remove(); try { localStorage.removeItem('kix_fresh_signup'); } catch(_){} }
   document.getElementById('kixw-skip').addEventListener('click', closeModal);
-  document.getElementById('kixw-next').addEventListener('click', ()=>{ step++; render(); });
+  document.getElementById('kixw-next').addEventListener('click', ()=>{ if (step < TOTAL_STEPS) { step++; render(); } });
+  document.getElementById('kixw-back').addEventListener('click', ()=>{ if (step > 1) { step--; render(); } });
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
   render();
 }
