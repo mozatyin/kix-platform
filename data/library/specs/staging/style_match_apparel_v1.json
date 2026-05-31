@@ -1,0 +1,40 @@
+{
+  "id": "style_match_apparel_v1",
+  "name": "Style Match (apparel)",
+  "vertical": "retail",
+  "subvertical": "fashion",
+  "phase": 1,
+  "priority": 4,
+  "based_on": "new_archetype",
+  "delta": "first net-new retail-fashion game",
+  "mechanic": "preference_quiz_to_sku",
+  "duration_sec_target": 100,
+  "core_loop": "5 outfit-pick questions → recommend top 3 SKUs + show in-stock at nearest store + discount voucher",
+  "voucher_default": {
+    "SG": "15% off matched SKU",
+    "MY": "RM30 off matched SKU"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "zh-Hans-SG"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration",
+    "AddToCart"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "brand_logo",
+    "style_grid_5x4",
+    "sku_carousel",
+    "stock_pill"
+  ],
+  "estimated_cpa": {
+    "SG": 9.0,
+    "MY": 31.5
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen"
+}

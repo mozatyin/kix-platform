@@ -1,0 +1,44 @@
+{
+  "id": "bubble_tea_mixer_v3",
+  "name": "Bubble Tea Mixer v3",
+  "vertical": "fnb",
+  "subvertical": "bubble-tea",
+  "phase": 1,
+  "priority": 3,
+  "based_on": "bubble_tea_mixer_v2",
+  "delta": "Add custom-flavor slider + 2-stage reveal animation + cross-pool support",
+  "mechanic": "config_then_order",
+  "duration_sec_target": 90,
+  "core_loop": "player picks flavor/sweetness/ice/toppings → matched discount on real order at counter",
+  "voucher_default": {
+    "SG": "1-for-1 large bubble tea",
+    "MY": "RM5 off any large drink"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "zh-Hans-SG",
+    "ms-MY",
+    "th-TH",
+    "vi-VN"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "AddToCart",
+    "Purchase"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "flavor_grid",
+    "topping_grid",
+    "reward_copy"
+  ],
+  "estimated_cpa": {
+    "SG": 5.8,
+    "MY": 20.3,
+    "TH": 156.6
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen"
+}

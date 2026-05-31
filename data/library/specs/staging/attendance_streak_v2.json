@@ -1,0 +1,40 @@
+{
+  "id": "attendance_streak_v2",
+  "name": "Attendance Streak v2",
+  "vertical": "fitness",
+  "subvertical": "gym-yoga-pilates",
+  "phase": 1,
+  "priority": 8,
+  "based_on": "attendance_streak_v1",
+  "delta": "Add weekly recovery (1 missed day allowed) + tiered rewards (3/7/14/30 days)",
+  "mechanic": "streak_with_progressive_reward",
+  "duration_sec_target": 25,
+  "core_loop": "check-in at front desk via QR → game animates streak +1 → bonus class voucher at 3-day streak",
+  "voucher_default": {
+    "SG": "1 free bonus class at 7-day streak",
+    "MY": "1 free bonus class at 7-day streak"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "ms-MY",
+    "th-TH"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "flame_animation",
+    "reward_tier_4"
+  ],
+  "estimated_cpa": {
+    "SG": 8.0,
+    "MY": 28.0
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen",
+  "notes": "Anti-fraud: front desk staff scans QR (not customer); cap 1 streak/day"
+}

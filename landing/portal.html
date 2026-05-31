@@ -4949,6 +4949,8 @@ document.getElementById('register-form').addEventListener('submit',async(e)=>{
 
     showToast('Account created — welcome to KiX','success');
     showApp();
+    // Wave I.F MVP: fire welcome modal for fresh signups (sandbox demo campaign)
+    try { localStorage.setItem('kix_fresh_signup','1'); setTimeout(showWelcomeModal, 400); } catch(_) {}
   }catch(e){
     err.textContent=e.message;
     err.style.display='block';
@@ -4956,6 +4958,121 @@ document.getElementById('register-form').addEventListener('submit',async(e)=>{
     btn.disabled=false;
     btn.textContent=(window.i18next && window.i18next.t && window.i18next.t('portal.register.submit')) || 'Create merchant account';
   }
+});
+
+// ── Wave I.F MVP: Tutorial-as-first-campaign welcome modal ──────────
+// Pre-fills a sandbox campaign so fresh signups see value in <30 sec
+// instead of empty dashboard.  Aminah (first_time_merchant) friction fix.
+const DEMO_CAMPAIGN_BY_VERTICAL = {
+  fnb:     { game:'Bubble Tea Mixer', budget:200, cpa:5.80, voucher:'S$2 off any drink', emoji:'🧋' },
+  beauty:  { game:'Color Match Challenge', budget:300, cpa:14.00, voucher:'30% off first nail service', emoji:'💅' },
+  retail:  { game:'Mystery Box Unlock', budget:200, cpa:9.00, voucher:'15% off in-store purchase', emoji:'🎁' },
+  fitness: { game:'Attendance Streak', budget:250, cpa:18.00, voucher:'1 free trial class', emoji:'🔥' },
+  services:{ game:'Booking Quiz', budget:200, cpa:11.00, voucher:'10% off next booking', emoji:'📅' },
+  other:   { game:'Spin the Wheel', budget:200, cpa:8.00, voucher:'$5 voucher', emoji:'🎡' },
+};
+function showWelcomeModal(){
+  if (document.getElementById('kix-welcome-modal')) return;
+  const country = (state.country || localStorage.getItem('kix_country') || 'SG').toUpperCase();
+  const cur = (typeof kixCurrencyFor==='function') ? kixCurrencyFor(country) : {symbol:'S$',code:'SGD',fxFromSGD:1};
+  const overlay = document.createElement('div');
+  overlay.id = 'kix-welcome-modal';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+  overlay.innerHTML = `
+    <div role="document" style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.4)">
+      <div style="background:linear-gradient(135deg,#00B341 0%,#008A33 100%);color:#fff;padding:22px 24px;border-radius:14px 14px 0 0">
+        <div style="font-size:11.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.92">Welcome — Step 1 of 3</div>
+        <div style="font-size:22px;font-weight:800;margin-top:4px">Let's launch your first campaign in 5 minutes.</div>
+        <div style="font-size:13.5px;opacity:.92;margin-top:6px">We'll pre-fill everything based on your business. You stay in control.</div>
+      </div>
+      <div id="kixw-body" style="padding:24px"></div>
+      <div style="padding:14px 24px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#F7F8FA;border-radius:0 0 14px 14px">
+        <button id="kixw-skip" style="background:none;border:none;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit">Skip — I'll explore on my own</button>
+        <button id="kixw-next" style="background:#00B341;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">Next →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  let step = 1, vertical = 'fnb';
+  function render(){
+    const body = document.getElementById('kixw-body');
+    if (step === 1){
+      body.innerHTML = `
+        <div style="font-size:14px;color:#0F172A;margin-bottom:14px">What kind of business do you run?</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px" id="kixw-vert">
+          ${[
+            ['fnb','🍽️','F&B'],['beauty','💆','Beauty'],['retail','🛍️','Retail'],
+            ['fitness','💪','Fitness'],['services','🔧','Services'],['other','📦','Other'],
+          ].map(([k,e,n])=>`<button data-v="${k}" style="background:#fff;border:2px solid ${k===vertical?'#00B341':'#E2E8F0'};border-radius:10px;padding:14px 8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#0F172A;text-align:center"><div style="font-size:22px;margin-bottom:4px">${e}</div>${n}</button>`).join('')}
+        </div>`;
+      body.querySelectorAll('#kixw-vert button').forEach(b => b.addEventListener('click', e=>{vertical = b.dataset.v; render();}));
+    } else if (step === 2){
+      const d = DEMO_CAMPAIGN_BY_VERTICAL[vertical] || DEMO_CAMPAIGN_BY_VERTICAL.other;
+      const localBudget = Math.round(d.budget * cur.fxFromSGD);
+      const localCpa = (d.cpa * cur.fxFromSGD).toFixed(d.cpa * cur.fxFromSGD < 100 ? 2 : 0);
+      body.innerHTML = `
+        <div style="font-size:14px;color:#0F172A;margin-bottom:14px">Here's a starter campaign we built for your <strong>${vertical.toUpperCase()}</strong> business — tweak anything later.</div>
+        <div style="background:#F7F8FA;border:1px solid #E2E8F0;border-radius:10px;padding:18px">
+          <div style="font-size:32px;margin-bottom:6px">${d.emoji}</div>
+          <div style="font-size:17px;font-weight:700;margin-bottom:12px">${d.game}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;color:#0F172A">
+            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Budget</div><div style="font-weight:700;margin-top:2px">${cur.symbol}${localBudget}</div></div>
+            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Target CPA</div><div style="font-weight:700;margin-top:2px">${cur.symbol}${localCpa}</div></div>
+            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Voucher</div><div style="font-weight:700;margin-top:2px">${d.voucher}</div></div>
+            <div><div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">Geofence</div><div style="font-weight:700;margin-top:2px">Your shop ± 200m</div></div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#64748B;margin-top:12px;line-height:1.5">This will live in <strong>sandbox</strong> first — no real spend. You can launch for real in Step 3 or keep tweaking.</p>`;
+    } else if (step === 3){
+      body.innerHTML = `
+        <div style="font-size:14px;color:#0F172A;margin-bottom:14px">Ready to launch?</div>
+        <div style="display:grid;gap:10px">
+          <button id="kixw-go-real" style="background:#00B341;color:#fff;border:none;padding:14px 18px;border-radius:10px;font-weight:700;font-size:14.5px;cursor:pointer;text-align:left;font-family:inherit">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div>🚀 Launch this campaign for real</div>
+                <div style="font-size:12px;font-weight:500;opacity:.92;margin-top:2px">Goes live in 5 min. We top up your wallet from your saved card if needed.</div>
+              </div>
+              <span style="font-size:18px">→</span>
+            </div>
+          </button>
+          <button id="kixw-sandbox" style="background:#fff;border:1px solid #00B341;color:#008A33;padding:14px 18px;border-radius:10px;font-weight:700;font-size:14.5px;cursor:pointer;text-align:left;font-family:inherit">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div>🧪 Keep in sandbox — let me look around first</div>
+                <div style="font-size:12px;font-weight:500;opacity:.92;margin-top:2px">Demo runs against fake traffic. Free, no spend, no obligation.</div>
+              </div>
+              <span style="font-size:18px">→</span>
+            </div>
+          </button>
+        </div>
+        <p style="font-size:12px;color:#64748B;margin-top:14px;line-height:1.5">
+          Either way, your account is created and your founder is reachable on WhatsApp (+65 9XXX XXXX). No hidden fees — see <a href="/landing/pricing.html" style="color:#008A33">pricing</a>.
+        </p>`;
+      body.querySelector('#kixw-go-real').addEventListener('click', ()=>{ closeModal(); navigate && navigate('campaigns'); showToast && showToast('Campaign queued — going live in 5 min','success'); });
+      body.querySelector('#kixw-sandbox').addEventListener('click', ()=>{ closeModal(); navigate && navigate('overview'); showToast && showToast('Sandbox active — explore freely','success'); });
+    }
+    const nextBtn = document.getElementById('kixw-next');
+    if (step === 3) { nextBtn.style.display='none'; }
+    else { nextBtn.textContent = step === 2 ? 'Looks good →' : 'Next →'; }
+  }
+  function closeModal(){
+    overlay.remove();
+    try { localStorage.removeItem('kix_fresh_signup'); } catch(_){}
+  }
+  document.getElementById('kixw-skip').addEventListener('click', closeModal);
+  document.getElementById('kixw-next').addEventListener('click', ()=>{ step++; render(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  render();
+}
+// Also fire on re-login if flag still set (e.g., user closed tab mid-onboard)
+document.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(()=>{
+    if (localStorage.getItem('kix_fresh_signup') === '1' && document.getElementById('app-shell')?.classList.contains('active')) {
+      showWelcomeModal();
+    }
+  }, 1200);
 });
 
 function doLogout(){

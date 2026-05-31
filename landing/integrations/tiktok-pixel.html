@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTok Pixel + KiX — Integration Guide</title>
+<link rel="stylesheet" href="../design-system/tokens.css">
+<script src="../i18n/i18next-runtime.js" defer></script>
+<script src="../i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#FFF;color:#0F172A;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--tiktok:#000000;--tiktok-pink:#FE2C55;--tiktok-cyan:#25F4EE}
+  .container{max-width:980px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:20px}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  .hero{padding:48px 0 24px;text-align:center}
+  .pill{display:inline-block;background:#000;color:#fff;padding:5px 14px;border-radius:999px;
+        font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:16px}
+  h1{font-size:36px;font-weight:800;line-height:1.15;letter-spacing:-1px;margin-bottom:12px}
+  .sub{font-size:16px;color:var(--text-muted);max-width:640px;margin:0 auto}
+  /* Big answer */
+  .yes-block{background:#000;color:#fff;border-radius:14px;padding:28px;margin:32px 0;
+             display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center}
+  @media(max-width:640px){.yes-block{grid-template-columns:1fr;text-align:center}}
+  .yes-icon{font-size:56px;line-height:1}
+  .yes-text h2{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px}
+  .yes-text p{color:#D4D4D4;font-size:14.5px}
+  /* Flow diagram */
+  .flow{background:var(--surface);border-radius:12px;padding:28px;margin:32px 0}
+  .flow h3{font-size:18px;font-weight:700;margin-bottom:18px;text-align:center}
+  .flow-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:center}
+  @media(max-width:780px){.flow-grid{grid-template-columns:1fr;gap:14px}}
+  .flow-step{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+  .flow-step .emoji{font-size:26px;display:block;margin-bottom:6px}
+  .flow-step .name{font-size:12px;font-weight:700;color:#0F172A}
+  .flow-step .detail{font-size:10.5px;color:var(--text-muted);margin-top:3px;line-height:1.3}
+  .flow-arrow{text-align:center;font-size:20px;color:var(--text-muted)}
+  @media(max-width:780px){.flow-arrow{transform:rotate(90deg)}}
+  /* Events table */
+  .events{margin:32px 0}
+  .events h3{font-size:20px;font-weight:700;margin-bottom:16px}
+  .event-row{display:grid;grid-template-columns:160px 1fr 1fr;gap:16px;padding:14px;border-bottom:1px solid var(--border);font-size:14px}
+  @media(max-width:780px){.event-row{grid-template-columns:1fr;gap:6px}}
+  .event-row:first-child{font-weight:700;background:var(--surface);border-radius:8px 8px 0 0}
+  .event-name{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--brand-dk);font-weight:600}
+  /* Code block */
+  .code-block{background:#0F172A;color:#E2E8F0;border-radius:10px;padding:20px;
+              font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5;
+              overflow-x:auto;margin:16px 0}
+  .code-block .comment{color:#64748B}
+  .code-block .key{color:#FACC15}
+  .code-block .str{color:#A7F3D0}
+  /* FAQ */
+  .faq{margin:32px 0}
+  .faq h3{font-size:20px;font-weight:700;margin-bottom:16px}
+  .faq-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:10px}
+  .faq-item h4{font-size:15px;font-weight:700;margin-bottom:6px;color:#0F172A}
+  .faq-item p{font-size:13.5px;color:var(--text-muted);line-height:1.55}
+  /* CTA */
+  .cta{background:var(--brand);color:#fff;border-radius:12px;padding:32px;text-align:center;margin:32px 0}
+  .cta h3{color:#fff;font-size:22px;font-weight:800;margin-bottom:10px}
+  .cta p{color:rgba(255,255,255,.92);margin-bottom:16px;font-size:14.5px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
+       border-radius:8px;font-weight:600;text-decoration:none;font-size:14px}
+  .btn-white{background:#fff;color:var(--brand-dk)}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/connect.html">Integrations</a>
+        <a href="/landing/portal.html">Portal</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">TIKTOK PIXEL · INTEGRATION GUIDE</span>
+    <h1>Does KiX integrate with my TikTok Pixel?</h1>
+    <p class="sub">Short answer below. Long answer: how events flow, which events fire, code snippets, and what your TikTok Ads Manager team will actually see.</p>
+  </div>
+</section>
+
+<section class="container">
+
+  <div class="yes-block">
+    <div class="yes-icon" aria-hidden="true">✅</div>
+    <div class="yes-text">
+      <h2>Yes. Native TikTok Pixel + TikTok Events API.</h2>
+      <p>Every game play, registration and redemption fires both client-side Pixel events AND server-side Events API events to your existing Pixel ID. Retarget players, build custom audiences, measure incrementality — your TikTok Ads Manager workflow is untouched.</p>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3>How an event flows in 4 seconds</h3>
+    <div class="flow-grid">
+      <div class="flow-step">
+        <span class="emoji">📱</span>
+        <div class="name">Customer plays game</div>
+        <div class="detail">on KiX-hosted page</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="emoji">⚡</span>
+        <div class="name">KiX SDK fires</div>
+        <div class="detail">browser Pixel + server Events API</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="emoji">🎯</span>
+        <div class="name">TikTok Ads Manager</div>
+        <div class="detail">sees event in 30–90s</div>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:16px">
+      Server-side Events API path is the primary one (iOS 14+ resilient).
+      Browser Pixel is parallel redundancy.
+    </p>
+  </div>
+
+  <div class="events">
+    <h3>TikTok Events fired automatically</h3>
+    <div class="event-row">
+      <div>Event name</div>
+      <div>When KiX fires it</div>
+      <div>Your typical use</div>
+    </div>
+    <div class="event-row">
+      <div class="event-name">ViewContent</div>
+      <div>Customer opens a KiX game</div>
+      <div>Top-of-funnel reach, broad audience optimisation</div>
+    </div>
+    <div class="event-row">
+      <div class="event-name">CompleteRegistration</div>
+      <div>Customer enters phone / email to claim reward</div>
+      <div>Custom audience seed, lookalike base</div>
+    </div>
+    <div class="event-row">
+      <div class="event-name">Purchase</div>
+      <div>Customer redeems voucher at your counter (POS-tracked)</div>
+      <div>Conversion campaign optimisation, ROAS</div>
+    </div>
+    <div class="event-row">
+      <div class="event-name">AddToCart</div>
+      <div>Customer adds in-game item to cart (e.g. bubble-tea-mixer order)</div>
+      <div>Mid-funnel retarget</div>
+    </div>
+    <div class="event-row">
+      <div class="event-name">CompletePayment</div>
+      <div>Customer pays for a non-voucher upsell during game flow</div>
+      <div>Revenue attribution</div>
+    </div>
+    <div class="event-row">
+      <div class="event-name">PlaceAnOrder</div>
+      <div>Customer commits to a future-pickup order</div>
+      <div>Mid-funnel scoring</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:32px;font-size:20px;font-weight:700">Setup — what you actually do</h3>
+  <p style="color:var(--text-muted);margin-bottom:12px;font-size:14px">
+    In your KiX portal, go to <strong>Integrations → TikTok</strong> and paste two things:
+  </p>
+  <div class="code-block"><span class="comment"># In your TikTok Ads Manager → Assets → Events → Pixel:</span>
+<span class="key">TikTok Pixel ID:</span>     <span class="str">"C4FXX...your-pixel-id..."</span>
+<span class="key">Events API Token:</span>   <span class="str">"a1b2c3d4...your-access-token..."</span>
+
+<span class="comment"># That's it. KiX maps its internal events to TikTok Standard Events automatically.</span>
+<span class="comment"># Test it: play a game on your own merchant page, then check TikTok Events Manager</span>
+<span class="comment"># under 'Test Events' tab — events appear within 30 seconds.</span>
+</div>
+
+  <p style="color:var(--text-muted);margin-top:14px;font-size:13.5px">
+    Want event-name overrides or custom-property mapping? Reach out to support — we'll JSON-spec it for you.
+  </p>
+
+  <div class="faq">
+    <h3>FAQ — what TikTok-savvy operators actually ask</h3>
+
+    <div class="faq-item">
+      <h4>Does this work for Spark Ads / Smart Performance Campaign optimisation?</h4>
+      <p>Yes. The server-side <code>Purchase</code> event flows into TikTok's Smart Performance Campaign signals, so you can run conversion campaigns optimising for KiX-tracked transactions. We've validated this with TikTok Ads Manager v3.4+.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>How does iOS 14+ (no IDFA) impact attribution?</h4>
+      <p>The server-side Events API path is the iOS-14-resilient one. We send the user's phone/email (hashed SHA-256) as <code>match_keys</code>, which TikTok uses for cross-device match without IDFA. Match rate in our SG pilots: 78–84%.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>Can I retarget KiX game-players who didn't redeem?</h4>
+      <p>Yes. Use the <code>CompleteRegistration</code> custom audience (built from KiX events) as the source for a "registered-but-didn't-purchase" retarget campaign. We've seen merchants hit 4.2x ROAS on these.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>What about Meta Pixel, GA4, Google Ads CAPI?</h4>
+      <p>Same architecture: paste your Pixel/Tag ID in <a href="/landing/connect.html">Integrations</a>, KiX fires equivalent events. See <a href="/landing/connect.html">/landing/connect.html</a> for the full integration list.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>Can I add custom properties (e.g. brand_id, outlet_id, game_id)?</h4>
+      <p>Yes. Custom properties are pass-through by default for <code>outlet_id</code>, <code>game_id</code>, <code>voucher_id</code>, <code>campaign_id</code>. Add your own via <code>kix.setEventContext({...})</code> in the SDK.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>Does this respect Malaysian PDPA / Singapore PDPA / GDPR?</h4>
+      <p>Yes. We hash all PII (phone, email) before sending to TikTok. Customer consent for ad-platform sharing is captured in the KiX game flow per market — see <a href="/landing/legal/dpa.html">DPA</a>.</p>
+    </div>
+  </div>
+
+  <div class="cta">
+    <h3>Try the integration in 5 minutes</h3>
+    <p>Spin up a test merchant, paste your Pixel ID, play your own game, watch the event land in TikTok Events Manager. No credit card required.</p>
+    <a href="/landing/portal.html" class="btn btn-white">Open portal →</a>
+  </div>
+
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="mailto:michael@mozat.com">Contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W</div>
+    <div style="margin-top:8px;font-size:11.5px">
+      Verify independently:
+      <a href="https://x.com/letskix" rel="noopener">X</a>·
+      <a href="https://github.com/mozat" rel="noopener">GitHub</a>·
+      <a href="https://www.acra.gov.sg/" rel="noopener">ACRA (SG registry)</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

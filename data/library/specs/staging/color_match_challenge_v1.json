@@ -1,0 +1,39 @@
+{
+  "id": "color_match_challenge_v1",
+  "name": "Color Match Challenge",
+  "vertical": "beauty",
+  "subvertical": "nail-studio",
+  "phase": 1,
+  "priority": 6,
+  "based_on": "new_archetype",
+  "delta": "first net-new beauty-nail game",
+  "mechanic": "preference_match_to_service",
+  "duration_sec_target": 80,
+  "core_loop": "player picks 3 color combos from grid → matched to actual nail service → in-store touch-up voucher",
+  "voucher_default": {
+    "SG": "S$8 off touch-up",
+    "MY": "RM25 off touch-up"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "zh-Hans-SG",
+    "ms-MY"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "color_swatch_24",
+    "service_card_3"
+  ],
+  "estimated_cpa": {
+    "SG": 14.0,
+    "MY": 49.0
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen"
+}

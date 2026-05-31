@@ -1,0 +1,42 @@
+{
+  "id": "spice_level_roulette_v1",
+  "name": "Spice-level Roulette",
+  "vertical": "fnb",
+  "subvertical": "halal-nasi",
+  "phase": 1,
+  "priority": 2,
+  "based_on": "new_archetype",
+  "delta": "first net-new halal-MY game",
+  "mechanic": "preference_quiz_to_voucher",
+  "duration_sec_target": 60,
+  "core_loop": "5 spice-preference questions → algorithm picks dish + voucher → CTA to nearest halal stall",
+  "voucher_default": {
+    "SG": "S$3 off nasi",
+    "MY": "RM10 off nasi padang"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "ms-MY"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration",
+    "Purchase"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "5_dish_images",
+    "heat_scale_animation"
+  ],
+  "estimated_cpa": {
+    "SG": 4.8,
+    "MY": 16.8
+  },
+  "verticals_blocked": [
+    "alcohol",
+    "non_halal_pork"
+  ],
+  "status": "pending_gen"
+}

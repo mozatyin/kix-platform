@@ -1,0 +1,40 @@
+{
+  "id": "mystery_box_daily_v1",
+  "name": "Mystery Box Daily",
+  "vertical": "retail",
+  "subvertical": "convenience",
+  "phase": 1,
+  "priority": 5,
+  "based_on": "new_archetype",
+  "delta": "first net-new daily-engagement game (cooldown=24h)",
+  "mechanic": "daily_chance_with_progression",
+  "duration_sec_target": 30,
+  "core_loop": "player taps once per day → unlocks tier-of-box (small/med/large) → must buy any item in-store to redeem",
+  "voucher_default": {
+    "SG": "S$1-S$10 mystery off",
+    "MY": "RM3-RM35 mystery off"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "zh-Hans-SG",
+    "ms-MY"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "box_open_animation",
+    "reward_grid"
+  ],
+  "estimated_cpa": {
+    "SG": 7.5,
+    "MY": 26.25
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen",
+  "notes": "Cooldown logic must be server-enforced; client-side localStorage tampering caught by API"
+}

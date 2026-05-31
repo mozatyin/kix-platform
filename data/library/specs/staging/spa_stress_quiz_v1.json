@@ -1,0 +1,38 @@
+{
+  "id": "spa_stress_quiz_v1",
+  "name": "Spa Stress-Level Quiz",
+  "vertical": "beauty",
+  "subvertical": "spa",
+  "phase": 1,
+  "priority": 7,
+  "based_on": "new_archetype",
+  "delta": "service recommendation engine framed as quiz",
+  "mechanic": "personality_quiz_to_upsell",
+  "duration_sec_target": 70,
+  "core_loop": "6 lifestyle questions → recommends 1 of 5 spa services + first-visit discount + 'after this you should...' upsell hint",
+  "voucher_default": {
+    "SG": "20% off recommended service",
+    "MY": "20% off recommended service"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "zh-Hans-SG"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "question_card_6",
+    "service_carousel_5"
+  ],
+  "estimated_cpa": {
+    "SG": 18.0,
+    "MY": 63.0
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen"
+}

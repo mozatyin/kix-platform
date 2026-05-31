@@ -147,7 +147,7 @@
   "footer.legal.terms": "Terms",
   "footer.legal.status": "Status",
   "footer.legal.partner": "Partner",
-  "footer.copy": "© 2026 KiX · letskix.com",
+  "footer.copy": "© 2026 KiX · letskix.com · operated by Mozat Pte Ltd",
   "footer.built": "Built with Trinity Protocol · 525 routes · 5 iteration rounds",
   "compliance.tag": "Compliance & trust",
   "compliance.title": "Built for regulated markets",
@@ -161,5 +161,7 @@
   "compliance.halal": "Halal-aware library",
   "compliance.halal_sub": "No gambling mechanics or pig imagery",
   "compliance.note": "No spin-to-win lottery mechanics. All games are skill or chance-as-reward, not chance-for-money. Game library reviewed for cultural sensitivity per market.",
-  "footer.compliance_inline": "PDPA-SG · PDPA-MY · GDPR-aligned · Halal-aware library · No gambling mechanics"
+  "footer.compliance_inline": "PDPA-SG · PDPA-MY · GDPR-aligned · Halal-aware library · No gambling mechanics",
+  "footer.address": "Singapore office · 79 Anson Rd, Singapore 079906 · UEN 200103167W (Mozat Pte Ltd, since 2001)",
+  "footer.verify_prefix": "Verify us independently:"
 }

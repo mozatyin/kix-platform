@@ -1,0 +1,39 @@
+{
+  "id": "class_find_voucher_v1",
+  "name": "Class-Find Voucher (geofence)",
+  "vertical": "fitness",
+  "subvertical": "studio",
+  "phase": 1,
+  "priority": 9,
+  "based_on": "new_archetype",
+  "delta": "geofence-triggered off-peak fill game",
+  "mechanic": "geofence_then_60s_window",
+  "duration_sec_target": 60,
+  "core_loop": "player walks within 200m of studio at off-peak time → push notif fires → 60s game → instant voucher for next available class",
+  "voucher_default": {
+    "SG": "S$15 off trial class",
+    "MY": "RM50 off trial class"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "ms-MY"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "timer_animation",
+    "class_card"
+  ],
+  "estimated_cpa": {
+    "SG": 24.0,
+    "MY": 84.0
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen",
+  "notes": "Requires push-notif permission on KiX user app; web fallback shows banner if user opens app within window"
+}

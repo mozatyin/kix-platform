@@ -1,0 +1,39 @@
+{
+  "id": "latte_art_match_v2_bm",
+  "name": "Latte-art Match v2 (BM/MY)",
+  "vertical": "fnb",
+  "subvertical": "specialty-coffee",
+  "phase": 1,
+  "priority": 1,
+  "based_on": "latte_art_match_v1",
+  "delta": "Bahasa Melayu copy + Malaysian café asset slots + RM voucher denomination",
+  "mechanic": "memory_pair_match",
+  "duration_sec_target": 75,
+  "core_loop": "show 6 latte-art patterns → player matches pairs → 3 correct unlocks voucher",
+  "voucher_default": {
+    "SG": "S$2 off any coffee",
+    "MY": "RM7 off any kopi"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG",
+    "ms-MY",
+    "zh-Hans-SG"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "6_pattern_images",
+    "reward_copy"
+  ],
+  "estimated_cpa": {
+    "SG": 4.2,
+    "MY": 14.7
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen"
+}

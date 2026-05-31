@@ -1,0 +1,39 @@
+{
+  "id": "ninety_day_challenge_v1",
+  "name": "90-Day Challenge",
+  "vertical": "fitness",
+  "subvertical": "gym",
+  "phase": 1,
+  "priority": 10,
+  "based_on": "new_archetype",
+  "delta": "long-tail retention game (12-week structured quest)",
+  "mechanic": "weekly_quest_chain",
+  "duration_sec_target": 15,
+  "core_loop": "weekly mini-goal (e.g. 'attend 3 classes this week') → check off → progress bar advances → at week 12 unlock merch pack",
+  "voucher_default": {
+    "SG": "Free merchandise pack (T-shirt + bottle) at 90d",
+    "MY": "Free merchandise pack (T-shirt + bottle) at 90d"
+  },
+  "halal_safe": true,
+  "locales": [
+    "en-SG"
+  ],
+  "tikok_pixel_events": [
+    "ViewContent",
+    "CompleteRegistration",
+    "Purchase"
+  ],
+  "asset_slots": [
+    "bg_image",
+    "logo",
+    "week_grid_12",
+    "merch_reveal"
+  ],
+  "estimated_cpa": {
+    "SG": 32.0,
+    "MY": 112.0
+  },
+  "verticals_blocked": [],
+  "status": "pending_gen",
+  "notes": "Highest retention impact in benchmark; longest commitment from customer"
+}

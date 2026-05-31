@@ -1,0 +1,68 @@
+{
+  "phase": 1,
+  "plan_doc": "docs/library-scaleup-plan-140-to-340.md",
+  "generated_by": "Wave I.D-1 stubs (manual seeds)",
+  "next_stage": "ELTM brick.gen_foundation pipeline per spec",
+  "specs": [
+    {
+      "id": "latte_art_match_v2_bm",
+      "name": "Latte-art Match v2 (BM/MY)",
+      "vertical": "fnb",
+      "priority": 1
+    },
+    {
+      "id": "spice_level_roulette_v1",
+      "name": "Spice-level Roulette",
+      "vertical": "fnb",
+      "priority": 2
+    },
+    {
+      "id": "bubble_tea_mixer_v3",
+      "name": "Bubble Tea Mixer v3",
+      "vertical": "fnb",
+      "priority": 3
+    },
+    {
+      "id": "style_match_apparel_v1",
+      "name": "Style Match (apparel)",
+      "vertical": "retail",
+      "priority": 4
+    },
+    {
+      "id": "mystery_box_daily_v1",
+      "name": "Mystery Box Daily",
+      "vertical": "retail",
+      "priority": 5
+    },
+    {
+      "id": "color_match_challenge_v1",
+      "name": "Color Match Challenge",
+      "vertical": "beauty",
+      "priority": 6
+    },
+    {
+      "id": "spa_stress_quiz_v1",
+      "name": "Spa Stress-Level Quiz",
+      "vertical": "beauty",
+      "priority": 7
+    },
+    {
+      "id": "attendance_streak_v2",
+      "name": "Attendance Streak v2",
+      "vertical": "fitness",
+      "priority": 8
+    },
+    {
+      "id": "class_find_voucher_v1",
+      "name": "Class-Find Voucher (geofence)",
+      "vertical": "fitness",
+      "priority": 9
+    },
+    {
+      "id": "ninety_day_challenge_v1",
+      "name": "90-Day Challenge",
+      "vertical": "fitness",
+      "priority": 10
+    }
+  ]
+}
