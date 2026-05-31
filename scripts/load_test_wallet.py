@@ -217,8 +217,10 @@ async def _run_smoke_load(sla: LoadSLA, mode: str, redis_url: str = "") -> LoadR
         nonlocal errors, deadlocks
         async with sem:
             try:
+                # Use the SAME bench_brand_N key naming as _RealRedisWallet.setup()
+                # so balances are pre-seeded. Simulator ignores key names.
                 result = await wallet.commission_split(
-                    f"brand_a_{i % 1000}", f"brand_b_{(i + 1) % 1000}",
+                    f"bench_brand_{i % 1000}", f"bench_brand_{(i + 1) % 1000}",
                     amount=10.0 + (i % 100), take_rate=0.10,
                 )
                 if not result.get("ok"):

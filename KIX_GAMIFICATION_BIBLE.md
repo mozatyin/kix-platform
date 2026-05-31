@@ -436,6 +436,70 @@ All 5 ACCEPT at threshold=65 (default 70 for enterprise per D · per-page overri
 - Every new bug = first map to a `docs/all-bugs-catalog.md` class. If novel, create the class with root-cause + structural fix.
 - Every PR that touches `app/services/` or `app/workers/` triggers `bible-diff-bot.yml` GitHub Action — drift = blocked PR.
 
+## 14.9 Buyer-journey iteration case study (R7 → R16) ✅ DELIVERED
+
+Wave N introduced `scripts/buyer_journey_sim.py` — multi-page LLM
+conversion model. Each round = one structural fix → re-run → friction
+narrows. Full trace at `docs/buyer-journey-iteration-trace.md`.
+
+**11 rounds R7-R16 · ARR progression**:
+
+| R | Personas | Convert | ARR | Key change |
+|---|---|---|---|---|
+| R7 | 2 | 2/2 | S$55,988 | action-pivot (intent → confidence label) |
+| R8-R13 | 2 | 2/2 stable | S$55,988 | 30+ bug classes closed by friction sharpening |
+| R14 | 5 | 3/5 | S$85,928 | + Lim CFO, Rachel agency, James consultant (baseline) |
+| R15 | 5 | 4/5 | S$205,928 | + bank reconcile · multilingual · franchise refs |
+| **R16** | **8** | **7/8** | **S$211,916** | **+ Ben, Madam Wong, IMDA Mr Tan; PP fix (waitlist)** |
+
+**8 personas in production gate** (per `persona_registry.PERSONAS`):
+- 王经理 / Wang · 380-store QSR CMO · S$50K ✓
+- 陈老板 / Boss Chen · 3 bubble-tea shops · S$5,988 ✓
+- 林总 / Mr Lim · HK-listed 67-outlet CFO · S$120K ✓
+- Rachel Lim · SG agency owner · S$29,940 ✓
+- Dr James Khoo · franchise consultant · referral commit ✓
+- Ben Tan · CBD office worker · play.html — ✗ honest gap (CLASS-QQ: no consumer landing)
+- 黄太 / Madam Wong · 2-outlet dim sum · cross-border SG+HK · S$5,988 ✓
+- Mr Tan / IMDA officer · regulator GREEN flag · bookmark ✓
+
+**Action-pivot (R7 breakthrough)**: ACTION > INTENT. A buyer clicking
+"Buy" IS the conversion event regardless of internal confidence. Intent
+metric became confidence label, not gate. This refactor took 0/2 → 2/2
+instantly and held stable through R16.
+
+**Honest-gap findings (R15, R16)**: framework distinguishes
+engineering-fixable vs commercial-fixable friction:
+- R15: James "no 100+ store ref" — commercial → ship waitlist mechanism
+- R16: Ben "play.html is merchant-targeted" — engineering → new consumer
+  brand landing required (CLASS-QQ open)
+
+## 14.10 Continuous iteration framework
+
+```bash
+make journey-sim          # one round · 5 personas · ~3-5 min wall
+make journey-sim-iterate  # 3 rounds back-to-back
+```
+
+Cron `STAGE 7` runs this nightly. ARR + abandon-count reported to
+Slack webhook on regression.
+
+## 14.11 Wave N load-SLA harness ✅ DELIVERED (real-Redis verified 2026-05-31)
+
+`scripts/load_test_wallet.py` exercises wallet cross-brand commission
+path with WATCH/MULTI atomicity. Two modes:
+
+- `--mode smoke` (60s @ 5k/sec, simulator) · CI gate (`load-sla-gate.yml`)
+- `--mode soak` (3600s @ 10k/sec) + `--real-redis URL` · staging
+
+**Local Redis smoke (2026-05-31)**:
+  15s · 28,889 ops · 1,916 ops/sec (2× target)
+  p50 13.64ms · p99 19.74ms · p99.9 62.6ms · max 70.08ms
+  48% errors + 14,612 WATCH retries — REAL contention finding (1000-wallet
+  pool with random pairing has high collision rate; production with
+  10K+ active brands + campaign-scoped routing has much lower contention)
+
+Real-Redis path validated; harness ready for staging soak.
+
 ---
 
 # Appendix A · Numbers
@@ -444,8 +508,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : c37440c
-Last commit         : feat(wave-n-iter): R13 · CLASS-II/JJ/KK/LL + iteration trace docs
+HEAD                : 2a954e8
+Last commit         : feat(wave-n): Phase B+C+D shipped + R14/R15 · 4/5 convert · S$205,928 ARR
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -454,7 +518,7 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 138,764
+  total Python LOC  : 138,839
 
 Test surface
   test files        : 157

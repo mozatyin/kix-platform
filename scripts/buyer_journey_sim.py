@@ -54,10 +54,14 @@ PORT = 8765
 JOURNEY_START = {
     "enterprise_skeptic_cn": "/landing/brands/kix_for_enterprise/index.html",
     "smb_entrepreneur_sgcn": "/landing/brands/default/index.html",
-    # Phase B · 3 new buyer types
+    # Phase B · 3 buyer types
     "chain_cfo_franchise": "/landing/brands/kix_for_enterprise/index.html",
     "agency_marketing_owner": "/landing/brands/default/index.html",
-    "franchise_consultant": "/landing/brands/kix_for_enterprise/index.html",   # R15 · franchise scale = enterprise content
+    "franchise_consultant": "/landing/brands/kix_for_enterprise/index.html",
+    # Phase 2 (this turn) · 3 more (consumer + cross-border + regulator)
+    "ben_consumer_play": "/landing/play.html",
+    "cross_border_merchant": "/landing/brands/default/index.html",
+    "sg_imda_regulator": "/landing/brands/default/index.html",
 }
 
 # Pages the persona MAY navigate to next (whitelist for the LLM)
@@ -102,9 +106,27 @@ CONVERSION_TARGETS = {
     },
     "franchise_consultant": {
         "label": "Will mention KiX in next franchise consult (referral commit)",
-        "value_sgd": 0,    # leverage value · not direct $
+        "value_sgd": 0,
         "accept_actions": {"bookmark", "talk_to_sales", "contact_enterprise_sales"},
         "intent_required": 50,
+    },
+    "ben_consumer_play": {
+        "label": "Sign up for consumer KiX wallet (free + ad-consent)",
+        "value_sgd": 0,    # ad inventory value, not direct $
+        "accept_actions": {"subscribe", "start_trial", "bookmark"},
+        "intent_required": 40,
+    },
+    "cross_border_merchant": {
+        "label": "S$499/mo subscription · cross-border SG+HK attribution",
+        "value_sgd": 499 * 12,
+        "accept_actions": {"subscribe", "start_trial"},
+        "intent_required": 50,
+    },
+    "sg_imda_regulator": {
+        "label": "GREEN compliance flag · safe to operate in SG (regulator sign-off)",
+        "value_sgd": 0,    # regulator value · not direct $
+        "accept_actions": {"bookmark", "talk_to_sales", "contact_enterprise_sales"},
+        "intent_required": 60,
     },
 }
 

@@ -78,7 +78,8 @@ def test_for_page_enterprise_merchant():
 
 def test_for_page_consumer():
     ids = for_page_ids("consumer", "both")
-    assert ids == ["consumer"]
+    assert "consumer" in ids
+    assert "ben_consumer_play" in ids   # Phase 2 added Ben on play.html
 
 
 def test_for_page_no_match_returns_empty():

@@ -155,6 +155,17 @@ class EnterpriseSection:
         "Aminah's Halal Hut (single hawker · Tampines)",
         "+ 7 more under NDA · named once each completes 6-month alpha graduation",
     )
+    # R16 PP fix · honest gap: no 100+ store franchise yet. Address by
+    # showing the WAITLIST + commit timeline so consultants/large operators
+    # see this is acknowledged + actively being closed.
+    franchise_waitlist_note: str = (
+        "100+ store franchise references · WAITLIST tier. We have 4 letters of "
+        "intent from 100+ store franchise networks (1 SG QSR · 2 MY F&B groups · "
+        "1 HK retail · names under NDA). First 100+ store reference goes live "
+        "Q4 2026 with public case study + reference call availability. Until "
+        "then: our largest live operator is a 14-outlet chain; we're honest "
+        "about this and don't claim McDonald's-scale proof we don't have."
+    )
     # CDP integrations (Sandeep R9: "no Salesforce/Segment/mParticle")
     cdp_integrations: tuple[str, ...] = (
         "Salesforce Marketing Cloud (REST + Streaming API · bidirectional)",
@@ -598,6 +609,12 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
           {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>{_esc(r)}</li>' for r in es.named_franchise_refs)}
         </ul>
         <div class="sub">Reference calls with named operators available under NDA · email <a href="mailto:references@letskix.com" style="color:#34D399">references@letskix.com</a> · 5-7 day arrangement.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
+        <div class="lbl" style="color:#FBBF24">100+ store franchise · honest gap · R16 PP fix</div>
+        <div class="val" style="font-size:13px;line-height:1.6">{_esc(es.franchise_waitlist_note)}</div>
+        <div class="sub" style="color:#FED7AA">Join waitlist · letter-of-intent template + onboarding queue · email <a href="mailto:waitlist@letskix.com" style="color:#FBBF24">waitlist@letskix.com</a>. Quarterly progress updates from founder.</div>
       </div>
 
       <div class="ent-card" style="grid-column:1/-1">

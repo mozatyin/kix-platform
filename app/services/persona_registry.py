@@ -218,6 +218,64 @@ PERSONAS: dict[str, Persona] = {
         axes=PersonaAxes(audience="merchant", scale="chain"),
         score_floor_override=55,
     ),
+    # ── Wave N Phase-2 buyer-types (consumer + cross-border + regulator) ──
+    "ben_consumer_play": Persona(
+        persona_id="ben_consumer_play",
+        name="Ben Tan (player)",
+        role=(
+            "Singapore office worker. Lunch in CBD daily. Scans a QR if it's "
+            "under 3 seconds. Won't install an app or fill a form for a free "
+            "coffee. Cynical about ad tracking but loves vouchers."
+        ),
+        context=(
+            "Walked past Heng Heng Kopi yesterday; saw the KiX spin game on a "
+            "screen and tried it. Won S$2 off next kopi. Now on /landing/play.html "
+            "exploring whether to try more shops nearby. Conversion = sign up "
+            "for the consumer-side KiX wallet (free, but commits to ad-tracking "
+            "consent). Won't sign up if the page feels like a merchant pitch."
+        ),
+        axes=PersonaAxes(audience="consumer", scale="both"),
+        score_floor_override=40,
+    ),
+    "cross_border_merchant": Persona(
+        persona_id="cross_border_merchant",
+        name="Madam Wong / 黄太",
+        role=(
+            "Owner of a 2-outlet dim sum brand (1 in Singapore, 1 in Hong Kong). "
+            "Husband runs HK; she runs SG. Both stores ~5 years old. Wants to "
+            "cross-promote — when SG customers travel to HK they should get a "
+            "voucher at her HK store, vice versa. Frustrated that no loyalty "
+            "platform handles cross-jurisdiction PSPs cleanly."
+        ),
+        context=(
+            "Will subscribe at S$499/mo IF cross-border attribution works "
+            "(SG PayNow + HK FPS reconcile to one merchant view). Otherwise "
+            "stays with 2 separate IG accounts. Needs proof: identity stitching "
+            "across SG kid + HK kid + currency conversion + tax allocation."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="single"),
+        score_floor_override=45,
+    ),
+    "sg_imda_regulator": Persona(
+        persona_id="sg_imda_regulator",
+        name="Mr Tan / IMDA officer",
+        role=(
+            "Singapore IMDA + PDPC regulator. Reviewing KiX for: PDPA-SG "
+            "compliance, consent flow auditability, data residency, breach "
+            "notification SLA, ad-tech transparency (esp. geofence privacy + "
+            "minor protection on game mechanics)."
+        ),
+        context=(
+            "Will not 'sign up' but reviews the public-facing landing pages + "
+            "DPA + audit log architecture. Goal: flag the platform GREEN "
+            "(safe to operate in SG), AMBER (operate with conditions), or RED "
+            "(needs remediation before launch). Conversion = ✓ GREEN flag, "
+            "which surfaces as bookmark + talk_to_sales (compliance review meeting)."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="both"),
+        score_floor_override=60,    # regulator is the strictest reviewer
+        for_gate=False,    # regulator is a critic axis; opt-in for sweeps
+    ),
     "steve_jobs": Persona(
         persona_id="steve_jobs",
         name="Steve Jobs",
