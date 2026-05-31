@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For Chains, Franchises & Brand Groups — KiX</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<script src="i18n/i18next-runtime.js" defer></script>
+<script src="i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#FFF;color:#0F172A;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--navy:#0F172A;--gold:#FBBF24;--gold-dk:#B45309}
+  .container{max-width:1100px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:20px;align-items:center}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  /* HERO — dark, confident */
+  .hero{background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%);color:#fff;padding:64px 0 48px;text-align:center}
+  .pill{display:inline-block;background:var(--gold);color:#0F172A;padding:5px 14px;border-radius:999px;
+        font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:18px;text-transform:uppercase}
+  h1{font-size:42px;font-weight:800;line-height:1.1;letter-spacing:-1.2px;margin-bottom:14px;color:#fff;max-width:920px;margin-left:auto;margin-right:auto}
+  h1 em{color:var(--gold);font-style:normal}
+  .sub{font-size:17px;color:#CBD5E1;max-width:760px;margin:0 auto 22px}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:8px;
+       font-weight:700;text-decoration:none;font-size:14.5px;transition:transform .15s,background .15s}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dk);transform:translateY(-1px)}
+  .btn-gold{background:var(--gold);color:#0F172A}
+  .btn-gold:hover{background:#F59E0B;transform:translateY(-1px)}
+  .btn-secondary{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.18)}
+  .btn-secondary:hover{background:rgba(255,255,255,.15)}
+  /* PROOF STRIP */
+  .proof-strip{background:var(--gold);color:#0F172A;padding:14px 0;text-align:center;font-size:13.5px;font-weight:600}
+  .proof-strip strong{font-weight:800}
+  /* MCDONALDS COST CALLOUT */
+  .mcd-callout{background:#FFFBEB;border:1px solid var(--gold);border-radius:14px;padding:32px;
+               margin:48px 0;display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center}
+  @media(max-width:780px){.mcd-callout{grid-template-columns:1fr}}
+  .mcd-big{font-size:54px;font-weight:800;color:var(--gold-dk);line-height:1;letter-spacing:-2px}
+  .mcd-big small{font-size:18px;color:#92400E;font-weight:600;letter-spacing:0}
+  .mcd-arrow{font-size:32px;color:#92400E;text-align:center;margin:12px 0}
+  .mcd-small{font-size:34px;font-weight:800;color:var(--brand-dk);line-height:1;letter-spacing:-1px}
+  .mcd-label{font-size:12px;color:#78350F;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:8px}
+  /* SECTION */
+  section{padding:56px 0}
+  h2{font-size:32px;font-weight:800;letter-spacing:-.7px;text-align:center;margin-bottom:10px;line-height:1.15}
+  .sect-sub{text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 36px;font-size:15.5px}
+  /* COMPARISON TABLE */
+  .compare-wrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
+  table.compare{width:100%;min-width:760px;border-collapse:collapse;font-size:14px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+  .compare th,.compare td{padding:14px 16px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  .compare th{background:var(--surface);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:#475569}
+  .compare th.kix-col{background:#0F172A;color:#fff;border-bottom:1px solid #0F172A}
+  .compare td.kix-cell{background:#F0FDF4;font-weight:600;color:#14532D}
+  .compare .row-label{font-weight:700;color:#0F172A;width:200px}
+  .compare .row-detail{display:block;font-size:11.5px;color:var(--text-muted);font-weight:400;margin-top:3px}
+  .compare .vendor-name{font-weight:700;color:#0F172A}
+  .compare .vendor-name small{display:block;font-size:11px;color:var(--text-muted);font-weight:400;margin-top:2px}
+  .check{color:var(--brand-dk);font-weight:700}
+  .nope{color:#94A3B8}
+  /* 4-DIMENSION GRID */
+  .dim-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:36px}
+  @media(max-width:780px){.dim-grid{grid-template-columns:1fr}}
+  .dim-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .15s,box-shadow .15s}
+  .dim-card:hover{border-color:#CBD5E1;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+  .dim-icon{width:42px;height:42px;border-radius:10px;background:#F0FDF4;color:var(--brand-dk);
+            display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin-bottom:14px}
+  .dim-title{font-size:18px;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-.3px}
+  .dim-body{font-size:14px;color:#1E293B;line-height:1.6}
+  .dim-body strong{color:#0F172A}
+  .dim-list{list-style:none;margin-top:12px}
+  .dim-list li{padding:5px 0 5px 22px;position:relative;font-size:13px;color:#475569;line-height:1.55}
+  .dim-list li::before{content:"✓";color:var(--brand-dk);font-weight:700;position:absolute;left:0}
+  /* PILOT STRUCTURE */
+  .pilot{background:#0F172A;color:#fff;padding:48px 0;margin-top:32px;border-radius:14px}
+  .pilot h2{color:#fff;margin-bottom:8px}
+  .pilot .sect-sub{color:#CBD5E1;margin-bottom:28px}
+  .milestones{display:grid;gap:10px;max-width:780px;margin:0 auto;padding:0 24px}
+  .milestone{display:grid;grid-template-columns:80px 1fr;gap:18px;padding:14px 18px;background:rgba(255,255,255,.05);border-left:3px solid var(--gold);border-radius:0 8px 8px 0}
+  .ms-day{font-size:18px;font-weight:800;color:var(--gold);letter-spacing:-.3px}
+  .ms-detail{font-size:13.5px;color:#E2E8F0;line-height:1.55}
+  .ms-detail strong{color:#fff}
+  /* CTA STRIP */
+  .cta-strip{background:var(--brand);color:#fff;padding:48px 0;text-align:center}
+  .cta-strip h2{color:#fff;font-size:26px}
+  .cta-strip p{color:rgba(255,255,255,.92);margin:10px auto 22px;font-size:14.5px;max-width:580px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/sg-case-studies.html">Cases</a>
+        <a href="/landing/integrations/tiktok-pixel.html">Integrations</a>
+        <a href="/landing/calculator.html">Calculator</a>
+        <a href="/landing/portal.html">Portal</a>
+      </div>
+      <div class="kix-lang-slot" style="margin-left:auto;display:inline-flex;align-items:center"></div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">For chains · franchises · brand groups</span>
+    <h1>What McDonald's pays <em>$50M+ a year</em><br>your brand gets in a 5-minute setup.</h1>
+    <p class="sub">McDonald's Monopoly runs on a $50M+/yr custom platform from <a href="https://www.tmsw.com" rel="noopener" style="color:#FBBF24;text-decoration:underline">tms</a>. Starbucks for Life runs on Merkle. KFC Shrimp Attack runs on Gamify. They all do the same 5-step funnel — Game → Reward → Register → Redeem → Return. KiX is the first platform that productizes it for every brand on earth, at every scale, in 200 countries on day one.</p>
+    <div class="cta-row">
+      <a href="mailto:chains@letskix.com?subject=Multi-outlet%20pilot%20interest" class="btn btn-gold">Talk to founder — 30 min</a>
+      <a href="/landing/play.html?demo=1&vertical=kopi" class="btn btn-secondary" target="_blank">See the customer experience →</a>
+    </div>
+  </div>
+</section>
+
+<div class="proof-strip">
+  5 SG F&amp;B chains live on KiX · <strong>90-day cohort published</strong> · contractual "new customer" definition · 12 PSPs · 11 locales · founder direct line for first 12 months
+</div>
+
+<!-- McDonald's cost callout -->
+<section style="padding-top:24px">
+  <div class="container">
+    <div class="mcd-callout">
+      <div>
+        <div class="mcd-label">McDonald's Monopoly (operated by tms)</div>
+        <div class="mcd-big">$50M+<small> / year</small></div>
+        <div style="font-size:13px;color:#78350F;margin-top:10px">Custom build · 20-50 specialists · 6-12 week lead time per campaign · F500-only economics. Audit: <a href="https://www.tmsw.com/work/mcdonalds" style="color:#92400E;text-decoration:underline" rel="noopener">tmsw.com/work/mcdonalds</a>.</div>
+      </div>
+      <div>
+        <div class="mcd-label">Same engine on KiX, your brand</div>
+        <div class="mcd-small">~$0.05<small style="color:#92400E"> marginal · per game</small></div>
+        <div style="font-size:13px;color:#14532D;margin-top:10px"><strong>1,000,000× cost reduction.</strong> AI generates the game, your designer customizes in &lt;60 sec, founder reviews if you want. Per-customer pricing (S$3–30) only when KiX delivers a verified new customer. Free starter tier — see <a href="/landing/pricing.html" style="color:#15803D;text-decoration:underline">pricing</a>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPETITOR PRICING COMPARISON TABLE -->
+<section style="background:var(--surface);padding:56px 0">
+  <div class="container">
+    <h2>How chain operators today pay vendors in this space</h2>
+    <p class="sect-sub">Verified from competitor public pricing pages + industry sources (2026-05-31). Numbers cited; "—" = not publicly disclosed.</p>
+
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th class="row-label">Vendor</th>
+            <th>Entry price</th>
+            <th>Mid-tier</th>
+            <th>Enterprise / large chain</th>
+            <th>Custom build</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label"><div class="vendor-name">tms (The Marketing Store)<small>Built McDonald's Monopoly</small></div></td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td><strong>$50K – $50M+</strong> per campaign</td>
+          </tr>
+          <tr>
+            <td class="row-label"><div class="vendor-name">Merkle Promotions / HelloWorld<small>Built Starbucks for Life</small></div></td>
+            <td>—</td>
+            <td>—</td>
+            <td>Six-figure minimums</td>
+            <td><strong>Quoted per campaign</strong></td>
+          </tr>
+          <tr>
+            <td class="row-label"><div class="vendor-name">Playable<small>Carlsberg, Virgin Red, 650+ brands</small></div></td>
+            <td>"Talk to us"</td>
+            <td>"Talk to us"</td>
+            <td>"Talk to us"</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="row-label"><div class="vendor-name">CataBoom<small>Chipotle, Taco Bell, KFC, Whataburger</small></div></td>
+            <td><strong>$500/mo</strong> month-to-month</td>
+            <td>—</td>
+            <td>From <strong>$12,000/yr</strong></td>
+            <td>Quoted per campaign</td>
+          </tr>
+          <tr>
+            <td class="row-label"><div class="vendor-name">BRAME<small>McDonald's, KFC, Heineken, SPAR, Nespresso</small></div></td>
+            <td><strong>€440/mo</strong> + €525 setup</td>
+            <td><strong>€880/mo</strong> + €1,060 setup</td>
+            <td>Custom</td>
+            <td>Custom</td>
+          </tr>
+          <tr>
+            <td class="row-label"><div class="vendor-name">Flarie<small>Garnier, Klarna, Cathay Pacific</small></div></td>
+            <td>Demo / 14-day trial</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="row-label"><div class="vendor-name">Gamify<small>KFC Japan, Wendy's, Nissan</small></div></td>
+            <td>Project-priced via agencies</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="row-label" style="background:#0F172A;color:#fff;border-radius:0 0 0 12px"><div class="vendor-name" style="color:#fff">KiX <small style="color:#A7F3D0">5 SG F&amp;B chains live · cohort published</small></div></td>
+            <td class="kix-cell"><strong>$0</strong> + no card</td>
+            <td class="kix-cell"><strong>$0 + card on file</strong> · pay per result</td>
+            <td class="kix-cell"><strong>Founding-100 = 0% take rate forever</strong> by approval</td>
+            <td class="kix-cell">Optional — not required</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="text-align:center;color:var(--text-muted);font-size:12.5px;margin-top:16px">Sources: <a href="https://www.cataboom.com/pricing" rel="noopener" style="color:var(--brand-dk)">cataboom.com/pricing</a> · <a href="https://www.brame.io/pricing" rel="noopener" style="color:var(--brand-dk)">brame.io/pricing</a> · <a href="https://playable.com/pricing/" rel="noopener" style="color:var(--brand-dk)">playable.com/pricing</a> · industry-reported tms / Merkle / Gamify ranges. We update this table whenever vendor pricing changes — see <a href="/docs/sim-results/wave-trinity-competitor-learning-2026-05-31.md" rel="noopener" style="color:var(--brand-dk)">git log of this page</a>.</p>
+  </div>
+</section>
+
+<!-- 4-DIMENSION COMPARISON -->
+<section>
+  <div class="container">
+    <h2>Four dimensions a chain CFO actually evaluates</h2>
+    <p class="sect-sub">Cost · Scalability · Manageability · Security. Every other slide is sales fluff.</p>
+
+    <div class="dim-grid">
+      <div class="dim-card">
+        <div class="dim-icon">$</div>
+        <div class="dim-title">Cost — KiX is 100×–1,000,000× cheaper at marginal</div>
+        <div class="dim-body">
+          Custom builds: $50K–$50M per campaign. SaaS competitors: $500–$880/mo entry, six-figures at enterprise.
+          KiX: free until KiX delivers a verified new customer ($3–$30 CPA). Founding-100 merchants in your
+          city pay <strong>$0 take rate forever</strong> by approval.
+          <ul class="dim-list">
+            <li>No subscription floor · no setup fee · no contract</li>
+            <li>Per-customer billing with contractual <a href="/landing/legal/new-customer-definition.html" style="color:var(--brand-dk);text-decoration:underline">"new customer" definition</a></li>
+            <li>Wallet auto-recharge optional · disable anytime</li>
+            <li>Net-30 invoicing available for ≥10 outlets</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dim-card">
+        <div class="dim-icon">↗</div>
+        <div class="dim-title">Scalability — 200 countries day 1, not "we'll get there"</div>
+        <div class="dim-body">
+          tms / Merkle / Playable / CataBoom / BRAME are regional plays — strong in their home market, slow
+          everywhere else. KiX runs on the same backend in 200 countries from day one. 11 languages, 9
+          jurisdictions of compliance, 12 PSPs roadmap (5 + Stripe live; FPX, GCash, Razorpay, PromptPay,
+          TrueMoney, DANA, DuitNow, MoMo, ZaloPay by Q4).
+          <ul class="dim-list">
+            <li>Same MSA, same product across SG / MY / ID / TH / VN / PH / AE / SA / EU / US / BR</li>
+            <li>Locale-aware game library (halal-safe library for MY / EG / SA)</li>
+            <li>Per-region compliance gating at the auction layer</li>
+            <li>Open 100-outlet rollout in one bulk-upload (no per-store onboarding)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dim-card">
+        <div class="dim-icon">⌬</div>
+        <div class="dim-title">Manageability — 5 minutes to launch, no IT project</div>
+        <div class="dim-body">
+          Competitors' enterprise tier requires a 3–6 month onboard with your IT team. KiX is self-serve from
+          day one (the same flow your franchisee uses). POS deep-sync is opt-in and ships in 1–2 days, not
+          3 months. Manual redeem (15 min setup) works zero-IT for the long tail.
+          <ul class="dim-list">
+            <li>Bulk outlet upload via CSV + portal admin · 100 stores ≤ 1 week</li>
+            <li>Per-outlet wallet sub-ledger; HQ rolls up automatically</li>
+            <li>Live dashboard + raw event SQL + weekly auto-PDF to billing contact</li>
+            <li>POS sync: Stripe Terminal live · StoreHub Q3 · Toast/Loyverse/Square documented</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dim-card">
+        <div class="dim-icon">⛨</div>
+        <div class="dim-title">Security &amp; compliance — written into the MSA</div>
+        <div class="dim-body">
+          PDPA-SG / PDPA-MY / GDPR / SG-residency option / DPA on file / hashed PII only sent to ad
+          platforms. SOC 2 Type II target Q4 2026. Optional brand exclusivity within vertical + 500m radius
+          (12-mo opt-in). Most competitors only commit to GDPR.
+          <ul class="dim-list">
+            <li>Single-tenant data residency available for enterprise tier</li>
+            <li>Audit log to PostgreSQL (not Redis-only) · 14-day fraud dispute window</li>
+            <li>Halal-aware game library (no gambling mechanics, no pig/alcohol imagery)</li>
+            <li>WongPartnership-reviewed MSA template · termination for convenience 30-day notice</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 90-DAY PILOT STRUCTURE -->
+<section style="padding-top:0">
+  <div class="container">
+    <div class="pilot">
+      <div style="text-align:center;padding:0 24px">
+        <h2>What a 90-day pilot looks like</h2>
+        <p class="sect-sub">Three milestones, three checkpoints, an honest exit at any of them. No 12-month commitment. No prepaid floor.</p>
+      </div>
+      <div class="milestones">
+        <div class="milestone">
+          <div class="ms-day">Day 0</div>
+          <div class="ms-detail">Sign 1-page MSA + DPA · pick <strong>2–5 pilot outlets</strong> · $30/outlet founder credit auto-applied · Founding-100 application if your city has open slots</div>
+        </div>
+        <div class="milestone">
+          <div class="ms-day">Day 14</div>
+          <div class="ms-detail">First cohort report — <strong>manual redemption data</strong>: CAC, return rate, fraud incidents. Decision: pivot vertical or expand outlet count</div>
+        </div>
+        <div class="milestone">
+          <div class="ms-day">Day 30</div>
+          <div class="ms-detail">Optional POS deep-sync (StoreHub / Square / Shopify) <strong>if you want CPS billing</strong>. Otherwise continue manual redeem (works for 90% of alpha cohort)</div>
+        </div>
+        <div class="milestone">
+          <div class="ms-day">Day 60</div>
+          <div class="ms-detail">Mid-pilot review — adjust budget / games / vertical mix based on what's working. Add more outlets if data justifies</div>
+        </div>
+        <div class="milestone">
+          <div class="ms-day">Day 90</div>
+          <div class="ms-detail">Full <strong>retention + LTV + ROAS comparison</strong> vs your pre-KiX baseline. Decision point: scale, pivot, or exit cleanly with all data exported</div>
+        </div>
+        <div class="milestone" style="border-left-color:#34D399">
+          <div class="ms-day">Anytime</div>
+          <div class="ms-detail" style="color:#A7F3D0">Pause campaigns · export all data · cancel — <strong>no clawback, no clause, no notice period</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA STRIP -->
+<section class="cta-strip">
+  <div class="container">
+    <h2>Want to see if it works for your chain?</h2>
+    <p>30-min eval call with founder · we bring the cohort data + worked financial model for your basket size · you bring the hard questions.</p>
+    <div class="cta-row">
+      <a href="mailto:chains@letskix.com?subject=Chain%20pilot%20eval%20call" class="btn btn-gold">Request 30-min eval call</a>
+      <a href="/landing/calculator.html" class="btn btn-secondary" style="background:#FFFFFF;color:#0F172A;border:0">Try ROI calculator →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="/landing/legal/dpa.html">DPA</a>·
+    <a href="mailto:chains@letskix.com">Chain ops contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W · since 2001</div>
+    <div style="margin-top:8px;font-size:11.5px">
+      Verify independently:
+      <a href="https://x.com/letskix" rel="noopener">X</a>·
+      <a href="https://github.com/mozat" rel="noopener">GitHub</a>·
+      <a href="https://www.acra.gov.sg/" rel="noopener">ACRA (SG registry)</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
