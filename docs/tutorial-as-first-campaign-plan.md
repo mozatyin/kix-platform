@@ -90,3 +90,44 @@ Each item is 8 seconds, auto-advances. Click to skip.
 - BM/CN/TH guided tour text (EN + SG-EN only for first ship; others Q4)
 - Voice-guided onboarding (someday)
 - Integration with TikTok-Pixel-already-configured (manual paste for now)
+
+---
+
+## Wave I.F MVP results (2026-05-31) — modal shipped, Aminah sim re-run
+
+The portal welcome modal MVP shipped in commit d2c42f3. Re-running Aminah
+(first_time_merchant) sim against the rendered modal via Sonnet 4.5 + playwright
+showed the modal **moved her from "close tab" to "WhatsApp founder first"** —
+real improvement but still not enough to launch.
+
+Raw verdict (full transcript: `/Users/mozat/a-docs/sim-v2-20260531-090713-aminah-welcome-modal.md`):
+> "Too confusing for now lah, later after dinner rush I ask my husband look
+>  together, see whether this thing really work or not — but honestly ah,
+>  if GrabFood or Foodpanda got simpler promo tool I use that first."
+
+### MVP-specific fixes to add (Wave I.F-2)
+
+| # | Friction | Fix |
+|---|----------|-----|
+| 1 | "Bubble tea example wrong" — F&B vertical maps to single game | Sub-vertical picker (kopi / nasi / bubble tea / hawker) → matches her real menu |
+| 2 | "S$200 budget too scary" | Lower default to S$50 + add slider 20/50/200/500 |
+| 3 | "What is CPA / geofence / sandbox?" | Plain-language labels: "Cost per new customer" / "Customers within 200m" / "Test mode (free)" |
+| 4 | "Goes live in 5 min too fast" | Add "Preview what customer will see" step before launch |
+| 5 | "Wants BM" | Modal needs to honor active i18next locale (key wiring) |
+| 6 | "Show me nasi padang example" | Generate example voucher copy matching sub-vertical |
+| 7 | "First S$10 free credit like Grab" | Founding-100 + RM/SGD starter credit mechanic |
+
+### Estimated effort
+1.5 days for items 1-4 + 6; item 5 + 7 are separate workstreams (i18next
+namespace + business decision respectively).
+
+### Verification path
+Re-run Aminah v2 sim after each fix. Target: verdict shifts from "WhatsApp
+founder first" to "OK I'll launch in test mode and see what happens."
+
+### Lesson learned
+A welcome modal alone doesn't fix first-time-merchant friction. The modal
+must teach the merchant's mental model in their language with their products
+— not show a generic template. This matches the "因材施教" attention-routing
+insight in user memory: every interaction needs persona-specific routing,
+not a one-size-fits-all flow.
