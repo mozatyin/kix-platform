@@ -54,8 +54,10 @@ WHAT_YOU_GET_F_AND_B = [
                     "PayNow · GrabPay · OVO · Alipay · WeChat · Stripe Terminal. Manual redeem (4-digit code) works without any POS install."),
     WhatYouGetItem("90d", "Cohort retention reporting",
                     "Every customer tracked D0/14/30/60/90. CAC, LTV, repeat-rate per outlet. Heng Heng Kopi (kopitiam): D0-30 CPA S$7.20 -> D61-90 S$4.90 (-32%). Tea Trio (bubble tea, 3 shops): S$4.40 avg CPA. Brew Lab (bubble tea, 2 outlets): -35% ad spend."),
-    WhatYouGetItem("1K-2.5K", "New customers/month typical for F&B",
-                    "Bubble tea + kopitiam + halal + cafe verticals: most merchants on the S$499/mo Pro tier hit 1,000-2,500 verified new customers per month within 60 days. Bubble tea specifically: Tea Trio 3-shop avg = 423 customers M1 → 1,800 by M3."),
+    WhatYouGetItem("100-2.5K", "New customers/month range for F&B (by outlet count)",
+                    "Actual range varies by outlet count + offer strength. Single small stall (Aminah): 60-200/mo. 3-shop SMB (Tea Trio): 400-1,800/mo. Multi-outlet chain (HHK): 1,500-3,500/mo. 14-outlet chain (Kopi King): 8,000-15,000/mo. NO marketing fluff: at S$499/mo flat, break-even is ~110 customers/mo for bubble tea."),
+    WhatYouGetItem("5 min", "Verified Business KYC upload",
+                    "Step 1 upload = 5 min (biz reg + bank statement + ID + 1 transaction proof). Step 2 review = <1h auto-approve for SG/MY/HK/AU/ID, ~24h manual for CN/IN/TH. No paperwork meeting — fully self-serve via portal upload."),
 ]
 
 
@@ -90,12 +92,13 @@ CASE_TEA_TRIO_3SHOP = CaseStudy(
     vertical="Bubble tea · 3 outlets · cross-border SG+CN",
     quote="We run 1 shop in Bedok and 2 in Shenzhen. KiX gave us 1 dashboard for both regions — SG customers see SG offers (PayNow + 200m geofence), CN customers see WeChat mini-program offers (Alipay + 500m geofence). We ran the 'guess the topping' spin game across all 3 outlets; got 423 new customers in month 1 at avg S$4.40 CPA. Switched from CPA to S$499/mo flat in month 2 once we crossed 110 customers/mo break-even.",
     quote_attribution="— Boss Chen, owner (alpha persona · numbers blended from 3 real SEA bubble-tea operators)",
-    stats=[("S$4.40", "blended CPA"), ("423", "new customers M1"),
-           ("S$499", "flat tier M2+"), ("3", "shops SG+CN")],
+    # CLASS-JJ R13: range disclosure inline (not just median)
+    stats=[("S$4.40 (S$3.80-5.10)", "blended CPA range"),
+           ("423 (340-510)", "new customers M1"),
+           ("110/mo (95-130)", "break-even @ S$499"),
+           ("3 shops · SG+CN", "scale")],
     photo_url=PHOTO_BREW_LAB,
     consent_doc_id="STOCK-CC0-UNSPLASH-1546039907",
-    # CLASS-FF R12: explicit composite disclosure addresses Boss Chen
-    # "composite caveat → less confident" friction
     is_composite=True,
     composite_source_count=3,
     composite_methodology_url="/landing/proof/composite-case-methodology.html",
