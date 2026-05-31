@@ -357,6 +357,84 @@ PERSONAS: dict[str, Persona] = {
         axes=PersonaAxes(audience="merchant", scale="chain"),
         score_floor_override=50,
     ),
+    # ── R29 Phase-4 · 4 more buyer types (16 total) ──
+    "pos_technician_installer": Persona(
+        persona_id="pos_technician_installer",
+        name="Ravi Kumar · POS field installer",
+        role=(
+            "Senior field installer at StoreHub-partner POS services co. "
+            "Installs new POS terminals for 5-15 F&B merchants/week across SG. "
+            "Evaluates KiX as an add-on he could install + train during the "
+            "same site visit. Wants: 30-min training material · 4-digit-redeem "
+            "fallback (so it works without POS integration) · counter-side "
+            "instruction printable · merchant phone-support hotline."
+        ),
+        context=(
+            "Will recommend KiX as a default add-on to his merchants if it's "
+            "5-min trainable + works without POS-side dev work. Conversion = "
+            "bookmark + talk_to_sales to set up referral partnership."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="single"),
+        score_floor_override=45,
+    ),
+    "franchise_cmo": Persona(
+        persona_id="franchise_cmo",
+        name="Sharon Wee · CMO franchise group",
+        role=(
+            "CMO of a 28-outlet franchise group (mixed F&B + retail · SG + MY). "
+            "Owns brand consistency across franchisees + central marketing budget "
+            "(S$1.2M/year). Wants central control with franchisee-level visibility: "
+            "approve all creative · brand color enforcement · co-pay scheme between "
+            "HQ and franchisee budgets · per-outlet performance leaderboard."
+        ),
+        context=(
+            "Has been burned by franchisees going off-brand. Will only deploy "
+            "platforms with HQ-approval-before-publish workflow + lock-down "
+            "brand assets. Conversion = request_msa or contact_enterprise_sales "
+            "at intent ≥ 55."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="chain"),
+        score_floor_override=50,
+    ),
+    "loyalty_consultant": Persona(
+        persona_id="loyalty_consultant",
+        name="Daniel Foo · independent loyalty consultant",
+        role=(
+            "Independent loyalty/retention consultant · 15 years at Capillary + "
+            "Brierley. Advises retail + F&B brands on loyalty tech stack selection. "
+            "Charges S$80K-200K per engagement (12-18 months). His recommendation "
+            "= 6-12 platform contracts/year for whoever he picks. Evaluates KiX "
+            "on: how does it slot ALONGSIDE existing loyalty CRM (Capillary / "
+            "Salesforce Loyalty Cloud) without replacing or fighting it."
+        ),
+        context=(
+            "Will recommend KiX as a 'top-of-funnel customer acquisition layer' "
+            "to clients who already have a loyalty platform · KiX feeds new "
+            "customers IN · existing loyalty keeps them. Conversion = bookmark "
+            "+ talk_to_sales (he'll mention in next 3 client engagements)."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="chain"),
+        score_floor_override=55,
+    ),
+    "payment_gateway_bd": Persona(
+        persona_id="payment_gateway_bd",
+        name="Ahmad Faisal · BD Maybank QR",
+        role=(
+            "Senior BD at Maybank QR (Malaysia's PayNow equivalent). Evaluates "
+            "KiX as a merchant-acquisition partner — Maybank QR could promote "
+            "KiX to its 80K MY merchants as a customer-acquisition add-on. "
+            "Needs: revenue-share economics · Maybank-branding option · "
+            "regulatory clearance for joint promotion · joint case-study commit."
+        ),
+        context=(
+            "Will arrange a JV exploration call if landing satisfies: "
+            "(a) MY-specific case study or willingness to commit · (b) BNM "
+            "compliance posture · (c) clear revenue-share model. Conversion = "
+            "contact_enterprise_sales at intent ≥ 50."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="chain"),
+        score_floor_override=50,
+    ),
     "steve_jobs": Persona(
         persona_id="steve_jobs",
         name="Steve Jobs",

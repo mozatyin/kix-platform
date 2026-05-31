@@ -66,7 +66,12 @@ JOURNEY_START = {
     "singpass_auth_dev": "/landing/brands/kix_for_enterprise/details.html",   # IT eval starts at spec sheet
     "stripe_atlas_officer": "/landing/brands/kix_for_enterprise/details.html",
     "eltm_brand_manager": "/landing/brands/default/details.html",
-    "storehub_bd_partner": "/landing/integrations/pos-matrix.html",   # POS partner starts at integration spec
+    "storehub_bd_partner": "/landing/integrations/pos-matrix.html",
+    # R29 · 4 more buyer types (16 total)
+    "pos_technician_installer": "/landing/integrations/pos-matrix.html",
+    "franchise_cmo": "/landing/brands/kopi_king_chain/index.html",
+    "loyalty_consultant": "/landing/brands/kix_for_enterprise/index.html",
+    "payment_gateway_bd": "/landing/integrations/china-stack.html",   # MY rep starts at integration spec
 }
 
 # Pages the persona MAY navigate to next (whitelist for the LLM)
@@ -158,9 +163,34 @@ CONVERSION_TARGETS = {
     },
     "storehub_bd_partner": {
         "label": "Partnership intro call accepted (split-revenue integration)",
-        "value_sgd": 0,   # partnership value indirect (12K merchants)
+        "value_sgd": 0,
         "accept_actions": {"contact_enterprise_sales", "talk_to_sales"},
         "intent_required": 55,
+    },
+    # R29 · 4 more buyer-type targets
+    "pos_technician_installer": {
+        "label": "POS installer referral partnership · 5-15 merchants/week pipeline",
+        "value_sgd": 0,
+        "accept_actions": {"bookmark", "talk_to_sales"},
+        "intent_required": 45,
+    },
+    "franchise_cmo": {
+        "label": "S$200K MSA · 28-outlet franchise group with HQ-approval workflow",
+        "value_sgd": 200_000,
+        "accept_actions": {"request_msa", "contact_enterprise_sales", "talk_to_sales"},
+        "intent_required": 55,
+    },
+    "loyalty_consultant": {
+        "label": "Will mention KiX in next 3 client engagements (referral leverage)",
+        "value_sgd": 0,
+        "accept_actions": {"bookmark", "talk_to_sales"},
+        "intent_required": 55,
+    },
+    "payment_gateway_bd": {
+        "label": "Maybank QR × KiX JV exploration call (MY 80K merchant funnel)",
+        "value_sgd": 0,
+        "accept_actions": {"contact_enterprise_sales", "talk_to_sales"},
+        "intent_required": 50,
     },
 }
 

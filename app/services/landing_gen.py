@@ -1551,6 +1551,58 @@ def generate_landing(cfg: BrandConfig) -> str:
     if cfg.scale not in ("single", "chain", "enterprise", "both"):
         raise ValueError(f"scale must be single/chain/enterprise/both, got {cfg.scale!r}")
 
+    # R29 · IMDA fix · compliance brand renders a regulator-specific layout
+    # (NOT the Shopify merchant template). All 4 regulator proof artifacts
+    # inline · plus contact + minor-protection callout.
+    if cfg.brand_id == "compliance":
+        from app.services.proof_registry import PROOFS
+        regulator_proofs = [p for p in PROOFS.values()
+                            if p.claim_id in {"audit_log_architecture", "pdpa_consent_flow",
+                                              "breach_notification_sla", "minor_protection_mechanics",
+                                              "soc2_type_ii", "pen_test_q1",
+                                              "dpa_enterprise", "pdpa_sg", "pdpa_my", "exit_clause"}]
+        cards = "\n".join(
+            f'<a href="{_esc(p.artifact_url or "#")}" style="display:block;background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:18px 20px;text-decoration:none;color:inherit;transition:border-color .15s" onmouseover="this.style.borderColor=\'#1E40AF\'" onmouseout="this.style.borderColor=\'#E2E8F0\'">'
+            f'<div style="font-size:11px;color:#1E40AF;text-transform:uppercase;letter-spacing:.6px;font-weight:800;margin-bottom:6px">{_esc(p.claim_id)}</div>'
+            f'<div style="font-size:14.5px;font-weight:700;color:#0F172A;margin-bottom:6px">{_esc(p.claim_summary)}</div>'
+            f'<div style="font-size:12.5px;color:#475569;line-height:1.5">{_esc(p.audit_note or "")}</div>'
+            f'<div style="font-size:11.5px;color:#1E40AF;margin-top:8px;font-weight:700">View artifact →</div>'
+            f'</a>' for p in regulator_proofs
+        )
+        compliance_html = head + f'''
+<section style="padding:64px 0 32px;background:linear-gradient(135deg,#1E40AF 0%,#0F172A 100%);color:#fff">
+  <div class="container" style="max-width:880px">
+    <div style="font-size:11.5px;color:#34D399;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">Compliance hub · for regulators, DPOs, IT-security teams</div>
+    <h1 style="font-size:42px;font-weight:800;letter-spacing:-1px;line-height:1.1;margin-bottom:18px">Every compliance claim · with a clickable artifact.</h1>
+    <p style="font-size:17px;color:#DBEAFE;line-height:1.55;margin-bottom:24px">For PDPC · IMDA · HK PCPD · PDPA-MY · GDPR auditors reviewing KiX before merchant deployment. All artifacts below are inline · one click to verify. Bookmark this page for your review file.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="mailto:dpo@letskix.com" style="background:#34D399;color:#0F172A;padding:11px 22px;border-radius:7px;font-weight:700;text-decoration:none;font-size:14px">Contact DPO</a>
+      <a href="mailto:soc@letskix.com" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);padding:11px 22px;border-radius:7px;font-weight:700;text-decoration:none;font-size:14px">Contact SOC</a>
+    </div>
+  </div>
+</section>
+<section style="padding:48px 0;background:#F8FAFC">
+  <div class="container" style="max-width:1080px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:12px;color:#1E40AF;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:10px">10 compliance artifacts · all present</div>
+      <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#0F172A">Click any tile to open the artifact in a new tab.</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+      <style>@media(max-width:780px){{section .reg-grid{{grid-template-columns:1fr}}}}</style>
+      {cards}
+    </div>
+  </div>
+</section>
+<section style="padding:48px 0;background:#FFFFFF;text-align:center">
+  <div class="container" style="max-width:760px">
+    <h2 style="font-size:24px;font-weight:800;letter-spacing:-.4px;margin-bottom:14px;color:#0F172A">Review file ready · bookmark this page</h2>
+    <p style="font-size:14.5px;color:#475569;margin-bottom:22px;line-height:1.6">All artifacts above are the production source-of-truth · same files our DPO sends to PDPC on request. Review SLA: ≤ 48h for narrow queries (single kid, date range &lt; 30d) · ≤ 5 business days for broader.</p>
+    <a href="javascript:void(0)" onclick="alert('Bookmark this page (Cmd-D / Ctrl-D) for your review file.')" style="background:#1E40AF;color:#fff;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;display:inline-block">Bookmark for review file</a>
+  </div>
+</section>
+''' + _render_mega_footer(cfg) + "\n</body></html>"
+        return compliance_html
+
     # CLASS-QQ R17 · consumer-audience pages get a totally different layout
     if cfg.audience == "consumer":
         html_out = (head

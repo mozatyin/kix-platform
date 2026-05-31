@@ -35,6 +35,12 @@ TARGET_LOCALES = {
     "ar-EG": "العربية المصرية · formal RTL · keep brand names + KiX in Latin · numbers stay Western Arabic",
     "ar-SA": "العربية السعودية الفصحى · formal RTL · keep brand names + KiX in Latin · numbers stay Western Arabic",
     "he-IL": "עברית · formal RTL · keep brand names + KiX in Latin · numbers stay Western Arabic",
+    "ja-JP": "日本語 (敬体・丁寧) · keep brand names + KiX in Latin · S$ stays · 円 not used unless context",
+    "ko-KR": "한국어 (격식체) · keep brand names + KiX in Latin · S$ stays · ₩ not used unless context",
+    "es-ES": "Español (España) · formal usted · keep brand names + KiX in Latin · S$ → S$ stays",
+    "pt-BR": "Português (Brasil) · friendly informal · keep brand names + KiX in Latin · S$ → R$ where context",
+    "fr-FR": "Français (France) · formal vous · keep brand names + KiX in Latin · accents preserved",
+    "de-DE": "Deutsch (Deutschland) · formal Sie · keep brand names + KiX in Latin · S$ stays",
 }
 
 

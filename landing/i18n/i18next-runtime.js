@@ -26,6 +26,8 @@
     'id-ID', 'ms-MY', 'th-TH', 'vi-VN',
     // Phase 3 RTL launch (Wave 4) — Arabic + Hebrew.
     'ar-EG', 'ar-SA', 'he-IL',
+    // R29 Phase 4 — global expansion (East Asia + LatAm + Europe).
+    'ja-JP', 'ko-KR', 'es-ES', 'pt-BR', 'fr-FR', 'de-DE',
   ];
   // Public alias — tests + consumers expect SUPPORTED_LOCALES.
   const SUPPORTED_LOCALES = SUPPORTED;

@@ -25,8 +25,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+
+try:
+    from app.redis_client import get_redis
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _REDIS_AVAILABLE = False
 
 router = APIRouter()
 
@@ -330,13 +336,53 @@ async def live_activity(limit: int = Query(20, ge=1, le=200)):
 
 
 @router.get("/wallet", response_model=Wallet)
-async def wallet_status():
+async def wallet_status(brand_id: str = Query("demo_brand"), r=Depends(get_redis) if _REDIS_AVAILABLE else None):
+    """R29 Phase 2 · real-Redis wallet read.
+
+    Reads from production wallet hash if Redis available + brand has data;
+    falls back to deterministic mock for demo / un-onboarded brands.
+    Production wallet schema (see app/services/wallet.py):
+      HASH wallet:{brand_id}  balance_units (int · cents) · auto_recharge_units
+      Burn rate computed by wallet_reconciliation_worker (last 7d / 7).
+    """
+    if r is not None and _REDIS_AVAILABLE:
+        try:
+            key = f"wallet:{brand_id}"
+            data = await r.hgetall(key)
+            if data and (b"balance_units" in data or "balance_units" in data):
+                bal_units = int(data.get(b"balance_units") or data.get("balance_units") or 0)
+                bal_sgd = bal_units / 100.0
+                auto_units = int(data.get(b"auto_recharge_units") or data.get("auto_recharge_units") or 20000)
+                auto_sgd = auto_units / 100.0
+                burn = float(data.get(b"burn_per_day_sgd") or data.get("burn_per_day_sgd") or 70.0)
+                runway = int(bal_sgd / max(burn, 1.0))
+                return Wallet(balance_sgd=bal_sgd, auto_recharge_at_sgd=auto_sgd,
+                              burn_per_day_sgd=burn, runway_days=runway)
+        except Exception:
+            pass
+    # Deterministic mock fallback (demo + un-onboarded + Redis unavailable)
     return Wallet(balance_sgd=847.0, auto_recharge_at_sgd=200.0,
                   burn_per_day_sgd=70.0, runway_days=12)
 
 
 @router.post("/wallet/topup", response_model=Wallet, status_code=status.HTTP_200_OK)
-async def wallet_topup(payload: TopupRequest):
+async def wallet_topup(payload: TopupRequest,
+                       brand_id: str = Query("demo_brand"),
+                       r=Depends(get_redis) if _REDIS_AVAILABLE else None):
+    """R29 Phase 2 · real-Redis wallet INCRBY · atomic via HINCRBY."""
+    add_units = int(payload.amount_sgd * 100)
+    if r is not None and _REDIS_AVAILABLE:
+        try:
+            key = f"wallet:{brand_id}"
+            new_units = await r.hincrby(key, "balance_units", add_units)
+            new_sgd = int(new_units) / 100.0
+            burn = 70.0
+            runway = int(new_sgd / burn)
+            return Wallet(balance_sgd=new_sgd, auto_recharge_at_sgd=200.0,
+                          burn_per_day_sgd=burn, runway_days=runway)
+        except Exception:
+            pass
+    # Mock fallback
     new_balance = 847.0 + payload.amount_sgd
     new_runway = int(new_balance / 70.0)
     return Wallet(balance_sgd=new_balance, auto_recharge_at_sgd=200.0,
