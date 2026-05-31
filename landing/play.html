@@ -1072,6 +1072,13 @@ const state = {
         document.getElementById('demo-stage-2').style.display = 'none';
         document.getElementById('demo-stage-3').style.display = '';
       });
+
+      // Replace "Loading…" stubs with demo content so sidebar doesn't look broken
+      const streakEl = document.getElementById('streak-content');
+      if (streakEl) streakEl.innerHTML = '<div style="text-align:center;padding:18px 12px"><div style="font-size:36px;margin-bottom:6px">🔥</div><div style="font-size:22px;font-weight:800;color:#0F172A">3 days</div><div style="font-size:12px;color:#64748B;margin-top:4px">Visit 7 days in a row to unlock a free reward</div></div>';
+      const lbEl = document.getElementById('lb-content');
+      if (lbEl) lbEl.innerHTML = '<div style="padding:14px 12px"><div style="font-size:12px;color:#64748B;margin-bottom:10px">Top players this week (demo)</div>' +
+        ['Aliya · 12 plays','Ben · 9','You · 7','Wei Lin · 6','Marcus · 5'].map((row,i) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:13px;color:#0F172A"><span><strong style="color:#94A3B8;margin-right:8px">${i+1}</strong>${row.split(' · ')[0]}</span><span style="color:#64748B;font-variant-numeric:tabular-nums">${row.split(' · ')[1]||''}</span></div>`).join('') + '</div>';
     }, 200);
     return;
   }
