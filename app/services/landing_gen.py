@@ -42,6 +42,27 @@ class CaseStudy:
     quote_attribution: str  # "— Uncle Ng, owner"
     stats: list[tuple[str, str]] = field(default_factory=list)  # [("S$4.90","D61-90 CPA"), ...]
     photo_url: Optional[str] = None
+    consent_doc_id: Optional[str] = None    # signed-release identifier
+
+
+@dataclass
+class ChainSection:
+    """CLASS-P · multi-outlet brand proof section.
+
+    Set on BrandConfig.chain_section when the brand has ≥3 outlets. The
+    landing page renders an extra section answering the chain-CEO checklist
+    (per-outlet attribution, white-label, compliance, exit terms).
+    """
+    outlet_count: int                       # e.g. 14
+    per_outlet_attribution: bool = True
+    white_label: bool = True
+    api_docs_url: str = "/landing/integrations/api-v1.html"
+    soc2_status: str = "SOC2 Type I — Q3 2026 (audit in progress)"
+    pdpa_my_status: str = "PDPA-MY compliant (DPA available on request)"
+    sla_uptime_pct: float = 99.9
+    exit_clause: str = "30-day data export + signed data destruction certificate. No exit fee."
+    multi_tenant_isolation: str = "Per-outlet Postgres schemas. Cross-outlet reporting via SQL views, opt-in only."
+    enterprise_contact_email: str = "chains@letskix.com"
 
 
 @dataclass
@@ -59,6 +80,13 @@ class BrandConfig:
     founding_slots_taken: int = 0
     what_you_get: list[WhatYouGetItem] = field(default_factory=list)
     case_studies: list[CaseStudy] = field(default_factory=list)
+    chain_section: Optional[ChainSection] = None    # CLASS-P · multi-outlet proof
+    # CLASS-O · target audience determines which personas the verdict_gate uses
+    # Allowed: "merchant" (default) | "consumer" | "both"
+    audience: str = "merchant"
+    # CLASS-S · scale determines which buyer profile fits
+    # Allowed: "single" (default) | "chain" | "both"
+    scale: str = "single"
     integrations_link: str = "/landing/integrations/tiktok-pixel.html"
     pricing_link: str = "/landing/pricing.html"
     portal_link: str = "/landing/portal.html"
@@ -110,27 +138,42 @@ def _render_what_you_get(items: list[WhatYouGetItem]) -> str:
 </section>'''
 
 
-def _render_cases(cases: list[CaseStudy]) -> str:
-    if not cases:
+def _render_cases(cases: list[CaseStudy], brand_name: str = "") -> str:
+    """Render only consent-cleared cases.
+
+    CLASS-Q structural fix: drop CaseStudy without photo_url. The previous
+    'photo pending consent' placeholder backfired (Sarah skeptical-owner
+    persona: "if real merchants why no photo? — credibility killer").
+    CLASS-R structural fix: drop cases whose brand_name matches the page's
+    own brand_name (self-reference makes Aminah think the page is hers).
+    """
+    keepers = [
+        c for c in cases
+        if c.photo_url
+        and (not brand_name or c.brand_name.lower() != brand_name.lower())
+    ]
+    if not keepers:
         return ""
     parts = []
-    for c in cases:
+    for c in keepers:
         stats_html = "".join(
             f'<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--brand-dk);line-height:1">{_esc(v)}</div><div style="font-size:10.5px;color:#16A34A;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">{_esc(label)}</div></div>'
             for v, label in c.stats
         )
+        consent_badge = (
+            f'<span style="font-size:10px;background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:3px;margin-left:6px;letter-spacing:.3px;font-weight:700">CONSENT ✓ {_esc(c.consent_doc_id)}</span>'
+            if c.consent_doc_id else ""
+        )
         photo_html = (
             f'<img src="{_esc(c.photo_url)}" alt="{_esc(c.brand_name)}" loading="lazy" '
             f'style="width:160px;height:100px;object-fit:cover;border-radius:6px">'
-            if c.photo_url else
-            '<div style="width:160px;height:100px;background:#F1F5F9;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:11px">photo pending consent</div>'
         )
         parts.append(f'''      <div class="case" data-loc="{_esc(c.location.split(',')[0].lower().split()[0])}" style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:18px">
         <div style="display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:center;margin-bottom:14px">
           {photo_html}
           <div>
             <div style="font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">{_esc(c.vertical)}</div>
-            <div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif">{_esc(c.brand_name)}</div>
+            <div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif">{_esc(c.brand_name)}{consent_badge}</div>
             <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px">📍 {_esc(c.location)}</div>
           </div>
         </div>
@@ -148,6 +191,96 @@ def _render_cases(cases: list[CaseStudy]) -> str:
     <h2 style="font-size:28px;font-weight:800;text-align:center;margin-bottom:8px">Cases near you</h2>
     <p style="text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 28px;font-size:14.5px">Real merchants in your region — photos pending merchant consent are flagged. Numbers pulled from <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11px">/api/v1/cohort/{{brand_id}}</code> live.</p>
 {chr(10).join(parts)}
+  </div>
+</section>'''
+
+
+def _render_chain_section(cfg: BrandConfig) -> str:
+    """CLASS-P · multi-outlet proof. Renders only if cfg.chain_section is set."""
+    cs = cfg.chain_section
+    if cs is None:
+        return ""
+    return f'''
+<section id="for-chains" style="padding:48px 0;background:#0F172A;color:#F8FAFC">
+  <div class="container">
+    <div style="max-width:760px;margin:0 auto 32px;text-align:center">
+      <div style="font-size:11.5px;color:#FBBF24;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:8px">For chains · {cs.outlet_count}-outlet operators</div>
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px">CFO-grade due diligence, on one page</h2>
+      <p style="font-size:14.5px;color:#CBD5E1">For Ahmad-grade buyers: per-outlet attribution, white-label, SOC2, exit clause, SLA — laid out so your CFO can evaluate in 5 minutes.</p>
+    </div>
+    <style>
+      .ch-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:1000px;margin:0 auto}}
+      @media(max-width:780px){{.ch-grid{{grid-template-columns:1fr}}}}
+      .ch-card{{background:#1E293B;border:1px solid #334155;border-radius:10px;padding:18px}}
+      .ch-card .lbl{{font-size:10.5px;color:#FBBF24;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px}}
+      .ch-card .val{{font-size:14.5px;color:#F8FAFC;line-height:1.5;font-weight:600}}
+      .ch-card .sub{{font-size:12px;color:#94A3B8;margin-top:6px}}
+    </style>
+    <div class="ch-grid">
+      <div class="ch-card">
+        <div class="lbl">Per-outlet attribution</div>
+        <div class="val">{"✓ Built-in" if cs.per_outlet_attribution else "✗ Not yet"}</div>
+        <div class="sub">Each outlet has its own CAC/LTV/repeat dashboard. Roll-up via SQL views, opt-in only.</div>
+      </div>
+      <div class="ch-card">
+        <div class="lbl">White-label</div>
+        <div class="val">{"✓ Your brand, not 'powered by KiX'" if cs.white_label else "✗ KiX branding required"}</div>
+        <div class="sub">Customer never sees the KiX name. Yours from QR to redemption.</div>
+      </div>
+      <div class="ch-card">
+        <div class="lbl">Multi-tenant isolation</div>
+        <div class="val">{_esc(cs.multi_tenant_isolation)}</div>
+      </div>
+      <div class="ch-card">
+        <div class="lbl">SOC2 / Compliance</div>
+        <div class="val">{_esc(cs.soc2_status)}</div>
+        <div class="sub">{_esc(cs.pdpa_my_status)}</div>
+      </div>
+      <div class="ch-card">
+        <div class="lbl">API + Webhooks</div>
+        <div class="val"><a href="{_esc(cs.api_docs_url)}" style="color:#FBBF24;text-decoration:underline">{_esc(cs.api_docs_url)}</a></div>
+        <div class="sub">OpenAPI 3.1 spec. Webhook retries 5× exponential. Idempotency keys on every POST.</div>
+      </div>
+      <div class="ch-card">
+        <div class="lbl">SLA · Uptime</div>
+        <div class="val">{cs.sla_uptime_pct}% monthly uptime · credits if missed</div>
+        <div class="sub">Public status page. 99.9% target = ≤43min monthly downtime.</div>
+      </div>
+      <div class="ch-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
+        <div class="lbl" style="color:#FBBF24">Exit clause</div>
+        <div class="val">{_esc(cs.exit_clause)}</div>
+        <div class="sub" style="color:#FED7AA">No lock-in. Your data, your terms — we ship the export script in the same PR as your signup.</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <a href="mailto:{_esc(cs.enterprise_contact_email)}" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14.5px;margin-right:10px">Talk to founder ({cs.outlet_count}-outlet onboarding)</a>
+      <a href="{_esc(cs.api_docs_url)}" style="display:inline-block;background:transparent;color:#F8FAFC;border:1px solid #CBD5E1;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">Read API docs →</a>
+    </div>
+  </div>
+</section>'''
+
+
+def _render_self_reference_banner(cfg: BrandConfig) -> str:
+    """CLASS-R · if any case_study matches cfg.brand_name, surface that this
+    is a DEMO PAGE personalized for that brand — not a sign-up trick.
+
+    Wording must NOT imply pre-approval (skeptical-owner persona flagged
+    'you're already approved' as a dark pattern).
+    """
+    self_refs = [c for c in cfg.case_studies
+                 if c.brand_name.lower() == cfg.brand_name.lower()]
+    if not self_refs:
+        return ""
+    return f'''
+<section style="background:#FEF3C7;border-bottom:1px solid #FCD34D;padding:14px 0">
+  <div class="container">
+    <div style="max-width:880px;margin:0 auto;display:flex;align-items:center;gap:10px;font-size:13px;color:#78350F">
+      <span style="font-size:18px">ℹ️</span>
+      <span><strong>Personalized demo for {_esc(cfg.brand_name)}.</strong>
+      You're seeing this page because we already have a published case study about you (with your signed consent, code shown below) — the numbers are the ones we agreed to publish. To sign up or apply, you still go through the normal flow on
+      <a href="/landing/brands/default/index.html" style="color:#92400E;text-decoration:underline;font-weight:700">the generic landing</a>.
+      Nothing here implies pre-approval.</span>
+    </div>
   </div>
 </section>'''
 
@@ -264,9 +397,17 @@ def generate_landing(cfg: BrandConfig) -> str:
 </section>
 '''
 
-    html_out = (head + _render_what_you_get(cfg.what_you_get)
+    if cfg.audience not in ("merchant", "consumer", "both"):
+        raise ValueError(f"audience must be merchant/consumer/both, got {cfg.audience!r}")
+    if cfg.scale not in ("single", "chain", "both"):
+        raise ValueError(f"scale must be single/chain/both, got {cfg.scale!r}")
+
+    html_out = (head
+                + _render_self_reference_banner(cfg)
+                + _render_what_you_get(cfg.what_you_get)
+                + _render_chain_section(cfg)
                 + _render_founding_block(cfg)
-                + _render_cases(cfg.case_studies)
+                + _render_cases(cfg.case_studies, brand_name=cfg.brand_name)
                 + _render_footer(cfg)
                 + "\n</body></html>")
 
@@ -296,6 +437,7 @@ def from_dict(d: dict) -> BrandConfig:
         c_copy = dict(c)
         c_copy["stats"] = [tuple(s) for s in c.get("stats", [])]
         cs.append(CaseStudy(**c_copy))
+    chain = ChainSection(**d["chain_section"]) if d.get("chain_section") else None
     return BrandConfig(
         brand_id=d["brand_id"],
         brand_name=d["brand_name"],
@@ -309,5 +451,7 @@ def from_dict(d: dict) -> BrandConfig:
         founding_slots_taken=d.get("founding_slots_taken", 0),
         what_you_get=wyg,
         case_studies=cs,
+        chain_section=chain,
+        audience=d.get("audience", "merchant"),
         contact_email=d.get("contact_email", "hello@letskix.com"),
     )

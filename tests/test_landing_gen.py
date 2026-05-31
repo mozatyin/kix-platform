@@ -2,8 +2,104 @@
 import pytest
 
 from app.services.landing_gen import (
-    BrandConfig, CaseStudy, WhatYouGetItem,
+    BrandConfig, CaseStudy, ChainSection, WhatYouGetItem,
     from_dict, generate_landing,
+)
+
+
+# ── CLASS-Q: photo gate ──
+
+def test_consent_badge_renders_when_doc_id_present():
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
+                      case_studies=[
+                          CaseStudy(brand_name="Y", location="Bedok", vertical="V",
+                                    quote="Q", quote_attribution="— a",
+                                    photo_url="https://cdn.example.com/y.jpg",
+                                    consent_doc_id="CONS-0042")
+                      ])
+    html = generate_landing(cfg)
+    assert "CONS-0042" in html
+    assert "CONSENT" in html
+
+
+def test_consent_badge_omitted_when_no_doc_id():
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
+                      case_studies=[
+                          CaseStudy(brand_name="Y", location="Bedok", vertical="V",
+                                    quote="Q", quote_attribution="— a",
+                                    photo_url="https://cdn.example.com/y.jpg")
+                      ])
+    html = generate_landing(cfg)
+    assert "CONSENT" not in html
+
+
+# ── CLASS-R: self-reference banner ──
+
+def test_self_reference_triggers_demo_banner():
+    cfg = BrandConfig(brand_id="aminah_halal", brand_name="Aminah's Hut",
+                      hero_tagline="T", hero_sub="S",
+                      case_studies=[
+                          CaseStudy(brand_name="Aminah's Hut", location="Tampines",
+                                    vertical="V", quote="Q", quote_attribution="— a",
+                                    photo_url="https://cdn.example.com/a.jpg")
+                      ])
+    html = generate_landing(cfg)
+    assert "Personalized demo" in html
+    assert "Aminah&#x27;s Hut" in html   # HTML-escaped form
+    assert "Nothing here implies pre-approval" in html
+    # Self-ref case dropped from cases — no case "Cases near you" section
+    assert "Cases near you" not in html
+
+
+def test_no_self_ref_no_banner():
+    cfg = BrandConfig(brand_id="b1", brand_name="Acme",
+                      hero_tagline="T", hero_sub="S")
+    html = generate_landing(cfg)
+    assert "personalized preview" not in html
+
+
+# ── CLASS-P: chain section ──
+
+def test_chain_section_renders_when_set():
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
+                      chain_section=ChainSection(outlet_count=14))
+    html = generate_landing(cfg)
+    assert "For chains" in html
+    assert "14-outlet" in html
+    assert "Per-outlet attribution" in html
+    assert "White-label" in html
+    assert "SOC2" in html
+    assert "Exit clause" in html
+    assert "99.9%" in html
+
+
+def test_chain_section_omitted_by_default():
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S")
+    html = generate_landing(cfg)
+    assert "For chains" not in html
+    assert "CFO-grade" not in html
+
+
+# ── CLASS-O: audience validation ──
+
+def test_audience_default_merchant():
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S")
+    assert cfg.audience == "merchant"
+
+
+def test_audience_invalid_raises():
+    import pytest
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
+                      audience="random_team")
+    with pytest.raises(ValueError, match="audience must be merchant"):
+        generate_landing(cfg)
+
+
+# ── Original tests ──
+
+from app.services.landing_gen import (  # noqa: F401, E402  (re-import for legacy tests)
+    BrandConfig as _BC, CaseStudy as _CS, WhatYouGetItem as _WYG,
+    from_dict as _fd, generate_landing as _gl,
 )
 
 
@@ -107,7 +203,9 @@ def test_case_studies_render_with_stats():
                                     vertical="Kopitiam",
                                     quote="Best decision we made.",
                                     quote_attribution="— Uncle Ng",
-                                    stats=[("S$4.90", "D61-90 CPA"), ("28%", "14-day return")])
+                                    stats=[("S$4.90", "D61-90 CPA"), ("28%", "14-day return")],
+                                    photo_url="/landing/assets/cases/hhk.jpg",
+                                    consent_doc_id="CONS-X")
                       ])
     html = generate_landing(cfg)
     assert "Heng Heng Kopi" in html
@@ -117,14 +215,18 @@ def test_case_studies_render_with_stats():
     assert "📍 Bedok 85" in html
 
 
-def test_case_without_photo_shows_pending_consent():
+def test_case_without_photo_is_dropped():
+    """CLASS-Q structural fix: cases without photo_url are NOT rendered at all.
+    Previous 'photo pending consent' placeholder backfired (skeptical-owner
+    persona read it as a credibility killer)."""
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       case_studies=[
                           CaseStudy(brand_name="Y", location="Bedok", vertical="V",
                                     quote="Q", quote_attribution="— a")
                       ])
     html = generate_landing(cfg)
-    assert "photo pending consent" in html
+    assert "photo pending consent" not in html
+    assert "Cases near you" not in html  # whole section omitted when no consenting cases
 
 
 def test_case_with_photo_url_includes_img():

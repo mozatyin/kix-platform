@@ -24,18 +24,35 @@ from sim_users_v2 import call_llm
 
 PORT = 8765
 
+from scripts.generate_landing_sites import BRANDS as BRAND_CONFIGS
+
 BRANDS = [
-    ("default", "Generic KiX landing"),
-    ("heng_heng_kopi", "Heng Heng Kopi · Bedok 85 case-specific"),
-    ("aminah_halal", "Aminah's Halal Hut single-case"),
+    (bid, f"{cfg.brand_name} ({cfg.audience})")
+    for bid, cfg in BRAND_CONFIGS.items()
 ]
 
-PERSONA_IDS = [
-    "aminah_first_time_merchant",
-    "skeptical_owner",
-    "ahmad_kopi_chain",
-    "consumer",
-]
+
+# CLASS-O + CLASS-S · personas matched to (audience, scale).
+# Brand landing pages declare both. The verdict gate only runs personas that
+# fit BOTH axes — so Ahmad (chain CEO) doesn't get asked to evaluate a
+# single-stall page, and Aminah (first-time single-stall merchant) doesn't
+# get asked to evaluate a chain CFO landing.
+PERSONA_AXES = {
+    "aminah_first_time_merchant": {"audience": "merchant", "scale": "single"},
+    "skeptical_owner": {"audience": "merchant", "scale": "single"},
+    "ahmad_kopi_chain": {"audience": "merchant", "scale": "chain"},
+    "consumer": {"audience": "consumer", "scale": "both"},
+}
+
+def _matches(persona_axis_val: str, page_val: str) -> bool:
+    """Persona fits the page if either side declares 'both'."""
+    return persona_axis_val == page_val or "both" in (persona_axis_val, page_val)
+
+def personas_for(audience: str, scale: str = "single") -> list[str]:
+    return [
+        pid for pid, axes in PERSONA_AXES.items()
+        if _matches(axes["audience"], audience) and _matches(axes["scale"], scale)
+    ]
 
 
 PERSONA_PROFILES = {
@@ -107,12 +124,11 @@ def persona_critique(key: str, persona_id: str, brand_label: str, page_text: str
         f"RENDERED CONTENT (first 6000 chars):\n```\n{page_text[:6000]}\n```\n\n"
         "Score honestly. 0 = won't engage. 100 = best landing you've seen in your sector."
     )
-    out = call_llm(key, system, user, max_tokens=800, temp=0.4)
+    out = call_llm(key, system, user, max_tokens=1800, temp=0.4)
     if not out["ok"]:
         return VerdictScore(persona_id=persona_id, score=0,
                             verdict_text="[llm-failed]", reasons=["llm-call failed"])
     text = out["text"].strip()
-    # strip code fence
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0]
     try:
@@ -124,15 +140,32 @@ def persona_critique(key: str, persona_id: str, brand_label: str, page_text: str
             reasons=list(data.get("reasons", []))[:6],
             would_recommend=bool(data.get("would_recommend", False)),
         )
-    except Exception as e:
+    except Exception:
+        # Regex fallback for truncated JSON (Sonnet sometimes cuts off mid-string)
+        import re
+        score_m = re.search(r'"score"\s*:\s*(\d+(?:\.\d+)?)', text)
+        verdict_m = re.search(r'"verdict"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"', text)
+        reasons_m = re.findall(r'"([^"\\]{20,200})"', text)
+        if score_m:
+            return VerdictScore(
+                persona_id=persona_id, score=float(score_m.group(1)),
+                verdict_text=(verdict_m.group(1)[:400] if verdict_m else "[regex-recovered]"),
+                reasons=reasons_m[1:6],
+                would_recommend=float(score_m.group(1)) >= 60,
+            )
         return VerdictScore(persona_id=persona_id, score=0,
-                            verdict_text=f"[parse-error: {e}]",
+                            verdict_text="[parse-failed]",
                             reasons=[f"non-JSON: {text[:120]}"])
 
 
 async def verify_brand(key: str, brand_id: str, brand_label: str):
     url = f"http://localhost:{PORT}/landing/brands/{brand_id}/index.html"
-    print(f"\n{'='*70}\n  {brand_label}\n  URL: {url}\n{'='*70}")
+    cfg = BRAND_CONFIGS[brand_id]
+    pids = personas_for(cfg.audience, cfg.scale)
+    if not pids:
+        print(f"\n[skip {brand_id}: no personas match audience={cfg.audience} scale={cfg.scale}]")
+        return
+    print(f"\n{'='*70}\n  {brand_label} · scale={cfg.scale}\n  URL: {url}\n  Personas: {pids}\n{'='*70}")
     text = await render_page_text(url)
     if text.startswith("[render-failed"):
         print(f"  ✗ {text}")
@@ -140,17 +173,17 @@ async def verify_brand(key: str, brand_id: str, brand_label: str):
 
     # Parallel persona critique (OpenRouter rule)
     loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=max(2, len(pids))) as pool:
         scores = await asyncio.gather(*[
             loop.run_in_executor(pool, persona_critique, key, pid, brand_label, text)
-            for pid in PERSONA_IDS
+            for pid in pids
         ])
 
     # Aggregate via verdict_gate (with the real scores as a custom evaluator)
     def eval_lookup(_html, pid):
         return next(s for s in scores if s.persona_id == pid)
 
-    decision = verdict_gate(text, PERSONA_IDS, eval_lookup,
+    decision = verdict_gate(text, pids, eval_lookup,
                             threshold=65, min_score_floor=40)
 
     for s in scores:
@@ -174,7 +207,7 @@ async def main():
         print("ERROR: OPENROUTER_API_KEY not found.", file=sys.stderr)
         return 1
     print(f"Verifying {len(BRANDS)} generated brand landings · "
-          f"{len(PERSONA_IDS)} personas · threshold=65 min_floor=40")
+          f"audience-matched personas · threshold=65 min_floor=40")
     for brand_id, label in BRANDS:
         await verify_brand(key, brand_id, label)
     print(f"\n{'='*70}\nDone.")
