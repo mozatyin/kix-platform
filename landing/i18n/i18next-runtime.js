@@ -29,7 +29,7 @@
   ];
   // Public alias — tests + consumers expect SUPPORTED_LOCALES.
   const SUPPORTED_LOCALES = SUPPORTED;
-  const NAMESPACES     = ['common', 'portal', 'storefront', 'play', 'portal-sdk', 'index', 'connect'];
+  const NAMESPACES     = ['common', 'portal', 'storefront', 'play', 'portal-sdk', 'index', 'connect', 'pricing', 'mycases'];
   const RTL_LANGS      = ['ar', 'he', 'fa', 'ur']; // Arabic + Hebrew live in Phase 3; fa/ur are Phase 4.
 
   // ---------- CDN sources (with self-host fallback discovery) ----------
@@ -249,8 +249,7 @@
         'he-IL':      ['he', 'en-SG', 'en-US'],
         default:      ['en-SG'],
       },
-      supportedLngs: SUPPORTED,
-      nonExplicitSupportedLngs: true,
+      supportedLngs: false,
       load: 'currentOnly',
       ns: NAMESPACES,
       defaultNS: 'common',

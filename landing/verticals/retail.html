@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retail &amp; Convenience — KiX</title>
+<link rel="stylesheet" href="../design-system/tokens.css">
+<script src="../i18n/i18next-runtime.js" defer></script>
+<script src="../i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',sans-serif;background:#FFFFFF;color:#0F172A;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--accent:#1E40AF}
+  .container{max-width:1200px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:20px}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  .vertical-tag{display:inline-block;background:#DBEAFE;color:#1E40AF;padding:4px 10px;border-radius:6px;
+                font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:16px}
+  .hero{padding:64px 0 32px;text-align:center}
+  h1{font-size:42px;font-weight:800;line-height:1.1;letter-spacing:-1.2px;margin-bottom:14px;
+     max-width:780px;margin-left:auto;margin-right:auto}
+  .sub{font-size:17px;color:var(--text-muted);max-width:680px;margin:0 auto 24px}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:8px;
+       font-weight:600;text-decoration:none;font-size:14px}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dk)}
+  .btn-secondary{background:#fff;color:#0F172A;border:1px solid var(--border)}
+  .benchmark{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:14px;padding:32px;
+             margin:32px auto 48px;max-width:920px;display:grid;
+             grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+  @media(max-width:780px){.benchmark{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .bench-item{text-align:center}
+  .bench-num{font-size:28px;font-weight:800;color:#1E40AF;line-height:1;letter-spacing:-1px}
+  .bench-label{font-size:12px;color:#1E40AF;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:6px}
+  .games{padding:32px 0}
+  h2{font-size:30px;font-weight:800;text-align:center;margin-bottom:8px;letter-spacing:-.6px}
+  .games-sub{text-align:center;color:var(--text-muted);margin-bottom:40px}
+  .game-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:48px}
+  @media(max-width:880px){.game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:540px){.game-grid{grid-template-columns:1fr}}
+  .game-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;
+             transition:border-color .15s,transform .15s}
+  .game-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .game-emoji{font-size:32px;margin-bottom:10px;display:block}
+  .game-name{font-size:15px;font-weight:700;margin-bottom:6px;color:#0F172A}
+  .game-desc{font-size:13px;color:var(--text-muted);line-height:1.5}
+  .game-stat{font-size:12px;color:#1E40AF;font-weight:600;background:#EFF6FF;
+             padding:3px 8px;border-radius:6px;display:inline-block;margin-top:8px}
+  .cta-strip{background:var(--brand);color:#fff;padding:48px 0;text-align:center;margin-top:32px}
+  .cta-strip h2{color:#fff;margin-bottom:10px}
+  .cta-strip p{opacity:.92;margin-bottom:18px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/verticals/fnb.html">F&amp;B</a>
+        <a href="/landing/verticals/beauty.html">Beauty</a>
+        <a href="/landing/portal.html">Portal</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="vertical-tag">Retail · Convenience · Fashion · Electronics · Specialty</div>
+    <h1>Foot traffic without a window display budget.</h1>
+    <p class="sub">Retail's CAC has tripled in five years because Google &amp; Meta optimize for clicks, not store visits. KiX games optimize for the only thing that matters — a customer at your counter, paying.</p>
+    <div class="cta-row">
+      <a href="/landing/portal.html" class="btn btn-primary">Start free — 5 min</a>
+      <a href="/landing/sg-case-studies.html" class="btn btn-secondary">See pilot data</a>
+    </div>
+  </div>
+</section>
+
+<section class="container">
+  <div class="benchmark">
+    <div class="bench-item"><div class="bench-num">S$11</div><div class="bench-label">avg retail CPA</div></div>
+    <div class="bench-item"><div class="bench-num">S$48</div><div class="bench-label">avg first-visit basket</div></div>
+    <div class="bench-item"><div class="bench-num">2.1x</div><div class="bench-label">vs Google Local Ads</div></div>
+    <div class="bench-item"><div class="bench-num">9 min</div><div class="bench-label">avg setup time</div></div>
+  </div>
+</section>
+
+<section class="games container">
+  <h2>Retail-specific games proven in pilots</h2>
+  <p class="games-sub">Pick from 20 archetypes. Most retailers run a "first-purchase discount" + "geofence-triggered" combo.</p>
+  <div class="game-grid">
+    <div class="game-card">
+      <span class="game-emoji">🛍️</span>
+      <div class="game-name">Style Match</div>
+      <div class="game-desc">Customer picks outfit in-game, wins matching SKU discount + sees in stock at nearest store.</div>
+      <span class="game-stat">CPA S$9 · fashion avg</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">📦</span>
+      <div class="game-name">Mystery Box Unlock</div>
+      <div class="game-desc">Daily play unlocks tier of in-store mystery box (small purchase qualifies).</div>
+      <span class="game-stat">37% open daily</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">📱</span>
+      <div class="game-name">Specs Quiz</div>
+      <div class="game-desc">Electronics quiz routes player to right product + offers staff consult slot at counter.</div>
+      <span class="game-stat">CPA S$24 · electronics</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🎁</span>
+      <div class="game-name">Gifting Wizard</div>
+      <div class="game-desc">Recipient-type quiz outputs 3 product suggestions + 15% gift voucher.</div>
+      <span class="game-stat">Q4 conversion 2.3x</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">📍</span>
+      <div class="game-name">Geofence Sprint</div>
+      <div class="game-desc">Walk past store → game pings → 60s to play → instant in-store voucher.</div>
+      <span class="game-stat">conv 18% within 30 min</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🏆</span>
+      <div class="game-name">Visit-3 Loyalty</div>
+      <div class="game-desc">3 visits in 30 days unlocks tier-2 status (free product reveal game).</div>
+      <span class="game-stat">+62% 90-day retention</span>
+    </div>
+  </div>
+</section>
+
+<section class="cta-strip">
+  <div class="container">
+    <h2>Connects to Shopify, Square, and your POS today.</h2>
+    <p>StoreHub coming Q3 2026. Manual code-redeem works with any cash register.</p>
+    <a href="/landing/portal.html" class="btn btn-secondary" style="background:#fff;color:var(--brand-dk)">Start your first campaign →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="mailto:michael@mozat.com">Contact</a>
+    <div style="margin-top:10px;font-size:11.5px">PDPA-SG · PDPA-MY · GDPR-aligned</div>
+  </div>
+</footer>
+
+</body>
+</html>

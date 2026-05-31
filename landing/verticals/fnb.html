@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F&amp;B Gamification — KiX</title>
+<link rel="stylesheet" href="../design-system/tokens.css">
+<script src="../i18n/i18next-runtime.js" defer></script>
+<script src="../i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#FFFFFF;color:#0F172A;
+       line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--accent:#F59E0B}
+  .container{max-width:1200px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);
+         position:sticky;top:0;z-index:50;padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:20px}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  .vertical-tag{display:inline-block;background:#FFF7ED;color:#92400E;
+                padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;
+                letter-spacing:.6px;text-transform:uppercase;margin-bottom:16px}
+  .hero{padding:64px 0 32px;text-align:center}
+  h1{font-size:42px;font-weight:800;line-height:1.1;letter-spacing:-1.2px;
+     margin-bottom:14px;max-width:780px;margin-left:auto;margin-right:auto}
+  .sub{font-size:17px;color:var(--text-muted);max-width:680px;margin:0 auto 24px}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
+       border-radius:8px;font-weight:600;text-decoration:none;font-size:14px}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dk)}
+  .btn-secondary{background:#fff;color:#0F172A;border:1px solid var(--border)}
+  /* CPA benchmark block */
+  .benchmark{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:14px;
+             padding:32px;margin:32px auto 48px;max-width:920px;
+             display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+  @media(max-width:780px){.benchmark{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .bench-item{text-align:center}
+  .bench-num{font-size:28px;font-weight:800;color:var(--brand-dk);line-height:1;letter-spacing:-1px}
+  .bench-label{font-size:12px;color:#16A34A;font-weight:600;text-transform:uppercase;
+               letter-spacing:.4px;margin-top:6px}
+  /* Game examples */
+  .games{padding:32px 0}
+  h2{font-size:30px;font-weight:800;text-align:center;margin-bottom:8px;letter-spacing:-.6px}
+  .games-sub{text-align:center;color:var(--text-muted);margin-bottom:40px}
+  .game-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:48px}
+  @media(max-width:880px){.game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:540px){.game-grid{grid-template-columns:1fr}}
+  .game-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;
+             transition:border-color .15s,transform .15s}
+  .game-card:hover{border-color:var(--brand);transform:translateY(-2px)}
+  .game-emoji{font-size:32px;margin-bottom:10px;display:block}
+  .game-name{font-size:15px;font-weight:700;margin-bottom:6px;color:#0F172A}
+  .game-stat{font-size:12px;color:var(--brand-dk);font-weight:600;background:#F0FDF4;
+             padding:3px 8px;border-radius:6px;display:inline-block;margin-top:8px}
+  .game-desc{font-size:13px;color:var(--text-muted);line-height:1.5}
+  /* CTA strip */
+  .cta-strip{background:var(--brand);color:#fff;padding:48px 0;text-align:center;margin-top:32px}
+  .cta-strip h2{color:#fff;margin-bottom:10px}
+  .cta-strip p{opacity:.92;margin-bottom:18px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;
+         border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/sg-case-studies.html">SG Cases</a>
+        <a href="/landing/my-case-studies.html">MY Cases</a>
+        <a href="/landing/portal.html">Portal</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="vertical-tag">F&amp;B · Kopitiams · Cafés · Bubble Tea · Hawker</div>
+    <h1>Turn every coffee, every kopi, every bubble tea into a marketing channel.</h1>
+    <p class="sub">F&amp;B businesses lose 75% of one-time customers within 30 days. KiX games turn the first visit into a play loop that earns the second, third, tenth visit — without a loyalty card.</p>
+    <div class="cta-row">
+      <a href="/landing/portal.html" class="btn btn-primary">Start free — 5 min</a>
+      <a href="/landing/sg-case-studies.html" class="btn btn-secondary">See 5 SG cases</a>
+    </div>
+  </div>
+</section>
+
+<section class="container">
+  <div class="benchmark">
+    <div class="bench-item">
+      <div class="bench-num">S$5.80</div>
+      <div class="bench-label">avg F&amp;B CPA</div>
+    </div>
+    <div class="bench-item">
+      <div class="bench-num">28%</div>
+      <div class="bench-label">14-day return rate</div>
+    </div>
+    <div class="bench-item">
+      <div class="bench-num">3.2x</div>
+      <div class="bench-label">repeat-visit lift</div>
+    </div>
+    <div class="bench-item">
+      <div class="bench-num">11 min</div>
+      <div class="bench-label">avg setup time</div>
+    </div>
+  </div>
+</section>
+
+<section class="games container">
+  <h2>F&amp;B-specific games proven in pilots</h2>
+  <p class="games-sub">Pick from 22 F&amp;B archetypes. Most operators run 2–3 concurrently.</p>
+  <div class="game-grid">
+    <div class="game-card">
+      <span class="game-emoji">☕</span>
+      <div class="game-name">Latte-art Match</div>
+      <div class="game-desc">Match latte-art patterns to win free coffees. Best for specialty cafés.</div>
+      <span class="game-stat">CPA S$4.20 · café avg</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🍵</span>
+      <div class="game-name">Bubble Tea Mixer</div>
+      <div class="game-desc">Customer mixes flavors, sweetness, ice — wins a discount on actual order.</div>
+      <span class="game-stat">CPA S$5.80 · bubble tea avg</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🍜</span>
+      <div class="game-name">Hawker Memory</div>
+      <div class="game-desc">Match dishes to stalls in the food court. Cross-promotes multiple stalls.</div>
+      <span class="game-stat">CPA S$3.10 · hawker pool</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🥡</span>
+      <div class="game-name">Lunch-rush Sprint</div>
+      <div class="game-desc">Order under 60s in-game, redeem queue-skip pass for actual lunch run.</div>
+      <span class="game-stat">CPA S$6.50 · CBD lunch</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🥘</span>
+      <div class="game-name">Spice-level Roulette</div>
+      <div class="game-desc">Player picks heat level, wins matching nasi-padang voucher. Halal-aware.</div>
+      <span class="game-stat">CPA S$4.80 · MY/SG halal</span>
+    </div>
+    <div class="game-card">
+      <span class="game-emoji">🥐</span>
+      <div class="game-name">Breakfast Streak</div>
+      <div class="game-desc">3-day morning streak earns 4th-day free breakfast. Drives weekday foot traffic.</div>
+      <span class="game-stat">retention 38% / 14d</span>
+    </div>
+  </div>
+</section>
+
+<section class="cta-strip">
+  <div class="container">
+    <h2>5-minute setup. First campaign live by lunch.</h2>
+    <p>Free for the first 100 F&amp;B merchants in your country. 0% take rate forever.</p>
+    <a href="/landing/portal.html" class="btn btn-secondary" style="background:#fff;color:var(--brand-dk)">Claim your slot →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="mailto:michael@mozat.com">Contact</a>
+    <div style="margin-top:10px;font-size:11.5px">PDPA-SG · PDPA-MY · GDPR-aligned · Halal-aware library</div>
+  </div>
+</footer>
+
+</body>
+</html>
