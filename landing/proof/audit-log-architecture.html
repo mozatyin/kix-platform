@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Audit log architecture | KiX</title>
+<style>body{font:15px Inter,-apple-system,sans-serif;max-width:880px;margin:32px auto;padding:0 24px;color:#0F172A;line-height:1.6}h1{font-size:26px;font-weight:800;margin-bottom:8px}.box{background:#ECFDF5;border-left:3px solid #16A34A;padding:14px 18px;border-radius:6px;margin:18px 0}table{border-collapse:collapse;width:100%;margin:18px 0}td,th{border:1px solid #E2E8F0;padding:10px;text-align:left}th{background:#F1F5F9}code{background:#F1F5F9;padding:1px 6px;border-radius:3px;font-size:13px}</style></head>
+<body><h1>Audit log architecture · regulator-grade</h1>
+<div class="box">Proof artifact for claim <code>audit_log_architecture</code>. Designed for PIPL §51 + GDPR Art 30 + PDPA-SG §11 accountability obligations.</div>
+<h2>Storage</h2>
+<ul>
+<li><strong>Primary</strong>: PostgreSQL · table <code>audit_log</code> (migration <code>0007_audit_log.py</code>) · WAL-archived</li>
+<li><strong>Retention</strong>: 7 years (regulatory baseline) · auto-archive to S3 Glacier at year 2</li>
+<li><strong>Immutability</strong>: append-only · DELETE forbidden at DB-role level · time-series hash chain</li>
+<li><strong>Region pinning</strong>: SG tenant data in <code>ap-southeast-1</code> only · HK in <code>ap-east-1</code> · CN in <code>cn-shanghai-1</code></li>
+</ul>
+<h2>What's logged (all customer-affecting events)</h2>
+<table>
+<tr><th>Event</th><th>Fields captured</th><th>Wired from</th></tr>
+<tr><td>Login / auth change</td><td>kid · timestamp · IP · device fingerprint · success/fail</td><td><code>auth.py</code></td></tr>
+<tr><td>Consent grant/withdraw</td><td>kid · scope · grant_or_withdraw · prev_state · UI surface</td><td><code>consent.py</code></td></tr>
+<tr><td>Wallet debit/credit</td><td>brand_id · amount · from/to · WATCH version · reconciliation_id</td><td><code>payouts.py:452-588</code></td></tr>
+<tr><td>Campaign create/edit/pause</td><td>brand_id · campaign_id · operator · old/new spec diff</td><td><code>campaigns.py</code></td></tr>
+<tr><td>Customer redemption</td><td>kid · voucher_id · counter · 4-digit code · take_rate calculation</td><td><code>vouchers.py</code></td></tr>
+<tr><td>Data export request</td><td>kid · scope · requester (self or processor) · delivery method</td><td><code>gdpr_export.py</code></td></tr>
+</table>
+<h2>Regulator access</h2>
+<p>PDPC / IMDA can request audit log extracts under Court Order or PDPA §26D. Response SLA: ≤ 48 hours for narrow queries (single kid, date range &lt; 30d); ≤ 5 business days for broader queries. Format: CSV + signed hash + SOC2 chain-of-custody form.</p>
+<p>Contact for regulatory queries: <a href="mailto:dpo@letskix.com">dpo@letskix.com</a> (Singapore DPO).</p>
+</body></html>

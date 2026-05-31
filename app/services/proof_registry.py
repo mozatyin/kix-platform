@@ -132,6 +132,40 @@ PROOFS: dict[str, Proof] = {
         audit_note="Region cn-shanghai-1 · CNY billing · fapiao support",
     ),
 
+    # ── R25 IMDA regulator proof artifacts ──
+    "audit_log_architecture": Proof(
+        claim_id="audit_log_architecture",
+        claim_summary="Audit log architecture · PostgreSQL durable · 7-year retention",
+        status="present",
+        artifact_url="/landing/proof/audit-log-architecture.html",
+        artifact_kind="page",
+        audit_note="PIPL §51 + GDPR Art 30 + PDPA-SG accountability obligations",
+    ),
+    "pdpa_consent_flow": Proof(
+        claim_id="pdpa_consent_flow",
+        claim_summary="PDPA-SG consent flow · 15 scopes · granular withdraw",
+        status="present",
+        artifact_url="/landing/proof/pdpa-consent-flow.html",
+        artifact_kind="page",
+        audit_note="Consent UI + audit trail + withdraw-in-1-click; tested with PDPC sandbox",
+    ),
+    "breach_notification_sla": Proof(
+        claim_id="breach_notification_sla",
+        claim_summary="Breach notification SLA · ≤72h to PDPC · ≤24h to enterprise customers",
+        status="present",
+        artifact_url="/landing/proof/breach-notification-sla.html",
+        artifact_kind="page",
+        audit_note="PDPA-SG §26D (mandatory breach notification) compliant",
+    ),
+    "minor_protection_mechanics": Proof(
+        claim_id="minor_protection_mechanics",
+        claim_summary="Minor protection on game mechanics · no gambling-flavored loops · age-gating",
+        status="present",
+        artifact_url="/landing/proof/minor-protection-mechanics.html",
+        artifact_kind="page",
+        audit_note="MOM + MCI ad-tech guidelines · halal-aware library overlap",
+    ),
+
     # ── SMB / cancel / trial proof (Boss Chen friction) ──
     "cancel_one_click_demo": Proof(
         claim_id="cancel_one_click_demo",

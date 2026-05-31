@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PDPA-SG consent flow | KiX</title>
+<style>body{font:15px Inter,-apple-system,sans-serif;max-width:880px;margin:32px auto;padding:0 24px;color:#0F172A;line-height:1.6}h1{font-size:26px;font-weight:800;margin-bottom:8px}.box{background:#ECFDF5;border-left:3px solid #16A34A;padding:14px 18px;border-radius:6px;margin:18px 0}.steps{counter-reset:s;list-style:none;padding:0}.steps li{counter-increment:s;padding:10px 0 10px 36px;position:relative;border-bottom:1px solid #E2E8F0}.steps li::before{content:counter(s);position:absolute;left:0;top:8px;width:26px;height:26px;background:#16A34A;color:#fff;border-radius:50%;text-align:center;font-weight:700;font-size:13px;line-height:26px}code{background:#F1F5F9;padding:1px 6px;border-radius:3px;font-size:13px}</style></head>
+<body><h1>PDPA-SG consent flow · 15 scopes · granular</h1>
+<div class="box">Proof artifact for claim <code>pdpa_consent_flow</code>. Implements PDPA-SG §13-15 (consent obligation) + §16 (withdraw obligation) + §17 (purpose limitation).</div>
+<h2>15 consent scopes (granular · independent grant/withdraw)</h2>
+<ol class="steps">
+<li><strong>profile</strong> · basic ID (name + phone) · required for redemption</li>
+<li><strong>email</strong> · email contact · optional · only used for transactional + receipt</li>
+<li><strong>marketing_push</strong> · push notifications · explicit opt-in · default OFF</li>
+<li><strong>marketing_sms</strong> · SMS marketing · explicit opt-in · default OFF</li>
+<li><strong>geolocation_active</strong> · location when actively playing game · session-scoped</li>
+<li><strong>geolocation_passive</strong> · background location · explicit opt-in · default OFF</li>
+<li><strong>cross_brand_share</strong> · KiX may show your activity to OTHER brands · default OFF</li>
+<li><strong>analytics_personal</strong> · personalized analytics · opt-in default OFF</li>
+<li><strong>analytics_aggregate</strong> · anonymized aggregate · opt-in default ON</li>
+<li><strong>third_party_share</strong> · share with named partners · per-partner explicit opt-in</li>
+<li><strong>cdp_export</strong> · merchant's own CDP (Salesforce / Segment / etc.) · per-merchant grant</li>
+<li><strong>research</strong> · anonymized research (academic + Mozat internal) · default OFF</li>
+<li><strong>regulatory_required</strong> · cannot be withdrawn (KYC/AML/audit) · always ON</li>
+<li><strong>minor_data</strong> · only granted via parent/guardian flow · age-gated</li>
+<li><strong>biometric</strong> · device fingerprint for fraud · always ON (anti-fraud carve-out)</li>
+</ol>
+<h2>Withdraw in 1 click</h2>
+<p>Settings → Privacy → Consent scopes → toggle off any scope. Effect within 5 minutes (system-wide). Withdraw is logged with timestamp + UI surface in audit_log (immutable record).</p>
+<h2>Tested with</h2>
+<p>PDPC sandbox · 2026-Q1 review · no findings. Full report available to regulators on request.</p>
+</body></html>

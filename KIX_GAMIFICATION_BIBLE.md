@@ -574,8 +574,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 372adbd
-Last commit         : feat(i18n): 彻底多语言 · 11 locales translated via OpenRouter Sonnet + portal migrated
+HEAD                : 85d1c69
+Last commit         : feat(i18n+portal-api): all 11 locales × 35 keys · portal_admin REST scaffold · Lim CFO fix
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -584,7 +584,7 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 139,880
+  total Python LOC  : 139,914
 
 Test surface
   test files        : 157
@@ -605,7 +605,7 @@ PSPs
   live in prod      : 0
 
 Landing-gen surface (Wave M)
-  brand landings    : 6
+  brand landings    : 7
   deprecated pages  : 14
 ```
 <!-- BIBLE-APPENDIX-A:END -->

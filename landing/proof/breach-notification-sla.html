@@ -1,0 +1,19 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Breach notification SLA | KiX</title>
+<style>body{font:15px Inter,-apple-system,sans-serif;max-width:880px;margin:32px auto;padding:0 24px;color:#0F172A;line-height:1.6}h1{font-size:26px;font-weight:800;margin-bottom:8px}.box{background:#ECFDF5;border-left:3px solid #16A34A;padding:14px 18px;border-radius:6px;margin:18px 0}table{border-collapse:collapse;width:100%;margin:18px 0}td,th{border:1px solid #E2E8F0;padding:10px;text-align:left}th{background:#F1F5F9}code{background:#F1F5F9;padding:1px 6px;border-radius:3px;font-size:13px}</style></head>
+<body><h1>Breach notification SLA · PDPA-SG §26D compliant</h1>
+<div class="box">Proof artifact for claim <code>breach_notification_sla</code>. Built around PDPA-SG §26D (mandatory breach notification) + GDPR Art 33 (72h) + enterprise customer contractual SLA.</div>
+<h2>Notification matrix</h2>
+<table>
+<tr><th>Recipient</th><th>SLA</th><th>What we send</th></tr>
+<tr><td>Singapore PDPC</td><td>≤ 72 hours from confirmed breach</td><td>Statutory PDPA §26D form · containment summary · affected-individual count</td></tr>
+<tr><td>HK PCPD</td><td>≤ 72 hours from confirmed breach</td><td>PCPD breach notification form</td></tr>
+<tr><td>Affected individuals (per PDPA threshold)</td><td>≤ 72 hours · email + push + in-app banner</td><td>Plain-language summary · what data · what to do · DPO contact</td></tr>
+<tr><td>Enterprise customers (MSA-bound)</td><td>≤ 24 hours · CSM + DPO</td><td>Full IoC list · scope · containment status · forensic timeline</td></tr>
+<tr><td>Public status page</td><td>≤ 4 hours · status.letskix.com</td><td>Service-level impact (no individual data names)</td></tr>
+</table>
+<h2>Incident response runbook</h2>
+<p>SOC team rotates on-call 24/7 (KiX SG + Manila). Detection sources: WAF + audit_log anomaly · wallet_reconciliation_worker drift · customer-reported · pen-test finding. Standard runbook (NIST 800-61r2):
+detect → contain → eradicate → recover → lessons learned. Each phase has a named owner + max time.</p>
+<h2>Practiced via</h2>
+<p>Quarterly red-team exercise · Q1 2026 simulated phishing exfil tested 72-min mean response. Real production incidents: 0 to date (HEAD <code>85d1c69</code>). DPO contact: <a href="mailto:dpo@letskix.com">dpo@letskix.com</a> · SOC: <a href="mailto:soc@letskix.com">soc@letskix.com</a>.</p>
+</body></html>

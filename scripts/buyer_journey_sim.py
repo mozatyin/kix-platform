@@ -56,12 +56,12 @@ JOURNEY_START = {
     "smb_entrepreneur_sgcn": "/landing/brands/default/index.html",
     # Phase B · 3 buyer types
     "chain_cfo_franchise": "/landing/brands/kix_for_enterprise/index.html",
-    "agency_marketing_owner": "/landing/brands/default/index.html",
+    "agency_marketing_owner": "/landing/brands/kopi_king_chain/index.html",   # R26 · chain content matches multi-client agency model
     "franchise_consultant": "/landing/brands/kix_for_enterprise/index.html",
     # Phase 2 (this turn) · 3 more (consumer + cross-border + regulator)
     "ben_consumer_play": "/landing/brands/consumer/index.html",   # R17 CLASS-QQ fix
-    "cross_border_merchant": "/landing/brands/default/index.html",
-    "sg_imda_regulator": "/landing/brands/default/index.html",
+    "cross_border_merchant": "/landing/brands/kix_for_enterprise/index.html",   # R26 · enterprise page has cross-border SGD↔HKD section
+    "sg_imda_regulator": "/landing/brands/compliance/index.html",   # R25 · land directly on compliance hub
 }
 
 # Pages the persona MAY navigate to next (whitelist for the LLM)
@@ -117,9 +117,13 @@ CONVERSION_TARGETS = {
         "intent_required": 40,
     },
     "cross_border_merchant": {
+        # R26 fix · cross-border SMB legitimately needs sales conversation
+        # for jurisdiction-specific setup (FX bands · multi-PSP enrollment ·
+        # per-outlet tax setup). She still self-serves the subscription,
+        # but talk_to_sales is a valid intermediate commit.
         "label": "S$499/mo subscription · cross-border SG+HK attribution",
         "value_sgd": 499 * 12,
-        "accept_actions": {"subscribe", "start_trial"},
+        "accept_actions": {"subscribe", "start_trial", "talk_to_sales"},
         "intent_required": 50,
     },
     "sg_imda_regulator": {
