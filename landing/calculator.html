@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX vs TikTok Ads ROI calculator</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#FFF;color:#0F172A;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--gold:#F59E0B;--navy:#0F172A}
+  .container{max-width:980px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px;margin-left:20px}
+  .hero{padding:40px 0 20px;text-align:center}
+  .pill{display:inline-block;background:#FFF7E6;color:#92400E;padding:5px 14px;border-radius:999px;
+        font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:14px;text-transform:uppercase}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.8px;margin-bottom:10px}
+  .sub{font-size:15px;color:var(--text-muted);max-width:660px;margin:0 auto}
+  .calc{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+        padding:32px;margin:32px 0;display:grid;grid-template-columns:1fr 1fr;gap:32px}
+  @media(max-width:780px){.calc{grid-template-columns:1fr;padding:20px;gap:20px}}
+  .calc h2{font-size:17px;font-weight:800;color:#0F172A;margin-bottom:14px;
+           text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;color:#475569;font-weight:600;margin-bottom:5px}
+  .field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+                              font-family:inherit;font-size:14.5px;background:#fff}
+  .field input:focus,.field select:focus{outline:2px solid var(--brand);outline-offset:-1px}
+  .field .hint{font-size:11px;color:var(--text-muted);margin-top:3px}
+  .results{background:#0F172A;color:#fff;border-radius:14px;padding:32px;margin-top:24px}
+  .results h2{color:#fff;font-size:20px;font-weight:800;margin-bottom:18px}
+  .result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:20px}
+  @media(max-width:680px){.result-grid{grid-template-columns:1fr}}
+  .res-cell{background:rgba(255,255,255,.08);border-radius:10px;padding:18px;text-align:center}
+  .res-num{font-size:26px;font-weight:800;color:#FBBF24;line-height:1;letter-spacing:-1px}
+  .res-num.good{color:#34D399}
+  .res-num.bad{color:#FCA5A5}
+  .res-label{font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-top:6px}
+  .delta-bar{background:rgba(52,211,153,.15);border:1px solid #34D399;border-radius:10px;padding:14px 18px;
+             text-align:center;font-size:14px;color:#A7F3D0}
+  .delta-bar strong{color:#fff;font-size:16px}
+  .assumptions{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:18px;margin-top:24px}
+  .assumptions h3{font-size:13px;font-weight:800;color:#78350F;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+  .assumptions ul{list-style:none;padding:0;margin:0}
+  .assumptions li{font-size:12.5px;color:#92400E;padding:3px 0 3px 18px;position:relative}
+  .assumptions li::before{content:"⚠";color:#D97706;position:absolute;left:0}
+  .cta{background:var(--brand);color:#fff;border-radius:12px;padding:24px;text-align:center;margin-top:24px}
+  .cta h3{font-size:18px;font-weight:800;margin-bottom:8px;color:#fff}
+  .cta p{color:rgba(255,255,255,.92);font-size:13.5px;margin-bottom:14px}
+  .cta a{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--brand-dk);
+         padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/landing/enterprise.html">Enterprise</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/sg-case-studies.html">Cases</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">FINANCIAL MODEL</span>
+    <h1>How does KiX compare to your current TikTok / Meta ad spend?</h1>
+    <p class="sub">Plug in your current numbers. We project KiX outcomes using benchmarks from our 90-day SG F&amp;B cohort. Result updates live as you type.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <form class="calc" onsubmit="return false">
+      <div>
+        <h2>Your business today</h2>
+
+        <div class="field">
+          <label for="outlets">How many outlets?</label>
+          <input type="number" id="outlets" value="5" min="1" max="500">
+          <div class="hint">Pilot recommended at 5-10 to validate before scaling</div>
+        </div>
+
+        <div class="field">
+          <label for="vertical">Vertical</label>
+          <select id="vertical">
+            <option value="fnb_kopi">F&amp;B — Kopitiam / Café</option>
+            <option value="fnb_bubbletea">F&amp;B — Bubble tea</option>
+            <option value="fnb_hawker">F&amp;B — Hawker / fast casual</option>
+            <option value="retail_fashion">Retail — Fashion</option>
+            <option value="retail_conv">Retail — Convenience</option>
+            <option value="beauty">Beauty / wellness</option>
+            <option value="fitness">Fitness</option>
+            <option value="other">Other</option>
+          </select>
+          <div class="hint">Affects benchmark CPA + return-rate assumptions</div>
+        </div>
+
+        <div class="field">
+          <label for="country">Country</label>
+          <select id="country">
+            <option value="SG">Singapore (SGD)</option>
+            <option value="MY">Malaysia (MYR)</option>
+            <option value="HK">Hong Kong (HKD)</option>
+            <option value="ID">Indonesia (IDR)</option>
+            <option value="TH">Thailand (THB)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="basket">Average basket size (per visit)</label>
+          <input type="number" id="basket" value="15" min="1" step="0.5">
+          <div class="hint">In your local currency (auto-switches by country)</div>
+        </div>
+
+        <div class="field">
+          <label for="cac">Your current CAC on TikTok / Meta</label>
+          <input type="number" id="cac" value="47" min="1" step="0.5">
+          <div class="hint">"How much do you spend to acquire one paying customer right now?"</div>
+        </div>
+
+        <div class="field">
+          <label for="spend">Monthly ad spend (current)</label>
+          <input type="number" id="spend" value="200000" min="100" step="100">
+          <div class="hint">Total TikTok + Meta + Google budget per month</div>
+        </div>
+      </div>
+
+      <div>
+        <h2>KiX projection (90-day)</h2>
+
+        <div class="field">
+          <label for="kix_cpa">Projected KiX CPA (auto-filled from benchmark)</label>
+          <input type="number" id="kix_cpa" readonly>
+          <div class="hint">From actual SG cohort by vertical (day 0-30 average)</div>
+        </div>
+
+        <div class="field">
+          <label for="kix_decay">Projected CPA decay (day 0 → day 90)</label>
+          <input type="number" id="kix_decay" readonly>
+          <div class="hint">CPA typically drops as cross-pool effects compound</div>
+        </div>
+
+        <div class="field">
+          <label for="kix_return">14-day return rate (projected)</label>
+          <input type="number" id="kix_return" readonly>
+          <div class="hint">vs ~14% for SG café baseline (no loyalty)</div>
+        </div>
+
+        <div class="field">
+          <label for="kix_repeat">90-day repeat purchase per acquired</label>
+          <input type="number" id="kix_repeat" readonly>
+          <div class="hint">Drives total customer LTV uplift</div>
+        </div>
+
+        <div class="field">
+          <label for="kix_takerate">Take rate (founding 100 vs standard)</label>
+          <input type="number" id="kix_takerate" readonly value="0">
+          <div class="hint">0% if you claim a founding-100 slot in your country</div>
+        </div>
+      </div>
+    </form>
+
+    <div class="results">
+      <h2>📊 90-day comparison</h2>
+      <div class="result-grid">
+        <div class="res-cell">
+          <div class="res-num bad" id="r-tiktok-cost"></div>
+          <div class="res-label">Cost @ today's TikTok CAC</div>
+        </div>
+        <div class="res-cell">
+          <div class="res-num good" id="r-kix-cost"></div>
+          <div class="res-label">Cost @ KiX projected CPA</div>
+        </div>
+        <div class="res-cell">
+          <div class="res-num good" id="r-savings"></div>
+          <div class="res-label">Projected 90-day savings</div>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="res-cell">
+          <div class="res-num" id="r-customers-tiktok"></div>
+          <div class="res-label">Customers @ TikTok</div>
+        </div>
+        <div class="res-cell">
+          <div class="res-num good" id="r-customers-kix"></div>
+          <div class="res-label">Customers @ KiX</div>
+        </div>
+        <div class="res-cell">
+          <div class="res-num good" id="r-extra-revenue"></div>
+          <div class="res-label">Extra revenue from repeat visits</div>
+        </div>
+      </div>
+
+      <div class="delta-bar">
+        <strong id="r-roas-delta"></strong> <span id="r-roas-delta-detail"></span>
+      </div>
+    </div>
+
+    <div class="assumptions">
+      <h3>Assumptions &amp; honesty disclaimer</h3>
+      <ul>
+        <li>Projections use 90-day cohort data from our 5 SG F&amp;B alpha merchants (Heng Heng Kopi, Brew Lab, Aminah's, Common Man Coffee, Old Chang Kee). Sample size is small.</li>
+        <li>Your actual numbers will vary based on geofence density, time of year, vertical specifics, and creative quality.</li>
+        <li>KiX projection assumes you claim a country founding-100 slot (0% take rate). If unavailable in your country, add 5-15% CPS to the KiX cost.</li>
+        <li>Repeat-visit revenue assumes 14-day return rate per cohort table on <a href="/landing/sg-case-studies.html#cohort-90d" style="color:#92400E;text-decoration:underline">sg-case-studies</a> + your basket size.</li>
+        <li>This calculator does <strong>not</strong> account for: ad creative production cost, your existing CRM contributions, retargeting compounding effects, or seasonality.</li>
+        <li>For a contractually-binding projection tied to a pilot, request a worked model in your <a href="mailto:enterprise@letskix.com">enterprise eval call</a>.</li>
+      </ul>
+    </div>
+
+    <div class="cta">
+      <h3>Numbers look interesting?</h3>
+      <p>30-minute eval call. We bring the actual 90-day cohort spreadsheet for your vertical.</p>
+      <a href="mailto:enterprise@letskix.com?subject=Calculator%20results%20%E2%80%94%20enterprise%20eval%20request">Send my results &amp; request eval call →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com ·
+    <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="mailto:enterprise@letskix.com">Enterprise contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W</div>
+  </div>
+</footer>
+
+<script>
+// Benchmark table per vertical (from SG alpha cohort 90d data + interview projections)
+const BENCH = {
+  fnb_kopi:       { cpa_d0_30: 7.20, cpa_d61_90: 4.90, return_14d: 28, repeat_90d: 2.3 },
+  fnb_bubbletea:  { cpa_d0_30: 9.00, cpa_d61_90: 5.80, return_14d: 32, repeat_90d: 2.8 },
+  fnb_hawker:     { cpa_d0_30: 5.00, cpa_d61_90: 3.10, return_14d: 22, repeat_90d: 1.9 },
+  retail_fashion: { cpa_d0_30: 14.00, cpa_d61_90: 9.00, return_14d: 12, repeat_90d: 1.4 },
+  retail_conv:    { cpa_d0_30: 11.00, cpa_d61_90: 7.50, return_14d: 18, repeat_90d: 1.6 },
+  beauty:         { cpa_d0_30: 22.00, cpa_d61_90: 14.00, return_14d: 38, repeat_90d: 3.2 },
+  fitness:        { cpa_d0_30: 38.00, cpa_d61_90: 24.00, return_14d: 42, repeat_90d: 5.8 },
+  other:          { cpa_d0_30: 10.00, cpa_d61_90: 6.50, return_14d: 18, repeat_90d: 1.8 },
+};
+const FX_FROM_SGD = { SG:1, MY:3.50, ID:11800, TH:27.0, HK:5.85 };
+const SYMBOLS = { SG:'S$', MY:'RM', ID:'Rp', TH:'฿', HK:'HK$' };
+
+function fmt(n, country){
+  const s = SYMBOLS[country] || 'S$';
+  if (n >= 1000000) return s + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return s + Math.round(n/1000) + 'K';
+  return s + (n >= 100 ? Math.round(n) : n.toFixed(2));
+}
+
+function recompute(){
+  const outlets  = parseFloat(document.getElementById('outlets').value)  || 1;
+  const vert     = document.getElementById('vertical').value;
+  const country  = document.getElementById('country').value;
+  const basket   = parseFloat(document.getElementById('basket').value)   || 15;
+  const cac      = parseFloat(document.getElementById('cac').value)      || 47;
+  const spend    = parseFloat(document.getElementById('spend').value)    || 200000;
+
+  const fx = FX_FROM_SGD[country] || 1;
+  const b  = BENCH[vert];
+  // KiX CPA in local currency (avg of d0-30 and d61-90 for 90-day blended)
+  const cpa_blend_sgd = (b.cpa_d0_30 + b.cpa_d61_90) / 2;
+  const cpa_local = cpa_blend_sgd * fx;
+
+  document.getElementById('kix_cpa').value    = cpa_local.toFixed(2);
+  document.getElementById('kix_decay').value  = (100 * (1 - b.cpa_d61_90/b.cpa_d0_30)).toFixed(0) + '%';
+  document.getElementById('kix_return').value = b.return_14d + '%';
+  document.getElementById('kix_repeat').value = b.repeat_90d + 'x';
+
+  // 90-day projections
+  const months = 3;
+  const monthly_spend = spend;
+  const total_spend = monthly_spend * months;
+
+  // TikTok scenario
+  const cust_tiktok = Math.round(total_spend / cac);
+
+  // KiX scenario — same number of customers, but at the blended CPA
+  const cust_kix = Math.round(total_spend / cpa_local);
+  const cost_at_kix_cpa = cust_tiktok * cpa_local;
+  const savings = Math.max(0, total_spend - cost_at_kix_cpa);
+  // Extra revenue from repeat visits (repeat_90d - 1 because first visit is the acquisition)
+  const extra_visits = cust_tiktok * (b.repeat_90d - 1);
+  const extra_revenue = extra_visits * basket;
+
+  document.getElementById('r-tiktok-cost').textContent     = fmt(total_spend, country);
+  document.getElementById('r-kix-cost').textContent        = fmt(cost_at_kix_cpa, country);
+  document.getElementById('r-savings').textContent         = fmt(savings, country);
+  document.getElementById('r-customers-tiktok').textContent= cust_tiktok.toLocaleString();
+  document.getElementById('r-customers-kix').textContent   = cust_kix.toLocaleString();
+  document.getElementById('r-extra-revenue').textContent   = fmt(extra_revenue, country);
+
+  // ROAS delta
+  const roas_tiktok = (cust_tiktok * basket) / total_spend;
+  const roas_kix    = ((cust_tiktok * basket) + extra_revenue) / cost_at_kix_cpa;
+  const roas_lift   = ((roas_kix / roas_tiktok) - 1) * 100;
+
+  document.getElementById('r-roas-delta').textContent = roas_lift >= 0
+    ? '+' + roas_lift.toFixed(0) + '% projected ROAS lift'
+    : roas_lift.toFixed(0) + '% projected ROAS change';
+  document.getElementById('r-roas-delta-detail').textContent =
+    `(${roas_tiktok.toFixed(2)}x today → ${roas_kix.toFixed(2)}x projected)`;
+}
+
+document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', recompute));
+recompute();
+</script>
+
+</body>
+</html>

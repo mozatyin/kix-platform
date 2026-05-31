@@ -982,23 +982,61 @@ const state = {
   const params = new URLSearchParams(window.location.search);
   const brandParam = params.get('brand');
 
-  if (!brandParam) {
-    // Demo mode: render an alive preview rather than a blocking error
-    state.brandId = 'demo';
-    state.brandName = 'Demo Coffee Co.';
+  if (!brandParam || params.get('demo') === '1') {
+    // Wave L-C: rich demo mode — show what the customer actually sees.
+    // Picks vertical from ?vertical= query param (default kopi).
+    const vert = (params.get('vertical') || 'kopi').toLowerCase();
+    const DEMOS = {
+      kopi:      { brand:'Kopi Senandung Demo',   game:'Spin the Wheel',         reward:'Free Kopi-O',           emoji:'☕', color:'#7C2D12' },
+      nasi:      { brand:'Aminah\'s Halal Demo',  game:'Spice-level Roulette',   reward:'S$3 off lunch set',     emoji:'🍛', color:'#92400E' },
+      bubbletea: { brand:'Brew Lab Demo',         game:'Bubble Tea Mixer',       reward:'1-for-1 large drink',   emoji:'🧋', color:'#7C3AED' },
+      cafe:      { brand:'Common Man Demo',       game:'Latte-art Match',        reward:'S$2 off any drink',     emoji:'🥐', color:'#854D0E' },
+      nail:      { brand:'Polish Lab Demo',       game:'Color Match Challenge',  reward:'30% off first service', emoji:'💅', color:'#9D174D' },
+      gym:       { brand:'FitOne Demo',           game:'Attendance Streak',      reward:'1 free trial class',    emoji:'🔥', color:'#B91C1C' },
+    };
+    const d = DEMOS[vert] || DEMOS.kopi;
+    state.brandId = 'demo-' + vert;
+    state.brandName = d.brand;
     state.isDemo = true;
     state.energy = 60;
     document.getElementById('loading-screen').style.display = 'none';
     const sub = document.getElementById('brand-name-sub');
-    if (sub) sub.textContent = 'Demo Coffee Co. · DEMO MODE';
+    if (sub) sub.textContent = d.brand + ' · DEMO';
     const energy = document.getElementById('energy-text');
     if (energy) energy.textContent = '60/100';
-    // Inject a non-blocking demo banner
+
+    // Non-blocking top banner: "this is what your customers would see"
     const banner = document.createElement('div');
     banner.setAttribute('role', 'status');
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#FFF7E6;border-bottom:1px solid #F59E0B;color:#92400E;padding:10px 16px;text-align:center;font-size:13px;font-weight:600';
-    banner.innerHTML = '🎮 Demo mode — this is what your customers would see. <a href="/landing/portal.html" style="color:#92400E;text-decoration:underline">Sign up to launch your own brand</a>';
+    banner.innerHTML = '🎮 DEMO MODE — this is the actual customer experience. <a href="/landing/portal.html" style="color:#92400E;text-decoration:underline">Sign up to launch your own brand</a> · <a href="?demo=1&vertical=nasi" style="color:#92400E;text-decoration:underline">Try nasi</a> · <a href="?demo=1&vertical=bubbletea" style="color:#92400E;text-decoration:underline">bubble tea</a> · <a href="?demo=1&vertical=cafe" style="color:#92400E;text-decoration:underline">café</a>';
     document.body.prepend(banner);
+
+    // Inject a hero card showing the actual game preview (so visitor sees real content not empty page)
+    setTimeout(() => {
+      const main = document.querySelector('main') || document.querySelector('#app') || document.body;
+      const card = document.createElement('div');
+      card.style.cssText = 'max-width:540px;margin:80px auto 32px;padding:32px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.08);text-align:center;border:1px solid #E2E8F0';
+      card.innerHTML = `
+        <div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:12px">Now playing for</div>
+        <div style="font-size:18px;font-weight:800;color:${d.color};margin-bottom:18px">${d.brand}</div>
+        <div style="font-size:96px;margin:20px 0;animation:demoSpin 4s linear infinite">${d.emoji}</div>
+        <style>@keyframes demoSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }</style>
+        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:8px">${d.game}</div>
+        <div style="font-size:13px;color:#64748B;margin-bottom:24px">Play once, win once. Earn energy by visiting nearby stores.</div>
+        <div style="background:linear-gradient(135deg,${d.color} 0%,#F59E0B 100%);color:#fff;padding:16px 24px;border-radius:12px;margin-bottom:20px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;opacity:.9;margin-bottom:4px">🏆 You won</div>
+          <div style="font-size:18px;font-weight:800">${d.reward}</div>
+          <div style="font-size:11px;opacity:.9;margin-top:6px">Show this screen at the counter to redeem</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px;color:#64748B">
+          <div style="background:#F7F8FA;padding:10px;border-radius:8px"><strong style="color:#0F172A;font-size:14px">⚡ 60/100</strong><div>Energy</div></div>
+          <div style="background:#F7F8FA;padding:10px;border-radius:8px"><strong style="color:#0F172A;font-size:14px">🔥 3 days</strong><div>Streak</div></div>
+        </div>
+        <div style="margin-top:24px;font-size:11px;color:#94A3B8">Demo only · No real voucher is issued · Your campaign will be branded to your shop</div>
+      `;
+      main.appendChild(card);
+    }, 200);
     return;
   }
 

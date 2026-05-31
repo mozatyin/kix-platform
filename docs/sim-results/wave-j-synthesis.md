@@ -81,3 +81,32 @@ contractual definition + transparent enterprise framing closed the trust gap.
 5. Worked financial model template for evaluators (spreadsheet/calculator)
 
 None block this commit; all are next-iteration.
+
+---
+
+## Ben Tan re-sim post-Wave K (2026-05-31)
+
+| Page | Verdict |
+|------|---------|
+| /storefront | "Close tab within 20s — feels like generic marketplace, can't find Toast Box" |
+| /index | "**No lah, wrong page entirely** — scanned for free coffee, got corporate deck. Toast Box better fix QR code" |
+| /play (demo) | "Wouldn't spend time — unfinished product demo, still don't know where my free coffee is" |
+| /pricing | "Bounce in 5 sec — sales pitch when I want a game. Fix QR code routing first" |
+
+**Pattern:** Consumer entry experience is broken everywhere except a real-branded play link.
+Trust signals + enterprise pages help merchants/evaluators but DON'T help consumers.
+
+### Wave M (consumer entry polish) candidates
+1. QR-scan-lands-on-wrong-page should redirect: index/pricing/storefront detect
+   a consumer entry pattern (no auth, no session) and redirect to /play?demo=1
+   OR show "looks like you scanned a QR — choose the brand you saw" picker
+2. Demo state should look LESS demo-y — show actual coffee/teh/nasi imagery
+   matching the QR-source vertical, not a generic spin wheel
+3. "No brand specified" → show last-known-brand from URL referrer if possible
+4. Real merchant QR codes should embed a versioned brand_id so old QR
+   codes still work even if brand slug changes
+5. Consumer-side i18n (BM / 中文 / EN auto-detect) on play.html
+6. Storefront should default to "near you" list with actual SG merchant
+   data (currently shows generic categories)
+
+Not in scope for this commit — document for next iteration.
