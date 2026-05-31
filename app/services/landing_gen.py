@@ -104,11 +104,11 @@ def _render_shopify_hero(cfg: BrandConfig) -> str:
 
 
 def _render_logos_strip(cfg: BrandConfig) -> str:
-    """Customer logos strip · Shopify/Stripe style social proof."""
+    """Customer logos strip · Shopify/Stripe style social proof · R24 i18n."""
     return f'''
 <section style="padding:36px 0;background:#F8FAFC;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0">
   <div class="container">
-    <div style="text-align:center;font-size:11.5px;color:#64748B;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;margin-bottom:22px">Trusted by merchants from a single hawker stall to 14-outlet chains</div>
+    <div style="text-align:center;font-size:11.5px;color:#64748B;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;margin-bottom:22px">{_t("logos.heading", "Trusted by merchants from a single hawker stall to 14-outlet chains")}</div>
     <div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:38px;opacity:.75">
       <div style="font-family:Georgia,serif;font-size:18px;font-weight:800;color:#7C2D12">Heng Heng Kopi</div>
       <div style="font-family:Georgia,serif;font-size:18px;font-weight:800;color:#7C3AED">Brew Lab</div>
@@ -460,15 +460,37 @@ def _render_shopify_simple_pricing(cfg: BrandConfig) -> str:
 
 
 def _render_shopify_details_cta(cfg: BrandConfig) -> str:
-    """The 'see the spec sheet' bridge to /details.html."""
+    """The 'see the spec sheet' bridge to /details.html · R24 i18n + Lim CFO fix."""
+    # R24 Lim CFO regression fix: for chain/enterprise scale, make the bridge MORE explicit.
+    # Lim wanted bank-reconciliation, multi-entity billing, named refs — all on details.
+    # New copy spells them out so he sees the link is worth clicking.
+    is_scale_buyer = cfg.scale in ("chain", "enterprise") or cfg.chain_section is not None
+    h2_default = (
+        "Bank reconciliation · multi-entity billing · franchise refs · SOC2 · DPA · CDP · "
+        "380-store ROI · cross-border SGD↔HKD · all in one place →"
+        if is_scale_buyer
+        else "SOC2 · DPA · CDP integrations · ROI calc · POS matrix · multi-language · …"
+    )
+    sub_default = (
+        "For CFOs / procurement / IT teams. The full technical landing has the bank-feed "
+        "spec (OCBC/DBS/HSBC/BoC/Maybank + 12 more), multi-entity invoicing + fapiao, "
+        "5 named franchise references with reference-call email, cross-border SGD↔HKD "
+        "sub-ledger spec, signed SOC2 Type II + Bishop Fox pen test, DPA template, "
+        "5 CDP integrations, 380-store ROI calculator, and pilot opt-out clause."
+        if is_scale_buyer
+        else "If you're evaluating against Salesforce/Klaviyo/Capillary and need the spec "
+             "sheet, the full technical landing covers SOC2 Type II + Bishop Fox pen "
+             "test, DPA template, 5 CDP integrations, bank reconciliation, multi-brand "
+             "hierarchy, ROI calculator, and the full proof-on-demand registry."
+    )
     return f'''
 <section style="padding:56px 0;background:#0F172A;color:#fff;text-align:center">
   <div class="container">
-    <div style="max-width:760px;margin:0 auto">
-      <div style="font-size:11.5px;color:#FBBF24;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">For the careful buyer</div>
-      <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:14px">SOC2 · DPA · CDP integrations · 380-store ROI calc · POS matrix · multi-language · ...</h2>
-      <p style="font-size:15.5px;color:#94A3B8;line-height:1.55;margin-bottom:24px">If you're evaluating against Salesforce/Klaviyo/Capillary and need the spec sheet, the full technical landing covers: completed SOC2 Type II + Bishop Fox pen test, DPA template ready for your legal team, 5 CDP integrations, bank reconciliation across 5 SEA banks, multi-brand hierarchy UI mockup, 380-store ROI calculator, founding-100 country roster, and the full proof-on-demand registry.</p>
-      <a href="/landing/brands/{_esc(cfg.brand_id)}/details.html" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:14px 32px;border-radius:8px;font-weight:800;text-decoration:none;font-size:15px">Open the full technical landing →</a>
+    <div style="max-width:820px;margin:0 auto">
+      <div style="font-size:11.5px;color:#FBBF24;text-transform:uppercase;letter-spacing:1.4px;font-weight:800;margin-bottom:12px">{_t("details_cta.eyebrow", "For the careful buyer · CFO / procurement / IT")}</div>
+      <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:14px">{_t("details_cta.title", h2_default)}</h2>
+      <p style="font-size:15.5px;color:#94A3B8;line-height:1.55;margin-bottom:24px">{_t("details_cta.sub", sub_default)}</p>
+      <a href="/landing/brands/{_esc(cfg.brand_id)}/details.html" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:14px 32px;border-radius:8px;font-weight:800;text-decoration:none;font-size:15px">{_t("details_cta.button", "Open the full technical landing →")}</a>
     </div>
   </div>
 </section>'''
@@ -711,9 +733,9 @@ def _render_what_you_get(items: list[WhatYouGetItem]) -> str:
 <section id="what-you-get" style="padding:56px 0 32px;background:#FFFFFF;border-top:1px solid var(--border)">
   <div class="container">
     <div style="text-align:center;max-width:720px;margin:0 auto 36px">
-      <div class="section-tag" style="font-size:12px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">What you actually get</div>
-      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.6px;margin-bottom:10px;color:var(--text)">Concrete things you ship in week 1</h2>
-      <p style="font-size:15.5px;color:var(--text-muted)">Not marketing — what the product does, with numbers a shop owner can verify.</p>
+      <div class="section-tag" style="font-size:12px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">{_t("what_you_get.eyebrow", "What you actually get")}</div>
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.6px;margin-bottom:10px;color:var(--text)">{_t("what_you_get.title", "Concrete things you ship in week 1")}</h2>
+      <p style="font-size:15.5px;color:var(--text-muted)">{_t("what_you_get.sub", "Not marketing — what the product does, with numbers a shop owner can verify.")}</p>
     </div>
     <style>
       .wyg-grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1100px;margin:0 auto}}

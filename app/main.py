@@ -557,6 +557,14 @@ and the shim helpers in `app.api_standards`.
         payouts.router, prefix="/api/v1/payouts", tags=["payouts"]
     )
 
+    # ── Portal v3 admin (TikTok-Ads-Manager-functional · Shopify-visual) ──
+    # Backend API for portal-v3 frontend. Returns deterministic mock data
+    # today · real Redis/PG wiring is follow-up. Shape is production-correct.
+    from app.routers import portal_admin
+    app.include_router(
+        portal_admin.router, prefix="/api/v1/portal-admin", tags=["portal-admin"]
+    )
+
     # ── FX Engine: multi-currency rate store + conversion ──────────────
     from app.routers import fx
     app.include_router(

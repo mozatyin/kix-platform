@@ -25,6 +25,8 @@ from sim_users_v2 import call_llm
 
 SOURCE_LOCALE = "en-SG"
 TARGET_LOCALES = {
+    "zh-Hans-SG": "简体中文 (新加坡) · warm + practical · keep brand names + KiX in Latin · S$ stays S$",
+    "zh-Hans-CN": "简体中文 (中国大陆) · warm + practical · keep brand names + KiX in Latin · S$ → ¥ where context allows · 朋友圈 not IG",
     "en-US": "American English (use $ not S$ where context allows; localize idioms · keep brand+vertical English terms)",
     "id-ID": "Bahasa Indonesia · formal but warm · keep brand names + KiX in English",
     "ms-MY": "Bahasa Melayu (Malaysia) · friendly merchant tone · keep brand names + KiX in English · S$ → RM where context allows",

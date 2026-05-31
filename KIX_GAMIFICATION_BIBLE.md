@@ -574,17 +574,17 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : f1a337b
-Last commit         : feat(shopify+tiktok): R21 · Jobs 3 fixes + R20 regression recovered · 8/8 convert
+HEAD                : 372adbd
+Last commit         : feat(i18n): 彻底多语言 · 11 locales translated via OpenRouter Sonnet + portal migrated
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
-  routers           : 124
-  endpoints         : 1,068
+  routers           : 125
+  endpoints         : 1,081
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 139,507
+  total Python LOC  : 139,880
 
 Test surface
   test files        : 157
