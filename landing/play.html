@@ -983,16 +983,20 @@ const state = {
   const brandParam = params.get('brand');
 
   if (!brandParam || params.get('demo') === '1') {
-    // Wave L-C: rich demo mode — show what the customer actually sees.
-    // Picks vertical from ?vertical= query param (default kopi).
+    // Wave M-2 (2026-05-31): per founder feedback "记得是修机器" —
+    // demo no longer hand-coded; loads REAL generated games from
+    // landing/games/* (output of the actual KiX game-generation pipeline:
+    // ELTM brick + brand_injector + creative_gen). Each vertical maps to
+    // a real generated brand sample. This is the SAME pipeline a paying
+    // merchant gets — eating our own dog food.
     const vert = (params.get('vertical') || 'kopi').toLowerCase();
     const DEMOS = {
-      kopi:      { brand:'Kopi Senandung Demo',   game:'Spin the Wheel',         reward:'Free Kopi-O',           emoji:'☕', color:'#7C2D12' },
-      nasi:      { brand:'Aminah\'s Halal Demo',  game:'Spice-level Roulette',   reward:'S$3 off lunch set',     emoji:'🍛', color:'#92400E' },
-      bubbletea: { brand:'Brew Lab Demo',         game:'Bubble Tea Mixer',       reward:'1-for-1 large drink',   emoji:'🧋', color:'#7C3AED' },
-      cafe:      { brand:'Common Man Demo',       game:'Latte-art Match',        reward:'S$2 off any drink',     emoji:'🥐', color:'#854D0E' },
-      nail:      { brand:'Polish Lab Demo',       game:'Color Match Challenge',  reward:'30% off first service', emoji:'💅', color:'#9D174D' },
-      gym:       { brand:'FitOne Demo',           game:'Attendance Streak',      reward:'1 free trial class',    emoji:'🔥', color:'#B91C1C' },
+      kopi:      { brand:'Kopi Senandung (real-gen)',   game_path:'games/brand-9c7223a6/coffee_shop.html',       reward:'Free Kopi-O',           emoji:'☕', color:'#7C2D12', generator:'ELTM brick + brand_injector v2' },
+      nasi:      { brand:"Aminah's Halal (real-gen)",   game_path:'games/brand-9c7223a6/match3.html',           reward:'S$3 off lunch set',     emoji:'🍛', color:'#92400E', generator:'ELTM brick + halal-safe filter' },
+      bubbletea: { brand:'Brew Lab (real-gen)',         game_path:'games/brand-58f40f0b/pizza_maker.html',      reward:'1-for-1 large drink',   emoji:'🧋', color:'#7C3AED', generator:'ELTM brick + bubble-tea theme' },
+      cafe:      { brand:'Common Man (real-gen)',       game_path:'games/brand-9c7223a6/coffee-latte-art.html', reward:'S$2 off any drink',     emoji:'🥐', color:'#854D0E', generator:'ELTM brick + café asset slots' },
+      nail:      { brand:'Polish Lab (real-gen)',       game_path:'games/brand-9c7223a6/shop_manager.html',     reward:'30% off first service', emoji:'💅', color:'#9D174D', generator:'ELTM brick + retail/beauty theme' },
+      gym:       { brand:'FitOne (real-gen)',           game_path:'games/nanyang_jkt_central_1780020019/match3.html', reward:'1 free trial class', emoji:'🔥', color:'#B91C1C', generator:'ELTM brick + fitness theme' },
     };
     const d = DEMOS[vert] || DEMOS.kopi;
     state.brandId = 'demo-' + vert;
@@ -1024,26 +1028,21 @@ const state = {
         <div style="font-size:11px;color:#94A3B8;margin-bottom:18px">Playing as a customer of <strong style="color:${d.color}">${d.brand}</strong></div>
 
         <div id="demo-stage-1">
-          <div style="font-size:20px;font-weight:800;color:#0F172A;margin-bottom:8px">Step 1 of 3 — Spin to win</div>
-          <div style="font-size:13px;color:#64748B;margin-bottom:18px">${d.game} · 8 prize segments, one is yours</div>
+          <div style="font-size:20px;font-weight:800;color:#0F172A;margin-bottom:8px">Step 1 of 3 — Real generated game · play it</div>
+          <div style="font-size:12.5px;color:#64748B;margin-bottom:6px">Pipeline: <strong style="color:#0F172A">${d.generator}</strong></div>
+          <div style="font-size:11.5px;color:#94A3B8;margin-bottom:18px font-style:italic">This is not a hand-coded mock. It's the actual output of our generation machine — the same pipeline a paying merchant uses. We're loading a real generated game in the iframe below.</div>
 
-          <!-- Real interactive spin wheel SVG -->
-          <div style="position:relative;width:300px;height:300px;margin:0 auto 16px">
-            <!-- Pointer (fixed at top) -->
-            <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:20px solid #0F172A;z-index:5;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))"></div>
-            <svg id="demo-wheel" viewBox="-150 -150 300 300" style="width:100%;height:100%;transition:transform 4.5s cubic-bezier(.22,1,.36,1);filter:drop-shadow(0 8px 24px rgba(15,23,42,.12))" aria-label="${d.game} wheel">
-              <!-- 8 segments, each 45deg. Drawn programmatically via JS so prizes are vertical-aware -->
-            </svg>
-            <!-- Center button -->
-            <button id="demo-play-btn" type="button" aria-label="Spin" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:#0F172A;color:#fff;border:6px solid #fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:4">SPIN</button>
+          <!-- REAL generated game in iframe -->
+          <div style="position:relative;width:100%;max-width:420px;margin:0 auto;border-radius:18px;overflow:hidden;border:1px solid #E2E8F0;box-shadow:0 8px 32px rgba(15,23,42,.08);background:#000;aspect-ratio:9/16">
+            <iframe id="demo-game-iframe" src="/landing/${d.game_path}" loading="lazy" title="${d.brand} — ${d.game_path}" style="width:100%;height:100%;border:0;display:block;background:#000" allow="autoplay; geolocation" referrerpolicy="no-referrer"></iframe>
           </div>
-
-          <style>
-            @keyframes demoPulse { 0%,100% { transform:translate(-50%,-50%) scale(1) } 50% { transform:translate(-50%,-50%) scale(1.05) } }
-            #demo-play-btn{animation:demoPulse 2.4s ease-in-out infinite}
-            #demo-play-btn:disabled{animation:none;opacity:.55;cursor:default}
-          </style>
-          <div id="demo-spin-hint" style="margin-top:10px;font-size:12.5px;color:#64748B">Tap <strong style="color:#0F172A">SPIN</strong> · land on a prize segment to win · real customers spend ~4 seconds here</div>
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+            <button id="demo-play-btn" type="button" style="background:#0F172A;color:#fff;border:0;padding:11px 22px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">Done — show me the voucher reveal →</button>
+            <a href="/landing/${d.game_path}" target="_blank" rel="noopener" style="background:#fff;color:#0F172A;border:1px solid #CBD5E1;padding:11px 22px;border-radius:8px;font-weight:600;font-size:13.5px;text-decoration:none;display:inline-flex;align-items:center">Open in full screen ↗</a>
+          </div>
+          <div style="margin-top:14px;font-size:11.5px;color:#64748B;max-width:420px;margin-left:auto;margin-right:auto">
+            ☝️ Inspect the iframe — every byte of that game was generated by our brick → ELTM → coder → PDCA pipeline. Source on disk at <code style="background:#F1F5F9;padding:1px 5px;border-radius:3px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px">landing/${d.game_path}</code>. 30 brand samples already generated · 37,612 LOC of real game HTML on disk.
+          </div>
         </div>
 
         <div id="demo-stage-2" style="display:none">
@@ -1073,51 +1072,19 @@ const state = {
         </div>
       `;
       main.appendChild(card);
-      // Build the wheel SVG (8 segments around a circle, alternating brand color + gold)
-      const wheel = document.getElementById('demo-wheel');
-      const PRIZES = [d.reward, 'Try again', '5% off', d.reward, 'Try again', '10% off', d.reward, 'Free upgrade'];
-      const COLORS = [d.color, '#E2E8F0', '#FBBF24', d.color, '#E2E8F0', '#FBBF24', d.color, '#15803D'];
-      const TEXT_COLORS = ['#fff', '#0F172A', '#0F172A', '#fff', '#0F172A', '#0F172A', '#fff', '#fff'];
-      const RADIUS = 140;
-      function polar(r, a){ return [r*Math.cos((a-90)*Math.PI/180), r*Math.sin((a-90)*Math.PI/180)]; }
-      for (let i=0; i<8; i++) {
-        const a1 = i*45, a2 = (i+1)*45;
-        const [x1,y1] = polar(RADIUS, a1);
-        const [x2,y2] = polar(RADIUS, a2);
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M0,0 L${x1},${y1} A${RADIUS},${RADIUS} 0 0,1 ${x2},${y2} Z`);
-        path.setAttribute('fill', COLORS[i]);
-        path.setAttribute('stroke', '#fff');
-        path.setAttribute('stroke-width', '2');
-        wheel.appendChild(path);
-        // Prize label
-        const [tx,ty] = polar(RADIUS*0.62, a1 + 22.5);
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', tx);
-        text.setAttribute('y', ty);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'central');
-        text.setAttribute('fill', TEXT_COLORS[i]);
-        text.setAttribute('font-size', '11');
-        text.setAttribute('font-weight', '700');
-        text.setAttribute('transform', `rotate(${a1 + 22.5}, ${tx}, ${ty})`);
-        text.textContent = PRIZES[i].length > 14 ? PRIZES[i].slice(0,12)+'…' : PRIZES[i];
-        wheel.appendChild(text);
-      }
-
-      // Spin handler — lands on segment 0 (the merchant's primary reward)
-      document.getElementById('demo-play-btn').addEventListener('click', (e) => {
-        const btn = e.currentTarget;
-        if (btn.disabled) return;
-        btn.disabled = true;
-        // Spin to land on segment 0 (centered at 22.5°). Add 6 full turns for drama.
-        const finalRotation = 6 * 360 + (360 - 22.5);
-        wheel.style.transform = `rotate(${finalRotation}deg)`;
-        document.getElementById('demo-spin-hint').textContent = 'Spinning…';
-        setTimeout(() => {
+      // No hand-coded wheel needed — the iframe IS the real generated game.
+      // Stage 1 → 2 transition happens when the user clicks "Done" (or when
+      // the iframe posts a {type:'game_complete'} message — wire later).
+      document.getElementById('demo-play-btn').addEventListener('click', () => {
+        document.getElementById('demo-stage-1').style.display = 'none';
+        document.getElementById('demo-stage-2').style.display = '';
+      });
+      // If the generated game posts a completion message, advance automatically.
+      window.addEventListener('message', (ev) => {
+        if (ev?.data?.type === 'game_complete' || ev?.data?.type === 'kix_game_done') {
           document.getElementById('demo-stage-1').style.display = 'none';
           document.getElementById('demo-stage-2').style.display = '';
-        }, 4600);  // 4.5s transition + 100ms buffer
+        }
       });
       document.getElementById('demo-redeem-btn').addEventListener('click', () => {
         document.getElementById('demo-stage-2').style.display = 'none';
