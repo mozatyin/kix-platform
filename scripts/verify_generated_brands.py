@@ -19,7 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.services.verdict_gate import GateDecision, VerdictScore, verdict_gate
-from sim_users_deepseek import PERSONAS, load_openrouter_key
+from app.services.persona_registry import (
+    PERSONAS as REGISTRY_PERSONAS, for_page_ids,
+)
+from sim_users_deepseek import load_openrouter_key
 from sim_users_v2 import call_llm
 
 PORT = 8765
@@ -32,57 +35,17 @@ BRANDS = [
 ]
 
 
-# CLASS-O + CLASS-S · personas matched to (audience, scale).
-# Brand landing pages declare both. The verdict gate only runs personas that
-# fit BOTH axes — so Ahmad (chain CEO) doesn't get asked to evaluate a
-# single-stall page, and Aminah (first-time single-stall merchant) doesn't
-# get asked to evaluate a chain CFO landing.
-PERSONA_AXES = {
-    "aminah_first_time_merchant": {"audience": "merchant", "scale": "single"},
-    "skeptical_owner": {"audience": "merchant", "scale": "single"},
-    "ahmad_kopi_chain": {"audience": "merchant", "scale": "chain"},
-    "enterprise_manager": {"audience": "merchant", "scale": "enterprise"},  # Sandeep — 100+ stores
-    "consumer": {"audience": "consumer", "scale": "both"},
-}
-
-def _matches(persona_axis_val: str, page_val: str) -> bool:
-    """Persona fits the page if either side declares 'both'."""
-    return persona_axis_val == page_val or "both" in (persona_axis_val, page_val)
-
+# C · persona_registry is the single source of truth — used to live in
+# 3 places (PERSONAS, PERSONA_PROFILES, PERSONA_AXES). Now centralized
+# in app/services/persona_registry.py.
 def personas_for(audience: str, scale: str = "single") -> list[str]:
-    return [
-        pid for pid, axes in PERSONA_AXES.items()
-        if _matches(axes["audience"], audience) and _matches(axes["scale"], scale)
-    ]
+    return for_page_ids(audience, scale)
 
 
-PERSONA_PROFILES = {
-    "aminah_first_time_merchant": {
-        "name": "Aminah Binti",
-        "role": "First-time merchant. Halal nasi padang stall, Tampines hawker centre. Never used SaaS. Marketing = IG stories. Tech-cautious but motivated to grow.",
-        "context": "Halal-only. Strong family priority. Speaks Malay+English. Hates jargon. Trusts WhatsApp founder contact over forms.",
-    },
-    "skeptical_owner": {
-        "name": "Sarah Chen",
-        "role": "Café owner, single outlet, 4 years in. Burned by 2 prior loyalty SaaS platforms. Reads the small print. Doesn't sign anything she can't cancel in 1 click.",
-        "context": "Skeptical of 'free' tiers (hidden costs?). Skeptical of case-study photos (real?). Needs proof, not pitch.",
-    },
-    "ahmad_kopi_chain": {
-        "name": "Ahmad bin Hassan",
-        "role": "CEO of a 14-outlet kopitiam chain (KL + Penang). Drives a Mercedes. Looks at unit economics, not feelings. Compares vendors on CFO dimensions.",
-        "context": "Has IT team, payment integration team. Needs: per-outlet attribution, multi-tenant data, white-label, SOC2/PDPA-MY compliance, exit clause.",
-    },
-    "consumer": {
-        "name": "Ben Tan",
-        "role": "Office worker. Lunch in CBD. Will scan a QR if it's <3 seconds. Won't install an app. Won't fill a form for free coffee.",
-        "context": "Cynical about ad tracking. Likes vouchers. Hates 'gamification' that's actually just spam.",
-    },
-    "enterprise_manager": {
-        "name": "Sandeep Kumar",
-        "role": "Regional Loyalty Manager at Starbucks SG. 38 years old. Manages S$2M/year promotion budget. Reports to APAC marketing director. Buys from Salesforce, Klaviyo, Eber today. Evaluating KiX as a possible add-on or replacement.",
-        "context": "15-minute evaluation window. Needs: enterprise contract terms, SSO/SAML, data residency in SG, integration with existing CDP, multi-brand reporting roll-up (across 6 Starbucks sub-brands in his region). Will scrutinize SOC2 / pen-test reports / DPA / breach notification SLA. 'Founding-100' is a startup signal, not enterprise — needs separate tier.",
-    },
-}
+# PERSONA_PROFILES removed — persona_registry is the source of truth.
+def _profile(pid: str) -> dict:
+    p = REGISTRY_PERSONAS[pid]
+    return {"name": p.name, "role": p.role, "context": p.context}
 
 
 async def render_page_text(url: str) -> str:
@@ -114,7 +77,7 @@ async def render_page_text(url: str) -> str:
 
 
 def persona_critique(key: str, persona_id: str, brand_label: str, page_text: str) -> VerdictScore:
-    profile = PERSONA_PROFILES[persona_id]
+    profile = _profile(persona_id)
     system = (
         f"You are {profile['name']}, {profile['role']}\n\n"
         f"Context: {profile['context']}\n\n"
@@ -189,8 +152,13 @@ async def verify_brand(key: str, brand_id: str, brand_label: str):
     def eval_lookup(_html, pid):
         return next(s for s in scores if s.persona_id == pid)
 
+    # D · per-page threshold override. cfg.verdict_threshold=0 means inherit
+    # default 65; non-zero overrides. Same for min_floor.
+    threshold = cfg.verdict_threshold or 65
+    min_floor = cfg.verdict_min_floor or 40
     decision = verdict_gate(text, pids, eval_lookup,
-                            threshold=65, min_score_floor=40)
+                            threshold=threshold, min_score_floor=min_floor)
+    print(f"  (gate · threshold={threshold} min_floor={min_floor})")
 
     for s in scores:
         mark = "✓" if s.score >= 65 else "△" if s.score >= 40 else "✗"

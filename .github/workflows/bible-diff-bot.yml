@@ -1,0 +1,88 @@
+# G · code → Bible diff bot
+#
+# Runs on every PR. If the diff changes counts that Bible Appendix A
+# tracks (services, workers, tests, etc.), the bot posts a PR comment
+# with the suggested Bible Appendix A diff.
+#
+# Fails the PR if `scripts/bible_check.py --strict` exits non-zero
+# OR `scripts/bible_generate_appendix_a.py --check` reports drift.
+
+name: bible-diff-bot
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "scripts/**"
+      - "tests/**"
+      - "migrations/**"
+      - "KIX_GAMIFICATION_BIBLE.md"
+
+jobs:
+  check-bible-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # No external deps — bible_check uses only stdlib
+      - name: Run drift check
+        id: drift
+        run: |
+          set +e
+          python scripts/bible_check.py --strict > /tmp/drift.txt 2>&1
+          rc=$?
+          cat /tmp/drift.txt
+          echo "rc=$rc" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Run Appendix A generator check
+        id: generated
+        run: |
+          set +e
+          python scripts/bible_generate_appendix_a.py --check > /tmp/generated.txt 2>&1
+          rc=$?
+          cat /tmp/generated.txt
+          # Capture what the new Appendix A WOULD be
+          python scripts/bible_generate_appendix_a.py > /tmp/proposed.txt 2>&1
+          echo "rc=$rc" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Comment on PR
+        if: ${{ github.event_name == 'pull_request' && (steps.drift.outputs.rc != '0' || steps.generated.outputs.rc != '0') }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## 📖 Bible drift detected\n\n';
+
+            if ('${{ steps.drift.outputs.rc }}' !== '0') {
+              const drift = fs.readFileSync('/tmp/drift.txt', 'utf8');
+              body += '### `bible_check.py --strict` output\n\n```\n' + drift + '\n```\n\n';
+            }
+
+            if ('${{ steps.generated.outputs.rc }}' !== '0') {
+              const proposed = fs.readFileSync('/tmp/proposed.txt', 'utf8');
+              body += '### Proposed Appendix A (generated from this PR)\n\n';
+              body += '```\n' + proposed + '\n```\n\n';
+              body += '**Fix**: run `python scripts/bible_generate_appendix_a.py --write` locally and commit the updated Bible.\n';
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+      - name: Fail if drift
+        run: |
+          if [ "${{ steps.drift.outputs.rc }}" != "0" ] || [ "${{ steps.generated.outputs.rc }}" != "0" ]; then
+            echo "Bible drift — PR blocked. See PR comment for suggested fix."
+            exit 1
+          fi

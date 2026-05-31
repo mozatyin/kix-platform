@@ -195,6 +195,9 @@ BRANDS: dict[str, BrandConfig] = {
         audience="merchant",
         scale="enterprise",
         vertical="cafe",
+        # D · stricter gate for enterprise (Sandeep is pickier)
+        verdict_threshold=70,
+        verdict_min_floor=50,
     ),
 }
 

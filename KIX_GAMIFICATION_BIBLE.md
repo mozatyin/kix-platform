@@ -321,71 +321,164 @@ Alpha program scaffold is live (Chapter 1.13). Zero real merchants enrolled as o
 
 ---
 
+# Chapter 14 · Per-merchant landing-page generation (Wave M)
+
+> **Shipped during Wave M (2026-05-30 → 2026-05-31)**. This chapter
+> describes the machinery that produces per-merchant landing pages
+> from a single `BrandConfig`, gates them through a multi-persona LLM
+> verdict, and forbids 23 categories of historical defects from
+> reaching production.
+
+## 14.1 Why this chapter exists ✅ DELIVERED
+
+The founder mandate of 2026-05-30 was: **"we don't fix the pages,
+we fix the machine that produces them"**. Before Wave M, 17 hand-edited
+`landing/*.html` files had drifted from each other (different locale
+switchers, different founding-100 copy, different trust footers).
+Bug-fixing one file did not fix the other 16.
+
+Wave M replaced "hand-edit landing pages" with "edit `BrandConfig`,
+regenerate, gate-verify". Sites become consistent **structurally**, not
+through code review or manual QA.
+
+## 14.2 The generation pipeline ✅ DELIVERED
+
+```
+BrandConfig  →  landing_gen.generate_landing()  →  HTML string
+                  │
+                  ├─ vocab_check()                  ← CLASS-D fail-closed
+                  ├─ find_off_canon_pricing()       ← CLASS-J fail-closed
+                  ├─ self-reference detection       ← CLASS-R
+                  ├─ chain_section / enterprise_section ← CLASS-P / V
+                  ├─ vertical benchmark callout     ← CLASS-T
+                  └─ pricing_canon tier rendering   ← CLASS-J
+
+HTML on disk → cron_nightly_refresh.sh → verify_generated_brands.py
+                  │
+                  ├─ Playwright render (real browser)
+                  ├─ per-(audience, scale) persona set
+                  ├─ parallel LLM evaluation (OpenRouter Sonnet)
+                  └─ verdict_gate aggregation → ACCEPT / REJECT
+```
+
+Each arrow is a fail-closed gate. None can be bypassed by a caller.
+
+## 14.3 The five canonical services (Wave M deliverables) ✅ DELIVERED
+
+| Service | LOC | Purpose | Test count |
+|---|---|---|---|
+| `app/services/landing_gen.py` | 510 | BrandConfig → HTML (single template) | 27 |
+| `app/services/verdict_gate.py` | 240 | Run N persona evaluators, accept/reject aggregate | 22 |
+| `app/services/customer_vocab.py` | 145 | Fail-closed jargon gate (Trinity/PDCA/WAFL forbidden) | 16 |
+| `app/services/pricing_canon.py` | 215 | 3 frozen PricingTier dataclasses, drift detector | 17 |
+| `app/services/vertical_benchmarks.py` | 120 | Per-vertical CPA/repeat/ticket bands (6 verticals) | 7 |
+| `app/services/brand_inject_preview.py` | 162 | CSS-var brand injection at GEN time (not runtime) | 24 |
+| `app/services/persona_registry.py` | 145 | Single source of truth for 6 personas + axes | 13 |
+| `app/workers/nightly_creative_refresh.py` | 200 | Walk landing/brands, refresh stale, gate-verify | 10 |
+
+**Total Wave M code surface**: ~1,740 LOC across 8 files + ~870 LOC across 8 test files = **136 new tests passing**.
+
+## 14.4 Bug-class catalog ✅ DELIVERED
+
+`docs/all-bugs-catalog.md` catalogs 23 bug **classes** (not tickets).
+Each class shares a single architectural root cause and is closed
+**structurally** — the broken code path is deleted, not warned about.
+
+Pattern (per [[feedback_structural_fix_pattern]]):
+
+| ❌ Patch | ✅ Structural fix |
+|---|---|
+| Lint warning for "Trinity 3T" | `vocab_check()` raises VocabViolation; landing_gen calls it; no caller can ship past it |
+| Code-review for layout consistency | `landing_gen.generate_landing(BrandConfig)` is the only path; hand-edits caught by `<meta name=generator>` + CI lint |
+| Manual QA on i18n keys | `resolveI18n()` normalizes 3 conventions; landing_gen always emits new format |
+
+23 classes closed at HEAD `2c8276c`. New defects must be ASSIGNED to a class or birth a new class; ad-hoc patches rejected in review.
+
+## 14.5 Persona axes — audience × scale ✅ DELIVERED
+
+Verdict gate routing depends on TWO axes:
+
+- **audience**: merchant / consumer / both
+- **scale**: single (1 outlet) / chain (5-50 outlets) / enterprise (100+ outlets, public co) / both
+
+This is a 3-tier ladder. A persona at scale=enterprise (Sandeep) will NOT evaluate a scale=single page; not because the page is bad but because Sandeep is the wrong eye. Mis-scoping inflates false-REJECT rate; correct scoping makes the gate's signal real.
+
+5 personas in registry (`app/services/persona_registry.py`):
+- Aminah (merchant·single) — halal hawker, never used SaaS
+- Sarah (merchant·single) — café owner, burned twice
+- Ahmad (merchant·chain) — 14-outlet kopitiam CEO
+- Sandeep (merchant·enterprise) — Starbucks regional, S$2M budget
+- Ben (consumer·both) — office worker, will scan if <3s
+- (Steve Jobs as merchant·both — UX critic for sweeps)
+
+## 14.6 Five canonical brand landings (5/5 ACCEPT at R8) ✅ DELIVERED
+
+| Brand | Scale | Vertical | Personas | Gate score |
+|---|---|---|---|---|
+| default | single | kopi | Aminah, Sarah | 77 avg / 72 min |
+| heng_heng_kopi | single | kopi | Aminah, Sarah | 72 / 72 |
+| halal_hawker | single | halal | Aminah, Sarah | 75 / 72 |
+| kopi_king_chain | chain | kopi | Ahmad | 72 / 72 |
+| kix_for_enterprise | enterprise | cafe | Sandeep | 72 / 72 (gate threshold 70) |
+
+All 5 ACCEPT at threshold=65 (default 70 for enterprise per D · per-page override). Verified end-to-end via `./scripts/cron_nightly_refresh.sh` — exit 0.
+
+## 14.7 Deprecation pipeline for legacy pages ✅ DELIVERED
+
+`data/deprecation_registry.json` lists 17 legacy `landing/*.html` pages with deprecated_at / sunset_at / successor URL. `scripts/apply_deprecation_banners.py` stamps a fixed-position red banner on each; the banner is idempotent (re-running doesn't double-stamp).
+
+12 of 17 currently stamped. 5 exempt (portal/connect/investors — non-landing functional pages). Lint surfaces "DEPRECATED N days ago" to remind ops when to flip to 302 redirects.
+
+## 14.8 Discipline going forward
+
+- Every new merchant brand = one `BrandConfig` entry in `scripts/generate_landing_sites.py`. No hand-edit of `landing/brands/{id}/index.html`.
+- Every new persona = one entry in `app/services/persona_registry.py`. No duplicates.
+- Every new bug = first map to a `docs/all-bugs-catalog.md` class. If novel, create the class with root-cause + structural fix.
+- Every PR that touches `app/services/` or `app/workers/` triggers `bible-diff-bot.yml` GitHub Action — drift = blocked PR.
+
+---
+
 # Appendix A · Numbers
 
 Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from these.
 
+<!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 802a334
-Last commit         : feat(arch): real photos · Sandeep enterprise persona · 17-page deprecation
-Generated           : 2026-05-31 (Wave M-4 · Trinity三体 audit)
+HEAD                : 2c8276c
+Last commit         : chore(bible): Trinity 三体 audit — drift 0% + claim audits + G-A16..A20 added
+Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
-Code surface (after Wave G + H + M-1..M-4) — counts exclude __init__.py
-  routers           : 124           (was 94; +30: country_slots, wavef_*, support, retention,
-                                       prizes, eltm_callback, ...)
-  endpoints         : 1,068         (was 925; +143)
-  workers           : 16            (was 9; +7: wallet_reconciliation, voucher_lifecycle,
-                                       support_sla, nightly_creative_refresh, ...)
-  services          : 53            (was 15; +38: wavef_*, retention, viral_amplifier,
-                                       country_slots, storehub_adapter, whatsapp_template,
-                                       brand_inject_preview, verdict_gate, landing_gen,
-                                       customer_vocab, pricing_canon, vertical_benchmarks ...)
-  migrations        : 11            (was 7; +4: audit_log_0007, prizes_0008, whatsapp_auth_0009,
-                                       country_slots_0010, country_slots_all_iso_0011)
-  total Python LOC  : ~137,770      (was 109,800; +28k from Waves E/F/G/H/I/J/K/L/M)
+Code surface (excludes __init__.py)
+  routers           : 124
+  endpoints         : 1,068
+  workers           : 16
+  services          : 54
+  migrations        : 11
+  total Python LOC  : 137,938
 
 Test surface
-  test files        : 154           (was 104; +50 — added test_storehub_adapter, test_whatsapp_template,
-                                       test_landing_gen, test_verdict_gate, test_brand_inject_preview,
-                                       test_customer_vocab, test_pricing_canon,
-                                       test_vertical_benchmarks, test_nightly_creative_refresh,
-                                       test_eltm_callback_verdict_gate)
-  test functions    : 1,670         (was 1,006; +664)
-  test LOC          : ~34,000
+  test files        : 156
+  test functions    : 1,688
 
 Data
-  recipes           : 79            (len(app/data/recipes_seed.json))
-  industries        : 26
-  industry sims     : 18            (ls scripts/sim_lao*.py)
+  recipes           : 79
+  industries        : 26   (static)
+  industry sims     : 18
 
 i18n
-  locales           : 11            (en-SG, en-US, zh-Hans-SG, zh-Hans-CN,
-                                     id-ID, ms-MY, th-TH, vi-VN,
-                                     ar-EG, ar-SA, he-IL)
-  base locales done : 4             (en-SG, en-US, zh-Hans-SG, zh-Hans-CN)
-  needs translation : 7 locales     (id, ms, th, vi, ar-EG, ar-SA, he)
+  locales           : 11
+  base locales done : 4    (en-SG, en-US, zh-Hans-SG, zh-Hans-CN)
+  needs translation : 7 locales
 
 PSPs
-  scaffolded clients: 5             (alipay_global, grabpay, ovo_indonesia,
-                                     paynow_sg, wechat_pay)
-  live in prod      : 0             (Stripe defaults to mock)
-
-Status counts in this Bible
-  DELIVERED         : 19 sections   (was 14; +5: landing_gen, verdict_gate, customer_vocab,
-                                       pricing_canon, nightly_creative_refresh)
-  PARTIAL           : 9 sections
-  SCAFFOLDED        : 6 sections
-  ASPIRATIONAL      : 7 sections
-  Bug-class catalog : 23 closed     (docs/all-bugs-catalog.md · A through V)
+  scaffolded clients: 5
+  live in prod      : 0
 
 Landing-gen surface (Wave M)
-  brand landings    : 5             (default, heng_heng_kopi, halal_hawker, kopi_king_chain,
-                                       kix_for_enterprise)
-  persona axes      : 2             (audience: merchant|consumer|both, scale: single|chain|enterprise|both)
-  gate threshold    : 65 avg, 40 min-floor, majority_pass
-  R8 acceptance     : 5/5 ACCEPT    (gate working as designed; see /tmp/kix_verify8.log)
-  deprecated pages  : 12            (data/deprecation_registry.json · 14 entries, 2 missing)
+  brand landings    : 5
+  deprecated pages  : 14
 ```
+<!-- BIBLE-APPENDIX-A:END -->
 
 ---
 

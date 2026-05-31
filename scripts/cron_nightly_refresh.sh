@@ -75,6 +75,31 @@ ACCEPTS=$(grep -E "AGGREGATE.*ACCEPT" "$LOG" | wc -l | tr -d ' ')
 
 echo "[$(date +%T)] DONE — accepts=$ACCEPTS rejects=$REJECTS · log=$LOG" | tee -a "$LOG"
 
+# F · Webhook alerting on REJECT (Slack-compatible JSON payload).
+# Set NIGHTLY_ALERT_WEBHOOK_URL to enable. Falls back silently otherwise.
+if [ "$REJECTS" -gt 0 ] && [ -n "${NIGHTLY_ALERT_WEBHOOK_URL:-}" ]; then
+  REJECT_DETAIL=$(grep -E "AGGREGATE.*REJECT" "$LOG" | head -5 | sed 's/"/\\"/g')
+  TOP_REASONS=$(grep -A1 "Top rejection reasons" "$LOG" | tail -1 | head -c 400 | sed 's/"/\\"/g')
+  PAYLOAD=$(cat <<JSON
+{
+  "text": "🚨 KiX nightly creative refresh · ${REJECTS} brand(s) REJECTED · ${ACCEPTS} accepted",
+  "attachments": [{
+    "color": "danger",
+    "title": "Rejection detail",
+    "text": "${REJECT_DETAIL}\n\nTop reasons: ${TOP_REASONS}",
+    "footer": "Log: ${LOG}",
+    "ts": $(date +%s)
+  }]
+}
+JSON
+)
+  curl -s -X POST -H "Content-Type: application/json" \
+    --data "$PAYLOAD" --max-time 10 \
+    "$NIGHTLY_ALERT_WEBHOOK_URL" >/dev/null 2>&1 \
+    && echo "  ✓ alert webhook fired" | tee -a "$LOG" \
+    || echo "  ⚠ alert webhook failed" | tee -a "$LOG"
+fi
+
 if [ "$REJECTS" -gt 0 ]; then
   echo "GATE REJECTED $REJECTS brand(s) — see $LOG" >&2
   exit 1

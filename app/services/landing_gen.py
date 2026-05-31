@@ -115,6 +115,11 @@ class BrandConfig:
     # Allowed verticals: see app.services.vertical_benchmarks.BENCHMARKS keys.
     # Empty → no benchmark callout rendered (silent fallback).
     vertical: str = ""
+    # D · Per-page verdict-gate threshold overrides. Defaults to 65/40 if not
+    # set. Enterprise pages should arguably be stricter (Sandeep is pickier).
+    # 0 = "use the gate's default" (don't override). Tuple (threshold, min_floor).
+    verdict_threshold: int = 0    # 0 = inherit default 65
+    verdict_min_floor: int = 0    # 0 = inherit default 40
     integrations_link: str = "/landing/integrations/tiktok-pixel.html"
     pricing_link: str = "/landing/pricing.html"
     portal_link: str = "/landing/portal.html"
