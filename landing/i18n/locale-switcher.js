@@ -25,10 +25,13 @@
 
   const STYLE = `
   .kix-locale-switcher{
-    position:fixed; top:14px; right:14px; z-index:99999;
+    /* Sit BELOW any sticky header (typical 60-65px on KiX landing).
+     * z-index 99999 still keeps it above modals/topbars when menu opens. */
+    position:fixed; top:76px; right:14px; z-index:99999;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     font-size:13px; user-select:none;
   }
+  @media(max-width:640px){ .kix-locale-switcher{ top:72px; right:10px } }
   .kix-locale-switcher *{box-sizing:border-box}
   .kix-ls-button{
     display:inline-flex; align-items:center; gap:6px;
