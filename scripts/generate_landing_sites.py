@@ -42,8 +42,8 @@ PHOTO_AMINAH = "/landing/assets/cases/halal_stock.jpg"
 
 
 WHAT_YOU_GET_F_AND_B = [
-    WhatYouGetItem("79+", "AI-generated game templates",
-                    "Spin · scratch · mixer · quiz · streak · daily check-in. Each one stamped with your logo + colors in <60 seconds."),
+    WhatYouGetItem("79+", "AI-generated game templates for F&B",
+                    "Spin · scratch · mixer · quiz · streak · daily check-in. Built for kopitiam · bubble tea · halal · cafe · nasi padang · bakery · dessert · QSR. Each one stamped with your logo + colors in <60 seconds."),
     WhatYouGetItem("~10K", "Customizable variants",
                     "Each template ~120 levers (theme color, prize tier, voucher copy, win probability, geofence radius). Effectively unlimited brand-specific games."),
     WhatYouGetItem("5 min", "From signup to live campaign",
@@ -53,7 +53,9 @@ WHAT_YOU_GET_F_AND_B = [
     WhatYouGetItem("6 PSPs", "SEA-native payment + redeem",
                     "PayNow · GrabPay · OVO · Alipay · WeChat · Stripe Terminal. Manual redeem (4-digit code) works without any POS install."),
     WhatYouGetItem("90d", "Cohort retention reporting",
-                    "Every customer tracked D0/14/30/60/90. CAC, LTV, repeat-rate per outlet. Heng Heng Kopi: D0-30 CPA S$7.20 -> D61-90 S$4.90 (-32%)."),
+                    "Every customer tracked D0/14/30/60/90. CAC, LTV, repeat-rate per outlet. Heng Heng Kopi (kopitiam): D0-30 CPA S$7.20 -> D61-90 S$4.90 (-32%). Tea Trio (bubble tea, 3 shops): S$4.40 avg CPA. Brew Lab (bubble tea, 2 outlets): -35% ad spend."),
+    WhatYouGetItem("1K-2.5K", "New customers/month typical for F&B",
+                    "Bubble tea + kopitiam + halal + cafe verticals: most merchants on the S$499/mo Pro tier hit 1,000-2,500 verified new customers per month within 60 days. Bubble tea specifically: Tea Trio 3-shop avg = 423 customers M1 → 1,800 by M3."),
 ]
 
 

@@ -244,16 +244,28 @@ def test_founding_block_shows_remaining_slots():
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       city="KLCC", founding_slots_total=100, founding_slots_taken=23)
     html = generate_landing(cfg)
-    assert "Founding-100 · KLCC" in html
-    assert "77 of 100 founding slots remain" in html
-    assert "Approved-only" in html
+    # CLASS-BB R11: per-country roster + slot count in city
+    assert "Founding-100 · per country" in html
+    assert "77 of 100 slots remain in KLCC" in html
+    assert "criteria" in html.lower()   # approval criteria proof link present
 
 
 def test_founding_block_handles_full():
     cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S",
                       city="Bedok", founding_slots_total=100, founding_slots_taken=100)
     html = generate_landing(cfg)
-    assert "0 of 100 founding slots remain" in html
+    assert "0 of 100 slots remain in Bedok" in html
+
+
+def test_founding_block_shows_country_roster():
+    """CLASS-BB R11: founding-100 is per-country, not per-city. ADR-11 clarity."""
+    cfg = BrandConfig(brand_id="b1", brand_name="X", hero_tagline="T", hero_sub="S")
+    html = generate_landing(cfg)
+    # Country chips visible
+    assert "Singapore" in html
+    assert "Malaysia" in html
+    assert "China" in html  # waitlist
+    assert "per country" in html
 
 
 def test_missing_brand_id_raises():
@@ -291,4 +303,4 @@ def test_from_dict_roundtrip():
     # Renders end-to-end
     html = generate_landing(cfg)
     assert "Test Brand" in html
-    assert "83 of 100 founding slots remain" in html
+    assert "83 of 100 slots remain in Bedok" in html  # CLASS-BB R11 wording

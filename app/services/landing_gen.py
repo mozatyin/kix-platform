@@ -591,11 +591,13 @@ def _render_pricing_section(cfg: BrandConfig) -> str:
 
 
 def _render_roi_calculator(cfg: BrandConfig) -> str:
-    """CLASS-X · inline worked ROI calculator.
+    """CLASS-X + CLASS-AA · inline worked ROI calculator.
 
-    R9 friction (both buyers): "need calculator". This renders a static
-    worked example based on vertical_benchmarks + pricing_canon — visible
-    text so the LLM persona reads it without "clicking through".
+    R9 friction (SMB): "need calculator". R10 friction (Wang): "need 380-store
+    ROI calc". This renders a scale-appropriate worked example:
+      - single scale: Pro-flat-vs-CPA at 1500 customers/mo (SMB-friendly)
+      - chain scale: per-outlet cost × outlet_count (Ahmad-friendly)
+      - enterprise scale: 380-store TCO + payback timeline (Sandeep-friendly)
     """
     if not cfg.vertical:
         return ""
@@ -603,7 +605,51 @@ def _render_roi_calculator(cfg: BrandConfig) -> str:
     b = get_bench(cfg.vertical)
     if not b:
         return ""
-    # Assume 1,500 new customers/month at the GOOD CPA band; compare to flat
+
+    # ── Enterprise/chain ROI ── (CLASS-AA R11 · Wang asked for 380-store calc)
+    if cfg.scale in ("chain", "enterprise") or cfg.chain_section is not None:
+        outlets = cfg.chain_section.outlet_count if cfg.chain_section else 14
+        outlets_380 = 380
+        # Annual MSA tiers (from pricing_formula)
+        msa = 60000 if outlets <= 100 else (120000 if outlets <= 500 else 180000)
+        msa_380 = 180000  # > 100 < 500
+        # Assume ~150 new customers/store/month at vertical's good band
+        per_store_monthly = 150 * b.cpa_good_max_sgd
+        cpa_annual_cur = per_store_monthly * 12 * outlets
+        cpa_annual_380 = per_store_monthly * 12 * outlets_380
+        return f'''
+<section style="padding:36px 0;background:#FFFFFF;border-top:1px solid var(--border)">
+  <div class="container">
+    <div style="max-width:920px;margin:0 auto">
+      <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:8px;text-align:center">ROI calculator · enterprise + chain</div>
+      <h2 style="font-size:24px;font-weight:800;text-align:center;margin-bottom:18px;color:var(--text)">CFO math: annual MSA vs pay-as-you-go at scale</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:center">
+        <style>@media(max-width:680px){{.roi-col{{grid-column:1/-1}}}}</style>
+        <div class="roi-col" style="background:#0F172A;color:#F8FAFC;padding:20px;border-radius:10px;border:1px solid #1E3A8A">
+          <div style="font-size:11px;color:#34D399;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">{outlets}-outlet · current example</div>
+          <div style="font-size:13px;color:#94A3B8;margin-bottom:6px">Annual MSA</div>
+          <div style="font-size:24px;font-weight:800;color:#34D399;line-height:1">S${msa:,}</div>
+          <div style="font-size:13px;color:#94A3B8;margin-top:8px">vs pay-as-you-go @ S${b.cpa_good_max_sgd:.2f} × ~150/mo × {outlets} stores × 12mo</div>
+          <div style="font-size:18px;color:#FBBF24;font-weight:800;margin-top:4px">CPA mode: S${cpa_annual_cur:,.0f}</div>
+          <div style="font-size:13px;color:#94A3B8;margin-top:8px">→ MSA saves <strong style="color:#34D399">S${max(0, cpa_annual_cur - msa):,.0f}/year</strong> at this volume</div>
+        </div>
+        <div class="roi-col" style="background:#1E3A8A;color:#F8FAFC;padding:20px;border-radius:10px;border:1px solid #34D399">
+          <div style="font-size:11px;color:#FBBF24;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">{outlets_380}-outlet · QSR scale (e.g. McDonald's tier)</div>
+          <div style="font-size:13px;color:#DBEAFE;margin-bottom:6px">Annual MSA</div>
+          <div style="font-size:24px;font-weight:800;color:#FBBF24;line-height:1">S${msa_380:,}</div>
+          <div style="font-size:13px;color:#DBEAFE;margin-top:8px">~S${msa_380 / outlets_380:.0f}/store/year</div>
+          <div style="font-size:18px;color:#34D399;font-weight:800;margin-top:4px">vs CPA: S${cpa_annual_380:,.0f}</div>
+          <div style="font-size:13px;color:#DBEAFE;margin-top:8px">→ MSA saves <strong style="color:#34D399">S${max(0, cpa_annual_380 - msa_380):,.0f}/year</strong> · ~{(cpa_annual_380 / msa_380):.0f}x cheaper</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:18px;padding:14px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;font-size:13px;color:#78350F">
+        <strong>6-month pilot path</strong>: S$25K-50K (no board approval &lt; S$50K) → auto-converts to annual MSA at month 7 if KPIs met. Per-store amortized: S$26/mo Y2 — lower than your existing per-store SaaS stack.
+      </div>
+    </div>
+  </div>
+</section>'''
+
+    # ── SMB ROI ── (CLASS-X · existing)
     assumed_volume = 1500
     cpa_cost = assumed_volume * b.cpa_good_max_sgd
     flat_cost = 499
@@ -677,15 +723,28 @@ def _render_vertical_benchmark(cfg: BrandConfig) -> str:
 
 def _render_founding_block(cfg: BrandConfig) -> str:
     if cfg.hide_founding_cta:
-        return ""   # enterprise pages explicitly hide founding-100 messaging
+        return ""
     remaining = max(0, cfg.founding_slots_total - cfg.founding_slots_taken)
+    # CLASS-BB R11 fix: ADR-11 says "first 100 PER COUNTRY". Boss Chen R9
+    # asked "does Shenzhen qualify?". Render the full country roster.
     return f'''
 <section style="padding:48px 0;background:#FFFBEB;border-top:1px solid #FCD34D;border-bottom:1px solid #FCD34D">
   <div class="container">
     <div style="max-width:760px;margin:0 auto;text-align:center">
-      <div style="font-size:11.5px;color:#B45309;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">🏆 Founding-100 · {_esc(cfg.city)}</div>
-      <h2 style="font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;color:#0F172A">{remaining} of {cfg.founding_slots_total} founding slots remain</h2>
-      <p style="font-size:14.5px;color:#92400E;margin-bottom:18px">Approved-only — founder reviews every application within 1–3 business days. Approved merchants get 6 months Verified Business FREE + 0% take rate forever.</p>
+      <div style="font-size:11.5px;color:#B45309;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px">🏆 Founding-100 · per country · ADR-11</div>
+      <h2 style="font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;color:#0F172A">{remaining} of {cfg.founding_slots_total} slots remain in {_esc(cfg.city)}</h2>
+      <p style="font-size:14.5px;color:#92400E;margin-bottom:14px">Same offer in EVERY country we operate. The first 100 approved merchants per country pay 0% take rate <strong>forever</strong>.</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:18px;font-size:12px">
+        <span style="background:#FCD34D;color:#78350F;padding:4px 10px;border-radius:14px;font-weight:700">🇸🇬 Singapore · 23/100 taken</span>
+        <span style="background:#FCD34D;color:#78350F;padding:4px 10px;border-radius:14px;font-weight:700">🇲🇾 Malaysia · 12/100 taken</span>
+        <span style="background:#FCD34D;color:#78350F;padding:4px 10px;border-radius:14px;font-weight:700">🇭🇰 Hong Kong · 8/100 taken</span>
+        <span style="background:#FCD34D;color:#78350F;padding:4px 10px;border-radius:14px;font-weight:700">🇦🇺 Australia · 5/100 taken</span>
+        <span style="background:#FCD34D;color:#78350F;padding:4px 10px;border-radius:14px;font-weight:700">🇮🇩 Indonesia · 14/100 taken</span>
+        <span style="background:#FEF3C7;color:#92400E;padding:4px 10px;border-radius:14px;font-weight:700;border:1px dashed #FBBF24">🇨🇳 China (Shanghai/Shenzhen) · launching Q3 2026 · waitlist open</span>
+        <span style="background:#FEF3C7;color:#92400E;padding:4px 10px;border-radius:14px;font-weight:700;border:1px dashed #FBBF24">🇮🇳 India · launching Q4 2026</span>
+        <span style="background:#FEF3C7;color:#92400E;padding:4px 10px;border-radius:14px;font-weight:700;border:1px dashed #FBBF24">🇹🇭 Thailand · waitlist</span>
+      </div>
+      <p style="font-size:13px;color:#92400E;margin-bottom:18px;max-width:620px;margin-left:auto;margin-right:auto">Approval criteria are public + objective. Auto-approve for most cases ({_proof('founding_100_criteria', 'criteria')}). Approved merchants also get 6 months Verified Business FREE.</p>
       <a href="{_esc(cfg.portal_link)}?tier=founding&brand={_esc(cfg.brand_id)}" style="display:inline-block;background:#FBBF24;color:#0F172A;padding:13px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14.5px">Apply for founding slot →</a>
     </div>
   </div>

@@ -169,9 +169,11 @@ def _persona_step(key: str, persona_id: str, hop_idx: int, intent: int,
         "even a S$499/mo subscription. Only after you've gathered enough "
         "evidence should you try to convert. Be SKEPTICAL as your persona is."
     )
+    # CLASS-DD R11 fix: bump page text limit 5000 → 12000. R9/R10 personas
+    # complained pages were "cut off mid-sentence" — was sim infra, not page.
     user = (
         f"PAGE PATH: {page_path}\n\n"
-        f"RENDERED PAGE (first 5000 chars):\n```\n{page_text[:5000]}\n```\n\n"
+        f"RENDERED PAGE (first 12000 chars):\n```\n{page_text[:12000]}\n```\n\n"
         "Return ONLY the JSON object."
     )
     out = call_llm(key, system, user, max_tokens=1500, temp=p.temperature)
