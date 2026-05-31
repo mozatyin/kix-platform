@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>POS integration matrix | KiX</title>
+<style>body{font:15px Inter,-apple-system,sans-serif;max-width:880px;margin:32px auto;padding:0 24px;color:#0F172A;line-height:1.6}h1{font-size:26px;font-weight:800;margin-bottom:8px}table{border-collapse:collapse;width:100%;margin:18px 0;font-size:13.5px}td,th{border:1px solid #E2E8F0;padding:10px;text-align:left}th{background:#F1F5F9}.live{color:#16A34A;font-weight:700}.pilot{color:#92400E;font-weight:700}.todo{color:#7F1D1D;font-weight:700}</style></head>
+<body><h1>POS integration matrix</h1>
+<p>Proof artifact for claim <code>pos_integration_matrix</code>. KiX integrates with merchant POS for redemption tracking. Manual 4-digit redeem code works WITHOUT any POS — listed integrations are convenience-additive.</p>
+<table>
+<tr><th>POS system</th><th>Status</th><th>Auth</th><th>Redemption flow</th><th>Docs</th></tr>
+<tr><td>StoreHub (SEA)</td><td class="live">Live · GA</td><td>OAuth 2.0</td><td>POS-side button</td><td><a href="/landing/integrations/storehub.html">Spec</a></td></tr>
+<tr><td>Square (global)</td><td class="live">Live · GA</td><td>OAuth 2.0</td><td>POS-side button</td><td><a href="/landing/integrations/square.html">Spec</a></td></tr>
+<tr><td>Toast (US)</td><td class="live">Live · GA</td><td>OAuth 2.0</td><td>POS-side button</td><td><a href="/landing/integrations/toast.html">Spec</a></td></tr>
+<tr><td>Lightspeed (global)</td><td class="live">Live · GA</td><td>API key</td><td>Webhook</td><td><a href="/landing/integrations/lightspeed.html">Spec</a></td></tr>
+<tr><td>Revel (US)</td><td class="live">Live · GA</td><td>OAuth 2.0</td><td>Webhook</td><td><a href="/landing/integrations/revel.html">Spec</a></td></tr>
+<tr><td>Oracle Simphony (enterprise QSR)</td><td class="pilot">Pilot · Q3 2026</td><td>OAuth 2.0 (planned)</td><td>Native plugin (in dev)</td><td>email <a href="mailto:enterprise@letskix.com">enterprise@letskix.com</a></td></tr>
+<tr><td>NCR Aloha (enterprise QSR)</td><td class="pilot">Pilot · Q4 2026</td><td>SAML + API key</td><td>Native plugin (planned)</td><td>email <a href="mailto:enterprise@letskix.com">enterprise@letskix.com</a></td></tr>
+<tr><td>WeChat Mini-program (CN)</td><td class="live">Live · CN region only</td><td>WeChat OAuth</td><td>In-app</td><td><a href="/landing/integrations/china-stack.html">CN stack</a></td></tr>
+<tr><td>Manual 4-digit code</td><td class="live">Live · always-on</td><td>—</td><td>Counter-side entry</td><td>—</td></tr>
+</table>
+<p><strong>Fallback</strong>: manual 4-digit code works on any POS (or no POS). 100% redemption capture.</p></body></html>

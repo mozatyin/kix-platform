@@ -444,21 +444,21 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 7621037
-Last commit         : feat(arch): Wave M-5 — ALL 7 improvement axes shipped (A · B · C · D · E · F · G)
+HEAD                : 74bd3ab
+Last commit         : feat(wave-n): enterprise fix · load-SLA CI · buyer journey sim · 2/2 convert R7
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
   routers           : 124
   endpoints         : 1,068
   workers           : 16
-  services          : 54
+  services          : 55
   migrations        : 11
-  total Python LOC  : 138,111
+  total Python LOC  : 138,517
 
 Test surface
-  test files        : 156
-  test functions    : 1,689
+  test files        : 157
+  test functions    : 1,703
 
 Data
   recipes           : 79

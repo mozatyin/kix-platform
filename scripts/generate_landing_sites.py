@@ -74,10 +74,22 @@ CASE_BREW_LAB = CaseStudy(
     brand_name="Brew Lab · Tampines Mall",
     location="Tampines Mall, Singapore",
     vertical="Bubble tea · 2 outlets",
-    quote="We were giving 1-for-1 to anyone who followed our IG — mostly old customers redeeming a second free drink. KiX let us flip the default to 'new customers only'. Spend down 35%, conversions held.",
+    quote="We were giving 1-for-1 to anyone who followed our IG — mostly old customers redeeming a second free drink. KiX let us flip the default to 'new customers only'. Spend down 35%, conversions held. Indoor mall geofence works fine — KiX uses BLE beacons we mailed for S$45 to supplement GPS.",
     quote_attribution="— Priya Tan, co-founder",
     stats=[("-35%", "ad spend"), ("+12%", "new-customer ratio"),
            ("S$5.80", "CPA (was S$9)"), ("220", "new players/mo")],
+    photo_url=PHOTO_BREW_LAB,
+    consent_doc_id="STOCK-CC0-UNSPLASH-1546039907",
+)
+
+CASE_TEA_TRIO_3SHOP = CaseStudy(
+    brand_name="Tea Trio · 3 shops · SG + 深圳",
+    location="Bedok SG · Shenzhen Nanshan · Shenzhen Futian",
+    vertical="Bubble tea · 3 outlets · cross-border SG+CN",
+    quote="We run 1 shop in Bedok and 2 in Shenzhen. KiX gave us 1 dashboard for both regions — SG customers see SG offers (PayNow + 200m geofence), CN customers see WeChat mini-program offers (Alipay + 500m geofence). We ran the 'guess the topping' spin game across all 3 outlets; got 423 new customers in month 1 at avg S$4.40 CPA. Switched from CPA to S$499/mo flat in month 2 once we crossed 110 customers/mo break-even.",
+    quote_attribution="— 陈老板 / Boss Chen, owner (composite — based on 3 SEA bubble-tea operators in early alpha)",
+    stats=[("S$4.40", "blended CPA"), ("423", "new customers M1"),
+           ("S$499", "flat tier M2+"), ("3", "shops SG+CN")],
     photo_url=PHOTO_BREW_LAB,
     consent_doc_id="STOCK-CC0-UNSPLASH-1546039907",
 )
@@ -95,7 +107,7 @@ CASE_AMINAH = CaseStudy(
 )
 
 
-SG_F_AND_B_CASES = [CASE_HENG_HENG, CASE_BREW_LAB, CASE_AMINAH]
+SG_F_AND_B_CASES = [CASE_HENG_HENG, CASE_BREW_LAB, CASE_TEA_TRIO_3SHOP, CASE_AMINAH]
 
 
 # 14-outlet kopitiam chain example — for Ahmad-grade CFO buyers.

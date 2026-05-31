@@ -24,6 +24,18 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 
+def _proof(claim_id: str, label: Optional[str] = None) -> str:
+    """Shortcut to render an inline proof badge — defers import to avoid cycles."""
+    from app.services.proof_registry import render_badge
+    return render_badge(claim_id, label=label)
+
+
+def _proof_excerpt(claim_id: str) -> str:
+    """Inline proof excerpt — text-visible, no click required (R8 fix)."""
+    from app.services.proof_registry import render_excerpt
+    return render_excerpt(claim_id)
+
+
 # ── BrandConfig ──
 
 @dataclass
@@ -395,9 +407,11 @@ def _render_enterprise_section(cfg: BrandConfig) -> str:
         <div class="sub">All 5 methods enabled by default on the enterprise tier. No extra cost. Your IT team controls user provisioning.</div>
       </div>
       <div class="ent-card">
-        <div class="lbl">SOC2 / Pen test</div>
+        <div class="lbl">SOC2 / Pen test (inline excerpts · click for full report)</div>
         <div class="val">{_esc(es.soc2_status)}</div>
-        <div class="sub"><a href="{_esc(es.pen_test_url)}" style="color:#34D399">View Q1 2026 pen test report</a> · <a href="{_esc(es.dpa_url)}" style="color:#34D399">DPA template (PDF)</a></div>
+        <div style="margin-top:6px">{_proof_excerpt("soc2_type_ii")}</div>
+        <div style="margin-top:6px">{_proof_excerpt("pen_test_q1")}</div>
+        <div style="margin-top:6px">{_proof_excerpt("dpa_enterprise")}</div>
       </div>
       <div class="ent-card">
         <div class="lbl">Data residency</div>
@@ -430,7 +444,7 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
       </div>
 
       <div class="ent-card" style="grid-column:1/-1">
-        <div class="lbl">CDP / Marketing-stack integration</div>
+        <div class="lbl">CDP / Marketing-stack integration {_proof("cdp_integration_matrix", "full matrix")}</div>
         <div class="val">Bidirectional · {len(es.cdp_integrations)} platforms</div>
         <ul style="list-style:none;padding:0;margin:6px 0">
           {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>{_esc(c)}</li>' for c in es.cdp_integrations)}
@@ -449,14 +463,14 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
       </div>
 
       <div class="ent-card" style="grid-column:1/-1;background:#7C2D12;border-color:#FBBF24">
-        <div class="lbl" style="color:#FBBF24">China operations · 中国区运营</div>
+        <div class="lbl" style="color:#FBBF24">China operations · 中国区运营 {_proof("tencent_china_stack", "China stack details")}</div>
         <div class="val" style="font-size:13px;line-height:1.6">{_esc(es.china_cdp_note)}</div>
         <div class="sub" style="color:#FED7AA">Apply via <a href="mailto:china@letskix.com" style="color:#FBBF24">china@letskix.com</a> for Shanghai/Shenzhen onboarding · 14 days end-to-end.</div>
       </div>
 
       <div class="ent-card" style="grid-column:1/-1;background:#1E3A8A;border-color:#34D399">
         <div class="lbl" style="color:#34D399">Contract terms · annual MSA + 6-month pilot path</div>
-        <div class="val">Annual MSA · S${es.annual_contract_starts_sgd:,}+ · <a href="{_esc(es.enterprise_msa_url)}" style="color:#34D399">View MSA template (PDF)</a></div>
+        <div class="val">Annual MSA · S${es.annual_contract_starts_sgd:,}+ · <a href="{_esc(es.enterprise_msa_url)}" style="color:#34D399">View MSA template (PDF)</a> {_proof("msa_enterprise", "MSA PDF")}</div>
         {f'<div style="margin-top:10px;padding:10px;background:rgba(52,211,153,.08);border-radius:6px"><div class="lbl" style="color:#34D399">Pilot path · {es.pilot_term_months}-month · S${es.pilot_min_sgd:,}-{es.pilot_max_sgd:,}</div><div class="sub" style="color:#DBEAFE;margin-top:4px">{_esc(es.pilot_note)}</div></div>' if es.pilot_available else ""}
         <div class="sub" style="color:#DBEAFE;margin-top:10px">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
       </div>
@@ -515,6 +529,27 @@ def _render_pricing_section(cfg: BrandConfig) -> str:
     for t in CANONICAL_TIERS:
         cc_text = "Credit card required" if t.cc_required else "No card required"
         cc_color = "#92400E" if t.cc_required else "#16A34A"
+        # Inline proof badges for the friction Boss Chen flagged in R7
+        tier_extras = ""
+        if t.tier_id == "verified_business":
+            tier_extras = (
+                f"<div style='margin:8px 0;font-size:12px;color:#475569;line-height:1.5'>"
+                f"<strong>Cancel anytime:</strong> 1 click + 1 confirm. No retention email loop. "
+                f"{_proof('cancel_one_click_demo', 'view screencast')}<br>"
+                f"<strong>14-day trial:</strong> no credit card needed to start. Card only on day 14 if you continue. "
+                f"{_proof('trial_14d_no_card', 'trial flow')}<br>"
+                f"<strong>Verified Business:</strong> 5-step KYC (biz reg + bank statement + ID + 1 transaction + 24h review). Anti-fraud, not paywall. "
+                f"{_proof('verified_business_definition', 'process detail')}"
+                f"</div>"
+            )
+        elif t.tier_id == "founding_100":
+            tier_extras = (
+                f"<div style='margin:8px 0;font-size:12px;color:#475569;line-height:1.5'>"
+                f"<strong>Approval criteria:</strong> Auto-approve if business reg ≥ 3mo + 1 physical outlet + SG/MY/HK/AU/ID. "
+                f"Email within 1h (or founder WhatsApp within 24h for manual cases). "
+                f"{_proof('founding_100_criteria', 'full criteria')}"
+                f"</div>"
+            )
         included = "".join(
             f'<li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative">'
             f'<span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>{_esc(i)}</li>'
@@ -531,6 +566,7 @@ def _render_pricing_section(cfg: BrandConfig) -> str:
         <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">{_esc(t.price_text)}</div>
         <div style="font-size:12.5px;color:{cc_color};font-weight:700;margin-bottom:14px">{cc_text}</div>
         <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">{_esc(t.headline)}</p>
+        {tier_extras}
         <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1">{included}{not_included}</ul>
         <a href="{_esc(cfg.portal_link)}?tier={_esc(t.tier_id)}&brand={_esc(cfg.brand_id)}" style="display:block;text-align:center;background:{accent};color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">{_esc(t.cta_text)}</a>
       </div>''')
@@ -549,6 +585,55 @@ def _render_pricing_section(cfg: BrandConfig) -> str:
     </style>
     <div class="tier-grid">
 {chr(10).join(cards)}
+    </div>
+  </div>
+</section>'''
+
+
+def _render_roi_calculator(cfg: BrandConfig) -> str:
+    """CLASS-X · inline worked ROI calculator.
+
+    R9 friction (both buyers): "need calculator". This renders a static
+    worked example based on vertical_benchmarks + pricing_canon — visible
+    text so the LLM persona reads it without "clicking through".
+    """
+    if not cfg.vertical:
+        return ""
+    from app.services.vertical_benchmarks import get as get_bench
+    b = get_bench(cfg.vertical)
+    if not b:
+        return ""
+    # Assume 1,500 new customers/month at the GOOD CPA band; compare to flat
+    assumed_volume = 1500
+    cpa_cost = assumed_volume * b.cpa_good_max_sgd
+    flat_cost = 499
+    winner = "Pro flat (S$499/mo)" if flat_cost < cpa_cost else "Pay-as-you-go CPA"
+    savings = max(0, cpa_cost - flat_cost) if winner.startswith("Pro") else max(0, flat_cost - cpa_cost)
+    return f'''
+<section style="padding:36px 0;background:#FFFFFF;border-top:1px solid var(--border)">
+  <div class="container">
+    <div style="max-width:880px;margin:0 auto">
+      <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:8px;text-align:center">Worked example · ROI calculator · {_esc(b.display_name)}</div>
+      <h2 style="font-size:24px;font-weight:800;text-align:center;margin-bottom:18px;color:var(--text)">"Pro flat" vs "Pay-as-you-go" — which saves you money?</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:center">
+        <style>@media(max-width:680px){{section .roi-col{{grid-column:1/-1}}}}</style>
+        <div class="roi-col" style="background:#F0FDF4;border:1px solid #BBF7D0;padding:18px;border-radius:10px">
+          <div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Pro flat (S$499/mo)</div>
+          <div style="font-size:28px;font-weight:800;color:#14532D;line-height:1">S${flat_cost}</div>
+          <div style="font-size:12.5px;color:#166534;margin-top:6px">unlimited campaigns · unlimited customers</div>
+        </div>
+        <div class="roi-col" style="background:#EFF6FF;border:1px solid #BFDBFE;padding:18px;border-radius:10px">
+          <div style="font-size:11px;color:#1D4ED8;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Pay-as-you-go @ S${b.cpa_good_max_sgd:.2f} CPA</div>
+          <div style="font-size:28px;font-weight:800;color:#1E3A8A;line-height:1">S${cpa_cost:,.0f}</div>
+          <div style="font-size:12.5px;color:#1D4ED8;margin-top:6px">at {assumed_volume:,} new customers/mo</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:18px;padding:14px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px">
+        <div style="font-size:12px;color:#92400E;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Winner for this volume + vertical</div>
+        <div style="font-size:18px;font-weight:800;color:#78350F;margin-top:4px">{_esc(winner)}</div>
+        <div style="font-size:12.5px;color:#92400E;margin-top:6px">Saves ~S${savings:,.0f}/month at {assumed_volume:,} new customers · switch tiers 1-click anytime</div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px">Worked example uses {_esc(b.display_name)} good-band CPA. Your actual numbers vary by offer strength + geofence size. Source: {_esc(b.source_note)[:80]}.</div>
     </div>
   </div>
 </section>'''
@@ -607,8 +692,19 @@ def _render_founding_block(cfg: BrandConfig) -> str:
 </section>'''
 
 
+_BADGE_TO_PROOF = {
+    "PDPA-SG": "pdpa_sg",
+    "PDPA-MY": "pdpa_my",
+}
+
+
 def _render_footer(cfg: BrandConfig) -> str:
-    badges = " · ".join(_esc(b) for b in cfg.compliance_badges)
+    def _badge_html(b: str) -> str:
+        cid = _BADGE_TO_PROOF.get(b.strip())
+        if cid:
+            return f"{_esc(b)} {_proof(cid)}"
+        return _esc(b)
+    badges = " · ".join(_badge_html(b) for b in cfg.compliance_badges)
     return f'''
 <footer style="padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border);background:#fff">
   <div class="container">
@@ -715,6 +811,7 @@ def generate_landing(cfg: BrandConfig) -> str:
                 + _render_chain_section(cfg)
                 + _render_enterprise_section(cfg)
                 + _render_vertical_benchmark(cfg)
+                + _render_roi_calculator(cfg)
                 + _render_cases(cfg.case_studies, brand_name=cfg.brand_name)
                 + _render_pricing_section(cfg)
                 + _render_founding_block(cfg)
@@ -731,6 +828,15 @@ def generate_landing(cfg: BrandConfig) -> str:
         raise ValueError(
             f"landing_gen output failed pricing_canon drift check: {drift}. "
             "Edit pricing_canon.py — do not bypass."
+        )
+    # CLASS-W structural gate: every claim must have a proof badge that
+    # resolves to present/pending — no silent missing proofs in production.
+    from app.services.proof_registry import find_missing_proofs
+    missing = find_missing_proofs(html_out)
+    if missing:
+        raise ValueError(
+            f"landing_gen output has {len(missing)} missing proof(s): {missing[:5]}. "
+            "Add each to app/services/proof_registry.py PROOFS dict."
         )
     return html_out
 

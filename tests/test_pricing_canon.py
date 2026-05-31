@@ -24,7 +24,9 @@ def test_tier_free_no_cc():
 
 def test_tier_verified_requires_cc():
     assert TIER_VERIFIED_BUSINESS.cc_required is True
-    assert "first successful campaign" in TIER_VERIFIED_BUSINESS.no_charge_until
+    # R10 copy fix: removed "first successful campaign" ambiguity; now trial-first
+    assert "14-day free trial" in TIER_VERIFIED_BUSINESS.no_charge_until
+    assert "no card needed" in TIER_VERIFIED_BUSINESS.no_charge_until
 
 
 def test_tier_founding_zero_take_rate_per_city():

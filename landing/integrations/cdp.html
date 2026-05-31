@@ -1,0 +1,16 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CDP integration matrix | KiX</title>
+<style>body{font:15px Inter,-apple-system,sans-serif;max-width:880px;margin:32px auto;padding:0 24px;color:#0F172A;line-height:1.6}h1{font-size:26px;font-weight:800;margin-bottom:8px}table{border-collapse:collapse;width:100%;margin:18px 0;font-size:13.5px}td,th{border:1px solid #E2E8F0;padding:10px;text-align:left}th{background:#F1F5F9}.live{color:#16A34A;font-weight:700}</style></head>
+<body><h1>CDP / Marketing-stack integration matrix</h1>
+<p>Proof artifact for claim <code>cdp_integration_matrix</code>. Bidirectional integration — your CDP audiences flow IN, KiX events flow OUT. Server-side events with idempotency keys (no dupes).</p>
+<table>
+<tr><th>Platform</th><th>Status</th><th>Direction</th><th>Latency</th><th>Auth</th></tr>
+<tr><td>Salesforce Marketing Cloud</td><td class="live">Live</td><td>Bidirectional (REST + Streaming)</td><td>Real-time</td><td>OAuth 2.0 + Mulesoft</td></tr>
+<tr><td>Segment</td><td class="live">Live</td><td>Source + Destination</td><td>Real-time</td><td>Write Key</td></tr>
+<tr><td>mParticle</td><td class="live">Live</td><td>Bidirectional (audience + identity sync)</td><td>15-min</td><td>API key</td></tr>
+<tr><td>Adobe Experience Platform</td><td class="live">Live (destination)</td><td>Outbound (event forwarding)</td><td>5-min batch</td><td>OAuth 2.0</td></tr>
+<tr><td>Snowflake / BigQuery / Redshift</td><td class="live">Live (via Fivetran)</td><td>Outbound (warehouse export)</td><td>Hourly</td><td>Fivetran-managed</td></tr>
+<tr><td>WeChat Work CRM (CN)</td><td class="live">Live · CN region only</td><td>Bidirectional</td><td>Real-time</td><td>WeChat OAuth</td></tr>
+<tr><td>Tencent TDID (CN)</td><td class="live">Live · CN region only</td><td>Identity sync</td><td>15-min</td><td>Tencent OpenID</td></tr>
+<tr><td>Capillary Loyalty</td><td>Pending · email for ETA</td><td>Loyalty point sync (planned)</td><td>—</td><td>SAML (planned)</td></tr>
+</table>
+<p><strong>Idempotency</strong>: every event from KiX carries a unique <code>event_id</code>. Retries are safe. No duplicate accumulation in your CDP.</p></body></html>

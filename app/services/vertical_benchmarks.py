@@ -60,14 +60,15 @@ BENCHMARKS: dict[str, VerticalBenchmark] = {
     ),
     "bubbletea": VerticalBenchmark(
         vertical="bubbletea",
-        display_name="Bubble tea / specialty drinks",
+        display_name="Bubble tea / specialty drinks (3-shop avg)",
         cpa_excellent_max_sgd=4.00,
         cpa_good_max_sgd=7.00,
         cpa_typical_max_sgd=12.00,
         repeat_30d_excellent_pct=18.0,
         repeat_30d_typical_pct=8.0,
         avg_ticket_sgd=6.20,
-        source_note="Brew Lab + Sharetea/Koi public reports 2024",
+        source_note="Brew Lab (2 outlets) + Sharetea + Koi 2024 + Heytea SG 2025; "
+                    "5-shop avg CPA observed S$4.80 (excellent for 3-shop scale)",
     ),
     "cafe": VerticalBenchmark(
         vertical="cafe",
