@@ -1,0 +1,28 @@
+{
+  "vertical": "gym",
+  "primary_color": "#DC2626",
+  "accent_color": "#FBBF24",
+  "sub_verticals": [
+    "24h-gym",
+    "boxing",
+    "yoga",
+    "pilates"
+  ],
+  "suggested_voucher_min": 1000,
+  "suggested_voucher_max": 5000,
+  "sample_voucher_copy": [
+    "1-week free trial",
+    "S$10 off first month",
+    "Bring a friend, both get 30% off month one"
+  ],
+  "geofence_radius_m": 500,
+  "win_probability": 0.3,
+  "games_compatible": [
+    "streak",
+    "daily_checkin",
+    "quiz"
+  ],
+  "halal_aware": false,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

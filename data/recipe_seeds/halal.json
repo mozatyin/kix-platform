@@ -1,0 +1,29 @@
+{
+  "vertical": "halal",
+  "primary_color": "#92400E",
+  "accent_color": "#FBBF24",
+  "sub_verticals": [
+    "nasi padang",
+    "nasi lemak",
+    "mee rebus",
+    "rojak"
+  ],
+  "suggested_voucher_min": 200,
+  "suggested_voucher_max": 800,
+  "sample_voucher_copy": [
+    "Free teh tarik with any set meal",
+    "20% off lunch combo",
+    "Bring a friend, both eat free first plate"
+  ],
+  "geofence_radius_m": 150,
+  "win_probability": 0.5,
+  "games_compatible": [
+    "spin",
+    "scratch",
+    "mixer",
+    "daily_checkin"
+  ],
+  "halal_aware": true,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

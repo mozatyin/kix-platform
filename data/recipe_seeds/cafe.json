@@ -1,0 +1,28 @@
+{
+  "vertical": "cafe",
+  "primary_color": "#0EA5E9",
+  "accent_color": "#FBBF24",
+  "sub_verticals": [
+    "specialty-coffee",
+    "brunch",
+    "bakery-cafe"
+  ],
+  "suggested_voucher_min": 300,
+  "suggested_voucher_max": 1000,
+  "sample_voucher_copy": [
+    "Free pastry with any coffee",
+    "10% off brunch this weekend",
+    "Free filter coffee refill"
+  ],
+  "geofence_radius_m": 250,
+  "win_probability": 0.5,
+  "games_compatible": [
+    "spin",
+    "scratch",
+    "quiz",
+    "streak"
+  ],
+  "halal_aware": false,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

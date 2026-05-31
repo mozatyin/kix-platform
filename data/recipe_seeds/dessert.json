@@ -1,0 +1,23 @@
+{
+  "vertical": "dessert",
+  "primary_color": "#00B341",
+  "accent_color": "#FBBF24",
+  "sub_verticals": [],
+  "suggested_voucher_min": 200,
+  "suggested_voucher_max": 1000,
+  "sample_voucher_copy": [
+    "10% off your next visit",
+    "Free upgrade with any purchase",
+    "Bring a friend, both get a discount"
+  ],
+  "geofence_radius_m": 250,
+  "win_probability": 0.5,
+  "games_compatible": [
+    "spin",
+    "scratch",
+    "daily_checkin"
+  ],
+  "halal_aware": false,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

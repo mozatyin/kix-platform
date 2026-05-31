@@ -1,0 +1,29 @@
+{
+  "vertical": "bubbletea",
+  "primary_color": "#7C3AED",
+  "accent_color": "#F472B6",
+  "sub_verticals": [
+    "milk-tea",
+    "fruit-tea",
+    "cheese-foam-tea"
+  ],
+  "suggested_voucher_min": 300,
+  "suggested_voucher_max": 600,
+  "sample_voucher_copy": [
+    "1-for-1 on any tea this week",
+    "Upgrade to large for free",
+    "Free pearl topping today only"
+  ],
+  "geofence_radius_m": 300,
+  "win_probability": 0.6,
+  "games_compatible": [
+    "spin",
+    "scratch",
+    "mixer",
+    "quiz",
+    "streak"
+  ],
+  "halal_aware": false,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

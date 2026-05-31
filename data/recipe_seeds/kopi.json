@@ -1,0 +1,28 @@
+{
+  "vertical": "kopi",
+  "primary_color": "#7C2D12",
+  "accent_color": "#FBBF24",
+  "sub_verticals": [
+    "kopitiam",
+    "kopi-stall",
+    "kopi-cart"
+  ],
+  "suggested_voucher_min": 100,
+  "suggested_voucher_max": 500,
+  "sample_voucher_copy": [
+    "Free kopi-O on next visit",
+    "S$1 off any kopi (this week)",
+    "Buy 2 kopi, get 1 free"
+  ],
+  "geofence_radius_m": 200,
+  "win_probability": 0.55,
+  "games_compatible": [
+    "spin",
+    "scratch",
+    "daily_checkin",
+    "streak"
+  ],
+  "halal_aware": false,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

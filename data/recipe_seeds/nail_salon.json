@@ -1,0 +1,28 @@
+{
+  "vertical": "nail_salon",
+  "primary_color": "#EC4899",
+  "accent_color": "#FBBF24",
+  "sub_verticals": [
+    "manicure",
+    "pedicure",
+    "gel-nails",
+    "extension"
+  ],
+  "suggested_voucher_min": 500,
+  "suggested_voucher_max": 2000,
+  "sample_voucher_copy": [
+    "Free nail-art add-on with any gel set",
+    "20% off first visit",
+    "Bring a friend, both get 25% off"
+  ],
+  "geofence_radius_m": 250,
+  "win_probability": 0.4,
+  "games_compatible": [
+    "spin",
+    "quiz",
+    "daily_checkin"
+  ],
+  "halal_aware": false,
+  "family_friendly": true,
+  "typical_outlet_size": "single-outlet"
+}

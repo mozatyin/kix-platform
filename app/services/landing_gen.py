@@ -264,11 +264,17 @@ def generate_landing(cfg: BrandConfig) -> str:
 </section>
 '''
 
-    return (head + _render_what_you_get(cfg.what_you_get)
-            + _render_founding_block(cfg)
-            + _render_cases(cfg.case_studies)
-            + _render_footer(cfg)
-            + "\n</body></html>")
+    html_out = (head + _render_what_you_get(cfg.what_you_get)
+                + _render_founding_block(cfg)
+                + _render_cases(cfg.case_studies)
+                + _render_footer(cfg)
+                + "\n</body></html>")
+
+    # CLASS-D structural gate: forbid internal jargon (Trinity 3T, PDCA, etc.)
+    # in any customer-visible output. Fails-closed; raises VocabViolation.
+    from app.services.customer_vocab import vocab_check
+    vocab_check(html_out)
+    return html_out
 
 
 def _sanitize_hex(c: str) -> str:

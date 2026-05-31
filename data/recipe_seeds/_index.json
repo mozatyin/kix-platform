@@ -1,0 +1,53 @@
+{
+  "verticals": [
+    "kopi",
+    "halal",
+    "nasi_padang",
+    "bubbletea",
+    "cafe",
+    "nail_salon",
+    "barber_shop",
+    "hair_salon",
+    "gym",
+    "yoga_studio",
+    "convenience_store",
+    "minimart",
+    "bakery",
+    "dessert",
+    "bar",
+    "claw_machine",
+    "billiards",
+    "ktv",
+    "laundromat",
+    "pet_grooming",
+    "florist",
+    "bookstore"
+  ],
+  "explicit_seeds": [
+    "kopi",
+    "halal",
+    "bubbletea",
+    "nail_salon",
+    "gym",
+    "cafe"
+  ],
+  "fell_back_to_default": [
+    "nasi_padang",
+    "barber_shop",
+    "hair_salon",
+    "yoga_studio",
+    "convenience_store",
+    "minimart",
+    "bakery",
+    "dessert",
+    "bar",
+    "claw_machine",
+    "billiards",
+    "ktv",
+    "laundromat",
+    "pet_grooming",
+    "florist",
+    "bookstore"
+  ],
+  "count": 22
+}
