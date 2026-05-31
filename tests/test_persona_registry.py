@@ -5,11 +5,12 @@ from app.services.persona_registry import (
 )
 
 
-def test_eight_personas_seeded():
-    assert set(PERSONAS) == {
+def test_nine_personas_seeded():
+    assert set(PERSONAS) >= {
         "aminah_first_time_merchant", "skeptical_owner",
         "ahmad_kopi_chain", "enterprise_manager", "consumer", "steve_jobs",
         "enterprise_skeptic_cn", "smb_entrepreneur_sgcn",
+        "chain_cfo_franchise", "agency_marketing_owner", "franchise_consultant",
     }
 
 
@@ -63,7 +64,10 @@ def test_critic_included_when_opted_in():
 
 def test_for_page_chain_merchant():
     ids = for_page_ids("merchant", "chain")
-    assert ids == ["ahmad_kopi_chain"]
+    assert "ahmad_kopi_chain" in ids
+    assert "agency_marketing_owner" in ids
+    assert "franchise_consultant" in ids
+    assert "aminah_first_time_merchant" not in ids
 
 
 def test_for_page_enterprise_merchant():
@@ -85,8 +89,18 @@ def test_for_page_no_match_returns_empty():
 
 def test_list_ids_stable():
     ids = list_ids()
-    assert len(ids) == 8
+    assert len(ids) >= 11   # 8 original + 3 Phase B
     assert isinstance(ids, list)
+
+
+def test_phase_b_personas_have_distinct_axes():
+    """Phase B · 3 new buyer types should fit chain (Lim/Rachel/James) or enterprise (Lim)"""
+    cfo = get("chain_cfo_franchise")
+    agency = get("agency_marketing_owner")
+    consultant = get("franchise_consultant")
+    assert cfo.axes.scale == "enterprise"
+    assert agency.axes.scale == "chain"
+    assert consultant.axes.scale == "chain"
 
 
 def test_journey_personas_exist():

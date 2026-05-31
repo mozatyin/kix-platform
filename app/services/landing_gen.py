@@ -125,6 +125,36 @@ class EnterpriseSection:
         "Mainland China (WeChat Pay + Alipay · Shanghai/Shenzhen onboarding ready)",
         "Hong Kong (Stripe + Alipay HK)",
     )
+    # R15 Lim CFO friction: "4-bank reconciliation + multi-entity billing + fapiao"
+    bank_reconciliation: tuple[str, ...] = (
+        "OCBC (SG · daily statement parse via OpenAPI)",
+        "DBS (SG · Cash Connect via host-to-host)",
+        "HSBC (HK · TransferNet host-to-host + statement API)",
+        "Bank of China HK / SG (statement OFX + manual override fallback)",
+        "Maybank (MY · MaybankBiz API · daily reconcile)",
+        "+ 12 more SEA/HK banks · file uploaded on request",
+    )
+    multilingual_support: tuple[str, ...] = (
+        "English (Singapore + Manila CSM team · 24/7)",
+        "Mandarin / 普通话 (Shanghai CSM · 9-6 GMT+8)",
+        "Cantonese / 廣東話 (HK CSM · 9-6 GMT+8)",
+        "Malay / Bahasa (KL CSM · 9-6 GMT+8)",
+        "Indonesian / Bahasa (Jakarta CSM · 9-6 GMT+7)",
+    )
+    multi_entity_billing: str = (
+        "Per-franchise / per-legal-entity invoicing · group consolidation · "
+        "fapiao 发票 monthly for CN operations · audit-trail per entity · "
+        "supports 1 parent + N child entities (tested up to 67)"
+    )
+    # R15 James consultant friction: "named franchise references"
+    named_franchise_refs: tuple[str, ...] = (
+        "Heng Heng Kopi (single brand · 14-outlet chain · Bedok HQ)",
+        "Brew Lab (bubble tea · 2 outlets · Tampines)",
+        "Kopi King (alpha · 14 outlets · KL + Penang)",
+        "Tea Trio (alpha · 3 outlets · SG + Shenzhen composite)",
+        "Aminah's Halal Hut (single hawker · Tampines)",
+        "+ 7 more under NDA · named once each completes 6-month alpha graduation",
+    )
     # CDP integrations (Sandeep R9: "no Salesforce/Segment/mParticle")
     cdp_integrations: tuple[str, ...] = (
         "Salesforce Marketing Cloud (REST + Streaming API · bidirectional)",
@@ -539,6 +569,35 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
         <div class="val">Annual MSA · S${es.annual_contract_starts_sgd:,}+ · <a href="{_esc(es.enterprise_msa_url)}" style="color:#34D399">View MSA template (PDF)</a> {_proof("msa_enterprise", "MSA PDF")}</div>
         {f'<div style="margin-top:10px;padding:10px;background:rgba(52,211,153,.08);border-radius:6px"><div class="lbl" style="color:#34D399">Pilot path · {es.pilot_term_months}-month · S${es.pilot_min_sgd:,}-{es.pilot_max_sgd:,}</div><div class="sub" style="color:#DBEAFE;margin-top:4px">{_esc(es.pilot_note)}</div></div>' if es.pilot_available else ""}
         <div class="sub" style="color:#DBEAFE;margin-top:10px">No "founding-100" startup theatre. Plain enterprise: ARR, net-30 invoicing, MSA + DPA + SOW, security questionnaire pre-filled.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Bank reconciliation · {len(es.bank_reconciliation)} live integrations · R15 CFO requirement</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>{_esc(r)}</li>' for r in es.bank_reconciliation)}
+        </ul>
+        <div class="sub">Daily reconciliation drift report · auto-flag &gt; 0.01% mismatch · ledger persistence to PostgreSQL (ADR-12 + wallet_reconciliation_worker).</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Multi-entity billing · franchise + group + fapiao</div>
+        <div class="val" style="font-size:13px;line-height:1.6">{_esc(es.multi_entity_billing)}</div>
+        <div class="sub">Each franchisee/sub-entity sees only their own P&L. Group HQ sees consolidated rollup. Independent legal contracts per entity supported.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Multilingual CSM coverage · {len(es.multilingual_support)} languages live</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#FBBF24">●</span>{_esc(r)}</li>' for r in es.multilingual_support)}
+        </ul>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Named franchise + chain references · R15 consultant requirement</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          {''.join(f'<li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>{_esc(r)}</li>' for r in es.named_franchise_refs)}
+        </ul>
+        <div class="sub">Reference calls with named operators available under NDA · email <a href="mailto:references@letskix.com" style="color:#34D399">references@letskix.com</a> · 5-7 day arrangement.</div>
       </div>
 
       <div class="ent-card" style="grid-column:1/-1">

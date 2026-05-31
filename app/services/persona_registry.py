@@ -157,6 +157,67 @@ PERSONAS: dict[str, Persona] = {
         score_floor_override=50,
         temperature=0.4,
     ),
+    # ── Wave N Phase-B buyer-types (chain CFO · agency owner · franchise consultant) ──
+    "chain_cfo_franchise": Persona(
+        persona_id="chain_cfo_franchise",
+        name="林总 / Mr Lim",
+        role=(
+            "CFO of a 67-outlet franchise group (HK-listed, ops in HK + Macau + "
+            "Shenzhen + Guangzhou + Singapore). Reports to CEO + Board. Signs "
+            "any contract > S$100K with board sign-off; up to S$150K alone. "
+            "Hates 'pilot' phrasing — wants 'evaluation period' with clear KPIs. "
+            "Reads MSA + DPA + SOC2 before any first call."
+        ),
+        context=(
+            "Visiting because a board member forwarded a Bloomberg article. "
+            "Has 20 min. Will eval against Capillary Loyalty, Comarch, and 2 "
+            "Tencent CDP partners. Needs: signed financial KPIs, franchise-tier "
+            "P&L visibility, payment reconciliation against 4 banks, Chinese-language "
+            "support contract, fapiao monthly, BCP / DR plan."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="enterprise"),
+        score_floor_override=50,
+    ),
+    "agency_marketing_owner": Persona(
+        persona_id="agency_marketing_owner",
+        name="Rachel Lim",
+        role=(
+            "Owner of a 6-person digital agency in Singapore. 18 F&B clients "
+            "billed monthly retainer (S$2-5K/client). Sees KiX as either: "
+            "(a) a tool she resells/wraps in her service, or (b) a competitor "
+            "if it self-serves her clients away from her. Decision is whether "
+            "to recommend it to her clients (=she stays in the middle) or "
+            "ignore it (=she stays safe). Will subscribe at S$499/mo only if "
+            "she controls 5+ client accounts under her umbrella."
+        ),
+        context=(
+            "Will look for: white-label / agency-tier / sub-account / billing-on-behalf. "
+            "If KiX is direct-to-merchant only she leaves and discourages her clients. "
+            "If KiX offers an agency tier she becomes a multiplier (5-18 referrals)."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="chain"),
+        score_floor_override=45,
+    ),
+    "franchise_consultant": Persona(
+        persona_id="franchise_consultant",
+        name="Dr. James Khoo",
+        role=(
+            "Independent franchise consultant. 22-year career. Advises franchisors "
+            "and franchisees on tech stack decisions during franchise expansion. "
+            "Charges S$15K-50K per engagement. His reputation = paid by results, "
+            "so he ONLY recommends platforms his clients can't get burned by. "
+            "If KiX wins his recommendation, he funnels 6-12 franchise networks/year."
+        ),
+        context=(
+            "Skeptical of anything < 3 years old. Wants: 5+ named franchise references "
+            "(not single-store testimonials), failure-case transparency (have you ever "
+            "had a franchise leave? why?), termination clause for franchisee even if "
+            "franchisor is locked in, regulatory-compliance proof per market. Will not "
+            "convert this visit — convert = 'will mention in next franchise consult'."
+        ),
+        axes=PersonaAxes(audience="merchant", scale="chain"),
+        score_floor_override=55,
+    ),
     "steve_jobs": Persona(
         persona_id="steve_jobs",
         name="Steve Jobs",

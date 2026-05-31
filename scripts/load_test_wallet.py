@@ -118,9 +118,86 @@ class _SimulatedWallet:
         }
 
 
-async def _run_smoke_load(sla: LoadSLA, mode: str) -> LoadReport:
-    """Drive simulated load. For staging, swap _SimulatedWallet → real wallet."""
-    wallet = _SimulatedWallet()
+class _RealRedisWallet:
+    """Wave N Phase D · exercises a real Redis connection via WATCH/MULTI.
+
+    Approximates the production commission_split path:
+      WATCH wallet:{a}:balance · wallet:{b}:balance · wallet:kix:balance
+      check balance_a >= amount
+      MULTI: DECRBY a · INCRBY b · INCRBY kix · EXEC
+      retry on WatchError (deadlock proxy)
+
+    For staging runs only. Reset balances before each soak.
+    """
+
+    def __init__(self, redis_url: str):
+        try:
+            import redis.asyncio as redis_async
+        except ImportError as e:
+            raise RuntimeError(
+                "redis-py not installed in current venv — pip install redis>=5.0"
+            ) from e
+        self._r = redis_async.from_url(redis_url, decode_responses=True)
+        self._wlist = [f"wallet:bench_brand_{i}:balance" for i in range(1000)]
+        self._kix = "wallet:bench_kix:balance"
+
+    async def setup(self):
+        """Seed each test wallet with enough balance for the run."""
+        pipe = self._r.pipeline()
+        for w in self._wlist:
+            pipe.set(w, "1000000000")    # 10M units · plenty for 60min @ 10k/sec
+        pipe.set(self._kix, "0")
+        await pipe.execute()
+
+    async def commission_split(self, brand_a: str, brand_b: str,
+                               amount: float, take_rate: float) -> dict:
+        import time
+        t0 = time.monotonic()
+        amount_units = int(amount * 100)
+        take_units = int(amount_units * take_rate)
+        merchant_units = amount_units - take_units
+        wa = f"wallet:{brand_a}:balance"
+        wb = f"wallet:{brand_b}:balance"
+        deadlock = False
+        # Retry up to 3 times on WATCH conflict (mimics real prod retry policy)
+        from redis.exceptions import WatchError
+        for attempt in range(3):
+            async with self._r.pipeline(transaction=True) as pipe:
+                try:
+                    await pipe.watch(wa, wb, self._kix)
+                    bal_a = int(await self._r.get(wa) or 0)
+                    if bal_a < amount_units:
+                        await pipe.unwatch()
+                        return {"ok": False, "latency_ms": (time.monotonic() - t0) * 1000,
+                                "deadlock": False, "error": "insufficient_balance"}
+                    pipe.multi()
+                    pipe.decrby(wa, amount_units)
+                    pipe.incrby(wb, merchant_units)
+                    pipe.incrby(self._kix, take_units)
+                    await pipe.execute()
+                    return {"ok": True, "latency_ms": (time.monotonic() - t0) * 1000,
+                            "deadlock": deadlock}
+                except WatchError:
+                    deadlock = True
+                    continue
+        return {"ok": False, "latency_ms": (time.monotonic() - t0) * 1000,
+                "deadlock": True, "error": "max_watch_retries"}
+
+    async def teardown(self):
+        try:
+            await self._r.aclose()
+        except AttributeError:
+            await self._r.close()
+
+
+async def _run_smoke_load(sla: LoadSLA, mode: str, redis_url: str = "") -> LoadReport:
+    """Drive load. Real Redis if redis_url given (Wave N Phase D), else simulator."""
+    if redis_url:
+        wallet = _RealRedisWallet(redis_url)
+        await wallet.setup()
+        print(f"  · using REAL Redis at {redis_url}")
+    else:
+        wallet = _SimulatedWallet()
     report = LoadReport(sla=sla, mode=mode)
     latencies: list[float] = []
     errors = 0
@@ -199,6 +276,8 @@ async def _run_smoke_load(sla: LoadSLA, mode: str) -> LoadReport:
         failures.append(f"deadlocks {report.deadlock_count} > {sla.max_deadlocks} SLA")
     report.sla_failures = failures
     report.passed_sla = not failures
+    if isinstance(wallet, _RealRedisWallet):
+        await wallet.teardown()
     return report
 
 
@@ -234,6 +313,8 @@ def main() -> int:
                    help="override target throughput")
     p.add_argument("--json", default="",
                    help="path to write JSON report")
+    p.add_argument("--real-redis", default="",
+                   help="redis://host:port URL · Wave N Phase D · STAGING ONLY")
     args = p.parse_args()
 
     sla = LoadSLA()
@@ -244,7 +325,7 @@ def main() -> int:
         sla.duration_seconds = args.duration or 3600
         sla.sustained_ops_per_sec = args.ops_per_sec or 10_000
 
-    report = asyncio.run(_run_smoke_load(sla, args.mode))
+    report = asyncio.run(_run_smoke_load(sla, args.mode, args.real_redis))
     _print(report)
 
     if args.json:

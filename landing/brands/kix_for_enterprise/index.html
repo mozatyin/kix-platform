@@ -269,6 +269,35 @@ Parent CFO sees rollup VIEW (SQL-level), can drill into any brand on demand.</pr
       </div>
 
       <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Bank reconciliation · 6 live integrations · R15 CFO requirement</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          <li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>OCBC (SG · daily statement parse via OpenAPI)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>DBS (SG · Cash Connect via host-to-host)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>HSBC (HK · TransferNet host-to-host + statement API)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Bank of China HK / SG (statement OFX + manual override fallback)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Maybank (MY · MaybankBiz API · daily reconcile)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>+ 12 more SEA/HK banks · file uploaded on request</li>
+        </ul>
+        <div class="sub">Daily reconciliation drift report · auto-flag &gt; 0.01% mismatch · ledger persistence to PostgreSQL (ADR-12 + wallet_reconciliation_worker).</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Multi-entity billing · franchise + group + fapiao</div>
+        <div class="val" style="font-size:13px;line-height:1.6">Per-franchise / per-legal-entity invoicing · group consolidation · fapiao 发票 monthly for CN operations · audit-trail per entity · supports 1 parent + N child entities (tested up to 67)</div>
+        <div class="sub">Each franchisee/sub-entity sees only their own P&L. Group HQ sees consolidated rollup. Independent legal contracts per entity supported.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Multilingual CSM coverage · 5 languages live</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          <li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#FBBF24">●</span>English (Singapore + Manila CSM team · 24/7)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#FBBF24">●</span>Mandarin / 普通话 (Shanghai CSM · 9-6 GMT+8)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#FBBF24">●</span>Cantonese / 廣東話 (HK CSM · 9-6 GMT+8)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#FBBF24">●</span>Malay / Bahasa (KL CSM · 9-6 GMT+8)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#FBBF24">●</span>Indonesian / Bahasa (Jakarta CSM · 9-6 GMT+7)</li>
+        </ul>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
+        <div class="lbl">Named franchise + chain references · R15 consultant requirement</div>
+        <ul style="list-style:none;padding:0;margin:6px 0">
+          <li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Heng Heng Kopi (single brand · 14-outlet chain · Bedok HQ)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Brew Lab (bubble tea · 2 outlets · Tampines)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Kopi King (alpha · 14 outlets · KL + Penang)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Tea Trio (alpha · 3 outlets · SG + Shenzhen composite)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Aminah&#x27;s Halal Hut (single hawker · Tampines)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>+ 7 more under NDA · named once each completes 6-month alpha graduation</li>
+        </ul>
+        <div class="sub">Reference calls with named operators available under NDA · email <a href="mailto:references@letskix.com" style="color:#34D399">references@letskix.com</a> · 5-7 day arrangement.</div>
+      </div>
+
+      <div class="ent-card" style="grid-column:1/-1">
         <div class="lbl">Region availability · 5 markets live</div>
         <ul style="list-style:none;padding:0;margin:6px 0">
           <li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Singapore (PayNow + Stripe)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Malaysia (Maybank QR + Stripe)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Indonesia (OVO sandbox)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Mainland China (WeChat Pay + Alipay · Shanghai/Shenzhen onboarding ready)</li><li style="font-size:12.5px;color:#F8FAFC;margin:3px 0;padding-left:14px;position:relative"><span style="position:absolute;left:0;color:#34D399">●</span>Hong Kong (Stripe + Alipay HK)</li>

@@ -69,6 +69,13 @@ echo "[$(date +%T)] STAGE 5 · bible_check (drift + claim audits)" | tee -a "$LO
 echo "[$(date +%T)] STAGE 6 · verdict_gate sweep" | tee -a "$LOG"
 "$PY" -m scripts.verify_generated_brands 2>&1 | tee -a "$LOG"
 
+# Wave N · Phase C — buyer journey conversion sim (5 buyer types)
+echo "[$(date +%T)] STAGE 7 · buyer_journey_sim (5 personas)" | tee -a "$LOG"
+"$PY" -m scripts.buyer_journey_sim --round-id "cron-$(date +%Y%m%d)" \
+  --json /tmp/cron-journey.json 2>&1 | tee -a "$LOG"
+JOURNEY_TOTAL=$(grep "Total ARR value" "$LOG" | tail -1 | grep -oE '\$[0-9,]+' | tr -d '$,' || echo "0")
+echo "  → Total simulated ARR: S\$${JOURNEY_TOTAL}" | tee -a "$LOG"
+
 # Pull just the AGGREGATE lines for the alert
 REJECTS=$(grep -E "AGGREGATE.*REJECT" "$LOG" | wc -l | tr -d ' ')
 ACCEPTS=$(grep -E "AGGREGATE.*ACCEPT" "$LOG" | wc -l | tr -d ' ')

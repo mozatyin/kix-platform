@@ -54,6 +54,10 @@ PORT = 8765
 JOURNEY_START = {
     "enterprise_skeptic_cn": "/landing/brands/kix_for_enterprise/index.html",
     "smb_entrepreneur_sgcn": "/landing/brands/default/index.html",
+    # Phase B · 3 new buyer types
+    "chain_cfo_franchise": "/landing/brands/kix_for_enterprise/index.html",
+    "agency_marketing_owner": "/landing/brands/default/index.html",
+    "franchise_consultant": "/landing/brands/kix_for_enterprise/index.html",   # R15 · franchise scale = enterprise content
 }
 
 # Pages the persona MAY navigate to next (whitelist for the LLM)
@@ -72,21 +76,34 @@ NAVIGABLE = [
 # Conversion targets per persona (the COST + COMMITMENT they must accept)
 CONVERSION_TARGETS = {
     "enterprise_skeptic_cn": {
-        # R4 calibration: LLM rates Wang's intent conservatively (25-37) even
-        # when verdict says "speaks my language". A 70 threshold needs ≥3 hops
-        # of +25 each — unrealistic since he tries CTAs early. Bar 55 matches
-        # observed real-decision intent in his persona's voice.
         "label": "S$50K 6-month enterprise pilot (contract signed)",
         "value_sgd": 50_000,
         "accept_actions": {"contact_enterprise_sales", "request_msa", "talk_to_sales"},
         "intent_required": 55,
     },
     "smb_entrepreneur_sgcn": {
-        # R3/R4: Boss Chen's verdict at intent 35 was "swipe card and go".
-        # LLM systematically underrates SMB intent. Bar 50 = 2 hops × +25.
         "label": "S$499/mo Verified Business subscription (self-serve, CC entered)",
         "value_sgd": 499 * 12,
         "accept_actions": {"subscribe", "start_trial"},
+        "intent_required": 50,
+    },
+    # ── Phase B · 3 new buyer-type targets ──
+    "chain_cfo_franchise": {
+        "label": "S$120K annual MSA · 67-outlet group · board-approved",
+        "value_sgd": 120_000,
+        "accept_actions": {"request_msa", "contact_enterprise_sales", "talk_to_sales"},
+        "intent_required": 60,
+    },
+    "agency_marketing_owner": {
+        "label": "Agency tier · S$499 × 5 client sub-accounts = S$2,495/mo committed",
+        "value_sgd": 2_495 * 12,
+        "accept_actions": {"talk_to_sales", "subscribe", "request_msa"},
+        "intent_required": 55,
+    },
+    "franchise_consultant": {
+        "label": "Will mention KiX in next franchise consult (referral commit)",
+        "value_sgd": 0,    # leverage value · not direct $
+        "accept_actions": {"bookmark", "talk_to_sales", "contact_enterprise_sales"},
         "intent_required": 50,
     },
 }
