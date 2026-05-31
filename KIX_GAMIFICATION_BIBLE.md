@@ -444,8 +444,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 4b65545
-Last commit         : feat(wave-n-iter): proof registry (CLASS-W) + ROI calc + 3-shop bubble tea                
+HEAD                : 61342bc
+Last commit         : feat(wave-n-iter): R11 · CLASS-AA/BB/CC/DD — Trinity 三体 持续迭代
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -454,7 +454,7 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 138,576
+  total Python LOC  : 138,617
 
 Test surface
   test files        : 157

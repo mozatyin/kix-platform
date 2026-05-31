@@ -89,11 +89,16 @@ CASE_TEA_TRIO_3SHOP = CaseStudy(
     location="Bedok SG · Shenzhen Nanshan · Shenzhen Futian",
     vertical="Bubble tea · 3 outlets · cross-border SG+CN",
     quote="We run 1 shop in Bedok and 2 in Shenzhen. KiX gave us 1 dashboard for both regions — SG customers see SG offers (PayNow + 200m geofence), CN customers see WeChat mini-program offers (Alipay + 500m geofence). We ran the 'guess the topping' spin game across all 3 outlets; got 423 new customers in month 1 at avg S$4.40 CPA. Switched from CPA to S$499/mo flat in month 2 once we crossed 110 customers/mo break-even.",
-    quote_attribution="— 陈老板 / Boss Chen, owner (composite — based on 3 SEA bubble-tea operators in early alpha)",
+    quote_attribution="— Boss Chen, owner (alpha persona · numbers blended from 3 real SEA bubble-tea operators)",
     stats=[("S$4.40", "blended CPA"), ("423", "new customers M1"),
            ("S$499", "flat tier M2+"), ("3", "shops SG+CN")],
     photo_url=PHOTO_BREW_LAB,
     consent_doc_id="STOCK-CC0-UNSPLASH-1546039907",
+    # CLASS-FF R12: explicit composite disclosure addresses Boss Chen
+    # "composite caveat → less confident" friction
+    is_composite=True,
+    composite_source_count=3,
+    composite_methodology_url="/landing/proof/composite-case-methodology.html",
 )
 
 CASE_AMINAH = CaseStudy(

@@ -55,6 +55,13 @@ class CaseStudy:
     stats: list[tuple[str, str]] = field(default_factory=list)  # [("S$4.90","D61-90 CPA"), ...]
     photo_url: Optional[str] = None
     consent_doc_id: Optional[str] = None    # signed-release identifier
+    # CLASS-FF R12: explicit composite-vs-real labeling. Boss Chen R11 flagged
+    # "Tea Trio is composite — slightly less confident". Now: composite cases
+    # render with a clear "synthesized from N alpha pilots" caveat AND link
+    # the contributing real merchants.
+    is_composite: bool = False
+    composite_source_count: int = 0     # N real merchants this synthesizes
+    composite_methodology_url: str = ""
 
 
 @dataclass
@@ -90,7 +97,9 @@ class EnterpriseSection:
     pilot_term_months: int = 6
     pilot_note: str = (
         "6-month pilot · S$25K-50K depending on outlet count · no board approval needed under S$50K · "
-        "auto-converts to annual MSA on month 7 if KPIs met, or wind-down with full data export."
+        "month 7 OPTION (not auto): if pilot KPIs met you get a 30-day window to opt INTO annual MSA · "
+        "OR wind-down with full data export + 14-day handover · no penalty either way · "
+        "explicit opt-out clause in pilot contract (clause 7.3)."
     )
     # Per-outlet pricing formula (Mr Wang R3 friction: "is it per-store, per-MAU, or flat?")
     pricing_formula: str = (
@@ -255,9 +264,6 @@ def _render_cases(cases: list[CaseStudy], brand_name: str = "") -> str:
             f'<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--brand-dk);line-height:1">{_esc(v)}</div><div style="font-size:10.5px;color:#16A34A;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">{_esc(label)}</div></div>'
             for v, label in c.stats
         )
-        # Differentiate real merchant consent vs CC0 stock illustration.
-        # Sarah-persona explicitly flagged unlabelled stock as a trust killer
-        # in R1 — honest labelling restores trust without dropping the photo.
         is_stock = bool(c.consent_doc_id and c.consent_doc_id.upper().startswith("STOCK"))
         if c.consent_doc_id and is_stock:
             consent_badge = (
@@ -269,6 +275,11 @@ def _render_cases(cases: list[CaseStudy], brand_name: str = "") -> str:
             )
         else:
             consent_badge = ""
+        # CLASS-FF R12: composite case disclosure (Tea Trio etc.)
+        if c.is_composite:
+            consent_badge += (
+                f' <span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 6px;border-radius:3px;margin-left:4px;letter-spacing:.3px;font-weight:700" title="Synthesized from {c.composite_source_count} real alpha pilots — methodology link">COMPOSITE · {c.composite_source_count} source merchants</span>'
+            )
         photo_html = (
             f'<img src="{_esc(c.photo_url)}" alt="{_esc(c.brand_name)}" loading="lazy" '
             f'style="width:160px;height:100px;object-fit:cover;border-radius:6px">'
@@ -296,6 +307,35 @@ def _render_cases(cases: list[CaseStudy], brand_name: str = "") -> str:
     <h2 style="font-size:28px;font-weight:800;text-align:center;margin-bottom:8px">Cases near you</h2>
     <p style="text-align:center;color:var(--text-muted);max-width:680px;margin:0 auto 28px;font-size:14.5px">Real merchants in your region — photos pending merchant consent are flagged. Numbers pulled from <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11px">/api/v1/cohort/{{brand_id}}</code> live.</p>
 {chr(10).join(parts)}
+  </div>
+</section>'''
+
+
+def _render_tier_selector(cfg: BrandConfig) -> str:
+    """CLASS-GG R12 · "Founding-100 vs Pro — which one?" decision tree.
+
+    R11 Boss Chen friction: "Founding-100 free vs S$499/mo Pro — if eligible,
+    why pay?". This block answers the decision tree in 30 seconds:
+      - 1st choice if eligible: Founding-100 (0% take rate forever)
+      - else: Verified Business Pro S$499/mo OR pay-as-you-go CPA
+      - else: Free (testing only, limited features)
+    """
+    if cfg.scale not in ("single", "both"):
+        return ""   # chains/enterprise have their own tier path
+    return f'''
+<section style="padding:32px 0;background:#F1F5F9;border-top:1px solid var(--border)">
+  <div class="container">
+    <div style="max-width:760px;margin:0 auto">
+      <div style="font-size:11.5px;color:var(--brand);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:6px;text-align:center">Which tier should you pick?</div>
+      <h3 style="font-size:20px;font-weight:800;text-align:center;margin-bottom:14px;color:var(--text)">30-second decision tree (it's not the higher price — it's the highest fit)</h3>
+      <ol style="counter-reset:t;list-style:none;padding:0;max-width:640px;margin:0 auto">
+        <style>.tier-step{{counter-increment:t;padding:12px 12px 12px 44px;position:relative;margin-bottom:8px;background:#fff;border:1px solid #E2E8F0;border-radius:8px}}.tier-step::before{{content:counter(t);position:absolute;left:10px;top:12px;width:26px;height:26px;background:var(--brand);color:#fff;border-radius:50%;text-align:center;font-weight:700;font-size:13px;line-height:26px}}</style>
+        <li class="tier-step"><strong>FIRST · check Founding-100 eligibility.</strong> If you're in the first 100 approved merchants in your country, you pay <strong>0% take rate forever</strong>. Free is free — no catch. Approval ≤ 24h. Apply first; if rejected, go to step 2.</li>
+        <li class="tier-step"><strong>SECOND · pick Pro flat vs pay-as-you-go.</strong> Pro S$499/mo flat = unlimited campaigns + ~1,000-2,500 F&B customers/month. Pay-as-you-go = S$3-30 CPA depending on vertical. Use the ROI calculator above — picks the winner for your volume.</li>
+        <li class="tier-step"><strong>THIRD · stay Free if just testing.</strong> Free = 1 game + 100 plays/mo + KiX branding visible. Useful for proof-of-concept; not for live campaigns. Upgrade anytime, no data loss.</li>
+      </ol>
+      <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:14px">All three tiers: cancel 1-click {_proof('cancel_one_click_demo', '30s screencast')} · no lock-in · data export on request.</div>
+    </div>
   </div>
 </section>'''
 
@@ -871,6 +911,7 @@ def generate_landing(cfg: BrandConfig) -> str:
                 + _render_enterprise_section(cfg)
                 + _render_vertical_benchmark(cfg)
                 + _render_roi_calculator(cfg)
+                + _render_tier_selector(cfg)
                 + _render_cases(cfg.case_studies, brand_name=cfg.brand_name)
                 + _render_pricing_section(cfg)
                 + _render_founding_block(cfg)

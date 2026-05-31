@@ -98,7 +98,7 @@ TIER_VERIFIED_BUSINESS = PricingTier(
         "Founding-100 zero-take-rate",
         "On-site founder onboarding",
     ),
-    cta_text="Start S$499/mo Pro · 14-day free · cancel 1-click",
+    cta_text="Start 14-day free trial · no card · cancel 1-click",   # CLASS-EE R12 · matches no_charge_until copy exactly
     cta_action="subscribe",
 )
 
