@@ -322,14 +322,16 @@ Code surface (after Wave G + H)
   routers           : 123           (was 94; +29: country_slots, wavef_*, support, retention, prizes, ...)
   endpoints         : 1,064         (was 925; +139)
   workers           : 15            (was 9; +6: wallet_reconciliation, voucher_lifecycle, support_sla, ...)
-  services          : 45            (was 15; +30: wavef_*, retention, viral_amplifier, country_slots ...)
-  migrations        : 10            (was 7; +3: audit_log_0007, prizes_0008, whatsapp_auth_0009, country_slots_0010)
-  total Python LOC  : ~135,100      (was 109,800; +25k from Waves E/F/G/H)
+  services          : 47            (was 15; +32: wavef_*, retention, viral_amplifier, country_slots,
+                                       storehub_adapter, whatsapp_template ...)
+  migrations        : 11            (was 7; +4: audit_log_0007, prizes_0008, whatsapp_auth_0009,
+                                       country_slots_0010, country_slots_all_iso_0011)
+  total Python LOC  : ~135,800      (was 109,800; +26k from Waves E/F/G/H/I/J/K/L)
 
 Test surface
-  test files        : 143           (was 104; +39 — Waves E/F/G/H added test discipline)
-  test functions    : 1,492         (was 1,006; +486)
-  test LOC          : ~31,700
+  test files        : 145           (was 104; +41 — added test_storehub_adapter, test_whatsapp_template)
+  test functions    : 1,530         (was 1,006; +524)
+  test LOC          : ~32,500
 
 Data
   recipes           : 79            (len(app/data/recipes_seed.json))
