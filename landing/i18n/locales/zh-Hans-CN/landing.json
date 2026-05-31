@@ -8,5 +8,22 @@
   "hero.assurance": "注册时绑卡 · Free 版永不扣款 · 一键取消",
   "hero.bignum_eyebrow": "新加坡 5 家 alpha 商户 · 90 天平均",
   "hero.bignum_label": "广告支出降低，新顾客不变",
-  "hero.bignum_proof": "Brew Lab S$9 → S$5.80 CPA · Heng Heng S$7.20 → S$4.90 CPA"
+  "hero.bignum_proof": "Brew Lab S$9 → S$5.80 CPA · Heng Heng S$7.20 → S$4.90 CPA",
+  "personas.eyebrow": "为每一种商户量身打造",
+  "personas.title": "选适合你店的 KiX 版本。",
+  "personas.sub": "一个产品，四种形态。同一个后台，同一套游戏。不同的证据、不同的价格、不同的开通方式。",
+  "values.title": "第一周你会感受到的三件事。",
+  "values.sub": "不是数字，是感觉。你的店。你的顾客。你的利润。",
+  "values.card1.title": "本周更多人走进来",
+  "values.card1.body": "隔壁档口屏幕上亮起一个小转盘。有人玩了一下，赢了你家的一杯免费咖啡。下午他就来了。就这么简单。",
+  "values.card2.title": "下周他们回头",
+  "values.card2.body": "第二个游戏只对新顾客开放（你定）。28% 的人 2 周内回来。这些数字在你的后台一目了然，不用对账。",
+  "values.card3.title": "广告费不再白烧",
+  "values.card3.body": "别再用朋友圈推广老顾客。只在真正新顾客走进店时付钱。多数商户第一个月就把推广费砍掉 35-50%。",
+  "final_cta.title1": "开始玩这个游戏。",
+  "final_cta.title2": "看着店里人多起来。",
+  "final_cta.sub": "5 分钟上线第一个游戏。绑卡（Free 版不扣款）。一键取消。除非你要求，否则不会有销售来电。",
+  "final_cta.button": "免费开始 →",
+  "final_cta.signin_prompt": "已经有账号？",
+  "final_cta.signin_link": "登录"
 }
