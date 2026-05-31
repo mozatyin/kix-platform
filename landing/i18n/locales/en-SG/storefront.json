@@ -5,7 +5,7 @@
   "storefront.cart.items": "{count, plural, =0 {Cart is empty} one {1 item in cart} other {# items in cart}}",
 
   "storefront.meta.title": "Discover stores · KiX",
-  "storefront.meta.description": "Browse and play at thousands of merchant stores on KiX — earn rewards from your favourite brands.",
+  "storefront.meta.description": "Browse 12 Singapore F&B merchants live on KiX — Toast Box, Ya Kun, Heng Heng Kopi, Brew Lab. Scan, play, win a real voucher.",
 
   "storefront.nav.discover": "Discover",
   "storefront.nav.categories": "Categories",
@@ -23,7 +23,7 @@
 
   "storefront.hero.eyebrow": "Stores on KiX",
   "storefront.hero.title": "Discover stores. Play games. Earn rewards.",
-  "storefront.hero.lede": "Browse thousands of merchant storefronts across Singapore. Play branded mini-games at checkout and unlock real vouchers, free items, and exclusive perks.",
+  "storefront.hero.lede": "Search for the shop on your receipt or QR code (Toast Box, Ya Kun, Heng Heng Kopi, Brew Lab — see the full list below). Tap, play the game, win an actual voucher to redeem at the counter.",
 
   "storefront.filters.aria": "Filter stores",
   "storefront.filters.label": "Filter",
