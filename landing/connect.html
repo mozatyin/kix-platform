@@ -428,6 +428,47 @@
     const redirectUri = params.get("redirect_uri") || "";
     const state = params.get("state") || "";
 
+    // Detect B2B evaluator who landed here by mistake (no OAuth params at all).
+    // Sarah Chen / Sandeep Kumar archetype: a merchant evaluator following
+    // a marketing link, NOT a consumer following a real OAuth handshake.
+    // Redirect to the appropriate landing instead of showing an opaque error.
+    const noOAuthAtAll = (!brandId && !scopes.length && !redirectUri && !state);
+    if (noOAuthAtAll && !location.search.includes('force_oauth')) {
+      // Render friendly B2B redirect page in-place rather than a hard redirect
+      // so the URL stays valid if they shared it from a sales email.
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body.innerHTML = `
+        <div style="font-family:'Inter',-apple-system,sans-serif;background:#fff;color:#0F172A;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+          <div style="max-width:640px;text-align:center">
+            <div style="font-size:48px;margin-bottom:16px">👋</div>
+            <h1 style="font-size:30px;font-weight:800;letter-spacing:-.8px;margin-bottom:14px">Hi — this is the consumer authorisation page.</h1>
+            <p style="font-size:16px;color:#475569;margin-bottom:24px">You're probably here because you're <strong>evaluating KiX as a merchant or enterprise buyer</strong>. The page you actually want is one of:</p>
+            <div style="display:grid;grid-template-columns:1fr;gap:12px;text-align:left;max-width:440px;margin:0 auto">
+              <a href="/landing/enterprise.html" style="background:#0F172A;color:#fff;padding:16px 20px;border-radius:10px;text-decoration:none">
+                <div style="font-weight:700;font-size:15px">🏢 Enterprise (≥10 outlets, loyalty programs)</div>
+                <div style="font-size:13px;color:#CBD5E1;margin-top:4px">Contract terms · exclusivity · 90-day pilot structure · references</div>
+              </a>
+              <a href="/landing/portal.html" style="background:#00B341;color:#fff;padding:16px 20px;border-radius:10px;text-decoration:none">
+                <div style="font-weight:700;font-size:15px">🛠️ Merchant portal (self-serve)</div>
+                <div style="font-size:13px;color:#A7F3D0;margin-top:4px">Sign up · launch first campaign · 5-minute setup</div>
+              </a>
+              <a href="/landing/pricing.html" style="background:#fff;color:#0F172A;padding:16px 20px;border-radius:10px;text-decoration:none;border:1px solid #E2E8F0">
+                <div style="font-weight:700;font-size:15px">💰 Pricing &amp; "free-100" mechanic</div>
+                <div style="font-size:13px;color:#64748B;margin-top:4px">Pay-per-result · founding-100 country slots</div>
+              </a>
+              <a href="/landing/sg-case-studies.html" style="background:#fff;color:#0F172A;padding:16px 20px;border-radius:10px;text-decoration:none;border:1px solid #E2E8F0">
+                <div style="font-weight:700;font-size:15px">📊 SG case studies (real numbers)</div>
+                <div style="font-size:13px;color:#64748B;margin-top:4px">5 alpha-cohort F&amp;B merchants · CPA · retention</div>
+              </a>
+            </div>
+            <p style="margin-top:28px;font-size:12.5px;color:#94A3B8">
+              If you actually meant to land on the consumer OAuth flow, add <code>?force_oauth=1</code> to the URL.
+            </p>
+          </div>
+        </div>`;
+      });
+    }
+
     // Defer error display until i18next is ready so we use localised copy.
     let pendingError = null;
     if(!brandId){

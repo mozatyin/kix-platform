@@ -164,9 +164,11 @@ or just venting about a bad campaign. Recorded with merchant permission.
 
 ---
 
-## 7. Open Items
+## 7. Status
 
-- [ ] Build `app/services/whatsapp_template.py` (currently manual copy-paste)
+- [x] **Build `app/services/whatsapp_template.py` — SHIPPED Wave K7** (13 tests, dry-run by default, send_bedok_template + schedule_bedok_followups + CLI)
+- [ ] Get the 4 templates approved on Meta Business Manager (UTILITY category)
+- [ ] Wire to delayed-job queue (dramatiq/arq) for fire_at scheduling
 - [ ] Auto-generate weekly PDF for T+14d template
 - [ ] Add per-merchant ops dashboard (founder-only)
 - [ ] MY-specific templates (translate after first MY pilot signs)

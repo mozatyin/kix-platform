@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>"New Customer" Definition — Contractual · KiX</title>
+<link rel="stylesheet" href="../design-system/tokens.css">
+<link rel="stylesheet" href="legal.css">
+<script src="../i18n/i18next-runtime.js" defer></script>
+<script src="../i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#fff;color:#0F172A;line-height:1.65;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--navy:#0F172A}
+  .container{max-width:780px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);padding:14px 0}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px;margin-left:20px}
+  .nav-links a:hover{color:var(--brand)}
+  .hero{padding:48px 0 24px;text-align:center}
+  .pill{display:inline-block;background:#FEF3C7;color:#92400E;padding:4px 12px;border-radius:999px;
+        font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.8px;margin-bottom:10px}
+  .sub{font-size:15px;color:var(--text-muted)}
+  .stamp{margin-top:20px;display:inline-block;background:#F7F8FA;color:#475569;padding:6px 14px;
+         border-radius:8px;font-size:12px;border:1px solid var(--border)}
+  section{padding:24px 0}
+  h2{font-size:22px;font-weight:800;margin:32px 0 14px;letter-spacing:-.4px;color:#0F172A;
+     border-bottom:2px solid var(--brand);padding-bottom:6px;display:inline-block}
+  h3{font-size:17px;font-weight:700;margin:24px 0 10px;color:#0F172A}
+  p{font-size:14.5px;color:#1E293B;margin-bottom:12px}
+  ul,ol{margin:8px 0 14px 20px}
+  li{font-size:14px;color:#1E293B;margin-bottom:6px;line-height:1.6}
+  .clause{background:#F7F8FA;border-left:3px solid var(--brand);padding:14px 18px;border-radius:0 6px 6px 0;margin:14px 0}
+  .clause strong{color:#0F172A;font-weight:700}
+  .example{background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:14px 18px;margin:14px 0;font-size:13.5px;color:#1E3A8A}
+  .example strong{color:#1E40AF}
+  .negative{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:14px 18px;margin:14px 0;font-size:13.5px;color:#7F1D1D}
+  .negative strong{color:#991B1B}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  th{background:var(--surface);font-weight:700}
+  .footer-cta{background:var(--navy);color:#fff;padding:36px 0;text-align:center;margin-top:48px}
+  .footer-cta h3{color:#fff;margin-bottom:8px;font-size:20px}
+  .footer-cta p{color:#CBD5E1;font-size:14px;margin-bottom:14px}
+  .footer-cta a{display:inline-block;background:var(--brand);color:#fff;padding:11px 22px;
+                border-radius:8px;text-decoration:none;font-weight:700;font-size:14px}
+  footer{padding:28px 0;text-align:center;color:var(--text-muted);font-size:12.5px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/landing/enterprise.html">Enterprise</a>
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/legal/">Legal Center</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">CONTRACTUAL DEFINITION</span>
+    <h1>What counts as a "new customer" — bound by contract, not by marketing</h1>
+    <p class="sub">If we charge you for a new customer, all three signals below must be true. If any one fails, you don't pay.</p>
+    <div class="stamp">v1.0 · effective 2026-05-31 · bound into MSA Schedule A</div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+
+    <p><strong>Why this page exists:</strong> Enterprise evaluators we've spoken to in 2026 have been burned by loyalty/marketing SaaS where "new customer" was defined in a deck, never in the contract. We define it in legal language here, link it to your MSA Schedule A, and we're bound by it. If we ever change this definition, the new version applies only to campaigns started after the change date.</p>
+
+    <h2>1. The three required signals</h2>
+    <p>A "Tracked Transaction" — the unit of billing under CPA or CPS pricing — only counts when <strong>all three</strong> of these happen for the same consumer within 30 days:</p>
+
+    <div class="clause">
+      <strong>Signal A — Game completion</strong>
+      <p>The consumer reaches the "you've won" screen of a KiX game tied to your brand_id. Closing the tab early, refreshing the page, or abandoning mid-game does <em>not</em> count.</p>
+    </div>
+
+    <div class="clause">
+      <strong>Signal B — Verified registration</strong>
+      <p>The consumer provides either:
+        <br>(i) a mobile phone number verified by OTP, or
+        <br>(ii) an email address verified by click-through link.
+        <br>The phone/email must be one not previously associated with your brand_id (de-duplicated across your existing customer database if you've uploaded one — see §3).</p>
+    </div>
+
+    <div class="clause">
+      <strong>Signal C — Tracked transaction</strong>
+      <p>Within 30 days of Signal A, the consumer completes <strong>at least one</strong> of:
+        <br>(i) a redemption code entered at your point of sale (manual path), or
+        <br>(ii) a POS-recorded purchase tied to the same hashed phone/email (deep-sync path: StoreHub / Square / Shopify / Stripe Terminal / Toast), or
+        <br>(iii) a tap-and-redeem event at a paired NFC device.
+        <br>If none of these happen within 30 days, the consumer is <em>not</em> a Tracked Transaction and you are not charged.</p>
+    </div>
+
+    <h2>2. What does NOT count</h2>
+
+    <div class="negative">
+      <strong>✗ Game opens without completion</strong> — A consumer who opens the game URL but bounces is a "View" (free), not a Tracked Transaction.
+    </div>
+    <div class="negative">
+      <strong>✗ Registration without redemption</strong> — A consumer who completes Signal A + B but never converts to Signal C within 30 days is a "Registered Lead" (free for you, valuable for your TikTok Pixel audience). You can retarget them via the integrations you own; we do not bill.
+    </div>
+    <div class="negative">
+      <strong>✗ Existing customer plays again</strong> — If the registered phone/email is already in your uploaded customer CRM at the time of Signal B, it's logged as "Repeat Engagement" and not billed. See §3.
+    </div>
+    <div class="negative">
+      <strong>✗ Fraudulent / bot / self-redemption</strong> — Same device fingerprint or IP that registered your account, your staff's phones, your family members on payroll. Detected automatically (see §5) and credited back if not caught in real time.
+    </div>
+    <div class="negative">
+      <strong>✗ Cross-brand contamination</strong> — A consumer who played a game from a different brand in our pool but redeemed yours is your win (no cross-charge). But if they played YOUR game and redeemed someone else's, you don't pay either way.
+    </div>
+
+    <h2>3. Existing-customer de-duplication</h2>
+    <p>To prevent the Playable / Eber pattern of charging you for repeat customers, KiX supports CRM upload:</p>
+    <ul>
+      <li><strong>Bulk upload:</strong> Upload your existing customer phone/email list (CSV or API). We hash with SHA-256 and store only the hashes — your raw PII never leaves your account.</li>
+      <li><strong>Real-time de-dup:</strong> Signal B is checked against your hashed CRM. If matched, Signal C never charges you.</li>
+      <li><strong>API event hook:</strong> If you onboard a new customer outside KiX (e.g., via your POS), you can push their hashed contact to <code>POST /api/v1/brand/{id}/customers</code> to keep our de-dup current.</li>
+      <li><strong>Lookback window:</strong> Default 24 months. Configurable in portal Settings → Customer matching.</li>
+    </ul>
+
+    <div class="example">
+      <strong>Worked example.</strong> Café X uploads their 5,000-customer phone list. Consumer Alice (already in the list) plays a KiX game and tries to register with her phone number. KiX matches the hash, blocks Signal B, shows Alice "Welcome back!" and a free repeat-customer reward. Café X is <strong>not charged.</strong>
+    </div>
+
+    <h2>4. The 30-day window</h2>
+    <p>The clock starts at Signal A (game completion). Signal C must occur within 30 calendar days at the consumer's local timezone. After 30 days:</p>
+    <ul>
+      <li>The lead expires; it's no longer a Tracked Transaction.</li>
+      <li>The consumer's data is retained for your retargeting per your DPA, but you cannot be charged for them later.</li>
+      <li>If the same consumer re-engages via a <em>new</em> game completion later, the clock starts fresh.</li>
+    </ul>
+
+    <h2>5. Fraud prevention &amp; refunds</h2>
+    <p>We run automated fraud detection on every Signal A→B→C chain:</p>
+    <table>
+      <tr><th>Heuristic</th><th>Action</th></tr>
+      <tr><td>Same device fingerprint as brand owner / staff phones</td><td>Block Signal B</td></tr>
+      <tr><td>IP within brand's geofence + matching device pattern as staff</td><td>Block + flag for ops</td></tr>
+      <tr><td>&gt;3 redemptions in 24h from same phone across different brands</td><td>Block + investigation</td></tr>
+      <tr><td>Suspicious velocity (e.g., 50 registrations/hour from single IP block)</td><td>Pause campaign + alert founder</td></tr>
+    </table>
+    <p>If fraud is detected <em>after</em> billing, we credit the wallet within 14 days. Disputes can be filed up to 90 days post-charge via portal → Wallet → Disputes.</p>
+
+    <h2>6. Reporting &amp; transparency</h2>
+    <p>You get full visibility into every Tracked Transaction:</p>
+    <ul>
+      <li><strong>Per-event detail:</strong> game ID, timestamp, hashed consumer ID, signal A/B/C timestamps, charge amount, fraud-check result.</li>
+      <li><strong>Raw event SQL:</strong> read-replica access for enterprise tier; CSV export anytime for self-serve.</li>
+      <li><strong>Weekly auto-PDF:</strong> human-readable cohort report mailed to your billing contact.</li>
+      <li><strong>Auditor mode:</strong> read-only access for your finance / audit team without exposing campaign controls.</li>
+    </ul>
+
+    <h2>7. Changes to this definition</h2>
+    <p>If we change anything in §1-§6, we will:</p>
+    <ol>
+      <li>Email your billing contact at least 30 days before the change takes effect.</li>
+      <li>Apply the new definition only to campaigns started <em>after</em> the change date.</li>
+      <li>Existing campaigns run under the version of this page that was active when the campaign was started (we keep all prior versions in git: <code>git log landing/legal/new-customer-definition.html</code>).</li>
+    </ol>
+
+    <h2>8. Relationship to the MSA</h2>
+    <p>This page is incorporated into the KiX Master Services Agreement as <strong>Schedule A: Tracked Transaction Definition</strong>. The MSA itself (which you sign) references this URL and the git commit hash at signature time. If there's any conflict between this page and the MSA text, the MSA wins, but we will not draft the MSA in a way that materially contradicts this page.</p>
+
+    <p>Enterprise customers can request a printed PDF with git commit hash + founder signature for archive purposes. Contact <a href="mailto:enterprise@letskix.com">enterprise@letskix.com</a>.</p>
+
+  </div>
+</section>
+
+<div class="footer-cta">
+  <div class="container">
+    <h3>Got a 14th edge case we should add?</h3>
+    <p>This page is open to enterprise input. The more concrete the case, the better.</p>
+    <a href="mailto:enterprise@letskix.com?subject=Tracked-Transaction%20Edge%20Case">Submit an edge case</a>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com · v1.0 · <a href="/landing/legal/terms.html">Terms</a>·
+    <a href="/landing/legal/privacy.html">Privacy</a>·
+    <a href="/landing/legal/dpa.html">DPA</a>·
+    <a href="mailto:enterprise@letskix.com">Enterprise contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W</div>
+  </div>
+</footer>
+
+</body>
+</html>
