@@ -87,6 +87,10 @@ class BrandConfig:
     # CLASS-S · scale determines which buyer profile fits
     # Allowed: "single" (default) | "chain" | "both"
     scale: str = "single"
+    # Vertical-aware framing — drives CPA benchmark callout + recipe seeds.
+    # Allowed verticals: see app.services.vertical_benchmarks.BENCHMARKS keys.
+    # Empty → no benchmark callout rendered (silent fallback).
+    vertical: str = ""
     integrations_link: str = "/landing/integrations/tiktok-pixel.html"
     pricing_link: str = "/landing/pricing.html"
     portal_link: str = "/landing/portal.html"
@@ -285,6 +289,94 @@ def _render_self_reference_banner(cfg: BrandConfig) -> str:
 </section>'''
 
 
+def _render_pricing_section(cfg: BrandConfig) -> str:
+    """CLASS-J · render 3-tier pricing block from pricing_canon canonical tiers.
+
+    Previously each landing page had its own pricing copy → drift across
+    pages. Now: single source of truth (app.services.pricing_canon). Edit
+    a tier there, every regenerated landing reflects it next deploy.
+    """
+    from app.services.pricing_canon import CANONICAL_TIERS
+
+    cards = []
+    for t in CANONICAL_TIERS:
+        cc_text = "Credit card required" if t.cc_required else "No card required"
+        cc_color = "#92400E" if t.cc_required else "#16A34A"
+        included = "".join(
+            f'<li style="font-size:13px;color:#1E293B;margin:6px 0;padding-left:16px;position:relative">'
+            f'<span style="position:absolute;left:0;color:#16A34A;font-weight:800">✓</span>{_esc(i)}</li>'
+            for i in t.included
+        )
+        not_included = "".join(
+            f'<li style="font-size:12.5px;color:#94A3B8;margin:4px 0;padding-left:16px;position:relative;text-decoration:line-through">'
+            f'<span style="position:absolute;left:0;color:#CBD5E1">✗</span>{_esc(i)}</li>'
+            for i in t.not_included
+        ) if t.not_included else ""
+        accent = "var(--accent)" if t.tier_id == "founding_100" else "var(--brand)"
+        cards.append(f'''      <div class="tier-card" style="background:#fff;border:2px solid {accent};border-radius:14px;padding:24px;display:flex;flex-direction:column">
+        <div style="font-size:11.5px;color:{accent};text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:6px">{_esc(t.name)}</div>
+        <div style="font-size:22px;font-weight:800;color:#0F172A;margin-bottom:6px;letter-spacing:-.4px">{_esc(t.price_text)}</div>
+        <div style="font-size:12.5px;color:{cc_color};font-weight:700;margin-bottom:14px">{cc_text}</div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.5;margin-bottom:16px">{_esc(t.headline)}</p>
+        <ul style="list-style:none;padding:0;margin:0 0 16px;flex:1">{included}{not_included}</ul>
+        <a href="{_esc(cfg.portal_link)}?tier={_esc(t.tier_id)}&brand={_esc(cfg.brand_id)}" style="display:block;text-align:center;background:{accent};color:#0F172A;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">{_esc(t.cta_text)}</a>
+      </div>''')
+
+    return f'''
+<section id="pricing" style="padding:56px 0;background:var(--surface);border-top:1px solid var(--border)">
+  <div class="container">
+    <div style="text-align:center;max-width:680px;margin:0 auto 32px">
+      <div class="section-tag" style="font-size:12px;color:var(--brand);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Pricing · 3 tiers, no fine print</div>
+      <h2 style="font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px;color:var(--text)">Pay only when KiX delivers</h2>
+      <p style="font-size:14.5px;color:var(--text-muted)">Same three tiers on every page. No "contact sales for pricing". No surprise fees.</p>
+    </div>
+    <style>
+      .tier-grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:1100px;margin:0 auto}}
+      @media(max-width:780px){{.tier-grid{{grid-template-columns:1fr}}}}
+    </style>
+    <div class="tier-grid">
+{chr(10).join(cards)}
+    </div>
+  </div>
+</section>'''
+
+
+def _render_vertical_benchmark(cfg: BrandConfig) -> str:
+    """Vertical-aware framing — answers Aminah's "is S$4.90 good or bad for nasi padang?"."""
+    if not cfg.vertical:
+        return ""
+    from app.services.vertical_benchmarks import get as get_bench
+    b = get_bench(cfg.vertical)
+    if not b:
+        return ""
+    return f'''
+<section style="padding:32px 0;background:#ECFDF5;border-top:1px solid #BBF7D0;border-bottom:1px solid #BBF7D0">
+  <div class="container">
+    <div style="max-width:880px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;text-align:center">
+      <style>
+        @media(max-width:680px){{section[id^=vbench] .vbcol{{grid-column:1/-1}}}}
+      </style>
+      <div>
+        <div style="font-size:10.5px;color:#166534;text-transform:uppercase;letter-spacing:.6px;font-weight:800;margin-bottom:6px">{_esc(b.display_name)} · CPA</div>
+        <div style="font-size:22px;font-weight:800;color:#14532D">≤ S${b.cpa_good_max_sgd:.2f} is good</div>
+        <div style="font-size:12px;color:#166534;margin-top:4px">Excellent ≤ S${b.cpa_excellent_max_sgd:.2f} · typical industry ≤ S${b.cpa_typical_max_sgd:.2f}</div>
+      </div>
+      <div>
+        <div style="font-size:10.5px;color:#166534;text-transform:uppercase;letter-spacing:.6px;font-weight:800;margin-bottom:6px">{_esc(b.display_name)} · 30-day return</div>
+        <div style="font-size:22px;font-weight:800;color:#14532D">{b.repeat_30d_excellent_pct:.0f}%+ is excellent</div>
+        <div style="font-size:12px;color:#166534;margin-top:4px">Industry typical ~ {b.repeat_30d_typical_pct:.0f}%</div>
+      </div>
+      <div>
+        <div style="font-size:10.5px;color:#166534;text-transform:uppercase;letter-spacing:.6px;font-weight:800;margin-bottom:6px">Avg ticket · {_esc(b.display_name)}</div>
+        <div style="font-size:22px;font-weight:800;color:#14532D">S${b.avg_ticket_sgd:.2f}</div>
+        <div style="font-size:12px;color:#166534;margin-top:4px">Use this to back-of-envelope your ROI</div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#16653499;margin-top:14px">Numbers above are benchmarks for context — your CPA depends on your offer. Source: {_esc(b.source_note)}.</div>
+  </div>
+</section>'''
+
+
 def _render_founding_block(cfg: BrandConfig) -> str:
     remaining = max(0, cfg.founding_slots_total - cfg.founding_slots_taken)
     return f'''
@@ -406,15 +498,24 @@ def generate_landing(cfg: BrandConfig) -> str:
                 + _render_self_reference_banner(cfg)
                 + _render_what_you_get(cfg.what_you_get)
                 + _render_chain_section(cfg)
-                + _render_founding_block(cfg)
+                + _render_vertical_benchmark(cfg)
                 + _render_cases(cfg.case_studies, brand_name=cfg.brand_name)
+                + _render_pricing_section(cfg)
+                + _render_founding_block(cfg)
                 + _render_footer(cfg)
                 + "\n</body></html>")
 
     # CLASS-D structural gate: forbid internal jargon (Trinity 3T, PDCA, etc.)
-    # in any customer-visible output. Fails-closed; raises VocabViolation.
     from app.services.customer_vocab import vocab_check
     vocab_check(html_out)
+    # CLASS-J structural gate: forbid pricing drift (single source = pricing_canon)
+    from app.services.pricing_canon import find_off_canon_pricing
+    drift = find_off_canon_pricing(html_out)
+    if drift:
+        raise ValueError(
+            f"landing_gen output failed pricing_canon drift check: {drift}. "
+            "Edit pricing_canon.py — do not bypass."
+        )
     return html_out
 
 
@@ -453,5 +554,7 @@ def from_dict(d: dict) -> BrandConfig:
         case_studies=cs,
         chain_section=chain,
         audience=d.get("audience", "merchant"),
+        scale=d.get("scale", "single"),
+        vertical=d.get("vertical", ""),
         contact_email=d.get("contact_email", "hello@letskix.com"),
     )

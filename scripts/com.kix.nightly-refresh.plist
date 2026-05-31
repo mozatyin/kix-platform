@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd unit for macOS dev. Install:
+    cp scripts/com.kix.nightly-refresh.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.kix.nightly-refresh.plist
+  Verify:
+    launchctl list | grep com.kix
+  Unload:
+    launchctl unload ~/Library/LaunchAgents/com.kix.nightly-refresh.plist
+
+  Runs daily at 03:30 SGT (off-peak, before merchants open shops).
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kix.nightly-refresh</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/mozat/kix-platform/scripts/cron_nightly_refresh.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/mozat/kix-platform</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/mozat/kix-platform/var/log/launchd_nightly.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/mozat/kix-platform/var/log/launchd_nightly.err.log</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

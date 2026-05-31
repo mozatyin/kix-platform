@@ -122,6 +122,7 @@ BRANDS: dict[str, BrandConfig] = {
         case_studies=SG_F_AND_B_CASES,
         audience="merchant",
         scale="single",   # generic page targets single-stall; chain buyers see /brands/kopi_king_chain
+        vertical="kopi",  # default page leads with kopitiam framing
     ),
     "heng_heng_kopi": BrandConfig(
         brand_id="heng_heng_kopi",
@@ -137,21 +138,22 @@ BRANDS: dict[str, BrandConfig] = {
         case_studies=SG_F_AND_B_CASES,
         audience="merchant",
         scale="single",
+        vertical="kopi",
     ),
-    "aminah_halal": BrandConfig(
-        brand_id="aminah_halal",
-        brand_name="Aminah's Halal Hut",
-        hero_tagline="Set up in <em>10 minutes</em>, founder helps in person.",
-        hero_sub="A personalized preview for Aminah's Halal Hut. Below are the same numbers we showed Aminah before she signed (with her consent to publish them). Founding-100 slot: S$0 take rate forever. Halal-aware library only.",
+    "halal_hawker": BrandConfig(
+        brand_id="halal_hawker",
+        brand_name="KiX for halal hawkers",
+        hero_tagline="Halal-aware library. Founder visits in person. <em>Malay support.</em>",
+        hero_sub="For halal nasi padang, mee rebus, rojak stalls in Singapore + Malaysia. We screen every game template against halal sensitivity (no gambling-flavored mechanics, no impermissible imagery) before it ever runs at your stall. Founder speaks Malay and visits in person within 14 days.",
         primary_color="#92400E",
         accent_color="#FBBF24",
         city="Tampines",
         founding_slots_taken=8,
         what_you_get=WHAT_YOU_GET_F_AND_B,
-        # Self-ref will drop the Aminah case + show "personalized preview" banner
-        case_studies=SG_F_AND_B_CASES,
+        case_studies=SG_F_AND_B_CASES,    # Aminah case used directly (no self-ref)
         audience="merchant",
         scale="single",
+        vertical="halal",
     ),
     "kopi_king_chain": BrandConfig(
         brand_id="kopi_king_chain",
@@ -168,6 +170,7 @@ BRANDS: dict[str, BrandConfig] = {
         case_studies=SG_F_AND_B_CASES,
         audience="merchant",
         scale="chain",
+        vertical="kopi",
     ),
 }
 
