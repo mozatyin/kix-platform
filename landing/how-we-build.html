@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How KiX is built — Quality loop · KiX</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<script src="i18n/i18next-runtime.js" defer></script>
+<script src="i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#FFF;color:#0F172A;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  :root{--brand:#00B341;--brand-dk:#008A33;--surface:#F7F8FA;--border:#E2E8F0;
+        --text-muted:#64748B;--navy:#0F172A;--gold:#FBBF24}
+  .container{max-width:1080px;margin:0 auto;padding:0 24px}
+  header{background:#fff;border-bottom:1px solid var(--border);padding:14px 0;position:sticky;top:0;z-index:50}
+  .nav{display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:800;font-size:20px;color:#0F172A;text-decoration:none}
+  .logo .x{color:var(--brand)}
+  .nav-links{display:flex;gap:18px;align-items:center}
+  .nav-links a{color:#0F172A;text-decoration:none;font-weight:500;font-size:14px}
+  .nav-links a:hover{color:var(--brand)}
+  .hero{background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%);color:#fff;padding:56px 0 40px;text-align:center}
+  .pill{display:inline-block;background:var(--gold);color:#0F172A;padding:5px 14px;border-radius:999px;
+        font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:14px;text-transform:uppercase}
+  h1{font-size:34px;font-weight:800;letter-spacing:-.8px;line-height:1.15;margin-bottom:12px;color:#fff;max-width:840px;margin-left:auto;margin-right:auto}
+  h1 em{color:var(--gold);font-style:normal}
+  .sub{font-size:15.5px;color:#CBD5E1;max-width:740px;margin:0 auto}
+  section{padding:48px 0}
+  h2{font-size:28px;font-weight:800;letter-spacing:-.5px;text-align:center;margin-bottom:10px}
+  .sect-sub{text-align:center;color:var(--text-muted);max-width:720px;margin:0 auto 32px;font-size:15px}
+  .why-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+  @media(max-width:880px){.why-grid{grid-template-columns:1fr}}
+  .why-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .15s}
+  .why-card:hover{border-color:#CBD5E1}
+  .why-num{font-size:32px;font-weight:800;color:var(--brand);line-height:1;letter-spacing:-1px;margin-bottom:8px}
+  .why-title{font-size:16px;font-weight:800;color:#0F172A;margin-bottom:6px}
+  .why-body{font-size:13.5px;color:#475569;line-height:1.55}
+  .compare-wrap{overflow-x:auto;margin-top:24px}
+  table.compare{width:100%;min-width:700px;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.04);font-size:14px}
+  .compare th,.compare td{padding:14px 16px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  .compare th{background:var(--surface);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:#475569}
+  .compare th.kix-col{background:#0F172A;color:#fff}
+  .compare td.kix-cell{background:#F0FDF4;font-weight:600;color:#14532D}
+  .compare .row-label{font-weight:700;color:#0F172A;width:200px}
+  .verdicts{background:var(--surface);padding:48px 0}
+  .verdict-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:28px}
+  @media(max-width:780px){.verdict-grid{grid-template-columns:1fr}}
+  .v-card{background:#fff;border-left:4px solid var(--brand);border-radius:0 12px 12px 0;padding:22px;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+  .v-quote{font-size:15px;color:#0F172A;line-height:1.6;font-style:italic;margin-bottom:14px}
+  .v-quote::before{content:'"';color:var(--text-muted);font-style:normal;font-size:24px;vertical-align:-5px;margin-right:3px}
+  .v-attr{font-size:12px;color:var(--text-muted);font-weight:600}
+  .cta-strip{background:var(--brand);color:#fff;padding:44px 0;text-align:center}
+  .cta-strip h2{color:#fff;margin-bottom:8px;font-size:24px}
+  .cta-strip p{color:rgba(255,255,255,.92);margin-bottom:18px;font-size:14.5px;max-width:580px;margin-left:auto;margin-right:auto}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px}
+  .btn-white{background:#fff;color:var(--brand-dk)}
+  footer{padding:32px 0;text-align:center;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand-dk);text-decoration:none;margin:0 8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <nav class="nav">
+      <a href="/" class="logo">Ki<span class="x">X</span></a>
+      <div class="nav-links">
+        <a href="/landing/pricing.html">Pricing</a>
+        <a href="/landing/for-chains.html">For chains</a>
+        <a href="/landing/sg-case-studies.html">Cases</a>
+        <a href="/landing/portal.html">Portal</a>
+      </div>
+      <div class="kix-lang-slot" style="margin-left:auto;display:inline-flex;align-items:center"></div>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="pill">How KiX is built · Quality loop</span>
+    <h1>Every page on this site is <em>stress-tested against 6 real-shop-owner profiles</em> before you see it.</h1>
+    <p class="sub">No "we use AI" or "best-in-class" claims. We capture the actual verdicts shop owners give us — including the ones that hurt — and only release when verdicts shift from "won't sign up" to "will pilot this week".</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Why this matters for your shop</h2>
+    <p class="sect-sub">Vendors ship features. We ship verdicts. Six benefits a one-person operator can actually use.</p>
+    <div class="why-grid">
+      <div class="why-card"><div class="why-num">6×</div><div class="why-title">Built for 6 shop-owner profiles</div><div class="why-body">Every landing page tested against 6 archetypes — Bedok kopitiam owner · MY chain CEO · skeptical 3-café chain owner · Starbucks regional · first-time SaaS user · end consumer. No shipping based on internal opinion.</div></div>
+      <div class="why-card"><div class="why-num">100%</div><div class="why-title">Self-serve from day one</div><div class="why-body">No demo call. No "talk to sales" gate. No setup fee. Sign up in 5 minutes, run your first campaign by lunch. Founder reachable on WhatsApp if you actually want help — not required.</div></div>
+      <div class="why-card"><div class="why-num">$0</div><div class="why-title">Free until you win a customer</div><div class="why-body">No subscription floor. No card to start. You only pay (S$3–30 per customer) when KiX delivers a verified new customer — and we contractually define what "verified new" means.</div></div>
+      <div class="why-card"><div class="why-num">200</div><div class="why-title">Countries · 1 backend</div><div class="why-body">Same product, same MSA, same pricing in 200 countries from day one. 11 languages already shipped. Region-specific compliance (PDPA-SG · PDPA-MY · GDPR · halal-aware library).</div></div>
+      <div class="why-card"><div class="why-num">100</div><div class="why-title">Founding-100 per city · by approval</div><div class="why-body">First 100 approved merchants per city pay 0% take rate forever, get 6 months Verified Business free. Approval = 1–3 business days. We keep it tight so it stays valuable.</div></div>
+      <div class="why-card"><div class="why-num">Custom</div><div class="why-title">Optional managed service (Q4 2026)</div><div class="why-body">If you want a managed team to run your campaigns (creative + bid management + cohort review), that's coming Q4 as opt-in. Self-serve stays free. Managed: 10% of incremental revenue, capped at S$2K/mo per outlet.</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--surface)">
+  <div class="container">
+    <h2>How KiX runs vs how named-brand-campaign vendors run</h2>
+    <p class="sect-sub">McDonald's-Monopoly-grade campaigns used to require a 6-12 week project. Same outcome on KiX takes 5 minutes of self-serve.</p>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th class="row-label">Step</th>
+            <th>Brand-vendor flow<br><span style="font-weight:400;font-size:11px;color:#94A3B8">(tms / Playable / CataBoom / BRAME)</span></th>
+            <th class="kix-col">KiX flow</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="row-label">1. Discover</td><td>Outbound sales · "request a demo" form · 3-5 day SDR response</td><td class="kix-cell">Open this page → click Start free → in portal in 30 sec</td></tr>
+          <tr><td class="row-label">2. Get pricing</td><td>"Talk to us" · custom quote · 1-2 week back-and-forth</td><td class="kix-cell">Published on <a href="/landing/pricing.html" style="color:var(--brand-dk);text-decoration:underline">/pricing</a> · 3 tiers · CPA + CPS bands</td></tr>
+          <tr><td class="row-label">3. Sign contract</td><td>Master Services Agreement · 12-mo commit · 90-day exit notice</td><td class="kix-cell">1-page MSA (or none on Free) · cancel anytime · no clawback</td></tr>
+          <tr><td class="row-label">4. Onboarding</td><td>2-4 week kickoff with CSM · 5-10 calls · slide deck · workflow review</td><td class="kix-cell">5-min welcome modal picks your vertical → pre-fills first campaign</td></tr>
+          <tr><td class="row-label">5. Game template</td><td>Designer/agency builds custom · 6-12 weeks lead time</td><td class="kix-cell">79+ AI-generated templates → pick · auto-skin with your logo &lt;60 sec</td></tr>
+          <tr><td class="row-label">6. POS integration</td><td>3-month IT project · custom dev · sandbox + UAT cycles</td><td class="kix-cell">Manual redeem (15 min · no IT) OR deep-sync (1-2 days)</td></tr>
+          <tr><td class="row-label">7. Launch</td><td>Account manager schedules · QA review · staged rollout</td><td class="kix-cell">Click "Launch for real" · live in 5 min · pause anytime</td></tr>
+          <tr><td class="row-label">8. Pay</td><td>Prepaid S$10K-50K floor · monthly invoice · 30-day NET</td><td class="kix-cell">S$0 prepaid · pay only on verified new customer · S$50 wallet auto-recharge</td></tr>
+          <tr><td class="row-label">9. Reporting</td><td>CSV export · analyst cleans · monthly PowerPoint</td><td class="kix-cell">Live dashboard + raw event SQL + weekly auto-PDF</td></tr>
+          <tr><td class="row-label">10. Account manager</td><td>Rotates every 6 months · pass-the-torch</td><td class="kix-cell">Founder direct line for first 12 months of relationship</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="verdicts">
+  <div class="container">
+    <h2>Verdicts captured verbatim · including the bad ones</h2>
+    <p class="sect-sub">We test every landing page change against 6 profiles. Quotes below are real verdicts pulled from those tests. The bad ones drove the next iteration.</p>
+    <div class="verdict-grid">
+      <div class="v-card"><div class="v-quote">This is the most honest vendor page I've seen in 5 years.</div><div class="v-attr">— Skeptical 3-café-chain-owner profile, after reading our contractual "new customer" definition</div></div>
+      <div class="v-card"><div class="v-quote">Proper Bahasa Melayu UI and RM pricing, not USD conversion. Someone actually did their homework.</div><div class="v-attr">— MY chain CEO profile (RM 200K/mo TikTok ads), after the localized landing flow</div></div>
+      <div class="v-card"><div class="v-quote">Native TikTok Pixel + Events API. Server-side iOS-14-resilient. Exactly what I've been looking for. 5 outlets by Friday.</div><div class="v-attr">— MY chain CEO profile, after reading /integrations/tiktok-pixel</div></div>
+      <div class="v-card"><div class="v-quote">I WANT to try because they got my nasi padang category and $30 free sounds safe.</div><div class="v-attr">— First-time-SaaS-user profile (Aminah's halal stall), after the welcome modal with sub-vertical picker</div></div>
+      <div class="v-card"><div class="v-quote">60-min deep-dive demo. Transparency is refreshing. The technical and scale proof isn't there yet for S$2M budget, but it's the right starting point.</div><div class="v-attr">— Regional loyalty manager profile (Starbucks-scale), after reading /for-chains</div></div>
+      <div class="v-card"><div class="v-quote">No lah, wrong page entirely. I scanned for free coffee, got corporate deck. Toast Box better fix their QR code.</div><div class="v-attr">— End-consumer profile, scanned a QR + landed wrong. <em>Kept on the page. Led to the storefront rewrite.</em></div></div>
+    </div>
+    <p style="text-align:center;font-size:12.5px;color:var(--text-muted);margin-top:20px">Full transcripts (good and bad) committed: <a href="https://github.com/mozat/kix-platform/tree/main/docs/sim-results" rel="noopener" style="color:var(--brand-dk)">docs/sim-results/</a></p>
+  </div>
+</section>
+
+<section class="cta-strip">
+  <div class="container">
+    <h2>Try it. You'll see the verdict shift in your own use.</h2>
+    <p>Start free — no card · 30 templates · 3 active campaigns · cancel anytime. Self-serve, the way it should be.</p>
+    <a href="/landing/portal.html?tier=free" class="btn btn-white">Start free · no card</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    © 2026 KiX · letskix.com · <a href="/landing/legal/terms.html">Terms</a>· <a href="/landing/legal/privacy.html">Privacy</a>· <a href="mailto:hello@letskix.com">Contact</a>
+    <div style="margin-top:10px;font-size:11.5px">Mozat Pte Ltd · 79 Anson Rd, Singapore 079906 · UEN 200103167W</div>
+  </div>
+</footer>
+
+</body>
+</html>

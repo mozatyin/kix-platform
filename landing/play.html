@@ -1024,16 +1024,26 @@ const state = {
         <div style="font-size:11px;color:#94A3B8;margin-bottom:18px">Playing as a customer of <strong style="color:${d.color}">${d.brand}</strong></div>
 
         <div id="demo-stage-1">
-          <div style="font-size:20px;font-weight:800;color:#0F172A;margin-bottom:8px">Step 1 of 3 — Tap the ${d.emoji} to play</div>
-          <div style="font-size:13px;color:#64748B;margin-bottom:14px">${d.game}</div>
-          <button id="demo-play-btn" type="button" aria-label="Tap to play" style="background:none;border:0;cursor:pointer;padding:0;animation:demoPulse 2.4s ease-in-out infinite">
-            <div style="font-size:128px;line-height:1">${d.emoji}</div>
-          </button>
+          <div style="font-size:20px;font-weight:800;color:#0F172A;margin-bottom:8px">Step 1 of 3 — Spin to win</div>
+          <div style="font-size:13px;color:#64748B;margin-bottom:18px">${d.game} · 8 prize segments, one is yours</div>
+
+          <!-- Real interactive spin wheel SVG -->
+          <div style="position:relative;width:300px;height:300px;margin:0 auto 16px">
+            <!-- Pointer (fixed at top) -->
+            <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:20px solid #0F172A;z-index:5;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))"></div>
+            <svg id="demo-wheel" viewBox="-150 -150 300 300" style="width:100%;height:100%;transition:transform 4.5s cubic-bezier(.22,1,.36,1);filter:drop-shadow(0 8px 24px rgba(15,23,42,.12))" aria-label="${d.game} wheel">
+              <!-- 8 segments, each 45deg. Drawn programmatically via JS so prizes are vertical-aware -->
+            </svg>
+            <!-- Center button -->
+            <button id="demo-play-btn" type="button" aria-label="Spin" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:#0F172A;color:#fff;border:6px solid #fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:4">SPIN</button>
+          </div>
+
           <style>
-            @keyframes demoPulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.1) } }
-            @keyframes demoSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+            @keyframes demoPulse { 0%,100% { transform:translate(-50%,-50%) scale(1) } 50% { transform:translate(-50%,-50%) scale(1.05) } }
+            #demo-play-btn{animation:demoPulse 2.4s ease-in-out infinite}
+            #demo-play-btn:disabled{animation:none;opacity:.55;cursor:default}
           </style>
-          <div style="margin-top:14px;font-size:12.5px;color:#64748B">Real customers play for 60 seconds. Tap to skip ahead in the demo.</div>
+          <div id="demo-spin-hint" style="margin-top:10px;font-size:12.5px;color:#64748B">Tap <strong style="color:#0F172A">SPIN</strong> · land on a prize segment to win · real customers spend ~4 seconds here</div>
         </div>
 
         <div id="demo-stage-2" style="display:none">
@@ -1063,10 +1073,51 @@ const state = {
         </div>
       `;
       main.appendChild(card);
-      // Wire stage transitions
-      document.getElementById('demo-play-btn').addEventListener('click', () => {
-        document.getElementById('demo-stage-1').style.display = 'none';
-        document.getElementById('demo-stage-2').style.display = '';
+      // Build the wheel SVG (8 segments around a circle, alternating brand color + gold)
+      const wheel = document.getElementById('demo-wheel');
+      const PRIZES = [d.reward, 'Try again', '5% off', d.reward, 'Try again', '10% off', d.reward, 'Free upgrade'];
+      const COLORS = [d.color, '#E2E8F0', '#FBBF24', d.color, '#E2E8F0', '#FBBF24', d.color, '#15803D'];
+      const TEXT_COLORS = ['#fff', '#0F172A', '#0F172A', '#fff', '#0F172A', '#0F172A', '#fff', '#fff'];
+      const RADIUS = 140;
+      function polar(r, a){ return [r*Math.cos((a-90)*Math.PI/180), r*Math.sin((a-90)*Math.PI/180)]; }
+      for (let i=0; i<8; i++) {
+        const a1 = i*45, a2 = (i+1)*45;
+        const [x1,y1] = polar(RADIUS, a1);
+        const [x2,y2] = polar(RADIUS, a2);
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M0,0 L${x1},${y1} A${RADIUS},${RADIUS} 0 0,1 ${x2},${y2} Z`);
+        path.setAttribute('fill', COLORS[i]);
+        path.setAttribute('stroke', '#fff');
+        path.setAttribute('stroke-width', '2');
+        wheel.appendChild(path);
+        // Prize label
+        const [tx,ty] = polar(RADIUS*0.62, a1 + 22.5);
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', tx);
+        text.setAttribute('y', ty);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('fill', TEXT_COLORS[i]);
+        text.setAttribute('font-size', '11');
+        text.setAttribute('font-weight', '700');
+        text.setAttribute('transform', `rotate(${a1 + 22.5}, ${tx}, ${ty})`);
+        text.textContent = PRIZES[i].length > 14 ? PRIZES[i].slice(0,12)+'…' : PRIZES[i];
+        wheel.appendChild(text);
+      }
+
+      // Spin handler — lands on segment 0 (the merchant's primary reward)
+      document.getElementById('demo-play-btn').addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        if (btn.disabled) return;
+        btn.disabled = true;
+        // Spin to land on segment 0 (centered at 22.5°). Add 6 full turns for drama.
+        const finalRotation = 6 * 360 + (360 - 22.5);
+        wheel.style.transform = `rotate(${finalRotation}deg)`;
+        document.getElementById('demo-spin-hint').textContent = 'Spinning…';
+        setTimeout(() => {
+          document.getElementById('demo-stage-1').style.display = 'none';
+          document.getElementById('demo-stage-2').style.display = '';
+        }, 4600);  // 4.5s transition + 100ms buffer
       });
       document.getElementById('demo-redeem-btn').addEventListener('click', () => {
         document.getElementById('demo-stage-2').style.display = 'none';

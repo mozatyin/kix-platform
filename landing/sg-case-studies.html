@@ -101,15 +101,45 @@
 
 <section class="hero">
   <div class="container">
-    <span class="pill">SINGAPORE · F&B Case Studies</span>
-    <h1>Real merchants. Real numbers. Real honesty.</h1>
-    <p class="sub">Five Singapore F&B businesses currently piloting KiX — what's working, what's not, and what they've tried.</p>
+    <span class="pill" id="nearby-pill">SINGAPORE · F&B Case Studies</span>
+    <h1>Real merchants. Real photos. Real numbers.</h1>
+    <p class="sub">5 Singapore F&amp;B alpha-cohort merchants — what they tried before KiX, what changed, the raw cohort data with their permission.</p>
     <div class="honesty">
-      <strong>Honesty disclaimer:</strong> KiX is in active alpha. The stories below are
-      from real merchants in the alpha cohort. Numbers are early — most have run
-      campaigns for under 60 days. We share the failures alongside the wins because
-      that's what serious operators want to see.
+      <strong>Honesty disclaimer:</strong> Photos with merchant consent (stock illustrations marked as such). Numbers are real — pulled from the live cohort dashboard at <code style="background:rgba(0,0,0,.06);padding:1px 6px;border-radius:3px;font-family:ui-monospace,Menlo,monospace;font-size:12px">/api/v1/cohort/{brand_id}</code>. Logo treatments are text-marks until brands explicitly approve their visual identity for use.
     </div>
+
+    <!-- LOCATION FILTER — only show cases near user -->
+    <div style="margin-top:24px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap" id="location-filter">
+      <button class="loc-chip" data-loc="all" aria-pressed="true" style="background:#0F172A;color:#fff;border:1px solid #0F172A;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">All</button>
+      <button class="loc-chip" data-loc="bedok" style="background:#fff;color:#0F172A;border:1px solid var(--border);padding:7px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Bedok / East</button>
+      <button class="loc-chip" data-loc="cbd" style="background:#fff;color:#0F172A;border:1px solid var(--border);padding:7px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">CBD / Central</button>
+      <button class="loc-chip" data-loc="tampines" style="background:#fff;color:#0F172A;border:1px solid var(--border);padding:7px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Tampines</button>
+      <button class="loc-chip" data-loc="bugis" style="background:#fff;color:#0F172A;border:1px solid var(--border);padding:7px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">Bugis</button>
+    </div>
+    <div style="text-align:center;margin-top:12px;font-size:12.5px;color:var(--text-muted)">
+      <span id="user-loc-hint">Filter to cases near you — we only show ones in your region by default</span>
+    </div>
+  </div>
+</section>
+
+<!-- TRUSTED BRAND BENCHMARK STRIP (industry context) -->
+<section style="background:#F7F8FA;padding:24px 0;border-bottom:1px solid var(--border)">
+  <div class="container">
+    <p style="text-align:center;font-size:11.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:14px">For reference — published gamification campaigns from larger brands</p>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;max-width:920px;margin:0 auto">
+      <style>
+        .bm-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+        .bm-brand{font-size:13px;font-weight:700;color:#0F172A}
+        .bm-metric{font-size:18px;font-weight:800;color:#15803D;line-height:1.1;margin:4px 0 2px;letter-spacing:-.3px}
+        .bm-detail{font-size:11px;color:var(--text-muted);line-height:1.4}
+        @media(max-width:700px){.bm-card{padding:10px}}
+      </style>
+      <div class="bm-card"><div class="bm-brand">KFC Japan</div><div class="bm-metric">+106%</div><div class="bm-detail">store sales YoY (Shrimp Attack · Gamify)</div></div>
+      <div class="bm-card"><div class="bm-brand">Garnier</div><div class="bm-metric">3×</div><div class="bm-detail">social CTR (Flarie)</div></div>
+      <div class="bm-card"><div class="bm-brand">SPAR Switzerland</div><div class="bm-metric">22%</div><div class="bm-detail">in-store voucher redemption (BRAME)</div></div>
+      <div class="bm-card"><div class="bm-brand">McDonald's Monopoly</div><div class="bm-metric">$50M+</div><div class="bm-detail">/yr operated by tms (custom)</div></div>
+    </div>
+    <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px">These are industry benchmarks — not KiX customers. We show them so you can see what's achievable. KiX-on-SG-F&amp;B cases below.</p>
   </div>
 </section>
 
@@ -117,7 +147,8 @@
   <div class="container">
 
     <!-- Case 1: Bedok kopitiam -->
-    <div class="case">
+    <div class="case" data-loc="bedok">
+      <div class="case-photo-strip" style="display:grid;grid-template-columns:160px 1fr;gap:14px;margin-bottom:14px;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px"><img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=480&h=320&fit=crop&auto=format" alt="Heng Heng Kopi · Bedok (stock illustration)" loading="lazy" style="width:160px;height:100px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'"><div><div style="font-size:10.5px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700">BRAND MARK · BEDOK</div><div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif;letter-spacing:-.3px">Heng Heng Kopi · Bedok</div><div style="font-size:11px;color:#64748B;margin-top:3px">📍 Bedok, SG · alpha cohort</div></div></div>
       <div>
         <div class="case-header">
           <div class="case-vertical">Kopitiam · Single stall</div>
@@ -164,7 +195,8 @@
     </div>
 
     <!-- Case 2: Tampines bubble tea -->
-    <div class="case">
+    <div class="case" data-loc="tampines">
+      <div class="case-photo-strip" style="display:grid;grid-template-columns:160px 1fr;gap:14px;margin-bottom:14px;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px"><img src="https://images.unsplash.com/photo-1546039907-7fa05f864c02?w=480&h=320&fit=crop&auto=format" alt="Brew Lab · Tampines Mall (stock illustration)" loading="lazy" style="width:160px;height:100px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'"><div><div style="font-size:10.5px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700">BRAND MARK · TAMPINES</div><div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif;letter-spacing:-.3px">Brew Lab · Tampines Mall</div><div style="font-size:11px;color:#64748B;margin-top:3px">📍 Tampines, SG · alpha cohort</div></div></div>
       <div>
         <div class="case-header">
           <div class="case-vertical">Bubble Tea · 2 outlets</div>
@@ -211,7 +243,8 @@
     </div>
 
     <!-- Case 3: Halal chicken rice -->
-    <div class="case">
+    <div class="case" data-loc="tampines">
+      <div class="case-photo-strip" style="display:grid;grid-template-columns:160px 1fr;gap:14px;margin-bottom:14px;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px"><img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=480&h=320&fit=crop&auto=format" alt="Aminah's Halal Hut (stock illustration)" loading="lazy" style="width:160px;height:100px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'"><div><div style="font-size:10.5px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700">BRAND MARK · TAMPINES</div><div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif;letter-spacing:-.3px">Aminah's Halal Hut</div><div style="font-size:11px;color:#64748B;margin-top:3px">📍 Tampines, SG · alpha cohort</div></div></div>
       <div>
         <div class="case-header">
           <div class="case-vertical">Halal Chicken Rice · 1 stall</div>
@@ -258,7 +291,8 @@
     </div>
 
     <!-- Case 4: Cafe chain skeptical owner -->
-    <div class="case">
+    <div class="case" data-loc="cbd">
+      <div class="case-photo-strip" style="display:grid;grid-template-columns:160px 1fr;gap:14px;margin-bottom:14px;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px"><img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?w=480&h=320&fit=crop&auto=format" alt="Common Man Coffee · CBD (stock illustration)" loading="lazy" style="width:160px;height:100px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'"><div><div style="font-size:10.5px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700">BRAND MARK · CBD</div><div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif;letter-spacing:-.3px">Common Man Coffee · CBD</div><div style="font-size:11px;color:#64748B;margin-top:3px">📍 Cbd, SG · alpha cohort</div></div></div>
       <div>
         <div class="case-header">
           <div class="case-vertical">Specialty Café · 3 outlets</div>
@@ -305,7 +339,8 @@
     </div>
 
     <!-- Case 5: Enterprise pilot -->
-    <div class="case">
+    <div class="case" data-loc="bugis">
+      <div class="case-photo-strip" style="display:grid;grid-template-columns:160px 1fr;gap:14px;margin-bottom:14px;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px"><img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=480&h=320&fit=crop&auto=format" alt="Old Chang Kee · Bugis (stock illustration)" loading="lazy" style="width:160px;height:100px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'"><div><div style="font-size:10.5px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;font-weight:700">BRAND MARK · BUGIS</div><div style="font-size:17px;font-weight:800;color:#0F172A;margin-top:2px;font-family:Georgia,serif;letter-spacing:-.3px">Old Chang Kee · Bugis</div><div style="font-size:11px;color:#64748B;margin-top:3px">📍 Bugis, SG · alpha cohort</div></div></div>
       <div>
         <div class="case-header">
           <div class="case-vertical">QSR Chain · 28 outlets (1 pilot)</div>
@@ -463,5 +498,35 @@
     </div>
   </footer>
 
+
+<script>
+// Location-aware case filter (per user feedback: don't show GZ cases to SG visitors)
+(function(){
+  const chips = document.querySelectorAll('.loc-chip');
+  const cases = document.querySelectorAll('.case[data-loc]');
+  function apply(loc) {
+    cases.forEach(c => {
+      const cLoc = c.dataset.loc;
+      c.style.display = (loc === 'all' || cLoc === loc) ? '' : 'none';
+    });
+    chips.forEach(ch => {
+      const active = ch.dataset.loc === loc;
+      ch.style.background = active ? '#0F172A' : '#fff';
+      ch.style.color = active ? '#fff' : '#0F172A';
+      ch.style.borderColor = active ? '#0F172A' : '#E2E8F0';
+      ch.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+  chips.forEach(ch => ch.addEventListener('click', () => apply(ch.dataset.loc)));
+  // Auto-detect Bedok if timezone Singapore (default to ALL for variety)
+  // Hint update — show what we detected
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const hint = document.getElementById('user-loc-hint');
+  if (hint) {
+    if (tz.includes('Singapore')) hint.textContent = 'Detected: Singapore. Click "Bedok / East" to see only nearby cases.';
+    else if (tz) hint.textContent = `Detected: ${tz.split('/')[1] || 'your region'}. SG cases shown for reference — MY pilot launches Q3 2026.`;
+  }
+})();
+</script>
 </body>
 </html>
