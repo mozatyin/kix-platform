@@ -198,6 +198,20 @@ BRANDS: dict[str, BrandConfig] = {
         scale="chain",
         vertical="kopi",
     ),
+    "consumer": BrandConfig(
+        brand_id="consumer",
+        brand_name="KiX for shoppers · 给消费者",
+        hero_tagline="Free vouchers from shops near you · no app · 3-second scan",
+        hero_sub="A free wallet for the games and vouchers you discover walking past local shops. PDPA-SG compliant, cancel any time, no email harvest.",
+        primary_color="#10B981",
+        city="Singapore",
+        founding_slots_taken=0,
+        what_you_get=[],
+        case_studies=[],
+        audience="consumer",
+        scale="both",
+        hide_founding_cta=True,   # consumer doesn't see merchant founding-100
+    ),
     "kix_for_enterprise": BrandConfig(
         brand_id="kix_for_enterprise",
         brand_name="KiX for Enterprise · 100+ stores",

@@ -59,7 +59,7 @@ JOURNEY_START = {
     "agency_marketing_owner": "/landing/brands/default/index.html",
     "franchise_consultant": "/landing/brands/kix_for_enterprise/index.html",
     # Phase 2 (this turn) · 3 more (consumer + cross-border + regulator)
-    "ben_consumer_play": "/landing/play.html",
+    "ben_consumer_play": "/landing/brands/consumer/index.html",   # R17 CLASS-QQ fix
     "cross_border_merchant": "/landing/brands/default/index.html",
     "sg_imda_regulator": "/landing/brands/default/index.html",
 }

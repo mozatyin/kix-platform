@@ -378,6 +378,75 @@ def _render_founding_prequalifier() -> str:
 </section>'''
 
 
+def _render_consumer_hero(cfg: BrandConfig) -> str:
+    """CLASS-QQ R17 fix · consumer-audience landing.
+
+    R16 Ben friction: landing/play.html is merchant-targeted (DEMO MODE,
+    ELTM, PDCA visible). Consumer needs a separate landing that answers:
+      - what's in it for me? (free vouchers, no ad-tracking surprise)
+      - 3-second QR scan path (no app install)
+      - nearby shops with active offers right now
+      - cancel ad-consent any time (1 click)
+    Renders only when cfg.audience == "consumer".
+    """
+    if cfg.audience != "consumer":
+        return ""
+    return f'''
+<section id="consumer-hero" style="padding:48px 0;background:linear-gradient(135deg,#10B981 0%,#059669 100%);color:#fff">
+  <div class="container">
+    <div style="max-width:760px;margin:0 auto;text-align:center">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;font-weight:800;margin-bottom:10px;opacity:.85">For shoppers · 给消费者</div>
+      <h2 style="font-size:36px;font-weight:800;letter-spacing:-.6px;margin-bottom:14px">Free vouchers from shops near you.<br>No app. No form. 3-second scan.</h2>
+      <p style="font-size:16px;opacity:.9;margin-bottom:22px;line-height:1.55">Walk past a kopitiam → see a spin game on the screen → play → win S$1-3 off → scan QR to claim. That's it. No download, no signup form, no email harvesting before you've even tried. We only ask for your phone number AT redemption, only to prevent duplicate claims.</p>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+        <a href="/landing/portal.html?signup=consumer" style="display:inline-block;background:#fff;color:#059669;padding:13px 28px;border-radius:8px;font-weight:800;text-decoration:none;font-size:15px">Sign up · free wallet · cancel anytime</a>
+        <a href="#how-it-works" style="display:inline-block;background:rgba(255,255,255,.15);color:#fff;padding:13px 28px;border-radius:8px;font-weight:800;text-decoration:none;font-size:15px;border:1px solid rgba(255,255,255,.3)">How it works ↓</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works" style="padding:48px 0;background:#FFFFFF;border-top:1px solid var(--border)">
+  <div class="container">
+    <div style="max-width:880px;margin:0 auto">
+      <h3 style="font-size:24px;font-weight:800;text-align:center;margin-bottom:24px">How it works · 3 steps, no app required</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;text-align:center">
+        <style>@media(max-width:680px){{section#how-it-works .step-col{{grid-column:1/-1}}}}</style>
+        <div class="step-col" style="background:#F0FDF4;padding:20px;border-radius:10px;border:1px solid #BBF7D0">
+          <div style="font-size:40px;margin-bottom:10px">📱</div>
+          <div style="font-weight:800;margin-bottom:6px;color:#14532D">1. See a game</div>
+          <div style="font-size:13px;color:#166534">Walk past a participating shop or stall. A spin/scratch/quiz game appears on their screen or your phone (if you've opted in to nearby alerts).</div>
+        </div>
+        <div class="step-col" style="background:#F0FDF4;padding:20px;border-radius:10px;border:1px solid #BBF7D0">
+          <div style="font-size:40px;margin-bottom:10px">🎯</div>
+          <div style="font-weight:800;margin-bottom:6px;color:#14532D">2. Play · win · scan</div>
+          <div style="font-size:13px;color:#166534">~50-60% win rate (set by each shop). Win? Scan the QR shown → voucher saved to your free KiX wallet. ~10 seconds total.</div>
+        </div>
+        <div class="step-col" style="background:#F0FDF4;padding:20px;border-radius:10px;border:1px solid #BBF7D0">
+          <div style="font-size:40px;margin-bottom:10px">☕</div>
+          <div style="font-weight:800;margin-bottom:6px;color:#14532D">3. Redeem at counter</div>
+          <div style="font-size:13px;color:#166534">Show the voucher (4-digit code or QR). Staff types code or scans. Done — discount applied. Phone number captured ONLY at this point.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:36px 0;background:#F1F5F9">
+  <div class="container">
+    <div style="max-width:760px;margin:0 auto">
+      <h3 style="font-size:20px;font-weight:800;text-align:center;margin-bottom:14px">Ad-tracking · honest answer</h3>
+      <ul style="list-style:none;padding:0;font-size:14px;color:#1E293B">
+        <li style="padding:8px 12px;background:#fff;border-radius:6px;margin-bottom:6px"><strong>✓ What we track</strong>: which voucher you won, where you redeemed, how often you visit that brand. That's it. No web browsing, no other-app activity, no location while you're not actively scanning a game.</li>
+        <li style="padding:8px 12px;background:#fff;border-radius:6px;margin-bottom:6px"><strong>✓ What we share with shops</strong>: aggregate-only ("Brand X redeemed N vouchers this week"). Shops do NOT see your name, phone, or other shops you visit.</li>
+        <li style="padding:8px 12px;background:#fff;border-radius:6px;margin-bottom:6px"><strong>✓ Opt out · 1 click</strong>: Settings → Privacy → "Delete my data" → confirm. Account + all redemption history gone within 30 days. PDPA-SG / GDPR compliant.</li>
+        <li style="padding:8px 12px;background:#fff;border-radius:6px;margin-bottom:6px"><strong>✗ What we DON'T do</strong>: sell your phone number to third parties, send marketing emails, push notifications more than 1/day, share with advertisers.</li>
+      </ul>
+    </div>
+  </div>
+</section>'''
+
+
 def _render_tier_selector(cfg: BrandConfig) -> str:
     """CLASS-GG R12 · "Founding-100 vs Pro — which one?" decision tree.
 
@@ -1005,6 +1074,23 @@ def generate_landing(cfg: BrandConfig) -> str:
         raise ValueError(f"audience must be merchant/consumer/both, got {cfg.audience!r}")
     if cfg.scale not in ("single", "chain", "enterprise", "both"):
         raise ValueError(f"scale must be single/chain/enterprise/both, got {cfg.scale!r}")
+
+    # CLASS-QQ R17 · consumer-audience pages get a totally different layout
+    if cfg.audience == "consumer":
+        html_out = (head
+                    + _render_consumer_hero(cfg)
+                    + _render_footer(cfg)
+                    + "\n</body></html>")
+        # Still gate through vocab + proof checks
+        from app.services.customer_vocab import vocab_check
+        vocab_check(html_out)
+        from app.services.proof_registry import find_missing_proofs
+        missing = find_missing_proofs(html_out)
+        if missing:
+            raise ValueError(
+                f"landing_gen consumer output has {len(missing)} missing proof(s): {missing[:5]}."
+            )
+        return html_out
 
     html_out = (head
                 + _render_self_reference_banner(cfg)
