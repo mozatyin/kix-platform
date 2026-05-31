@@ -508,8 +508,8 @@ Auto-verified by `scripts/bible_check.py`. CI fails if Bible drifts >5% from the
 
 <!-- BIBLE-APPENDIX-A:START -->
 ```
-HEAD                : 52c643b
-Last commit         : feat(wave-n): all 4 phases shipped · R16 · 8 personas · 7/8 convert · S$211,916 ARR
+HEAD                : bb7504f
+Last commit         : feat(shopify): R19 · Shopify visual filter OVER 17-round iterated content               8/
 Generated           : auto · run `python -m scripts.bible_generate_appendix_a --write`
 
 Code surface (excludes __init__.py)
@@ -518,7 +518,7 @@ Code surface (excludes __init__.py)
   workers           : 16
   services          : 55
   migrations        : 11
-  total Python LOC  : 138,925
+  total Python LOC  : 139,501
 
 Test surface
   test files        : 157

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en-SG">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiX · Portal (TikTok-style preview)</title>
+<meta name="description" content="TikTok-style admin redesign preview — for founder review before migrating portal.html">
+<meta name="generator" content="KiX portal-tiktok-preview · auto-generated demo">
+<script src="/landing/i18n/i18next-runtime.js" defer></script>
+<script src="/landing/i18n/locale-switcher.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#000;--panel:#161823;--panel-2:#1F1F2E;--border:#2F2F3F;
+    --text:#fff;--text-dim:#A8A8B3;--text-muted:#6D6E78;
+    --accent-pink:#FE2C55;--accent-blue:#25F4EE;--accent-green:#10B981;
+    --accent-yellow:#FBBF24;--accent-purple:#A78BFA;
+  }
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;height:100%}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--accent-pink);color:#fff}
+
+  /* TikTok admin: sidebar + main content */
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+  .sidebar{background:var(--panel);border-right:1px solid var(--border);padding:24px 0;display:flex;flex-direction:column}
+  .logo-block{padding:0 24px 28px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .logo{font-size:22px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px}
+  .logo .accent{background:linear-gradient(135deg,var(--accent-pink) 0%,var(--accent-blue) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo-sub{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-top:4px}
+  .nav-section{padding:8px 14px}
+  .nav-section .label{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.2px;font-weight:800;padding:8px 12px;margin-top:8px}
+  .nav-link{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;color:var(--text-dim);font-size:13.5px;font-weight:600;cursor:pointer;transition:background .12s,color .12s}
+  .nav-link:hover{background:var(--panel-2);color:#fff}
+  .nav-link.active{background:linear-gradient(90deg,rgba(254,44,85,.15) 0%,rgba(37,244,238,.05) 100%);color:#fff;border-left:3px solid var(--accent-pink);padding-left:9px}
+  .nav-link .icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .nav-link .badge{margin-left:auto;background:var(--accent-pink);color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:800}
+
+  .sidebar-footer{margin-top:auto;padding:16px;border-top:1px solid var(--border)}
+  .user-card{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer}
+  .user-card:hover{background:var(--panel-2)}
+  .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent-pink) 0%,var(--accent-blue) 100%);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .user-name{font-size:13px;font-weight:700;color:#fff}
+  .user-role{font-size:11px;color:var(--text-muted)}
+
+  /* Main content */
+  .main{padding:0;overflow-x:hidden}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .breadcrumb{font-size:13px;color:var(--text-dim)}
+  .breadcrumb .sep{margin:0 8px;color:var(--text-muted)}
+  .breadcrumb .current{color:#fff;font-weight:700}
+  .topbar-actions{display:flex;align-items:center;gap:12px}
+  .search{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:#fff;width:280px;outline:none}
+  .search::placeholder{color:var(--text-muted)}
+  .icon-btn{width:36px;height:36px;border-radius:8px;background:var(--panel-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text-dim);position:relative}
+  .icon-btn:hover{background:var(--border);color:#fff}
+  .icon-btn .dot{position:absolute;top:6px;right:8px;width:8px;height:8px;background:var(--accent-pink);border-radius:50%}
+
+  .content{padding:28px}
+  .greeting{font-size:24px;font-weight:800;margin-bottom:4px}
+  .greeting .accent{background:linear-gradient(135deg,var(--accent-pink) 0%,var(--accent-blue) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .greeting-sub{color:var(--text-dim);margin-bottom:24px;font-size:14px}
+
+  /* Live metric strip — TikTok-style vibrant cards */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+  @media(max-width:980px){.metrics{grid-template-columns:repeat(2,1fr)}}
+  .metric{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;overflow:hidden}
+  .metric::after{content:"";position:absolute;top:0;right:0;width:120px;height:120px;border-radius:50%;opacity:.08;filter:blur(20px)}
+  .metric.pink::after{background:var(--accent-pink)}
+  .metric.blue::after{background:var(--accent-blue)}
+  .metric.green::after{background:var(--accent-green)}
+  .metric.yellow::after{background:var(--accent-yellow)}
+  .metric .label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;font-weight:800;margin-bottom:8px}
+  .metric .value{font-size:30px;font-weight:900;letter-spacing:-1px;margin-bottom:4px}
+  .metric.pink .value{color:var(--accent-pink)}
+  .metric.blue .value{color:var(--accent-blue)}
+  .metric.green .value{color:var(--accent-green)}
+  .metric.yellow .value{color:var(--accent-yellow)}
+  .metric .delta{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+  .metric .delta.up{color:var(--accent-green)}
+  .metric .delta.down{color:var(--accent-pink)}
+  .metric .sub{font-size:11px;color:var(--text-muted);margin-top:8px}
+
+  /* Chart area */
+  .row{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:24px}
+  @media(max-width:980px){.row{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px}
+  .panel-title{font-size:15px;font-weight:800;margin-bottom:4px}
+  .panel-sub{font-size:12px;color:var(--text-muted);margin-bottom:18px}
+
+  /* Sparkline mock */
+  .sparkline{height:160px;display:flex;align-items:flex-end;gap:6px;padding:8px 0}
+  .bar{flex:1;background:linear-gradient(180deg,var(--accent-pink) 0%,var(--accent-blue) 100%);border-radius:4px 4px 0 0;opacity:.85}
+  .bar:hover{opacity:1}
+
+  /* Live feed (TikTok scroll feel) */
+  .live-feed{display:flex;flex-direction:column;gap:10px;max-height:200px;overflow-y:auto}
+  .feed-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel-2);border-radius:8px;font-size:12.5px}
+  .feed-item .icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .feed-item.win .icon{background:rgba(16,185,129,.2);color:var(--accent-green)}
+  .feed-item.redeem .icon{background:rgba(37,244,238,.2);color:var(--accent-blue)}
+  .feed-item.new .icon{background:rgba(254,44,85,.2);color:var(--accent-pink)}
+  .feed-item .text{color:var(--text-dim);flex:1}
+  .feed-item .text strong{color:#fff}
+  .feed-item .ts{font-size:10.5px;color:var(--text-muted)}
+
+  /* Quick action grid */
+  .quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+  @media(max-width:780px){.quick-actions{grid-template-columns:1fr}}
+  .qa{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;cursor:pointer;transition:border-color .12s,transform .12s}
+  .qa:hover{border-color:var(--accent-pink);transform:translateY(-2px)}
+  .qa .qa-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent-pink) 0%,var(--accent-blue) 100%);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px}
+  .qa .qa-title{font-size:15px;font-weight:800;margin-bottom:4px}
+  .qa .qa-sub{font-size:12px;color:var(--text-muted);line-height:1.5}
+
+  /* Game library quick-grab */
+  .game-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  @media(max-width:980px){.game-grid{grid-template-columns:repeat(3,1fr)}}
+  .game-card{aspect-ratio:9/16;background:linear-gradient(135deg,var(--panel-2) 0%,var(--panel) 100%);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;overflow:hidden}
+  .game-card:hover{border-color:var(--accent-pink)}
+  .game-card .game-emoji{font-size:32px}
+  .game-card .game-name{font-size:11.5px;font-weight:700}
+  .game-card .game-stat{font-size:10px;color:var(--text-muted)}
+  .game-card.featured{background:linear-gradient(135deg,var(--accent-pink) 0%,#3F0E1B 100%);border-color:var(--accent-pink)}
+  .game-card.featured .game-emoji{font-size:36px}
+  .game-card.featured .game-name{color:#fff;font-weight:800}
+
+  /* Lang switcher dark */
+  .kix-lang-slot{display:inline-block}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="logo-block">
+      <div class="logo">Ki<span class="accent">X</span> <span style="font-size:11px;color:var(--text-muted);font-weight:600;margin-left:auto">v3.0</span></div>
+      <div class="logo-sub">Merchant cockpit</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="label">Acquire</div>
+      <div class="nav-link active"><span class="icon">📊</span>Dashboard</div>
+      <div class="nav-link"><span class="icon">🎯</span>Campaigns <span class="badge">3 live</span></div>
+      <div class="nav-link"><span class="icon">🎮</span>Game library</div>
+      <div class="nav-link"><span class="icon">🎁</span>Vouchers</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="label">Customers</div>
+      <div class="nav-link"><span class="icon">👥</span>Audiences</div>
+      <div class="nav-link"><span class="icon">🔁</span>Retention</div>
+      <div class="nav-link"><span class="icon">📍</span>Geofences</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="label">Money</div>
+      <div class="nav-link"><span class="icon">💳</span>Wallet · S$847</div>
+      <div class="nav-link"><span class="icon">💰</span>Payouts</div>
+      <div class="nav-link"><span class="icon">📜</span>Invoices</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="label">Brand</div>
+      <div class="nav-link"><span class="icon">🎨</span>Brand assets</div>
+      <div class="nav-link"><span class="icon">🏪</span>Storefront</div>
+      <div class="nav-link"><span class="icon">⚙️</span>Settings</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">UN</div>
+        <div>
+          <div class="user-name">Uncle Ng</div>
+          <div class="user-role">Heng Heng Kopi · Owner</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb">
+        <span>Heng Heng Kopi</span><span class="sep">/</span><span class="current">Dashboard</span>
+      </div>
+      <div class="topbar-actions">
+        <input class="search" placeholder="Search campaigns, customers, games...">
+        <span class="kix-lang-slot"></span>
+        <div class="icon-btn">🔔<div class="dot"></div></div>
+        <div class="icon-btn">⚙️</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="greeting">Good morning, <span class="accent">Uncle Ng</span> 👋</div>
+      <div class="greeting-sub">3 campaigns live · 147 new customers this week · S$847 wallet balance · all systems green</div>
+
+      <!-- Live metrics -->
+      <div class="metrics">
+        <div class="metric pink">
+          <div class="label">New customers · 7d</div>
+          <div class="value">147</div>
+          <div class="delta up">↑ 22% vs last week</div>
+          <div class="sub">Cohort tracking: 23 already returned</div>
+        </div>
+        <div class="metric blue">
+          <div class="label">Average CPA</div>
+          <div class="value">S$4.90</div>
+          <div class="delta up">↓ 14% vs last month</div>
+          <div class="sub">Excellent for kopi vertical (band: ≤S$2.50)</div>
+        </div>
+        <div class="metric green">
+          <div class="label">14-day return rate</div>
+          <div class="value">28%</div>
+          <div class="delta up">↑ 6pp vs Q1 baseline</div>
+          <div class="sub">Above kopi typical (~20%)</div>
+        </div>
+        <div class="metric yellow">
+          <div class="label">Wallet runway</div>
+          <div class="value">12d</div>
+          <div class="delta down">at current burn S$70/d</div>
+          <div class="sub">Auto-recharge at S$200</div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="quick-actions">
+        <div class="qa">
+          <div class="qa-icon">🎮</div>
+          <div class="qa-title">Launch a new game</div>
+          <div class="qa-sub">79 templates · stamped with your logo in 60 seconds · live in 5 minutes</div>
+        </div>
+        <div class="qa">
+          <div class="qa-icon">🎁</div>
+          <div class="qa-title">Create a voucher</div>
+          <div class="qa-sub">10% off · 1-for-1 · free upgrade · pick a template, set expiry, ship</div>
+        </div>
+        <div class="qa">
+          <div class="qa-icon">📍</div>
+          <div class="qa-title">Add a geofence</div>
+          <div class="qa-sub">100m / 200m / 500m radius around your shop · trigger games on phones nearby</div>
+        </div>
+      </div>
+
+      <!-- Chart + Live feed -->
+      <div class="row">
+        <div class="panel">
+          <div class="panel-title">Customer flow · last 14 days</div>
+          <div class="panel-sub">New customers in (bars) · returns (overlay coming soon)</div>
+          <div class="sparkline">
+            <div class="bar" style="height:30%"></div>
+            <div class="bar" style="height:45%"></div>
+            <div class="bar" style="height:38%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:42%"></div>
+            <div class="bar" style="height:67%"></div>
+            <div class="bar" style="height:48%"></div>
+            <div class="bar" style="height:72%"></div>
+            <div class="bar" style="height:80%"></div>
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:78%"></div>
+            <div class="bar" style="height:92%"></div>
+            <div class="bar" style="height:88%"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Live · last hour</div>
+          <div class="panel-sub">Real-time game wins + redemptions</div>
+          <div class="live-feed">
+            <div class="feed-item win"><div class="icon">🏆</div><div class="text"><strong>kid_8a3f</strong> won S$1 off kopi</div><div class="ts">13:24</div></div>
+            <div class="feed-item redeem"><div class="icon">🎁</div><div class="text"><strong>kid_8a3f</strong> redeemed · counter #1</div><div class="ts">13:18</div></div>
+            <div class="feed-item new"><div class="icon">✨</div><div class="text"><strong>kid_9b21</strong> · first time ever</div><div class="ts">13:11</div></div>
+            <div class="feed-item win"><div class="icon">🏆</div><div class="text"><strong>kid_4e89</strong> won free kaya toast</div><div class="ts">12:58</div></div>
+            <div class="feed-item redeem"><div class="icon">🎁</div><div class="text"><strong>kid_4e89</strong> redeemed · counter #2</div><div class="ts">12:55</div></div>
+            <div class="feed-item new"><div class="icon">✨</div><div class="text"><strong>kid_7c33</strong> · first time</div><div class="ts">12:51</div></div>
+            <div class="feed-item win"><div class="icon">🏆</div><div class="text"><strong>kid_1a02</strong> won 20% off lunch set</div><div class="ts">12:44</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game library -->
+      <div class="panel">
+        <div class="panel-title">Your active games · tap to edit</div>
+        <div class="panel-sub">3 of 79 templates running · earn-out band: S$3-7 CPA for kopi</div>
+        <div class="game-grid">
+          <div class="game-card featured">
+            <div class="game-emoji">🎯</div>
+            <div>
+              <div class="game-name">Lunch spin</div>
+              <div class="game-stat">87 plays today · S$4.20 CPA</div>
+            </div>
+          </div>
+          <div class="game-card">
+            <div class="game-emoji">⚡</div>
+            <div>
+              <div class="game-name">Scratch & win</div>
+              <div class="game-stat">42 plays · S$5.10 CPA</div>
+            </div>
+          </div>
+          <div class="game-card">
+            <div class="game-emoji">🎲</div>
+            <div>
+              <div class="game-name">Mystery box</div>
+              <div class="game-stat">18 plays · S$6.80 CPA</div>
+            </div>
+          </div>
+          <div class="game-card" style="opacity:.55">
+            <div class="game-emoji">🧩</div>
+            <div>
+              <div class="game-name">Quiz · paused</div>
+              <div class="game-stat">tap to activate</div>
+            </div>
+          </div>
+          <div class="game-card" style="opacity:.55">
+            <div class="game-emoji">🔥</div>
+            <div>
+              <div class="game-name">Streak · paused</div>
+              <div class="game-stat">tap to activate</div>
+            </div>
+          </div>
+          <div class="game-card" style="opacity:.55">
+            <div class="game-emoji">+</div>
+            <div>
+              <div class="game-name">Browse 79 more</div>
+              <div class="game-stat">templates ready · 60s setup</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// Live-ish ticker — TikTok feel
+setInterval(() => {
+  const feed = document.querySelector('.live-feed');
+  if (!feed) return;
+  const events = [
+    {cls:'win', icon:'🏆', text:'kid_<span>' + Math.random().toString(36).slice(2,6) + '</span> won S$1 off kopi'},
+    {cls:'redeem', icon:'🎁', text:'kid_<span>' + Math.random().toString(36).slice(2,6) + '</span> redeemed · counter #' + (1+Math.floor(Math.random()*3))},
+    {cls:'new', icon:'✨', text:'kid_<span>' + Math.random().toString(36).slice(2,6) + '</span> · first time'},
+  ];
+  const e = events[Math.floor(Math.random()*events.length)];
+  const now = new Date(); const ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  const el = document.createElement('div');
+  el.className = 'feed-item ' + e.cls;
+  el.style.opacity = '0';
+  el.innerHTML = '<div class="icon">' + e.icon + '</div><div class="text"><strong>' + e.text.match(/kid_<span>(.*?)<\/span>/)[1] + '</strong> ' + e.text.replace(/<[^>]+>/g,'').replace(/kid_\S+ /,'') + '</div><div class="ts">' + ts + '</div>';
+  feed.insertBefore(el, feed.firstChild);
+  setTimeout(() => el.style.transition = 'opacity .4s', 10);
+  setTimeout(() => el.style.opacity = '1', 20);
+  if (feed.children.length > 8) feed.removeChild(feed.lastChild);
+}, 4500);
+</script>
+</body>
+</html>
